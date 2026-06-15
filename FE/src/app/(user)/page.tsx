@@ -1,7 +1,8 @@
-import MainSlider from "@/components/main/main.slider";
-import { Container } from "@mui/material";
+import { Box, Container } from "@mui/material";
 import { sendRequest } from "@/utils/api";
 import type { Metadata } from "next";
+import MainSlider from "@/components/main/main.slider";
+import RightSidebar from "@/components/RightSidebar/right.sidebar";
 
 export const metadata: Metadata = {
   title: "Sound Clone",
@@ -28,10 +29,36 @@ export default async function HomePage() {
   });
 
   return (
-    <Container>
-      <MainSlider title={"Top Chill"} data={chills?.data ?? []} />
-      <MainSlider title={"Top Workout"} data={workouts?.data ?? []} />
-      <MainSlider title={"Top Party"} data={party?.data ?? []} />
-    </Container>
+    <Box
+      sx={{
+        minHeight: "100vh",
+        backgroundColor: "#181A1B",
+        color: "#ffffff",
+      }}
+    >
+      <Container
+        maxWidth="xl"
+        sx={{
+          display: "flex",
+          gap: 3,
+          backgroundColor: "#181A1B",
+          py: 3,
+        }}
+      >
+        <Box
+          component="main"
+          sx={{
+            flex: 1,
+            minWidth: 0,
+          }}
+        >
+          <MainSlider title={"Top Chill"} data={chills?.data ?? []} />
+          <MainSlider title={"Top Workout"} data={workouts?.data ?? []} />
+          <MainSlider title={"Top Party"} data={party?.data ?? []} />
+        </Box>
+
+        <RightSidebar />
+      </Container>
+    </Box>
   );
 }

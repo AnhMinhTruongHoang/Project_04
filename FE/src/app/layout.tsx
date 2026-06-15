@@ -1,10 +1,10 @@
 import type { Metadata } from "next";
-
 import ThemeRegistry from "@/components/theme-registry/theme.registry";
 import NextAuthWrapper from "@/lib/next.auth.wrapper";
 import NProgressWrapper from "@/lib/nprogress.wrapper";
 import { TrackContextProvider } from "@/lib/track.wrapper";
 import { ToastProvider } from "@/utils/toast";
+import "../app/globals.scss";
 
 export const metadata: Metadata = {
   metadataBase: new URL(
@@ -27,7 +27,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body>
+      <body style={{ backgroundColor: "#181A1B", color: "#FFFFFF" }}>
         <ThemeRegistry>
           <NProgressWrapper>
             <NextAuthWrapper>

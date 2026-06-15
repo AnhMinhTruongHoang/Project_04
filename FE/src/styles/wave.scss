@@ -1,9 +1,12 @@
 .wave-form-container {
   cursor: pointer;
   position: relative;
-}
-.wave-form-container:hover .hover-wave {
-  opacity: 1;
+
+  &:hover {
+    .hover-wave {
+      opacity: 1;
+    }
+  }
 }
 
 .hover-wave {
@@ -39,4 +42,4 @@
 
 .duration {
   right: 0;
-}/*# sourceMappingURL=wave.css.map */
+}

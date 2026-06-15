@@ -21,7 +21,12 @@ import DashboardRoundedIcon from "@mui/icons-material/DashboardRounded";
 import LogoutRoundedIcon from "@mui/icons-material/LogoutRounded";
 import PersonRoundedIcon from "@mui/icons-material/PersonRounded";
 import CloudRoundedIcon from "@mui/icons-material/CloudRounded";
-
+import FavoriteRoundedIcon from "@mui/icons-material/FavoriteRounded";
+import GraphicEqRoundedIcon from "@mui/icons-material/GraphicEqRounded";
+import GroupsRoundedIcon from "@mui/icons-material/GroupsRounded";
+import StarsRoundedIcon from "@mui/icons-material/StarsRounded";
+import BarChartRoundedIcon from "@mui/icons-material/BarChartRounded";
+import UploadRoundedIcon from "@mui/icons-material/UploadRounded";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
@@ -76,8 +81,11 @@ const AppHeader = () => {
     return pathname?.startsWith(href);
   };
 
-  const handleSearch = () => {
+  const handleSearch = (event?: React.FormEvent<HTMLFormElement>) => {
+    event?.preventDefault();
+
     const value = keyword.trim();
+
     if (!value) return;
 
     router.push(`/search?q=${encodeURIComponent(value)}`);
@@ -135,40 +143,31 @@ const AppHeader = () => {
             >
               <Box
                 sx={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 0.2,
+                  width: 38,
+                  height: 30,
+                  position: "relative",
+                  display: { xs: "none", sm: "block" },
                 }}
               >
-                <Box
-                  sx={{
-                    width: 32,
-                    height: 22,
-                    position: "relative",
-                    display: { xs: "none", sm: "block" },
+                <Image
+                  src="/images/logo/Sc.png"
+                  alt="SoundCloud"
+                  fill
+                  sizes="38px"
+                  style={{
+                    objectFit: "contain",
                   }}
-                >
-                  <Image
-                    src="/images/logo/Sc.png"
-                    alt="SoundCloud"
-                    fill
-                    sizes="32px"
-                    style={{
-                      objectFit: "contain",
-                      filter: "brightness(0) invert(1)",
-                    }}
-                    priority
-                  />
-                </Box>
-
-                <CloudRoundedIcon
-                  sx={{
-                    display: { xs: "block", sm: "none" },
-                    color: "#ffffff",
-                    fontSize: 30,
-                  }}
+                  priority
                 />
               </Box>
+
+              <CloudRoundedIcon
+                sx={{
+                  display: { xs: "block", sm: "none" },
+                  color: "#ffffff",
+                  fontSize: 30,
+                }}
+              />
             </Box>
 
             {/* Left nav */}
@@ -228,6 +227,8 @@ const AppHeader = () => {
               }}
             >
               <Box
+                component="form"
+                onSubmit={handleSearch}
                 sx={{
                   width: "100%",
                   maxWidth: 460,
@@ -248,9 +249,6 @@ const AppHeader = () => {
                 <InputBase
                   value={keyword}
                   onChange={(e) => setKeyword(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") handleSearch();
-                  }}
                   placeholder="Search"
                   sx={{
                     flex: 1,
@@ -266,7 +264,7 @@ const AppHeader = () => {
                 />
 
                 <IconButton
-                  onClick={handleSearch}
+                  type="submit"
                   sx={{
                     width: 42,
                     height: 34,
@@ -426,27 +424,46 @@ const AppHeader = () => {
         </Container>
       </AppBar>
 
-      {/* User menu */}
       <Menu
         anchorEl={anchorEl}
         open={open}
         onClose={() => setAnchorEl(null)}
-        transformOrigin={{ horizontal: "right", vertical: "top" }}
-        anchorOrigin={{ horizontal: "right", vertical: "bottom" }}
-        PaperProps={{
-          sx: {
-            mt: 1,
-            minWidth: 190,
-            backgroundColor: "#181818",
-            color: "#ffffff",
-            border: "1px solid rgba(255,255,255,0.1)",
-            boxShadow: "0 18px 40px rgba(0,0,0,0.35)",
-            "& .MuiMenuItem-root": {
-              gap: 1.2,
-              fontSize: 14,
-              "&:hover": {
-                backgroundColor: "rgba(255,85,0,0.14)",
-                color: "#ff5500",
+        anchorOrigin={{ horizontal: "center", vertical: "bottom" }}
+        transformOrigin={{ horizontal: "center", vertical: "top" }}
+        slotProps={{
+          paper: {
+            sx: {
+              mt: 1,
+              minWidth: 210,
+              backgroundColor: "#111111",
+              color: "#f2f2f2",
+              border: "1px solid rgba(255,255,255,0.08)",
+              borderRadius: 0,
+              boxShadow: "0 18px 40px rgba(0,0,0,0.45)",
+              overflow: "hidden",
+
+              "& .MuiList-root": {
+                py: 0.5,
+              },
+
+              "& .MuiMenuItem-root": {
+                minHeight: 36,
+                px: 2,
+                gap: 1.2,
+                fontSize: 14,
+                fontWeight: 800,
+                color: "#f2f2f2",
+                transition: "0.16s ease",
+              },
+
+              "& .MuiMenuItem-root:hover": {
+                backgroundColor: "#222222",
+                color: "#ffffff",
+              },
+
+              "& .MuiSvgIcon-root": {
+                fontSize: 18,
+                color: "#ffffff",
               },
             },
           },
@@ -462,6 +479,73 @@ const AppHeader = () => {
           Profile
         </MenuItem>
 
+        <MenuItem
+          onClick={() => {
+            setAnchorEl(null);
+            router.push("/like");
+          }}
+        >
+          <FavoriteRoundedIcon fontSize="small" />
+          Likes
+        </MenuItem>
+
+        <MenuItem
+          onClick={() => {
+            setAnchorEl(null);
+            router.push("/stations");
+          }}
+        >
+          <GraphicEqRoundedIcon fontSize="small" />
+          Stations
+        </MenuItem>
+
+        <MenuItem
+          onClick={() => {
+            setAnchorEl(null);
+            router.push("/following");
+          }}
+        >
+          <GroupsRoundedIcon fontSize="small" />
+          Who to follow
+        </MenuItem>
+
+        <Divider sx={{ borderColor: "rgba(255,255,255,0.08)", my: 0.5 }} />
+
+        <MenuItem
+          onClick={() => {
+            setAnchorEl(null);
+            router.push("/premium");
+          }}
+        >
+          <StarsRoundedIcon
+            fontSize="small"
+            sx={{ color: "#ff5500 !important" }}
+          />
+          Try Artist Pro
+        </MenuItem>
+
+        <MenuItem
+          onClick={() => {
+            setAnchorEl(null);
+            router.push("/track/upload");
+          }}
+        >
+          <UploadRoundedIcon fontSize="small" />
+          Tracks
+        </MenuItem>
+
+        {isAdmin && (
+          <MenuItem
+            onClick={() => {
+              setAnchorEl(null);
+              router.push("/dashboard");
+            }}
+          >
+            <BarChartRoundedIcon fontSize="small" />
+            Insights
+          </MenuItem>
+        )}
+
         {isAdmin && (
           <MenuItem
             onClick={() => {
@@ -474,7 +558,17 @@ const AppHeader = () => {
           </MenuItem>
         )}
 
-        <Divider sx={{ borderColor: "rgba(255,255,255,0.1)" }} />
+        <MenuItem
+          onClick={() => {
+            setAnchorEl(null);
+            router.push("/distribute");
+          }}
+        >
+          <CloudRoundedIcon fontSize="small" />
+          Distribute
+        </MenuItem>
+
+        <Divider sx={{ borderColor: "rgba(255,255,255,0.08)", my: 0.5 }} />
 
         <MenuItem onClick={handleLogout}>
           <LogoutRoundedIcon fontSize="small" />

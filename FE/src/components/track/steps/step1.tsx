@@ -1,39 +1,18 @@
 "use client";
+
+import { useCallback } from "react";
 import { useDropzone, FileWithPath } from "react-dropzone";
-import "../../../styles/theme.scss";
-import { styled } from "@mui/material/styles";
-import Button from "@mui/material/Button";
-import CloudUploadIcon from "@mui/icons-material/CloudUpload";
-import { useCallback, useState } from "react";
-import { sendRequest, sendRequestFile } from "@/utils/api";
 import { useSession } from "next-auth/react";
 import axios from "axios";
 
-const VisuallyHiddenInput = styled("input")({
-  clip: "rect(0 0 0 0)",
-  clipPath: "inset(50%)",
-  height: 1,
-  overflow: "hidden",
-  position: "absolute",
-  bottom: 0,
-  left: 0,
-  whiteSpace: "nowrap",
-  width: 1,
-});
+import Box from "@mui/material/Box";
+import Button from "@mui/material/Button";
+import Typography from "@mui/material/Typography";
+import LinearProgress from "@mui/material/LinearProgress";
 
-function InputFileUpload() {
-  return (
-    <Button
-      onClick={(event) => event.preventDefault()}
-      component="label"
-      variant="contained"
-      startIcon={<CloudUploadIcon />}
-    >
-      Upload file
-      <VisuallyHiddenInput type="file" />
-    </Button>
-  );
-}
+import CloudUploadRoundedIcon from "@mui/icons-material/CloudUploadRounded";
+import MicRoundedIcon from "@mui/icons-material/MicRounded";
+import KeyboardArrowDownRoundedIcon from "@mui/icons-material/KeyboardArrowDownRounded";
 
 interface IProps {
   setValue: (v: number) => void;
@@ -44,75 +23,318 @@ interface IProps {
 const Step1 = (props: IProps) => {
   const { trackUpload } = props;
   const { data: session } = useSession();
-  //useMemo => variable
+
   const onDrop = useCallback(
     async (acceptedFiles: FileWithPath[]) => {
-      // Do something with the files
-      if (acceptedFiles && acceptedFiles[0]) {
-        props.setValue(1);
-        const audio = acceptedFiles[0];
-        const formData = new FormData();
-        formData.append("fileUpload", audio);
-        try {
-          const res = await axios.post(
-            `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/v1/files/upload`,
-            formData,
-            {
-              headers: {
-                Authorization: `Bearer ${session?.access_token}`,
-                target_type: "tracks",
-              },
-              onUploadProgress: (progressEvent) => {
-                let percentCompleted = Math.floor(
-                  (progressEvent.loaded * 100) / progressEvent.total!
-                );
+      if (!acceptedFiles || !acceptedFiles[0]) return;
 
-                props.setTrackUpload({
-                  ...trackUpload,
-                  fileName: acceptedFiles[0].name,
-                  percent: percentCompleted,
-                });
-              },
-            }
-          );
-          props.setTrackUpload((prevState: any) => ({
-            ...prevState,
-            uploadedTrackName: res.data.data.fileName,
-          }));
-        } catch (error) {
-          //@ts-ignore
-          alert(error?.response?.data?.message);
-        }
+      const audio = acceptedFiles[0];
+      const formData = new FormData();
+      formData.append("fileUpload", audio);
+
+      props.setTrackUpload((prevState: any) => ({
+        ...prevState,
+        fileName: audio.name,
+        percent: 0,
+      }));
+
+      try {
+        const res = await axios.post(
+          `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/v1/files/upload`,
+          formData,
+          {
+            headers: {
+              Authorization: `Bearer ${session?.access_token}`,
+              target_type: "tracks",
+            },
+            onUploadProgress: (progressEvent) => {
+              const total = progressEvent.total || 1;
+              const percentCompleted = Math.floor(
+                (progressEvent.loaded * 100) / total
+              );
+
+              props.setTrackUpload((prevState: any) => ({
+                ...prevState,
+                fileName: audio.name,
+                percent: percentCompleted,
+              }));
+            },
+          }
+        );
+
+        props.setTrackUpload((prevState: any) => ({
+          ...prevState,
+          uploadedTrackName: res.data.data.fileName,
+          percent: 100,
+        }));
+
+        props.setValue(1);
+      } catch (error) {
+        //@ts-ignore
+        alert(error?.response?.data?.message || "Upload failed");
       }
     },
-    [session]
+    [session?.access_token, props]
   );
 
-  const { acceptedFiles, getRootProps, getInputProps } = useDropzone({
+  const { getRootProps, getInputProps, isDragActive, open } = useDropzone({
     onDrop,
+    noClick: true,
     accept: {
-      audio: [".mp3", ".m4a", ".wav"],
+      "audio/mpeg": [".mp3"],
+      "audio/mp4": [".m4a"],
+      "audio/wav": [".wav"],
+      "audio/x-wav": [".wav"],
     },
   });
 
-  const files = acceptedFiles.map((file: FileWithPath) => (
-    <li key={file.path}>
-      {file.path} - {file.size} bytes
-    </li>
-  ));
-
   return (
-    <section className="container">
-      <div {...getRootProps({ className: "dropzone" })}>
-        <input {...getInputProps()} />
-        <InputFileUpload />
-        <p>Click hoặc Drag/Drop để upload file track!</p>
-      </div>
-      <aside>
-        <h4>Files</h4>
-        <ul>{files}</ul>
-      </aside>
-    </section>
+    <Box
+      sx={{
+        width: "100%",
+        minHeight: "calc(100vh - 110px)",
+        backgroundColor: "#0f1111",
+        color: "#ffffff",
+        display: "flex",
+        justifyContent: "center",
+        px: 2,
+        py: 5,
+      }}
+    >
+      <Box
+        sx={{
+          width: "100%",
+          maxWidth: 1040,
+        }}
+      >
+        {/* Usage bar */}
+        <Box
+          sx={{
+            width: "100%",
+            height: 66,
+            backgroundColor: "#181a1b",
+            borderRadius: "4px",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            px: 3,
+            mb: 4,
+          }}
+        >
+          <Box sx={{ display: "flex", alignItems: "center", gap: 1.2 }}>
+            <CloudUploadRoundedIcon sx={{ fontSize: 22, color: "#d8d8d8" }} />
+            <Typography sx={{ fontSize: 14, fontWeight: 800 }}>
+              {trackUpload?.percent || 0}% tải lên được sử dụng
+            </Typography>
+          </Box>
+
+          <Button
+            sx={{
+              height: 36,
+              px: 3,
+              borderRadius: "999px",
+              backgroundColor: "#050505",
+              color: "#ffffff",
+              fontSize: 13,
+              fontWeight: 900,
+              textTransform: "none",
+              "&:hover": {
+                backgroundColor: "#111111",
+              },
+            }}
+          >
+            Tải lên không giới hạn
+          </Button>
+        </Box>
+
+        <Typography
+          component="h1"
+          sx={{
+            fontSize: { xs: 24, md: 30 },
+            fontWeight: 900,
+            mb: 2,
+          }}
+        >
+          Tải lên các tệp âm thanh của bạn.
+        </Typography>
+
+        <Typography
+          sx={{
+            color: "#ffffff",
+            fontSize: 14,
+            fontWeight: 600,
+            mb: 3.5,
+          }}
+        >
+          Để có chất lượng tốt nhất, hãy sử dụng WAV, FLAC, AIFF hoặc ALAC. Kích
+          thước tệp tối đa là 4GB không nén.{" "}
+          <Box
+            component="span"
+            sx={{
+              textDecoration: "underline",
+              cursor: "pointer",
+              fontWeight: 900,
+            }}
+          >
+            Tìm hiểu thêm.
+          </Box>
+        </Typography>
+
+        {/* Dropzone */}
+        <Box
+          {...getRootProps()}
+          sx={{
+            height: 290,
+            borderRadius: "4px",
+            border: isDragActive
+              ? "1px dashed #ff5500"
+              : "1px dashed rgba(255,255,255,0.13)",
+            backgroundColor: isDragActive ? "rgba(255,85,0,0.06)" : "#0f1111",
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            justifyContent: "center",
+            textAlign: "center",
+            mb: 3,
+            transition: "0.18s ease",
+            cursor: "default",
+            "&:hover": {
+              borderColor: "rgba(255,255,255,0.26)",
+              backgroundColor: "#111313",
+            },
+          }}
+        >
+          <input {...getInputProps()} />
+
+          <CloudUploadRoundedIcon
+            sx={{
+              fontSize: 64,
+              color: "#f2f2f2",
+              mb: 2,
+            }}
+          />
+
+          <Typography
+            sx={{
+              fontSize: 15,
+              fontWeight: 900,
+              mb: 2,
+            }}
+          >
+            {isDragActive
+              ? "Thả tệp âm thanh vào đây..."
+              : "Kéo và thả các tệp âm thanh để bắt đầu."}
+          </Typography>
+
+          <Button
+            onClick={open}
+            sx={{
+              height: 38,
+              px: 3,
+              borderRadius: "999px",
+              backgroundColor: "#181a1b",
+              color: "#ffffff",
+              fontSize: 13,
+              fontWeight: 900,
+              textTransform: "none",
+              "&:hover": {
+                backgroundColor: "#232627",
+              },
+            }}
+          >
+            Chọn tệp
+          </Button>
+
+          {trackUpload?.fileName && (
+            <Box sx={{ width: "60%", mt: 3 }}>
+              <Typography
+                noWrap
+                sx={{
+                  color: "#cfcfcf",
+                  fontSize: 13,
+                  mb: 1,
+                }}
+              >
+                {trackUpload.fileName}
+              </Typography>
+
+              <LinearProgress
+                variant="determinate"
+                value={trackUpload.percent || 0}
+                sx={{
+                  height: 4,
+                  borderRadius: 99,
+                  backgroundColor: "#2a2d2f",
+                  "& .MuiLinearProgress-bar": {
+                    backgroundColor: "#ff5500",
+                  },
+                }}
+              />
+            </Box>
+          )}
+        </Box>
+
+        {/* Record by mic */}
+        <Box
+          sx={{
+            minHeight: 86,
+            borderRadius: "6px",
+            backgroundColor: "#181a1b",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            px: 3,
+            position: "relative",
+          }}
+        >
+          <MicRoundedIcon
+            sx={{
+              position: "absolute",
+              left: 28,
+              color: "#ffffff",
+              fontSize: 22,
+            }}
+          />
+
+          <Box
+            sx={{
+              textAlign: "center",
+              px: 6,
+            }}
+          >
+            <Typography
+              sx={{
+                fontSize: 15,
+                fontWeight: 900,
+                color: "#ffffff",
+              }}
+            >
+              Hoặc ghi âm bằng micro
+            </Typography>
+
+            <Typography
+              sx={{
+                color: "#ffffff",
+                fontSize: 13,
+                fontWeight: 600,
+                mt: 0.8,
+              }}
+            >
+              Tải lên bản ghi nhớ thoại, cập nhật, tin tức hoặc phần giới thiệu
+              đã ghi cho các bản phát hành mới.
+            </Typography>
+          </Box>
+
+          <KeyboardArrowDownRoundedIcon
+            sx={{
+              position: "absolute",
+              right: 28,
+              color: "#ffffff",
+            }}
+          />
+        </Box>
+      </Box>
+    </Box>
   );
 };
 

@@ -1,18 +1,19 @@
-import type { Metadata } from 'next'
-import Container from '@mui/material/Container';
-import ClientSearch from './components/client.search';
+import type { Metadata } from "next";
+import ClientSearch from "./components/client.search";
 
 export const metadata: Metadata = {
-    title: 'Search your tracks',
-    description: 'miêu tả thôi mà',
-}
+  title: "Search tracks",
+  description: "Search tracks on Sound Clone",
+};
 
-const SearchPage = () => {
-    return (
-        <Container sx={{ mt: 3 }}>
-            <ClientSearch />
-        </Container>
-    )
-}
+type Props = {
+  searchParams: {
+    q?: string;
+  };
+};
+
+const SearchPage = ({ searchParams }: Props) => {
+  return <ClientSearch query={searchParams?.q || ""} />;
+};
 
 export default SearchPage;

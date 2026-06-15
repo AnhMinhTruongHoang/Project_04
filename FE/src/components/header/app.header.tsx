@@ -12,7 +12,6 @@ import MenuItem from "@mui/material/MenuItem";
 import Toolbar from "@mui/material/Toolbar";
 import Divider from "@mui/material/Divider";
 import Button from "@mui/material/Button";
-import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
 import KeyboardArrowDownRoundedIcon from "@mui/icons-material/KeyboardArrowDownRounded";
 import NotificationsNoneRoundedIcon from "@mui/icons-material/NotificationsNoneRounded";
 import MailOutlineRoundedIcon from "@mui/icons-material/MailOutlineRounded";
@@ -31,6 +30,8 @@ import Link from "next/link";
 import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
 import { signOut, useSession } from "next-auth/react";
+import { PlaylistPlaySharp } from "@mui/icons-material";
+import SearchDropdown from "@/app/search/components/search.dropdown";
 
 const navItemSx = (active: boolean) => ({
   height: 46,
@@ -226,59 +227,11 @@ const AppHeader = () => {
                 alignItems: "center",
               }}
             >
-              <Box
-                component="form"
-                onSubmit={handleSearch}
-                sx={{
-                  width: "100%",
-                  maxWidth: 460,
-                  height: 34,
-                  display: "flex",
-                  alignItems: "center",
-                  backgroundColor: "#222222",
-                  borderRadius: "4px",
-                  border: "1px solid rgba(255,255,255,0.04)",
-                  overflow: "hidden",
-                  transition: "0.18s ease",
-                  "&:focus-within": {
-                    backgroundColor: "#2a2a2a",
-                    borderColor: "rgba(255,255,255,0.16)",
-                  },
+              <SearchDropdown
+                onEmptySearch={() => {
+                  router.push("/search");
                 }}
-              >
-                <InputBase
-                  value={keyword}
-                  onChange={(e) => setKeyword(e.target.value)}
-                  placeholder="Search"
-                  sx={{
-                    flex: 1,
-                    height: "100%",
-                    px: 2,
-                    color: "#ffffff",
-                    fontSize: 14,
-                    "& input::placeholder": {
-                      color: "#9b9b9b",
-                      opacity: 1,
-                    },
-                  }}
-                />
-
-                <IconButton
-                  type="submit"
-                  sx={{
-                    width: 42,
-                    height: 34,
-                    borderRadius: 0,
-                    color: "#b8b8b8",
-                    "&:hover": {
-                      color: "#ffffff",
-                      backgroundColor: "rgba(255,255,255,0.06)",
-                    },
-                  }}
-                >
-                  <SearchRoundedIcon fontSize="small" />
-                </IconButton>
-              </Box>
+              />
             </Box>
 
             {/* Right actions */}
@@ -487,6 +440,16 @@ const AppHeader = () => {
         >
           <FavoriteRoundedIcon fontSize="small" />
           Likes
+        </MenuItem>
+
+        <MenuItem
+          onClick={() => {
+            setAnchorEl(null);
+            router.push("/playlist");
+          }}
+        >
+          <PlaylistPlaySharp fontSize="small" />
+          Playlists
         </MenuItem>
 
         <MenuItem

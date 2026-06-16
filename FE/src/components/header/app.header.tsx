@@ -202,7 +202,6 @@ const AppHeader = () => {
               >
                 Library
               </Box>
-
               {isAdmin && (
                 <Box
                   component={Link}

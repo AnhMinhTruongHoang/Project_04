@@ -7,10 +7,8 @@ import AccordionSummary from "@mui/material/AccordionSummary";
 import AccordionDetails from "@mui/material/AccordionDetails";
 import Typography from "@mui/material/Typography";
 import Chip from "@mui/material/Chip";
-
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import QueueMusicRoundedIcon from "@mui/icons-material/QueueMusicRounded";
-
 import { sendRequest } from "@/utils/api";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/auth.options";

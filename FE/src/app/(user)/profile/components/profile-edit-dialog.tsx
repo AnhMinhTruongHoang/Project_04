@@ -231,12 +231,6 @@ const ProfileEditDialog = ({ open, onClose, user }: Props) => {
             </Box>
 
             <Box sx={{ mt: 18, display: { xs: "none", md: "block" } }}>
-              <Typography
-                sx={{ fontSize: 13, color: "#ffffff", fontWeight: 900, mb: 1 }}
-              >
-                Your links
-              </Typography>
-
               <Box sx={{ display: "flex", gap: 1 }}>
                 <Button
                   sx={{
@@ -279,16 +273,6 @@ const ProfileEditDialog = ({ open, onClose, user }: Props) => {
                 required
                 value={displayName}
                 onChange={(e) => setDisplayName(e.target.value)}
-                fullWidth
-                size="small"
-                sx={inputSx}
-              />
-
-              <TextField
-                label="Profile URL"
-                required
-                value={profileUrl}
-                onChange={(e) => setProfileUrl(e.target.value)}
                 fullWidth
                 size="small"
                 sx={inputSx}

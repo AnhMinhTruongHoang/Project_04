@@ -134,6 +134,7 @@ const MainSlider = (props: IProps) => {
                   fill
                   style={{
                     objectFit: "contain",
+                    borderRadius: 2,
                   }}
                 />
               </div>

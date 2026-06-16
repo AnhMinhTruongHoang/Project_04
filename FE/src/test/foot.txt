@@ -1,344 +1,371 @@
 "use client";
 
-import { useEffect, useRef } from "react";
 import { useTrackContext } from "@/lib/track.wrapper";
 import { useHasMounted } from "@/utils/customHook";
-
+import { Box, Container, IconButton, Slider, Typography } from "@mui/material";
 import AppBar from "@mui/material/AppBar";
-import Box from "@mui/material/Box";
-import IconButton from "@mui/material/IconButton";
-import Typography from "@mui/material/Typography";
-
-import FavoriteBorderRoundedIcon from "@mui/icons-material/FavoriteBorderRounded";
-import PersonAddAltRoundedIcon from "@mui/icons-material/PersonAddAltRounded";
-import QueueMusicRoundedIcon from "@mui/icons-material/QueueMusicRounded";
-import MoreHorizRoundedIcon from "@mui/icons-material/MoreHorizRounded";
-
+import PauseIcon from "@mui/icons-material/Pause";
+import PlayArrowIcon from "@mui/icons-material/PlayArrow";
+import { usePathname } from "next/navigation";
+import { useRef, useEffect } from "react";
 import AudioPlayer from "react-h5-audio-player";
 import "react-h5-audio-player/lib/styles.css";
 
-const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "";
+const formatTime = (seconds = 0) => {
+  const minutes = Math.floor(seconds / 60);
+  const secondsRemainder = Math.round(seconds) % 60;
+  const paddedSeconds = `0${secondsRemainder}`.slice(-2);
 
-const getAudioSrc = (trackUrl?: string) => {
-  if (!trackUrl) return "/audio/DemoS.mp3";
-  if (trackUrl.startsWith("http")) return trackUrl;
-  if (trackUrl.startsWith("/")) return trackUrl;
-  return `${BACKEND_URL}/tracks/${trackUrl}`;
-};
-
-const getImageSrc = (imgUrl?: string) => {
-  if (!imgUrl) return "/audio/SC.png";
-  if (imgUrl.startsWith("http")) return imgUrl;
-  if (imgUrl.startsWith("/")) return imgUrl;
-  return `${BACKEND_URL}/images/${imgUrl}`;
+  return `${minutes}:${paddedSeconds}`;
 };
 
 const AppFooter = () => {
   const hasMounted = useHasMounted();
+  const pathname = usePathname();
+
   const playerRef = useRef<any>(null);
-  const lastTrackIdRef = useRef<string>("");
+  const previousTrackUrlRef = useRef("");
 
   const { currentTrack, setCurrentTrack } = useTrackContext() as ITrackContext;
+
+  const footerTrack = currentTrack as any;
+
+  const isTrackDetailPage = pathname?.startsWith("/track/");
+  const isWaveControlled =
+    isTrackDetailPage &&
+    (footerTrack?.source === "wave" ||
+      footerTrack?.source === "footer-control");
+
+  const getTrackImage = () => {
+    const imgUrl = currentTrack?.imgUrl;
+
+    if (!imgUrl) return "/audio/SC.png";
+    if (imgUrl.startsWith("http")) return imgUrl;
+    if (imgUrl.startsWith("/")) return imgUrl;
+
+    return `${process.env.NEXT_PUBLIC_BACKEND_URL}/images/${imgUrl}`;
+  };
 
   useEffect(() => {
     const audio = playerRef.current?.audio?.current;
     if (!audio) return;
 
-    if (currentTrack?._id && lastTrackIdRef.current !== currentTrack._id) {
-      audio.currentTime = 0;
-      lastTrackIdRef.current = currentTrack._id;
-    }
-
-    if (currentTrack?.isPlaying) {
-      audio.play().catch(() => {});
-    } else {
+    // Khi đang ở track detail, WaveSurfer là audio chính.
+    // Footer chỉ làm control, không phát audio riêng để tránh dual audio.
+    if (isWaveControlled) {
       audio.pause();
+      return;
     }
-  }, [currentTrack?._id, currentTrack?.isPlaying]);
 
-  if (!hasMounted) return null;
-  if (!currentTrack?._id) return null;
+    // Chỉ reset về 0 khi đổi bài, không reset mỗi lần play/pause.
+    if (previousTrackUrlRef.current !== currentTrack?.trackUrl) {
+      audio.currentTime = 0;
+      previousTrackUrlRef.current = currentTrack?.trackUrl || "";
+    }
+
+    if (currentTrack?.isPlaying === false) {
+      audio.pause();
+      return;
+    }
+
+    if (currentTrack?.isPlaying === true) {
+      audio.play();
+    }
+  }, [
+    currentTrack?._id,
+    currentTrack?.trackUrl,
+    currentTrack?.isPlaying,
+    isWaveControlled,
+  ]);
+
+  if (!hasMounted) return <></>;
+
+  if (!currentTrack?._id) return <></>;
+
+  const currentTime = Number(footerTrack?.currentTime || 0);
+  const duration = Number(footerTrack?.duration || 0);
 
   return (
-    <AppBar
-      position="fixed"
-      elevation={0}
-      sx={{
-        top: "auto",
-        bottom: 0,
-        height: 54,
-        backgroundColor: "#1b1d1e",
-        borderTop: "1px solid rgba(255,255,255,0.08)",
-        boxShadow: "0 -8px 28px rgba(0,0,0,0.35)",
-        zIndex: 1300,
-
-        ".rhap_container": {
-          width: "100%",
-          height: 54,
-          p: 0,
-          backgroundColor: "transparent",
-          boxShadow: "none",
-          color: "#ffffff",
-        },
-
-        ".rhap_main": {
-          height: "100%",
-          display: "flex",
-          alignItems: "center",
-          gap: "14px",
-        },
-
-        ".rhap_progress-section": {
-          flex: "1 1 auto",
-          minWidth: 0,
-          display: "flex",
-          alignItems: "center",
-          gap: "10px",
-        },
-
-        ".rhap_controls-section": {
-          flex: "0 0 230px",
-          m: 0,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          gap: "8px",
-        },
-
-        ".rhap_main-controls": {
-          display: "flex",
-          alignItems: "center",
-          gap: "6px",
-        },
-
-        ".rhap_main-controls-button": {
-          m: 0,
-          color: "#f2f2f2",
-          width: 32,
-          height: 32,
-          fontSize: 26,
-          transition: "0.15s ease",
-          "&:hover": {
-            color: "#ffffff",
-          },
-        },
-
-        ".rhap_play-pause-button": {
-          width: 34,
-          height: 34,
-          borderRadius: "50%",
-          backgroundColor: "#2b2d2f",
-          color: "#ffffff",
-          fontSize: 28,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          "&:hover": {
-            backgroundColor: "#3a3d40",
-          },
-        },
-
-        ".rhap_skip-button": {
-          color: "#f2f2f2",
-          fontSize: 24,
-          width: 28,
-          height: 28,
-        },
-
-        ".rhap_progress-container": {
-          m: 0,
-          height: 16,
-          display: "flex",
-          alignItems: "center",
-        },
-
-        ".rhap_progress-bar": {
-          height: 2,
-          backgroundColor: "#3a3d40",
-          borderRadius: 99,
-        },
-
-        ".rhap_download-progress": {
-          height: 2,
-          backgroundColor: "#4a4d50",
-          borderRadius: 99,
-        },
-
-        ".rhap_progress-filled": {
-          height: 2,
-          backgroundColor: "#ff5500",
-          borderRadius: 99,
-        },
-
-        ".rhap_progress-indicator": {
-          width: 10,
-          height: 10,
-          top: -4,
-          marginLeft: -5,
-          backgroundColor: "#ff5500",
-          boxShadow: "0 0 0 4px rgba(255,85,0,0.16)",
-        },
-
-        ".rhap_time": {
-          color: "#c9c9c9",
-          fontSize: 11,
-          fontWeight: 800,
-          minWidth: 36,
-        },
-
-        ".rhap_volume-container": {
-          flex: "0 0 auto",
-          marginRight: 10,
-        },
-
-        ".rhap_volume-button": {
-          color: "#f2f2f2",
-          fontSize: 20,
-          width: 26,
-          height: 26,
-          m: 0,
-        },
-
-        ".rhap_volume-bar": {
-          backgroundColor: "#3a3d40",
-        },
-
-        ".rhap_volume-indicator": {
-          backgroundColor: "#ffffff",
-        },
-      }}
-    >
-      <Box
+    <div style={{ marginTop: 50 }}>
+      <AppBar
+        position="fixed"
         sx={{
-          width: "100%",
-          maxWidth: 1240,
-          mx: "auto",
-          height: 54,
-          px: { xs: 1, md: 2 },
-          display: "flex",
-          alignItems: "center",
-          gap: 2,
-          backgroundColor: "#1b1d1e",
+          top: "auto",
+          bottom: 0,
+          background: "#181A1B",
+          borderTop: "1px solid rgba(255,255,255,0.08)",
+          boxShadow: "0 -6px 20px rgba(0,0,0,0.35)",
         }}
       >
-        <Box
+        <Container
+          disableGutters
           sx={{
-            flex: 1,
-            minWidth: 0,
-          }}
-        >
-          <AudioPlayer
-            ref={playerRef}
-            src={getAudioSrc(currentTrack.trackUrl)}
-            volume={0.5}
-            layout="horizontal-reverse"
-            showSkipControls
-            showJumpControls={false}
-            autoPlayAfterSrcChange={false}
-            onPlay={() => {
-              setCurrentTrack({ ...currentTrack, isPlaying: true });
-            }}
-            onPause={() => {
-              setCurrentTrack({ ...currentTrack, isPlaying: false });
-            }}
-            onEnded={() => {
-              setCurrentTrack({ ...currentTrack, isPlaying: false });
-            }}
-          />
-        </Box>
-
-        <Box
-          sx={{
-            width: { xs: 0, sm: 260 },
-            display: { xs: "none", sm: "flex" },
+            display: "flex",
+            gap: 4,
             alignItems: "center",
-            gap: 1.1,
-            minWidth: 0,
-            borderLeft: "1px solid rgba(255,255,255,0.08)",
-            pl: 1.5,
+            backgroundColor: "#181A1B",
+            color: "#ffffff",
+
+            ".rhap_container": {
+              backgroundColor: "#181A1B",
+              boxShadow: "unset",
+              color: "#ffffff",
+            },
+
+            ".rhap_main": {
+              gap: "20px",
+            },
+
+            ".rhap_time": {
+              color: "#cfcfcf",
+              fontSize: "12px",
+              fontWeight: 700,
+            },
+
+            ".rhap_current-time": {
+              color: "#ff5500",
+            },
+
+            ".rhap_main-controls-button": {
+              color: "#ffffff",
+            },
+
+            ".rhap_play-pause-button": {
+              color: "#ffffff",
+            },
+
+            ".rhap_volume-button": {
+              color: "#ffffff",
+            },
+
+            ".rhap_progress-bar": {
+              backgroundColor: "#3a3a3a",
+            },
+
+            ".rhap_progress-filled": {
+              backgroundColor: "#ff5500",
+            },
+
+            ".rhap_progress-indicator": {
+              backgroundColor: "#ff5500",
+            },
+
+            ".rhap_download-progress": {
+              backgroundColor: "#555",
+            },
+
+            ".rhap_volume-bar": {
+              backgroundColor: "#3a3a3a",
+            },
+
+            ".rhap_volume-indicator": {
+              backgroundColor: "#ffffff",
+            },
           }}
         >
-          <Box
-            component="img"
-            src={getImageSrc(currentTrack.imgUrl)}
-            alt={currentTrack.title}
-            onError={(e) => {
-              e.currentTarget.src = "/audio/SC.png";
-            }}
-            sx={{
-              width: 34,
-              height: 34,
-              objectFit: "cover",
-              borderRadius: "2px",
-              backgroundColor: "#111",
-              flexShrink: 0,
-            }}
-          />
-
-          <Box sx={{ minWidth: 0, flex: 1 }}>
-            <Typography
-              noWrap
-              title={currentTrack.description}
+          {isWaveControlled ? (
+            <Box
               sx={{
-                color: "#a7a7a7",
-                fontSize: 11,
-                lineHeight: 1.2,
-                fontWeight: 700,
-              }}
-            >
-              {currentTrack.description ||
-                currentTrack.uploader?.name ||
-                "Unknown artist"}
-            </Typography>
-
-            <Typography
-              noWrap
-              title={currentTrack.title}
-              sx={{
+                flex: 1,
+                height: 80,
+                display: "flex",
+                alignItems: "center",
+                gap: "20px",
+                px: 2,
+                backgroundColor: "#181A1B",
                 color: "#ffffff",
-                fontSize: 12,
-                lineHeight: 1.3,
-                fontWeight: 900,
-                mt: 0.2,
               }}
             >
-              {currentTrack.title}
-            </Typography>
-          </Box>
-        </Box>
-
-        <Box
-          sx={{
-            display: { xs: "none", md: "flex" },
-            alignItems: "center",
-            gap: 0.5,
-          }}
-        >
-          {[
-            FavoriteBorderRoundedIcon,
-            PersonAddAltRoundedIcon,
-            QueueMusicRoundedIcon,
-            MoreHorizRoundedIcon,
-          ].map((Icon, index) => (
-            <IconButton
-              key={index}
-              size="small"
-              sx={{
-                width: 30,
-                height: 30,
-                color: "#d6d6d6",
-                "&:hover": {
+              <IconButton
+                onClick={() => {
+                  setCurrentTrack({
+                    ...currentTrack,
+                    isPlaying: !currentTrack.isPlaying,
+                    source: "footer-control",
+                  } as any);
+                }}
+                sx={{
+                  width: 42,
+                  height: 42,
+                  borderRadius: "50%",
                   color: "#ffffff",
-                  backgroundColor: "rgba(255,255,255,0.08)",
-                },
+                  backgroundColor: "transparent",
+
+                  "&:hover": {
+                    backgroundColor: "rgba(255,255,255,0.08)",
+                  },
+
+                  "& .MuiSvgIcon-root": {
+                    fontSize: 34,
+                  },
+                }}
+              >
+                {currentTrack.isPlaying ? <PauseIcon /> : <PlayArrowIcon />}
+              </IconButton>
+
+              <Typography
+                sx={{
+                  color: "#ff5500",
+                  fontSize: "12px",
+                  fontWeight: 700,
+                  minWidth: 40,
+                  textAlign: "right",
+                }}
+              >
+                {formatTime(currentTime)}
+              </Typography>
+
+              <Slider
+                value={duration ? currentTime : 0}
+                min={0}
+                max={duration || 1}
+                onChangeCommitted={(_, value) => {
+                  setCurrentTrack({
+                    ...currentTrack,
+                    seekTime: Number(value),
+                    source: "footer-control",
+                  } as any);
+                }}
+                sx={{
+                  flex: 1,
+                  color: "#ff5500",
+
+                  "& .MuiSlider-rail": {
+                    height: 4,
+                    opacity: 1,
+                    backgroundColor: "#3a3a3a",
+                  },
+
+                  "& .MuiSlider-track": {
+                    height: 4,
+                    backgroundColor: "#ff5500",
+                    border: "none",
+                  },
+
+                  "& .MuiSlider-thumb": {
+                    width: 14,
+                    height: 14,
+                    backgroundColor: "#ff5500",
+                    boxShadow: "none",
+
+                    "&:hover, &.Mui-focusVisible": {
+                      boxShadow: "0 0 0 6px rgba(255,85,0,0.16)",
+                    },
+
+                    "&:before": {
+                      boxShadow: "none",
+                    },
+                  },
+                }}
+              />
+
+              <Typography
+                sx={{
+                  color: "#cfcfcf",
+                  fontSize: "12px",
+                  fontWeight: 700,
+                  minWidth: 40,
+                }}
+              >
+                {formatTime(duration)}
+              </Typography>
+            </Box>
+          ) : (
+            <AudioPlayer
+              ref={playerRef}
+              layout="horizontal-reverse"
+              src={`${process.env.NEXT_PUBLIC_BACKEND_URL}/tracks/${currentTrack.trackUrl}`}
+              volume={0.5}
+              style={{
+                boxShadow: "unset",
+                background: "#181A1B",
+              }}
+              onPlay={() => {
+                setCurrentTrack({
+                  ...currentTrack,
+                  isPlaying: true,
+                  source: "footer",
+                } as any);
+              }}
+              onPause={() => {
+                setCurrentTrack({
+                  ...currentTrack,
+                  isPlaying: false,
+                  source: "footer",
+                } as any);
+              }}
+            />
+          )}
+
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: "10px",
+              width: "280px",
+              minWidth: "280px",
+              paddingRight: "10px",
+            }}
+          >
+            <img
+              src={getTrackImage()}
+              alt={currentTrack.title}
+              onError={(e) => {
+                e.currentTarget.src = "/audio/SC.png";
+              }}
+              style={{
+                width: "38px",
+                height: "38px",
+                objectFit: "cover",
+                borderRadius: "3px",
+                backgroundColor: "#111",
+              }}
+            />
+
+            <div
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "start",
+                justifyContent: "center",
+                width: "220px",
+                overflow: "hidden",
               }}
             >
-              <Icon sx={{ fontSize: 19 }} />
-            </IconButton>
-          ))}
-        </Box>
-      </Box>
-    </AppBar>
+              <div
+                title={currentTrack.description}
+                style={{
+                  width: "100%",
+                  color: "#a8a8a8",
+                  fontSize: "12px",
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                  whiteSpace: "nowrap",
+                }}
+              >
+                {currentTrack.description}
+              </div>
+
+              <div
+                title={currentTrack.title}
+                style={{
+                  width: "100%",
+                  color: "#ffffff",
+                  fontSize: "13px",
+                  fontWeight: 700,
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                  whiteSpace: "nowrap",
+                }}
+              >
+                {currentTrack.title}
+              </div>
+            </div>
+          </div>
+        </Container>
+      </AppBar>
+    </div>
   );
 };
 

@@ -255,10 +255,6 @@ const WaveTrack = (props: IProps) => {
 
     if (footerTrack?.source !== "footer-control") return;
 
-    if (typeof footerTrack.volume === "number") {
-      wavesurfer.setVolume(footerTrack.volume);
-    }
-
     if (typeof footerTrack.seekTime === "number") {
       const waveDuration = wavesurfer.getDuration();
 
@@ -279,9 +275,7 @@ const WaveTrack = (props: IProps) => {
     currentTrack?._id,
     currentTrack?.isPlaying,
     (currentTrack as any)?.seekTime,
-    (currentTrack as any)?.seekId,
     (currentTrack as any)?.source,
-    (currentTrack as any)?.volume,
     track?._id,
   ]);
 

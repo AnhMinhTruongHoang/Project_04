@@ -1,4 +1,4 @@
-export { };
+export {};
 
 declare global {
   type HttpMethod = "GET" | "POST" | "PATCH" | "PUT" | "DELETE";
@@ -207,4 +207,86 @@ declare global {
   interface IGetTracksByUserPayload {
     id: string;
   }
+
+  type PaginationParams = {
+    current?: number;
+    pageSize?: number;
+  };
+
+  type FileTargetType = "images" | "tracks";
+
+  type LoginPayload = {
+    username: string;
+    password: string;
+  };
+
+  type RegisterPayload = {
+    name: string;
+    email: string;
+    password: string;
+    age: number | string;
+    gender: string;
+    address: string;
+  };
+
+  type CreateUserPayload = {
+    name: string;
+    email: string;
+    password: string;
+    age: number | string;
+    gender: string;
+    address: string;
+    role: string;
+  };
+
+  type UpdateUserPayload = {
+    _id: string;
+    name?: string;
+    email?: string;
+    age?: number | string;
+    gender?: string;
+    address?: string;
+    role?: string;
+  };
+
+  type CreateTrackPayload = {
+    title: string;
+    description: string;
+    trackUrl: string;
+    category: string;
+    imgUrl: string;
+  };
+
+  type UpdateTrackPayload = {
+    title?: string;
+    description?: string;
+    category?: string;
+  };
+
+  type CreateCommentPayload = {
+    content: string;
+    moment: number;
+    track: string;
+  };
+
+  type CreatePlaylistPayload = {
+    title: string;
+    isPublic: boolean;
+  };
+
+  type UpdatePlaylistPayload = {
+    id: string;
+    title: string;
+    isPublic: boolean;
+    tracks: string[];
+  };
+
+  type LikePayload = {
+    track: string;
+    quantity: 1 | -1;
+  };
+
+  type RequestFileProps = Omit<IRequest, "body"> & {
+    body?: BodyInit | FormData | null;
+  };
 }

@@ -1,7 +1,7 @@
 "use client";
 
-import { fetchDefaultImages, sendRequest } from "@/utils/api";
-import { Box, TextField, Typography } from "@mui/material";
+import { sendRequest } from "@/utils/api";
+import { Avatar, Box, TextField, Typography } from "@mui/material";
 import { useState } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
@@ -9,7 +9,6 @@ import dayjs from "dayjs";
 import WaveSurfer from "wavesurfer.js";
 import relativeTime from "dayjs/plugin/relativeTime";
 import { useHasMounted } from "@/utils/customHook";
-import Image from "next/image";
 
 dayjs.extend(relativeTime);
 
@@ -19,6 +18,17 @@ interface IProps {
   wavesurfer: WaveSurfer | null;
 }
 
+const getInitials = (name?: string, email?: string) => {
+  const value = name?.trim() || email?.trim() || "User";
+  const words = value.split(" ").filter(Boolean);
+
+  if (words.length >= 2) {
+    return `${words[0][0]}${words[1][0]}`.toUpperCase();
+  }
+
+  return value.slice(0, 2).toUpperCase();
+};
+
 const CommentTrack = (props: IProps) => {
   const router = useRouter();
   const hasMounted = useHasMounted();
@@ -27,26 +37,31 @@ const CommentTrack = (props: IProps) => {
   const [yourComment, setYourComment] = useState("");
   const { data: session } = useSession();
 
+  const uploaderName = track?.uploader?.name || "User";
+  const uploaderEmail = track?.uploader?.email || "Unknown user";
+
   const formatTime = (seconds: number) => {
     const minutes = Math.floor(seconds / 60);
     const secondsRemainder = Math.round(seconds) % 60;
     const paddedSeconds = `0${secondsRemainder}`.slice(-2);
+
     return `${minutes}:${paddedSeconds}`;
   };
 
   const handleSubmit = async () => {
     if (!yourComment.trim()) return;
+    if (!track?._id) return;
 
     const res = await sendRequest<IBackendRes<ITrackComment>>({
       url: `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/v1/comments`,
       method: "POST",
       body: {
-        content: yourComment,
+        content: yourComment.trim(),
         moment: Math.round(wavesurfer?.getCurrentTime() ?? 0),
-        track: track?._id,
+        track: track._id,
       },
       headers: {
-        Authorization: `Bearer ${session?.access_token}`,
+        Authorization: `Bearer ${(session as any)?.access_token}`,
       },
     });
 
@@ -67,11 +82,13 @@ const CommentTrack = (props: IProps) => {
   };
 
   const handleJumpTrack = (moment: number) => {
-    if (wavesurfer) {
-      const duration = wavesurfer.getDuration();
-      wavesurfer.seekTo(moment / duration);
-      wavesurfer.play();
-    }
+    if (!wavesurfer) return;
+
+    const duration = wavesurfer.getDuration();
+    if (!duration) return;
+
+    wavesurfer.seekTo(moment / duration);
+    wavesurfer.play();
   };
 
   return (
@@ -90,9 +107,11 @@ const CommentTrack = (props: IProps) => {
             onChange={(e) => setYourComment(e.target.value)}
             fullWidth
             label="Comments"
+            placeholder="Write a comment..."
             variant="standard"
             onKeyDown={(e) => {
               if (e.key === "Enter") {
+                e.preventDefault();
                 handleSubmit();
               }
             }}
@@ -100,11 +119,12 @@ const CommentTrack = (props: IProps) => {
               input: {
                 color: "#ffffff",
                 fontSize: 14,
+                fontWeight: 700,
               },
 
               label: {
                 color: "#8f8f8f",
-                fontWeight: 600,
+                fontWeight: 700,
               },
 
               "& label.Mui-focused": {
@@ -134,53 +154,46 @@ const CommentTrack = (props: IProps) => {
           alignItems: "flex-start",
         }}
       >
-        {/* Left user */}
+        {/* Left uploader avatar */}
         <Box
           sx={{
             width: 190,
             flexShrink: 0,
-            display: { xs: "none", md: "block" },
+            display: { xs: "none", md: "flex" },
+            flexDirection: "column",
+            alignItems: "center",
           }}
         >
-          <Box
+          <Avatar
             sx={{
               width: 150,
               height: 150,
-              borderRadius: "50%",
-              overflow: "hidden",
+              bgcolor: "#ff5500",
+              color: "#ffffff",
+              fontSize: 42,
+              fontWeight: 900,
               border: "3px solid rgba(255,85,0,0.45)",
-              boxShadow: "0 0 30px rgba(255,85,0,0.14)",
-              backgroundColor: "#111",
+              boxShadow: "0 0 30px rgba(255,85,0,0.18)",
               mb: 1.5,
             }}
           >
-            <Image
-              alt="avatar comment"
-              src={fetchDefaultImages(track?.uploader?.type!)}
-              height={150}
-              width={150}
-              style={{
-                objectFit: "cover",
-                width: "100%",
-                height: "100%",
-              }}
-            />
-          </Box>
+            {getInitials(uploaderName, uploaderEmail)}
+          </Avatar>
 
           <Typography
-            title={track?.uploader?.email}
+            title={uploaderEmail}
             sx={{
               width: 150,
               color: "#ffffff",
               fontSize: 14,
-              fontWeight: 800,
+              fontWeight: 900,
               overflow: "hidden",
               textOverflow: "ellipsis",
               whiteSpace: "nowrap",
               textAlign: "center",
             }}
           >
-            {track?.uploader?.email}
+            {uploaderEmail}
           </Typography>
         </Box>
 
@@ -193,6 +206,10 @@ const CommentTrack = (props: IProps) => {
         >
           {comments?.length ? (
             comments.map((comment) => {
+              const commentName =
+                comment?.user?.name || comment?.user?.email || "User";
+              const commentEmail = comment?.user?.email || "";
+
               return (
                 <Box
                   key={comment._id}
@@ -202,6 +219,7 @@ const CommentTrack = (props: IProps) => {
                     gap: 2,
                     py: 1.4,
                     borderBottom: "1px solid rgba(255,255,255,0.06)",
+                    transition: "0.18s ease",
 
                     "&:hover": {
                       backgroundColor: "rgba(255,255,255,0.025)",
@@ -216,40 +234,31 @@ const CommentTrack = (props: IProps) => {
                       minWidth: 0,
                     }}
                   >
-                    <Box
+                    <Avatar
                       sx={{
                         width: 40,
                         height: 40,
-                        borderRadius: "50%",
-                        overflow: "hidden",
+                        bgcolor: "#ff5500",
+                        color: "#ffffff",
+                        fontSize: 14,
+                        fontWeight: 900,
                         flexShrink: 0,
-                        backgroundColor: "#111",
                         border: "1px solid rgba(255,255,255,0.08)",
                       }}
                     >
-                      <Image
-                        alt="comments"
-                        width={40}
-                        height={40}
-                        src={fetchDefaultImages(comment.user.type)}
-                        style={{
-                          objectFit: "cover",
-                          width: "100%",
-                          height: "100%",
-                        }}
-                      />
-                    </Box>
+                      {getInitials(commentName, commentEmail)}
+                    </Avatar>
 
                     <Box sx={{ minWidth: 0 }}>
                       <Typography
                         sx={{
                           color: "#ffffff",
                           fontSize: 13,
-                          fontWeight: 800,
+                          fontWeight: 900,
                           lineHeight: 1.4,
                         }}
                       >
-                        {comment?.user?.name ?? comment?.user?.email}{" "}
+                        {commentName}{" "}
                         <Box
                           component="span"
                           sx={{
@@ -311,9 +320,11 @@ const CommentTrack = (props: IProps) => {
                 color: "#8f8f8f",
                 border: "1px dashed rgba(255,255,255,0.1)",
                 borderRadius: 2,
+                backgroundColor: "#111314",
+                fontWeight: 700,
               }}
             >
-              Chưa có bình luận nào.
+              No comments yet.
             </Box>
           )}
         </Box>

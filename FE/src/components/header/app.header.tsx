@@ -32,70 +32,73 @@ import { usePathname, useRouter } from "next/navigation";
 import { signOut, useSession } from "next-auth/react";
 import { PlaylistPlaySharp } from "@mui/icons-material";
 import SearchDropdown from "@/app/search/components/search.dropdown";
-
-const navItemSx = (active: boolean) => ({
-  height: 46,
-  px: 2.3,
-  display: "flex",
-  alignItems: "center",
-  color: active ? "#ffffff" : "#b8b8b8",
-  backgroundColor: active ? "#111111" : "transparent",
-  textDecoration: "none",
-  fontSize: 14,
-  fontWeight: active ? 800 : 700,
-  borderLeft: "1px solid rgba(255,255,255,0.06)",
-  borderRight: active ? "1px solid rgba(255,255,255,0.06)" : "none",
-  transition: "0.18s ease",
-  "&:hover": {
-    color: "#ffffff",
-    backgroundColor: "#111111",
-  },
-});
-
-const rightTextSx = {
-  color: "#b8b8b8",
-  textDecoration: "none",
-  fontSize: 14,
-  fontWeight: 800,
-  whiteSpace: "nowrap",
-  transition: "0.18s ease",
-  "&:hover": {
-    color: "#ffffff",
-  },
-};
+import { convertSlugUrl } from "@/utils/api";
 
 const AppHeader = () => {
   const router = useRouter();
   const pathname = usePathname();
   const { data: session } = useSession();
-
   const user = session?.user as any;
   const isAdmin = user?.role === "ADMIN";
-
   const [keyword, setKeyword] = React.useState("");
   const [anchorEl, setAnchorEl] = React.useState<null | HTMLElement>(null);
-
   const open = Boolean(anchorEl);
+
+  const navItemSx = (active: boolean) => ({
+    height: 46,
+    px: 2.3,
+    display: "flex",
+    alignItems: "center",
+    color: active ? "#ffffff" : "#b8b8b8",
+    backgroundColor: active ? "#111111" : "transparent",
+    textDecoration: "none",
+    fontSize: 14,
+    fontWeight: active ? 800 : 700,
+    borderLeft: "1px solid rgba(255,255,255,0.06)",
+    borderRight: active ? "1px solid rgba(255,255,255,0.06)" : "none",
+    transition: "0.18s ease",
+    "&:hover": {
+      color: "#ffffff",
+      backgroundColor: "#111111",
+    },
+  });
+
+  const rightTextSx = {
+    color: "#b8b8b8",
+    textDecoration: "none",
+    fontSize: 14,
+    fontWeight: 800,
+    whiteSpace: "nowrap",
+    transition: "0.18s ease",
+    "&:hover": {
+      color: "#ffffff",
+    },
+  };
 
   const isActive = (href: string) => {
     if (href === "/") return pathname === "/";
     return pathname?.startsWith(href);
   };
 
-  const handleSearch = (event?: React.FormEvent<HTMLFormElement>) => {
-    event?.preventDefault();
-
-    const value = keyword.trim();
-
-    if (!value) return;
-
-    router.push(`/search?q=${encodeURIComponent(value)}`);
-  };
-
   const handleLogout = async () => {
     setAnchorEl(null);
     await signOut({ callbackUrl: "/" });
   };
+
+  ///get Al avatar
+  const getInitials = (name?: string, email?: string) => {
+    const value = name?.trim() || email?.trim() || "User";
+
+    const words = value.split(" ").filter(Boolean);
+
+    if (words.length >= 2) {
+      return `${words[0][0]}${words[1][0]}`.toUpperCase();
+    }
+
+    return value.slice(0, 2).toUpperCase();
+  };
+
+  ///
 
   return (
     <>
@@ -289,15 +292,19 @@ const AppHeader = () => {
                     }}
                   >
                     <Avatar
-                      src={(user?.image as string) || "/images/logo/Sc.png"}
+                      src={user?.avatar || ""}
                       alt={user?.name || "User"}
                       sx={{
                         width: 28,
                         height: 28,
                         bgcolor: "#ff5500",
-                        border: "1px solid rgba(255,255,255,0.18)",
+                        color: "#ffffff",
+                        fontWeight: 900,
+                        fontSize: 12,
                       }}
-                    />
+                    >
+                      {getInitials(user?.name, user?.email)}
+                    </Avatar>
 
                     <KeyboardArrowDownRoundedIcon
                       sx={{
@@ -425,7 +432,13 @@ const AppHeader = () => {
         <MenuItem
           onClick={() => {
             setAnchorEl(null);
-            router.push("/profile");
+
+            if (user?._id) {
+              const name = convertSlugUrl(user?.name || "user");
+              router.push(`/profile/${name}-${user._id}`);
+            } else {
+              router.push("/auth/signin");
+            }
           }}
         >
           <PersonRoundedIcon fontSize="small" />

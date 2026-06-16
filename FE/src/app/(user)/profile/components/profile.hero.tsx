@@ -2,7 +2,6 @@ import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import Typography from "@mui/material/Typography";
 import CameraAltRoundedIcon from "@mui/icons-material/CameraAltRounded";
-import { fetchDefaultImages } from "@/utils/api";
 import { Avatar } from "@mui/material";
 
 type Props = {

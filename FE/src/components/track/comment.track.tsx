@@ -38,7 +38,7 @@ const CommentTrack = (props: IProps) => {
   const { data: session } = useSession();
 
   const uploaderName = track?.uploader?.name || "User";
-  const uploaderEmail = track?.uploader?.email || "Unknown user";
+  const uploaderEmail = track?.uploader?.email || "Social user";
 
   const formatTime = (seconds: number) => {
     const minutes = Math.floor(seconds / 60);

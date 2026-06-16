@@ -3,16 +3,15 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
-
 import Dialog from "@mui/material/Dialog";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import Typography from "@mui/material/Typography";
 import TextField from "@mui/material/TextField";
 import Divider from "@mui/material/Divider";
-
-import { fetchDefaultImages, sendRequest } from "@/utils/api";
+import { sendRequest } from "@/utils/api";
 import { useToast } from "@/utils/toast";
+import { Avatar } from "@mui/material";
 
 type Props = {
   open: boolean;
@@ -58,7 +57,6 @@ const ProfileEditDialog = ({ open, onClose, user }: Props) => {
   const router = useRouter();
   const toast = useToast();
   const { data: session } = useSession();
-
   const [displayName, setDisplayName] = useState("");
   const [profileUrl, setProfileUrl] = useState("");
   const [firstName, setFirstName] = useState("");
@@ -66,11 +64,37 @@ const ProfileEditDialog = ({ open, onClose, user }: Props) => {
   const [city, setCity] = useState("");
   const [country, setCountry] = useState("");
   const [bio, setBio] = useState("");
+  const [avatarError, setAvatarError] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  const avatar = useMemo(() => {
-    return fetchDefaultImages(user?.type);
-  }, [user?.type]);
+  const getInitials = (name?: string, email?: string) => {
+    const value = name?.trim() || email?.trim() || "User";
+    const words = value.split(" ").filter(Boolean);
+
+    if (words.length >= 2) {
+      return `${words[0][0]}${words[1][0]}`.toUpperCase();
+    }
+
+    return value.slice(0, 2).toUpperCase();
+  };
+
+  const getUserAvatarUrl = (user?: Partial<IUser> | null) => {
+    const avatar =
+      (user as any)?.avatar ||
+      (user as any)?.avatarUrl ||
+      (user as any)?.image ||
+      "";
+
+    if (!avatar) return "";
+
+    if (avatar.startsWith("http")) return avatar;
+    if (avatar.startsWith("/")) return avatar;
+
+    return `${process.env.NEXT_PUBLIC_BACKEND_URL}/images/${avatar}`;
+  };
+  const avatarUrl = useMemo(() => {
+    return getUserAvatarUrl(user);
+  }, [user]);
 
   useEffect(() => {
     if (!open) return;
@@ -85,6 +109,7 @@ const ProfileEditDialog = ({ open, onClose, user }: Props) => {
     setCity("");
     setCountry(user?.address || "");
     setBio("");
+    setAvatarError(false);
   }, [open, user]);
 
   const handleSave = async () => {
@@ -193,17 +218,25 @@ const ProfileEditDialog = ({ open, onClose, user }: Props) => {
                 border: "3px solid rgba(255,255,255,0.12)",
               }}
             >
-              <Box
-                component="img"
-                src={avatar}
-                alt={displayName}
+              <Avatar
+                src={!avatarError ? avatarUrl : ""}
+                alt={displayName || user?.email || "User"}
+                imgProps={{
+                  onError: () => setAvatarError(true),
+                }}
                 sx={{
                   width: "100%",
                   height: "100%",
-                  objectFit: "cover",
-                  display: "block",
+                  bgcolor: "#ff5500",
+                  color: "#ffffff",
+                  fontSize: 52,
+                  fontWeight: 900,
                 }}
-              />
+              >
+                {!avatarUrl || avatarError
+                  ? getInitials(displayName, user?.email)
+                  : null}
+              </Avatar>
 
               <Button
                 component="label"
@@ -393,7 +426,7 @@ const ProfileEditDialog = ({ open, onClose, user }: Props) => {
               },
             }}
           >
-            Save changes
+            {loading ? "Saving..." : "Save changes"}
           </Button>
         </Box>
       </Box>

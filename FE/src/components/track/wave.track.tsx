@@ -7,9 +7,9 @@ import { WaveSurferOptions } from "wavesurfer.js";
 import PlayArrowIcon from "@mui/icons-material/PlayArrow";
 import PauseIcon from "@mui/icons-material/Pause";
 import "../../styles/wave.scss";
-import { Tooltip } from "@mui/material";
+import { Avatar, Tooltip } from "@mui/material";
 import { useTrackContext } from "@/lib/track.wrapper";
-import { fetchDefaultImages, sendRequest } from "@/utils/api";
+import { sendRequest } from "@/utils/api";
 import CommentTrack from "./comment.track";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
@@ -24,7 +24,6 @@ const WaveTrack = (props: IProps) => {
   const { track, comments } = props;
   const router = useRouter();
   const firstViewRef = useRef(true);
-
   const searchParams = useSearchParams();
   const fileName = searchParams.get("audio");
   const containerRef = useRef<HTMLDivElement>(null);
@@ -32,6 +31,34 @@ const WaveTrack = (props: IProps) => {
   const [time, setTime] = useState<string>("0:00");
   const [duration, setDuration] = useState<string>("0:00");
   const { currentTrack, setCurrentTrack } = useTrackContext() as ITrackContext;
+
+  ///
+  const getInitials = (name?: string | null, email?: string | null) => {
+    const value = name?.trim() || email?.trim() || "User";
+    const words = value.split(" ").filter(Boolean);
+
+    if (words.length >= 2) {
+      return `${words[0][0]}${words[1][0]}`.toUpperCase();
+    }
+
+    return value.slice(0, 2).toUpperCase();
+  };
+
+  const getUserAvatarUrl = (user?: Partial<IUser> | null) => {
+    const avatar =
+      (user as any)?.avatar ||
+      (user as any)?.avatarUrl ||
+      (user as any)?.image ||
+      "";
+
+    if (!avatar) return "";
+
+    if (avatar.startsWith("http")) return avatar;
+    if (avatar.startsWith("/")) return avatar;
+
+    return `${process.env.NEXT_PUBLIC_BACKEND_URL}/images/${avatar}`;
+  };
+  ///
 
   const optionsMemo = useMemo((): Omit<WaveSurferOptions, "container"> => {
     let gradient, progressGradient;
@@ -138,11 +165,15 @@ const WaveTrack = (props: IProps) => {
     const paddedSeconds = `0${secondsRemainder}`.slice(-2);
     return `${minutes}:${paddedSeconds}`;
   };
-
   const calLeft = (moment: number) => {
-    const hardCodeDuration = wavesurfer?.getDuration() ?? 0;
-    const percent = (moment / hardCodeDuration) * 100;
-    return `${percent}%`;
+    const currentDuration = wavesurfer?.getDuration() ?? 0;
+
+    if (!currentDuration) return "0%";
+
+    const percent = (moment / currentDuration) * 100;
+    const safePercent = Math.min(100, Math.max(0, percent));
+
+    return `${safePercent}%`;
   };
 
   useEffect(() => {
@@ -269,27 +300,43 @@ const WaveTrack = (props: IProps) => {
                 // background: "#ccc"
                 backdropFilter: "brightness(0.5)",
               }}
-            ></div>
+            >
+              .
+            </div>
             <div className="comments" style={{ position: "relative" }}>
               {comments?.map((item) => {
+                const avatarUrl = getUserAvatarUrl(item.user);
+
                 return (
                   <Tooltip title={item.content} arrow key={item._id}>
-                    <Image
-                      onPointerMove={(e) => {
-                        const hover = hoverRef.current!;
+                    <Avatar
+                      src={avatarUrl}
+                      alt={
+                        item.user?.name || item.user?.email || "User comment"
+                      }
+                      onPointerMove={() => {
+                        const hover = hoverRef.current;
+                        if (!hover) return;
+
                         hover.style.width = calLeft(item.moment);
                       }}
-                      src={fetchDefaultImages(item.user.type)}
-                      alt="user comment"
-                      height={20}
-                      width={20}
-                      style={{
+                      sx={{
                         position: "absolute",
                         top: 71,
-                        zIndex: 20,
                         left: calLeft(item.moment),
+                        zIndex: 20,
+                        width: 22,
+                        height: 22,
+                        bgcolor: "#ff5500",
+                        color: "#ffffff",
+                        fontSize: 8,
+                        fontWeight: 900,
+                        border: "1px solid rgba(255,255,255,0.9)",
+                        cursor: "pointer",
                       }}
-                    />
+                    >
+                      {getInitials(item.user?.name, item.user?.email)}
+                    </Avatar>
                   </Tooltip>
                 );
               })}

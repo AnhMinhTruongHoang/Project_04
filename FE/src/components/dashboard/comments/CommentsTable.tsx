@@ -221,7 +221,7 @@ const CommentsTable = ({ comments, accessToken }: Props) => {
                   whiteSpace: "nowrap",
                 }}
               >
-                {user?.name || "Unknown user"}
+                {user?.name || "Social user"}
               </Typography>
 
               <Typography

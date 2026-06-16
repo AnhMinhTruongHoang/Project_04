@@ -209,7 +209,9 @@ const UsersTable = ({ users, accessToken }: Props) => {
                   whiteSpace: "nowrap",
                 }}
               >
-                {user.name || "Unknown user"}
+                {user.name || (
+                  <span style={{ color: "green" }}>Social user</span>
+                )}
               </Typography>
 
               <Typography
@@ -453,7 +455,7 @@ const UsersTable = ({ users, accessToken }: Props) => {
 
             <Box>
               <Typography sx={{ color: "#ffffff", fontWeight: 900 }}>
-                {editUser?.name || "Unknown user"}
+                {editUser?.name || "Social user"}
               </Typography>
 
               <Typography sx={{ color: "#9a9a9a", fontSize: 13 }}>

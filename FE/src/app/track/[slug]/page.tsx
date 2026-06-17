@@ -4,6 +4,7 @@ import Box from "@mui/material/Box";
 import WaveTrack from "@/components/track/wave.track";
 import { sendRequest } from "@/utils/api";
 import { notFound } from "next/navigation";
+import AddPlaylistTrack from "@/app/(user)/playlist/components/add.playlist.track";
 
 type Props = {
   params: {

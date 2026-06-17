@@ -6,14 +6,18 @@ import { Box, Container, IconButton, Slider, Typography } from "@mui/material";
 import AppBar from "@mui/material/AppBar";
 import PauseIcon from "@mui/icons-material/Pause";
 import PlayArrowIcon from "@mui/icons-material/PlayArrow";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useRef, useEffect, useState } from "react";
 import AudioPlayer from "react-h5-audio-player";
+import QueueMusicRoundedIcon from "@mui/icons-material/QueueMusicRounded";
 import ShuffleRoundedIcon from "@mui/icons-material/ShuffleRounded";
 import Replay10RoundedIcon from "@mui/icons-material/Replay10Rounded";
 import Forward10RoundedIcon from "@mui/icons-material/Forward10Rounded";
 import VolumeUpRoundedIcon from "@mui/icons-material/VolumeUpRounded";
 import VolumeOffRoundedIcon from "@mui/icons-material/VolumeOffRounded";
+import FooterQueuePopover from "./footer.queue.popover";
+import { useSession } from "next-auth/react";
+import { convertSlugUrl, sendRequest } from "@/utils/api";
 
 const formatTime = (seconds = 0) => {
   const minutes = Math.floor(seconds / 60);
@@ -24,6 +28,8 @@ const formatTime = (seconds = 0) => {
 };
 
 const AppFooter = () => {
+  const router = useRouter();
+  const { data: session } = useSession();
   const hasMounted = useHasMounted();
   const pathname = usePathname();
   const playerRef = useRef<any>(null);
@@ -35,6 +41,159 @@ const AppFooter = () => {
   const isTrackDetailPage = pathname?.startsWith("/track/");
   const currentTime = Number(footerTrack?.currentTime || 0);
   const duration = Number(footerTrack?.duration || 0);
+  const [queueAnchorEl, setQueueAnchorEl] = useState<HTMLElement | null>(null);
+  const [queueLoading, setQueueLoading] = useState(false);
+  const [queueTracks, setQueueTracks] = useState<ITrackTop[]>([]);
+  const [autoplayStation, setAutoplayStation] = useState(true);
+
+  const queueOpen = Boolean(queueAnchorEl);
+
+  const footerCurrentTime = Number(footerTrack?.currentTime || 0);
+  const footerDuration = Number(footerTrack?.duration || 0);
+
+  /// footer playlist
+
+  const isTrackTopObject = (track: unknown): track is ITrackTop => {
+    return (
+      typeof track === "object" &&
+      track !== null &&
+      "_id" in track &&
+      "title" in track &&
+      "trackUrl" in track
+    );
+  };
+
+  const getTrackHref = (track: ITrackTop, autoplay = false) => {
+    const href = `/track/${convertSlugUrl(track.title)}-${
+      track._id
+    }.html?audio=${encodeURIComponent(track.trackUrl)}`;
+
+    return autoplay ? `${href}&autoplay=1` : href;
+  };
+
+  const loadQueueTracks = async (): Promise<ITrackTop[]> => {
+    if (queueTracks.length) return queueTracks;
+    if (queueLoading) return queueTracks;
+
+    setQueueLoading(true);
+
+    try {
+      const accessToken = (session as any)?.access_token;
+
+      const res = await sendRequest<IBackendRes<IModelPaginate<IPlaylist>>>({
+        url: `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/v1/playlists/by-user`,
+        method: "POST",
+        queryParams: {
+          current: 1,
+          pageSize: 100,
+        },
+        headers: accessToken
+          ? {
+              Authorization: `Bearer ${accessToken}`,
+            }
+          : {},
+      });
+
+      const playlists = res?.data?.result || [];
+
+      const tracks: ITrackTop[] = playlists.flatMap((playlist) => {
+        const playlistTracks = (playlist.tracks || []) as unknown[];
+
+        return playlistTracks.filter(isTrackTopObject);
+      });
+
+      const uniqueTracks = Array.from(
+        new Map(tracks.map((track) => [track._id, track])).values()
+      );
+
+      setQueueTracks(uniqueTracks);
+
+      return uniqueTracks;
+    } finally {
+      setQueueLoading(false);
+    }
+  };
+
+  const handleOpenQueue = async (event: React.MouseEvent<HTMLElement>) => {
+    setQueueAnchorEl(event.currentTarget);
+    await loadQueueTracks();
+  };
+
+  const handleCloseQueue = () => {
+    setQueueAnchorEl(null);
+  };
+
+  const handlePlayQueueTrack = (track: ITrackTop) => {
+    handleCloseQueue();
+
+    if (isTrackDetailPage) {
+      setCurrentTrack({
+        ...track,
+        isPlaying: false,
+        source: "wave",
+        currentTime: 0,
+        duration: 0,
+        seekTime: undefined,
+      } as any);
+
+      router.push(getTrackHref(track, true));
+      return;
+    }
+
+    setCurrentTrack({
+      ...track,
+      isPlaying: true,
+      source: "footer",
+    } as any);
+  };
+
+  const getCurrentQueueIndex = (tracks: ITrackTop[]) => {
+    return tracks.findIndex((track) => track._id === currentTrack?._id);
+  };
+
+  const handlePlayPreviousTrack = async () => {
+    const tracks = await loadQueueTracks();
+    if (!tracks.length) return;
+
+    const currentIndex = getCurrentQueueIndex(tracks);
+    const previousIndex =
+      currentIndex <= 0 ? tracks.length - 1 : currentIndex - 1;
+
+    handlePlayQueueTrack(tracks[previousIndex]);
+  };
+
+  const handlePlayNextTrack = async () => {
+    const tracks = await loadQueueTracks();
+    if (!tracks.length) return;
+
+    const currentIndex = getCurrentQueueIndex(tracks);
+    const nextIndex =
+      currentIndex < 0 || currentIndex >= tracks.length - 1
+        ? 0
+        : currentIndex + 1;
+
+    handlePlayQueueTrack(tracks[nextIndex]);
+  };
+
+  const handleSeekBy = (seconds: number) => {
+    if (!footerDuration) return;
+
+    const nextTime = Math.min(
+      Math.max(footerCurrentTime + seconds, 0),
+      footerDuration
+    );
+
+    setCurrentTrack({
+      ...currentTrack,
+      currentTime: nextTime,
+      seekTime: nextTime,
+      seekId: Date.now(),
+      source: "footer-control",
+    } as any);
+  };
+
+  ///
+
   const isWaveControlled =
     isTrackDetailPage &&
     (footerTrack?.source === "wave" ||
@@ -62,20 +221,6 @@ const AppFooter = () => {
     setCurrentTrack({
       ...currentTrack,
       volume: nextVolume,
-      source: "footer-control",
-    } as any);
-  };
-
-  const handleSeekBy = (seconds: number) => {
-    if (!duration) return;
-
-    const nextTime = Math.min(Math.max(currentTime + seconds, 0), duration);
-
-    setCurrentTrack({
-      ...currentTrack,
-      currentTime: nextTime,
-      seekTime: nextTime,
-      seekId: Date.now(),
       source: "footer-control",
     } as any);
   };
@@ -127,6 +272,8 @@ const AppFooter = () => {
   if (!hasMounted) return <></>;
 
   if (!currentTrack?._id) return <></>;
+
+  ///
 
   return (
     <div style={{ marginTop: 50 }}>
@@ -238,7 +385,7 @@ const AppFooter = () => {
                 <ShuffleRoundedIcon />
               </IconButton>
 
-              {/* Previous */}
+              {/* Back 10s */}
               <IconButton
                 onClick={() => handleSeekBy(-10)}
                 sx={{
@@ -290,7 +437,7 @@ const AppFooter = () => {
                 {currentTrack.isPlaying ? <PauseIcon /> : <PlayArrowIcon />}
               </IconButton>
 
-              {/* Next */}
+              {/* Forward 10s */}
               <IconButton
                 onClick={() => handleSeekBy(10)}
                 sx={{
@@ -398,18 +545,20 @@ const AppFooter = () => {
                   flexShrink: 0,
                 }}
               >
-                {formatTime(currentTime)}
+                {formatTime(footerCurrentTime)}
               </Typography>
 
               {/* Progress */}
               <Slider
-                value={duration ? currentTime : 0}
+                value={footerDuration ? footerCurrentTime : 0}
                 min={0}
-                max={duration || 1}
+                max={footerDuration || 1}
                 onChangeCommitted={(_, value) => {
                   setCurrentTrack({
                     ...currentTrack,
+                    currentTime: Number(value),
                     seekTime: Number(value),
+                    seekId: Date.now(),
                     source: "footer-control",
                   } as any);
                 }}
@@ -458,13 +607,16 @@ const AppFooter = () => {
                   flexShrink: 0,
                 }}
               >
-                {formatTime(duration)}
+                {formatTime(footerDuration)}
               </Typography>
             </Box>
           ) : (
             <AudioPlayer
               ref={playerRef}
               layout="horizontal-reverse"
+              showSkipControls
+              onClickPrevious={handlePlayPreviousTrack}
+              onClickNext={handlePlayNextTrack}
               src={`${process.env.NEXT_PUBLIC_BACKEND_URL}/tracks/${currentTrack.trackUrl}`}
               volume={0.5}
               style={{
@@ -488,14 +640,15 @@ const AppFooter = () => {
             />
           )}
 
+          {/* Track info + queue icon */}
           <div
             style={{
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
               gap: "10px",
-              width: "280px",
-              minWidth: "280px",
+              width: "320px",
+              minWidth: "320px",
               paddingRight: "10px",
             }}
           >
@@ -553,9 +706,38 @@ const AppFooter = () => {
                 {currentTrack.title}
               </div>
             </div>
+
+            <IconButton
+              onClick={handleOpenQueue}
+              sx={{
+                width: 34,
+                height: 34,
+                color: "#ff5500",
+                flexShrink: 0,
+
+                "&:hover": {
+                  backgroundColor: "rgba(255,85,0,0.12)",
+                },
+              }}
+            >
+              <QueueMusicRoundedIcon />
+            </IconButton>
           </div>
         </Container>
       </AppBar>
+
+      <FooterQueuePopover
+        open={queueOpen}
+        anchorEl={queueAnchorEl}
+        onClose={handleCloseQueue}
+        loading={queueLoading}
+        tracks={queueTracks}
+        currentTrack={currentTrack}
+        autoplayStation={autoplayStation}
+        onChangeAutoplayStation={setAutoplayStation}
+        onClear={() => setQueueTracks([])}
+        onPlayTrack={handlePlayQueueTrack}
+      />
     </div>
   );
 };

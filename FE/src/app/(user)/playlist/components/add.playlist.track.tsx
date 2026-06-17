@@ -28,6 +28,7 @@ import { sendRequest } from "@/utils/api";
 interface IProps {
   playlists: IPlaylist[];
   tracks: ITrackTop[];
+  buttonText?: string;
 }
 
 const AddPlaylistTrack = (props: IProps) => {
@@ -63,6 +64,20 @@ const AddPlaylistTrack = (props: IProps) => {
     };
   };
 
+  const getPlaylistTrackId = (track: unknown): string => {
+    if (!track) return "";
+
+    if (typeof track === "string") {
+      return track;
+    }
+
+    if (typeof track === "object" && "_id" in track) {
+      return String((track as any)._id);
+    }
+
+    return "";
+  };
+
   const handleSubmit = async () => {
     if (!playlistId) {
       toast.error("Please select a playlist.");
@@ -76,41 +91,51 @@ const AddPlaylistTrack = (props: IProps) => {
 
     const chosenPlaylist = playlists.find((item) => item._id === playlistId);
 
-    let selectedTracks = tracksId.map((item) => item?.split("###")?.[1]);
-    selectedTracks = selectedTracks.filter((item) => item);
+    if (!chosenPlaylist) {
+      toast.error("Playlist not found.");
+      return;
+    }
 
-    if (chosenPlaylist) {
-      const res = await sendRequest<IBackendRes<any>>({
-        url: `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/v1/playlists`,
-        method: "PATCH",
-        body: {
-          id: chosenPlaylist._id,
-          title: chosenPlaylist.title,
-          isPublic: chosenPlaylist.isPublic,
-          tracks: selectedTracks,
-        },
-        headers: {
-          Authorization: `Bearer ${session?.access_token}`,
+    const selectedTracks = tracksId
+      .map((item) => item?.split("###")?.[1])
+      .filter(Boolean);
+
+    const oldTracks = ((chosenPlaylist.tracks || []) as unknown[])
+      .map(getPlaylistTrackId)
+      .filter(Boolean);
+
+    const mergedTracks = Array.from(new Set([...oldTracks, ...selectedTracks]));
+
+    const res = await sendRequest<IBackendRes<any>>({
+      url: `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/v1/playlists`,
+      method: "PATCH",
+      body: {
+        id: chosenPlaylist._id,
+        title: chosenPlaylist.title,
+        isPublic: chosenPlaylist.isPublic,
+        tracks: mergedTracks,
+      },
+      headers: {
+        Authorization: `Bearer ${session?.access_token}`,
+      },
+    });
+
+    if (res.data) {
+      toast.success("Tracks added to playlist successfully.");
+
+      await sendRequest<IBackendRes<any>>({
+        url: `/api/revalidate`,
+        method: "POST",
+        queryParams: {
+          tag: "playlist-by-user",
+          secret: "justArandomString",
         },
       });
 
-      if (res.data) {
-        toast.success("Tracks added to playlist successfully.");
-
-        await sendRequest<IBackendRes<any>>({
-          url: `/api/revalidate`,
-          method: "POST",
-          queryParams: {
-            tag: "playlist-by-user",
-            secret: "justArandomString",
-          },
-        });
-
-        handleClose("", "");
-        router.refresh();
-      } else {
-        toast.error(res.message);
-      }
+      handleClose("", "");
+      router.refresh();
+    } else {
+      toast.error(res.message);
     }
   };
 

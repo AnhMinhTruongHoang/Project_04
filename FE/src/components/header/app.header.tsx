@@ -32,6 +32,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { signOut, useSession } from "next-auth/react";
 import { PlaylistPlaySharp } from "@mui/icons-material";
 import SearchDropdown from "@/app/search/components/search.dropdown";
+import { convertSlugUrl } from "@/utils/api";
 
 const navItemSx = (active: boolean) => ({
   height: 46,
@@ -70,6 +71,7 @@ const AppHeader = () => {
   const { data: session } = useSession();
 
   const user = session?.user as any;
+
   const isAdmin = user?.role === "ADMIN";
 
   const [keyword, setKeyword] = React.useState("");
@@ -424,8 +426,9 @@ const AppHeader = () => {
       >
         <MenuItem
           onClick={() => {
+            console.log(user);
             setAnchorEl(null);
-            router.push("/profile");
+            router.push(`/profile/${convertSlugUrl(user._id)}`);
           }}
         >
           <PersonRoundedIcon fontSize="small" />

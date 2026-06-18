@@ -149,11 +149,102 @@ public class DataSeeder {
                             "unknown-brain-wonder.mp3"
                     },
                     {
-                            "NCS Demo Track 02",
-                            "NCS demo seed track 02.",
+                            "Back To You",
+                            "Back To You (DJSM & Ima Sobé)",
                             "ncs",
-                            "ncs-demo-02.jpg",
-                            "ncs-demo-02.mp3"
+                            "Back To You (DJSM & Ima Sobé).jpg",
+                            "Back To You (DJSM & Ima Sobé).mp3"
+                    },
+                    {
+                            "Breathe Without (Nurko feat. Luma) - (Lyrics)",
+                            "Breathe Without - Nurko feat. Luma. NCS seed track.",
+                            "ncs",
+                            "Breathe Without (Nurko feat. Luma) - (Lyrics).jpg",
+                            "Breathe Without (Nurko feat. Luma) - (Lyrics).mp3"
+                    },
+                    {
+                            "Faceless (Unknown Brain ft. Marvin Divine & Bri Tolani)",
+                            "Faceless - Unknown Brain ft. Marvin Divine & Bri Tolani. NCS seed track.",
+                            "ncs",
+                            "Faceless (Unknown Brain ft. Marvin Divine & Bri Tolani).jpg",
+                            "Faceless (Unknown Brain ft. Marvin Divine & Bri Tolani).mp3"
+                    },
+                    {
+                            "Holding Us Back (Mblue & AViVA)",
+                            "Holding Us Back - Mblue & AViVA. NCS seed track.",
+                            "ncs",
+                            "Holding Us Back (Mblue & AViVA).jpg",
+                            "Holding Us Back (Mblue & AViVA).mp3"
+                    },
+                    {
+                            "Meyo & Amero - Domino",
+                            "Meyo & Amero - Domino. NCS seed track.",
+                            "ncs",
+                            "Meyo & Amero - Domino.jpg",
+                            "Meyo & Amero - Domino.mp3"
+                    },
+                    {
+                            "Never Change (Crystal Skies ft. Gallie Fisher) - (Lyrics)",
+                            "Never Change - Crystal Skies ft. Gallie Fisher. NCS seed track.",
+                            "ncs",
+                            "Never Change (Crystal Skies ft. Gallie Fisher) - (Lyrics).jpg",
+                            "Never Change (Crystal Skies ft. Gallie Fisher) - (Lyrics).mp3"
+                    },
+                    {
+                            "Nightcore - Try - (Lyrics)",
+                            "Nightcore - Try. NCS seed track.",
+                            "ncs",
+                            "Nightcore - Try - (Lyrics).jpg",
+                            "Nightcore - Try - (Lyrics).mp3"
+                    },
+                    {
+                            "No Stopping Love (Dirty Palm) - (Lyrics)",
+                            "No Stopping Love - Dirty Palm. NCS seed track.",
+                            "ncs",
+                            "No Stopping Love (Dirty Palm) - (Lyrics).jpg",
+                            "No Stopping Love (Dirty Palm) - (Lyrics).mp3"
+                    },
+                    {
+                            "Only You (Dexter King ft. Alexis Donn)",
+                            "Only You - Dexter King ft. Alexis Donn. NCS seed track.",
+                            "ncs",
+                            "Only You (Dexter King ft. Alexis Donn).jpg",
+                            "Only You (Dexter King ft. Alexis Donn).mp3"
+                    },
+                    {
+                            "Reaktive & Mehdusa - Save Me",
+                            "Reaktive & Mehdusa - Save Me. NCS seed track.",
+                            "ncs",
+                            "Reaktive & Mehdusa - Save Me.jpg",
+                            "Reaktive & Mehdusa - Save Me.mp3"
+                    },
+                    {
+                            "Taboo - Madism, Good Humans, Sadie Rose Van",
+                            "Taboo - Madism, Good Humans, Sadie Rose Van. NCS seed track.",
+                            "ncs",
+                            "Taboo - Madism, Good Humans, Sadie Rose Van.jpg",
+                            "Taboo - Madism, Good Humans, Sadie Rose Van.mp3"
+                    },
+                    {
+                            "The Maze (Neovaii)",
+                            "The Maze - Neovaii. NCS seed track.",
+                            "ncs",
+                            "The Maze (Neovaii).jpg",
+                            "The Maze (Neovaii).mp3"
+                    },
+                    {
+                            "Unknown Brain - Wonder (Lyric Video) (ft. Rarin & Bri Tolani)",
+                            "Unknown Brain - Wonder ft. Rarin & Bri Tolani. NCS seed track.",
+                            "ncs",
+                            "Unknown Brain - Wonder (Lyric Video) (ft. Rarin & Bri Tolani).jpg",
+                            "Unknown Brain - Wonder (Lyric Video) (ft. Rarin & Bri Tolani).mp3"
+                    },
+                    {
+                            "ZEXSING, MXRCURY, Pharmagut - Overdrive Complextro NCS - Copyright Free Music",
+                            "ZEXSING, MXRCURY, Pharmagut - Overdrive. NCS seed track.",
+                            "ncs",
+                            "ZEXSING, MXRCURY, Pharmagut - Overdrive Complextro NCS - Copyright Free Music.jpg",
+                            "ZEXSING, MXRCURY, Pharmagut - Overdrive Complextro NCS - Copyright Free Music.mp3"
                     },
 
                     // ===== KPOP =====

@@ -1,5 +1,8 @@
 package com.example.demo.configs;
 
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.text.Normalizer;
 import java.util.Date;
 import java.util.HashSet;
@@ -42,6 +45,26 @@ public class DataSeeder {
         return trackRepository.findAll()
                 .stream()
                 .anyMatch(track -> title.equalsIgnoreCase(track.getTitle()));
+    }
+
+    private String imageOrDefault(String fileName, String defaultImage) {
+        Path path = Paths.get("uploads", "images", fileName);
+
+        if (fileName == null || fileName.trim().isEmpty() || !Files.exists(path)) {
+            return defaultImage;
+        }
+
+        return fileName;
+    }
+
+    private String audioOrDefault(String fileName, String defaultAudio) {
+        Path path = Paths.get("uploads", "audio", fileName);
+
+        if (fileName == null || fileName.trim().isEmpty() || !Files.exists(path)) {
+            return defaultAudio;
+        }
+
+        return fileName;
     }
 
     private Track createTrack(
@@ -136,8 +159,8 @@ public class DataSeeder {
             // ===== TRACK SEED =====
             // Dùng lại file bạn đã upload test trước đó.
             // Nếu muốn đổi file, đổi 2 filename này.
-            String defaultImage = "aad1b154-3fbe-4aaf-904e-b10aeb2ba83f_default.png";
-            String defaultAudio = "f9220d0b-8d2f-4e59-a47f-5cf423334229_default.wav";
+            String defaultImage = "default.png";
+            String defaultAudio = "default.wav";
             // Mỗi dòng: title, description, category, image file, audio file
             String[][] seedTracks = {
                     // ===== NCS =====
@@ -316,8 +339,9 @@ public class DataSeeder {
                 String title = item[0];
                 String description = item[1];
                 String category = item[2];
-                String image = item[3];
-                String audio = item[4];
+
+                String image = imageOrDefault(item[3], defaultImage);
+                String audio = audioOrDefault(item[4], defaultAudio);
 
                 if (!hasTrackTitle(trackRepository, title)) {
                     createTrack(

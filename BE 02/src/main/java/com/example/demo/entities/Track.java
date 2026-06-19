@@ -36,6 +36,7 @@ public class Track implements java.io.Serializable {
 	private Integer countLike;
 	private Integer countPlay;
 	private String uploaderId;
+	private String approvalStatus;
 	private Boolean isDeleted;
 	private Date createdAt;
 	private Date updatedAt;
@@ -160,7 +161,15 @@ public class Track implements java.io.Serializable {
 	public void setUploaderId(String uploaderId) {
 		this.uploaderId = uploaderId;
 	}
+	
+	@Column(name = "approvalStatus", length = 30)
+public String getApprovalStatus() {
+	return this.approvalStatus;
+}
 
+public void setApprovalStatus(String approvalStatus) {
+	this.approvalStatus = approvalStatus;
+}
 	@Column(name = "isDeleted")
 	public Boolean getIsDeleted() {
 		return this.isDeleted;

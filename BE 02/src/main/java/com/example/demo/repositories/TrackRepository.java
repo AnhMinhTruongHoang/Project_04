@@ -14,6 +14,12 @@ public interface TrackRepository extends JpaRepository<Track, String> {
 
 	List<Track> findByIsDeletedFalse();
 
+	Page<Track> findByIsDeletedFalseAndApprovalStatus(String approvalStatus, Pageable pageable);
+
+	List<Track> findByIsDeletedFalseAndApprovalStatus(String approvalStatus);
+
+	Track findBySlugAndIsDeletedFalseAndApprovalStatus(String slug, String approvalStatus);
+
 	Track findBySlugAndIsDeletedFalse(String slug);
 
 	List<Track> findByUploaderId(String uploaderId);
@@ -22,7 +28,13 @@ public interface TrackRepository extends JpaRepository<Track, String> {
 
 	List<Track> findByCategoryAndIsDeletedFalseOrderByCountPlayDesc(String category);
 
+	List<Track> findByCategoryAndIsDeletedFalseAndApprovalStatusOrderByCountPlayDesc(String category,
+			String approvalStatus);
+
 	List<Track> findByTitleContainingAndIsDeletedFalse(String keyword);
 
 	List<Track> findByTitleContainingIgnoreCaseAndIsDeletedFalse(String keyword);
+
+	List<Track> findByTitleContainingIgnoreCaseAndIsDeletedFalseAndApprovalStatus(String keyword,
+			String approvalStatus);
 }

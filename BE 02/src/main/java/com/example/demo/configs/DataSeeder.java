@@ -91,6 +91,7 @@ public class DataSeeder {
         track.setCountPlay(0);
         track.setUploaderId(uploader.getId());
         track.setIsDeleted(false);
+        track.setApprovalStatus("APPROVED");
         track.setCreatedAt(new Date());
         track.setUpdatedAt(new Date());
 
@@ -166,49 +167,49 @@ public class DataSeeder {
                     // ===== NCS =====
                     {
                             "Wonder",
-                            "Unknown Brain - Wonder ft. Rarin & Bri Tolani. NCS seed track.",
+                            "Unknown Brain",
                             "ncs",
                             "unknown-brain-wonder.jpg",
                             "unknown-brain-wonder.mp3"
                     },
                     {
                             "Back To You",
-                            "Back To You (DJSM & Ima Sobé)",
+                            "DJSM & Ima Sobé",
                             "ncs",
                             "Back To You (DJSM & Ima Sobé).jpg",
                             "Back To You (DJSM & Ima Sobé).mp3"
                     },
                     {
                             "Breathe Without",
-                            "Breathe Without - Nurko feat. Luma. NCS seed track.",
+                            "Nurko",
                             "ncs",
                             "Breathe Without (Nurko feat. Luma) - (Lyrics).jpg",
                             "Breathe Without (Nurko feat. Luma) - (Lyrics).mp3"
                     },
                     {
                             "Faceless",
-                            "Faceless - Unknown Brain ft. Marvin Divine & Bri Tolani. NCS seed track.",
+                            "Unknown Brain",
                             "ncs",
                             "Faceless (Unknown Brain ft. Marvin Divine & Bri Tolani).jpg",
                             "Faceless (Unknown Brain ft. Marvin Divine & Bri Tolani).mp3"
                     },
                     {
                             "Holding Us Back",
-                            "Holding Us Back - Mblue & AViVA. NCS seed track.",
+                            "Mblue & AViVA",
                             "ncs",
                             "Holding Us Back (Mblue & AViVA).jpg",
                             "Holding Us Back (Mblue & AViVA).mp3"
                     },
                     {
                             "Domino",
-                            "Meyo & Amero - Domino. NCS seed track.",
+                            "Meyo & Amer",
                             "ncs",
                             "Meyo & Amero - Domino.jpg",
                             "Meyo & Amero - Domino.mp3"
                     },
                     {
                             "Never Change",
-                            "Never Change - Crystal Skies ft. Gallie Fisher. NCS seed track.",
+                            "Crystal Skies",
                             "ncs",
                             "Never Change (Crystal Skies ft. Gallie Fisher) - (Lyrics).jpg",
                             "Never Change (Crystal Skies ft. Gallie Fisher) - (Lyrics).mp3"
@@ -217,122 +218,156 @@ public class DataSeeder {
                             "Try",
                             "Nightcore - Try. NCS seed track.",
                             "ncs",
-                            "Nightcore - Try - (Lyrics).jpg",
+                            "try.jpg",
                             "Nightcore - Try - (Lyrics).mp3"
                     },
                     {
                             "No Stopping Love",
-                            "No Stopping Love - Dirty Palm. NCS seed track.",
+                            "Dirty Palm",
                             "ncs",
-                            "No Stopping Love (Dirty Palm) - (Lyrics).jpg",
+                            "nostoping.png",
                             "No Stopping Love (Dirty Palm) - (Lyrics).mp3"
                     },
                     {
                             "Only You",
-                            "Only You - Dexter King ft. Alexis Donn. NCS seed track.",
+                            "Dexter King ft. Alexis Donn",
                             "ncs",
-                            "Only You (Dexter King ft. Alexis Donn).jpg",
+                            "onlyyou.jpg",
                             "Only You (Dexter King ft. Alexis Donn).mp3"
                     },
                     {
                             "Save Me",
-                            "Reaktive & Mehdusa - Save Me. NCS seed track.",
+                            "Reaktive & Mehdusa",
                             "ncs",
                             "Reaktive & Mehdusa - Save Me.jpg",
                             "Reaktive & Mehdusa - Save Me.mp3"
                     },
                     {
                             "Taboo",
-                            "Taboo - Madism, Good Humans, Sadie Rose Van. NCS seed track.",
+                            "Madism, Good Humans, Sadie Rose Van",
                             "ncs",
                             "Taboo - Madism, Good Humans, Sadie Rose Van.jpg",
                             "Taboo - Madism, Good Humans, Sadie Rose Van.mp3"
                     },
                     {
                             "The Maze",
-                            "The Maze - Neovaii. NCS seed track.",
+                            "Neovaii",
                             "ncs",
                             "The Maze (Neovaii).jpg",
                             "The Maze (Neovaii).mp3"
                     },
                     {
                             "Wonder",
-                            "Unknown Brain - Wonder ft. Rarin & Bri Tolani. NCS seed track.",
+                            "Unknown Brain",
                             "ncs",
-                            "Unknown Brain - Wonder (Lyric Video) (ft. Rarin & Bri Tolani).jpg",
-                            "Unknown Brain - Wonder (Lyric Video) (ft. Rarin & Bri Tolani).mp3"
+                            "wonder.jpg",
+                            "wonder.mp3"
                     },
                     {
                             "Overdrive",
-                            "ZEXSING, MXRCURY, Pharmagut - Overdrive. NCS seed track.",
+                            "ZEXSING, MXRCURY, Pharmagut",
                             "ncs",
-                            "ZEXSING, MXRCURY, Pharmagut - Overdrive Complextro NCS - Copyright Free Music.jpg",
-                            "ZEXSING, MXRCURY, Pharmagut - Overdrive Complextro NCS - Copyright Free Music.mp3"
+                            "overdrive.jpg",
+                            "overdrive.mp3"
                     },
 
                     // ===== KPOP =====
                     {
-                            "Kpop Night Drive",
-                            "Kpop demo track for testing SoundCloud clone.",
+                            "JUMP",
+                            "BLACKPINK",
                             "kpop",
-                            "kpop-night-drive.jpg",
-                            "kpop-night-drive.mp3"
+                            "BLACKPINK - 뛰어(JUMP) MV.jpg",
+                            "BLACKPINK - 뛰어(JUMP) MV.mp3"
                     },
                     {
-                            "Kpop Love Signal",
-                            "Kpop seed track demo.",
+                            "Kill This Love.mp3",
+                            "BLACKPINK",
                             "kpop",
-                            "kpop-love-signal.jpg",
-                            "kpop-love-signal.mp3"
+                            "BLACKPINK - Kill This Love.jpeg",
+                            "BLACKPINK - Kill This Love.mp3"
+                    },
+                    {
+                            "BOOMBAYAH",
+                            "BLACKPINK",
+                            "kpop",
+                            "BLACKPINK BOOMBAYAH.jpg",
+                            "BLACKPINK BOOMBAYAH.mp3"
+                    },
+                    {
+                            "How You Like That",
+                            "BLACKPINK",
+                            "kpop",
+                            "BLACKPINK - How You Like That.jpg",
+                            "BLACKPINK - How You Like That.mp3"
+                    },
+                    {
+                            "DDU-DU DDU-DU",
+                            "BLACKPINK",
+                            "kpop",
+                            "BLACKPINK - DDU-DU DDU-DU.jpg",
+                            "BLACKPINK - DDU-DU DDU-DU.mp3"
+                    },
+                    {
+                            "Shut Down",
+                            "BLACKPINK",
+                            "kpop",
+                            "BLACKPINK - Shut Down.jpg",
+                            "BLACKPINK - Shut Down.mp3"
                     },
 
                     // ===== LOFI =====
                     {
                             "Lofi Coding Session",
-                            "Lofi chill beat for coding.",
+                            "bootleg",
                             "lofi",
-                            "lofi-coding-session.jpg",
-                            "lofi-coding-session.mp3"
+                            "lofi1.jpg",
+                            "lofi1.mp3"
                     },
                     {
                             "Lofi Midnight Rain",
-                            "Lofi midnight rain demo track.",
+                            "2AM",
                             "lofi",
-                            "lofi-midnight-rain.jpg",
-                            "lofi-midnight-rain.mp3"
+                            "lofi2.jpg",
+                            "lofi2.mp3"
                     },
 
-                    // ===== EDM =====
-                    {
-                            "EDM Future Bass",
-                            "EDM future bass demo track.",
-                            "edm",
-                            "edm-future-bass.jpg",
-                            "edm-future-bass.mp3"
-                    },
-                    {
-                            "EDM Neon Lights",
-                            "EDM neon lights demo track.",
-                            "edm",
-                            "edm-neon-lights.jpg",
-                            "edm-neon-lights.mp3"
-                    },
 
                     // ===== POP =====
                     {
-                            "Pop Summer Vibes",
-                            "Pop summer demo track.",
+                            "HAY TRAO CHO ANH",
+                            "Son Tung MTP",
                             "pop",
-                            "pop-summer-vibes.jpg",
-                            "pop-summer-vibes.mp3"
+                            "HAY TRAO CHO ANH.jpg",
+                            "HAY TRAO CHO ANH.mp3"
                     },
                     {
-                            "Pop City Dreams",
-                            "Pop city dreams demo track.",
+                            "COME MY WAY",
+                            "Son Tung MTP",
                             "pop",
-                            "pop-city-dreams.jpg",
-                            "pop-city-dreams.mp3"
-                    }
+                            "COME MY WAY SON TUNG M-TP x TYGA.jpg",
+                            "COME MY WAY SON TUNG M-TP x TYGA.mp3"
+                    },
+                    {
+                            "Nơi Này Có Anh Sơn",
+                            "Sơn Tùng M-TP.",
+                            "pop",
+                            "Nơi Này Có Anh Sơn Tùng M-TP.jpg",
+                            "Nơi Này Có Anh Sơn Tùng M-TP.mp3"
+                    },
+                    {
+                            "Không Phải Dạng Vừa Đâu",
+                            "Sơn Tùng M-TP.",
+                            "pop",
+                            "Không Phải Dạng Vừa Đâu · Sơn Tùng M-TP.jpg",
+                            "Không Phải Dạng Vừa Đâu · Sơn Tùng M-TP.mp3"
+                    },
+                    {
+                            "Lạc Trôi Sơn",
+                            "Sơn Tùng M-TP.",
+                            "pop",
+                            "Lạc Trôi Sơn Tùng M-TP.jpg",
+                            "Lạc Trôi Sơn Tùng M-TP.mp3"
+                    },
             };
 
             for (String[] item : seedTracks) {

@@ -46,6 +46,10 @@ import com.example.demo.services.PlaylistService;
 @RequestMapping({ "/api/tracks", "/api/v1/tracks" })
 public class TrackController {
 
+	private static final String TRACK_PENDING = "PENDING";
+	private static final String TRACK_APPROVED = "APPROVED";
+	private static final String TRACK_REJECTED = "REJECTED";
+
 	@Autowired
 	private TrackRepository trackRepository;
 
@@ -86,7 +90,6 @@ public class TrackController {
 		}
 
 		Claims claims = JwtHelper.verifyToken(token);
-
 		String email = claims.getSubject();
 
 		return userRepository.findByEmail(email);
@@ -102,6 +105,10 @@ public class TrackController {
 		}
 
 		return user.getId().equals(track.getUploaderId()) || isAdmin(user);
+	}
+
+	private boolean isApproved(Track track) {
+		return track != null && TRACK_APPROVED.equals(track.getApprovalStatus());
 	}
 
 	private String fullImageUrl(String imgUrl) {
@@ -134,6 +141,7 @@ public class TrackController {
 		}
 
 		String normalized = Normalizer.normalize(input, Normalizer.Form.NFD);
+
 		String slug = normalized.replaceAll("\\p{M}", "")
 				.toLowerCase()
 				.replaceAll("[^a-z0-9]+", "-")
@@ -189,6 +197,7 @@ public class TrackController {
 		dto.setCountPlay(track.getCountPlay() == null ? 0 : track.getCountPlay());
 		dto.setUploaderId(track.getUploaderId());
 		dto.setIsDeleted(track.getIsDeleted());
+		dto.setApprovalStatus(track.getApprovalStatus());
 		dto.setCreatedAt(track.getCreatedAt());
 		dto.setUpdatedAt(track.getUpdatedAt());
 
@@ -248,11 +257,11 @@ public class TrackController {
 			}
 
 			String id = generateId();
-			
+
 			String cleanTitle = title.trim();
 			String cleanDescription = description.trim();
 			String cleanCategory = category.trim().toLowerCase();
-			
+
 			String imageName = FileHelper.upload(image, "uploads/images");
 			String audioName = FileHelper.upload(audio, "uploads/audio");
 
@@ -269,6 +278,7 @@ public class TrackController {
 			track.setCountPlay(0);
 			track.setUploaderId(user.getId());
 			track.setIsDeleted(false);
+			track.setApprovalStatus(isAdmin(user) ? TRACK_APPROVED : TRACK_PENDING);
 			track.setCreatedAt(new Date());
 			track.setUpdatedAt(new Date());
 
@@ -285,7 +295,7 @@ public class TrackController {
 	@GetMapping({ "find-all", "all" })
 	public ResponseEntity<?> findAll() {
 		try {
-			List<Track> tracks = trackRepository.findByIsDeletedFalse();
+			List<Track> tracks = trackRepository.findByIsDeletedFalseAndApprovalStatus(TRACK_APPROVED);
 
 			Map<String, Object> data = new LinkedHashMap<>();
 			data.put("result", toTrackDTOList(tracks));
@@ -308,7 +318,7 @@ public class TrackController {
 
 			Pageable pageable = PageRequest.of(safeCurrent - 1, safePageSize);
 
-			Page<Track> page = trackRepository.findByIsDeletedFalse(pageable);
+			Page<Track> page = trackRepository.findByIsDeletedFalseAndApprovalStatus(TRACK_APPROVED, pageable);
 
 			Map<String, Object> meta = new LinkedHashMap<>();
 			meta.put("current", safeCurrent);
@@ -332,7 +342,7 @@ public class TrackController {
 		try {
 			Track track = trackRepository.findById(id).orElse(null);
 
-			if (track == null || Boolean.TRUE.equals(track.getIsDeleted())) {
+			if (track == null || Boolean.TRUE.equals(track.getIsDeleted()) || !isApproved(track)) {
 				return ResponseEntity.status(404).body(new ApiResponse<>(404, "Track not found", null));
 			}
 
@@ -351,13 +361,13 @@ public class TrackController {
 	@GetMapping("{slug}")
 	public ResponseEntity<?> findBySlug(@PathVariable String slug) {
 		try {
-			Track track = trackRepository.findBySlugAndIsDeletedFalse(slug);
+			Track track = trackRepository.findBySlugAndIsDeletedFalseAndApprovalStatus(slug, TRACK_APPROVED);
 
 			if (track == null) {
 				track = trackRepository.findById(slug).orElse(null);
 			}
 
-			if (track == null || Boolean.TRUE.equals(track.getIsDeleted())) {
+			if (track == null || Boolean.TRUE.equals(track.getIsDeleted()) || !isApproved(track)) {
 				return ResponseEntity.status(404).body(new ApiResponse<>(404, "Track not found", null));
 			}
 
@@ -398,11 +408,15 @@ public class TrackController {
 			String cleanTitle = title.trim();
 			String cleanDescription = description.trim();
 			String cleanCategory = category.trim().toLowerCase();
-			
+
 			track.setTitle(cleanTitle);
 			track.setSlug(createSlug(cleanTitle, track.getId()));
 			track.setDescription(cleanDescription);
 			track.setCategory(cleanCategory);
+
+			if (!isAdmin(user)) {
+				track.setApprovalStatus(TRACK_PENDING);
+			}
 
 			if (image != null && !image.isEmpty()) {
 				String imageName = FileHelper.upload(image, "uploads/images");
@@ -482,7 +496,7 @@ public class TrackController {
 			for (String trackId : dto.getTrackIds()) {
 				Track track = trackRepository.findById(trackId).orElse(null);
 
-				if (track != null && !Boolean.TRUE.equals(track.getIsDeleted())) {
+				if (track != null && !Boolean.TRUE.equals(track.getIsDeleted()) && isApproved(track)) {
 					tracks.add(track);
 				}
 			}
@@ -501,6 +515,12 @@ public class TrackController {
 	@GetMapping("/{trackId}/comments")
 	public ResponseEntity<?> getCommentsByTrack(@PathVariable String trackId) {
 		try {
+			Track track = trackRepository.findById(trackId).orElse(null);
+
+			if (track == null || Boolean.TRUE.equals(track.getIsDeleted()) || !isApproved(track)) {
+				return ResponseEntity.status(404).body(new ApiResponse<>(404, "Track not found", null));
+			}
+
 			List<Comment> comments = commentRepository.findByTrackIdAndIsDeletedFalse(trackId);
 
 			return ResponseEntity.ok(new ApiResponse<>(200, "Fetch comments success", comments));
@@ -525,7 +545,7 @@ public class TrackController {
 
 			Track track = trackRepository.findById(trackId).orElse(null);
 
-			if (track == null || Boolean.TRUE.equals(track.getIsDeleted())) {
+			if (track == null || Boolean.TRUE.equals(track.getIsDeleted()) || !isApproved(track)) {
 				return ResponseEntity.status(404).body(new ApiResponse<>(404, "Track not found", null));
 			}
 
@@ -559,7 +579,7 @@ public class TrackController {
 
 			Track track = trackRepository.findById(trackId).orElse(null);
 
-			if (track == null || Boolean.TRUE.equals(track.getIsDeleted())) {
+			if (track == null || Boolean.TRUE.equals(track.getIsDeleted()) || !isApproved(track)) {
 				return ResponseEntity.status(404).body(new ApiResponse<>(404, "Track not found", null));
 			}
 
@@ -598,7 +618,7 @@ public class TrackController {
 
 			Track track = trackRepository.findById(trackId).orElse(null);
 
-			if (track == null || Boolean.TRUE.equals(track.getIsDeleted())) {
+			if (track == null || Boolean.TRUE.equals(track.getIsDeleted()) || !isApproved(track)) {
 				return ResponseEntity.status(404).body(new ApiResponse<>(404, "Track not found", null));
 			}
 
@@ -660,6 +680,7 @@ public class TrackController {
 			List<Track> tracks = user.getLikedTracks()
 					.stream()
 					.filter(track -> !Boolean.TRUE.equals(track.getIsDeleted()))
+					.filter(this::isApproved)
 					.collect(Collectors.toList());
 
 			return ResponseEntity.ok(new ApiResponse<>(200, "Fetch liked tracks success", toTrackDTOList(tracks)));
@@ -674,7 +695,7 @@ public class TrackController {
 		try {
 			Track track = trackRepository.findById(trackId).orElse(null);
 
-			if (track == null || Boolean.TRUE.equals(track.getIsDeleted())) {
+			if (track == null || Boolean.TRUE.equals(track.getIsDeleted()) || !isApproved(track)) {
 				return ResponseEntity.status(404).body(new ApiResponse<>(404, "Track not found", null));
 			}
 
@@ -697,7 +718,8 @@ public class TrackController {
 	@GetMapping("/search")
 	public ResponseEntity<?> searchTracks(@RequestParam String keyword) {
 		try {
-			List<Track> tracks = trackRepository.findByTitleContainingIgnoreCaseAndIsDeletedFalse(keyword);
+			List<Track> tracks = trackRepository
+					.findByTitleContainingIgnoreCaseAndIsDeletedFalseAndApprovalStatus(keyword, TRACK_APPROVED);
 
 			return ResponseEntity.ok(new ApiResponse<>(200, "Search tracks success", toTrackDTOList(tracks)));
 
@@ -709,7 +731,10 @@ public class TrackController {
 	@GetMapping("/top")
 	public ResponseEntity<?> getTopTracksByCategory(@RequestParam String category) {
 		try {
-			List<Track> tracks = trackRepository.findByCategoryAndIsDeletedFalseOrderByCountPlayDesc(category);
+			List<Track> tracks = trackRepository
+					.findByCategoryAndIsDeletedFalseAndApprovalStatusOrderByCountPlayDesc(
+							category.trim().toLowerCase(),
+							TRACK_APPROVED);
 
 			return ResponseEntity.ok(new ApiResponse<>(200, "Fetch top tracks success", toTrackDTOList(tracks)));
 

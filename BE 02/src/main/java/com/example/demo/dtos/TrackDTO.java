@@ -18,6 +18,7 @@ public class TrackDTO {
 	private String uploaderId;
 	private UserDTO uploader;
 	private Boolean isDeleted;
+	private String approvalStatus;
 	private Date createdAt;
 	private Date updatedAt;
 
@@ -123,6 +124,14 @@ public class TrackDTO {
 
 	public void setIsDeleted(Boolean isDeleted) {
 		this.isDeleted = isDeleted;
+	}
+
+	public String getApprovalStatus() {
+		return approvalStatus;
+	}
+	
+	public void setApprovalStatus(String approvalStatus) {
+		this.approvalStatus = approvalStatus;
 	}
 
 	public Date getCreatedAt() {

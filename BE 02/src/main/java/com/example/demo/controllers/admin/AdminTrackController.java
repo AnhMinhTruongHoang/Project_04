@@ -23,7 +23,7 @@ import io.jsonwebtoken.Claims;
 import jakarta.servlet.http.HttpServletRequest;
 
 @RestController
-@RequestMapping("api/admin/tracks")
+@RequestMapping({ "/api/admin/tracks", "/api/v1/admin/tracks" })
 public class AdminTrackController {
 
 	@Autowired
@@ -292,4 +292,72 @@ public class AdminTrackController {
 							null));
 		}
 	}
+
+	@PatchMapping({ "/approve/{id}", "/{id}/approve" })
+public ResponseEntity<?> approveTrack(
+		@PathVariable String id,
+		@RequestHeader("Authorization") String authorization) {
+
+	try {
+		String token = authorization.replace("Bearer ", "");
+		Claims claims = JwtHelper.verifyToken(token);
+		String email = claims.getSubject();
+
+		User admin = userRepository.findByEmail(email);
+
+		if (admin == null || !"ADMIN".equals(admin.getRole())) {
+			return ResponseEntity.status(403).body(new ApiResponse<>(403, "Access denied", null));
+		}
+
+		Track track = trackRepository.findById(id).orElse(null);
+
+		if (track == null || Boolean.TRUE.equals(track.getIsDeleted())) {
+			return ResponseEntity.status(404).body(new ApiResponse<>(404, "Track not found", null));
+		}
+
+		track.setApprovalStatus("APPROVED");
+		track.setUpdatedAt(new Date());
+
+		trackRepository.save(track);
+
+		return ResponseEntity.ok(new ApiResponse<>(200, "Approve track success", track));
+
+	} catch (Exception e) {
+		return ResponseEntity.internalServerError().body(new ApiResponse<>(500, e.getMessage(), null));
+	}
+}
+
+@PatchMapping({ "/reject/{id}", "/{id}/reject" })
+public ResponseEntity<?> rejectTrack(
+		@PathVariable String id,
+		@RequestHeader("Authorization") String authorization) {
+
+	try {
+		String token = authorization.replace("Bearer ", "");
+		Claims claims = JwtHelper.verifyToken(token);
+		String email = claims.getSubject();
+
+		User admin = userRepository.findByEmail(email);
+
+		if (admin == null || !"ADMIN".equals(admin.getRole())) {
+			return ResponseEntity.status(403).body(new ApiResponse<>(403, "Access denied", null));
+		}
+
+		Track track = trackRepository.findById(id).orElse(null);
+
+		if (track == null || Boolean.TRUE.equals(track.getIsDeleted())) {
+			return ResponseEntity.status(404).body(new ApiResponse<>(404, "Track not found", null));
+		}
+
+		track.setApprovalStatus("REJECTED");
+		track.setUpdatedAt(new Date());
+
+		trackRepository.save(track);
+
+		return ResponseEntity.ok(new ApiResponse<>(200, "Reject track success", track));
+
+	} catch (Exception e) {
+		return ResponseEntity.internalServerError().body(new ApiResponse<>(500, e.getMessage(), null));
+	}
+}
 }

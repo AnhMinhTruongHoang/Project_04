@@ -15,6 +15,7 @@ import { useRouter } from "next/navigation";
 import Image from "next/image";
 
 import LikeTrack from "./like.track";
+
 interface IProps {
   track: ITrackTop | null;
   comments: ITrackComment[];
@@ -37,6 +38,34 @@ const WaveTrack = (props: IProps) => {
   const [isPlaying, setIsPlaying] = useState<boolean>(false);
 
   const { currentTrack, setCurrentTrack } = useTrackContext() as ITrackContext;
+
+  const getTrackId = () => {
+    return (track as any)?._id || (track as any)?.id || "";
+  };
+
+  const getImageUrl = (imgUrl?: string | null) => {
+    if (!imgUrl) return "/images/logo/Sc.png";
+
+    if (imgUrl.startsWith("http")) {
+      return imgUrl;
+    }
+
+    if (imgUrl.startsWith("/")) {
+      return imgUrl;
+    }
+
+    return `${process.env.NEXT_PUBLIC_BACKEND_URL}/uploads/images/${imgUrl}`;
+  };
+
+  const getAudioUrl = (trackUrl?: string | null) => {
+    if (!trackUrl) return "";
+
+    if (trackUrl.startsWith("http")) {
+      return trackUrl;
+    }
+
+    return `${process.env.NEXT_PUBLIC_BACKEND_URL}/uploads/audio/${trackUrl}`;
+  };
 
   const getInitials = (name?: string | null, email?: string | null) => {
     const value = name?.trim() || email?.trim() || "User";
@@ -61,7 +90,7 @@ const WaveTrack = (props: IProps) => {
     if (avatar.startsWith("http")) return avatar;
     if (avatar.startsWith("/")) return avatar;
 
-    return `${process.env.NEXT_PUBLIC_BACKEND_URL}/images/${avatar}`;
+    return `${process.env.NEXT_PUBLIC_BACKEND_URL}/uploads/images/${avatar}`;
   };
 
   const formatTime = (seconds: number) => {
@@ -127,9 +156,9 @@ const WaveTrack = (props: IProps) => {
       progressColor: progressGradient,
       height: 100,
       barWidth: 3,
-      url: `/api?audio=${fileName}`,
+      url: getAudioUrl(track?.trackUrl || fileName),
     };
-  }, [fileName]);
+  }, [track?.trackUrl, fileName]);
 
   const wavesurfer = useWavesurfer(containerRef, optionsMemo);
 
@@ -149,7 +178,9 @@ const WaveTrack = (props: IProps) => {
     nextCurrentTime?: number,
     nextDuration?: number
   ) => {
-    if (!track?._id) return;
+    const trackId = getTrackId();
+
+    if (!trackId || !track) return;
 
     setCurrentTrack({
       ...track,
@@ -161,7 +192,9 @@ const WaveTrack = (props: IProps) => {
   };
 
   useEffect(() => {
-    if (!track?._id) return;
+    const trackId = getTrackId();
+
+    if (!trackId || !track) return;
 
     setIsPlaying(false);
     setTime("0:00");
@@ -176,7 +209,7 @@ const WaveTrack = (props: IProps) => {
       duration: 0,
       seekTime: undefined,
     } as any);
-  }, [track?._id]);
+  }, [(track as any)?._id, (track as any)?.id]);
 
   useEffect(() => {
     if (!wavesurfer) return;
@@ -207,7 +240,9 @@ const WaveTrack = (props: IProps) => {
       wavesurfer.on("decode", (decodedDuration) => {
         setDuration(formatTime(decodedDuration));
 
-        if (track?._id) {
+        const trackId = getTrackId();
+
+        if (trackId && track) {
           setCurrentTrack({
             ...track,
             isPlaying: false,
@@ -244,12 +279,18 @@ const WaveTrack = (props: IProps) => {
       waveform?.removeEventListener("pointermove", handlePointerMove);
       subscriptions.forEach((unsub) => unsub());
     };
-  }, [wavesurfer, track?._id]);
+  }, [wavesurfer, (track as any)?._id, (track as any)?.id]);
 
   useEffect(() => {
     if (!wavesurfer) return;
-    if (!track?._id) return;
-    if (currentTrack?._id !== track._id) return;
+    if (!track) return;
+
+    const trackId = getTrackId();
+    const currentTrackId =
+      (currentTrack as any)?._id || (currentTrack as any)?.id || "";
+
+    if (!trackId) return;
+    if (currentTrackId !== trackId) return;
 
     const footerTrack = currentTrack as any;
 
@@ -276,28 +317,41 @@ const WaveTrack = (props: IProps) => {
     }
   }, [
     wavesurfer,
-    currentTrack?._id,
+    (currentTrack as any)?._id,
+    (currentTrack as any)?.id,
     currentTrack?.isPlaying,
     (currentTrack as any)?.seekTime,
     (currentTrack as any)?.seekId,
     (currentTrack as any)?.source,
     (currentTrack as any)?.volume,
-    track?._id,
+    (track as any)?._id,
+    (track as any)?.id,
   ]);
 
   useEffect(() => {
     if (!wavesurfer) return;
 
+    const currentTrackId =
+      (currentTrack as any)?._id || (currentTrack as any)?.id || "";
+    const trackId = getTrackId();
+
     const isAnotherTrackPlaying =
-      currentTrack?._id &&
-      track?._id &&
-      currentTrack._id !== track._id &&
+      currentTrackId &&
+      trackId &&
+      currentTrackId !== trackId &&
       currentTrack.isPlaying;
 
     if (isAnotherTrackPlaying) {
       wavesurfer.pause();
     }
-  }, [wavesurfer, currentTrack?._id, currentTrack?.isPlaying, track?._id]);
+  }, [
+    wavesurfer,
+    (currentTrack as any)?._id,
+    (currentTrack as any)?.id,
+    currentTrack?.isPlaying,
+    (track as any)?._id,
+    (track as any)?.id,
+  ]);
 
   const onPlayClick = useCallback(() => {
     if (!wavesurfer) return;
@@ -310,27 +364,26 @@ const WaveTrack = (props: IProps) => {
   }, [wavesurfer]);
 
   const handleIncreaseView = async () => {
-    if (firstViewRef.current) {
-      await sendRequest<IBackendRes<IModelPaginate<ITrackLike>>>({
-        url: `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/v1/tracks/increase-view`,
-        method: "POST",
-        body: {
-          trackId: track?._id,
-        },
-      });
+    const trackId = getTrackId();
 
-      await sendRequest<IBackendRes<any>>({
-        url: `/api/revalidate`,
-        method: "POST",
-        queryParams: {
-          tag: "track-by-id",
-          secret: "justArandomString",
-        },
-      });
+    if (!firstViewRef.current || !trackId) return;
 
-      router.refresh();
-      firstViewRef.current = false;
-    }
+    await sendRequest<IBackendRes<any>>({
+      url: `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/v1/tracks/${trackId}/play`,
+      method: "POST",
+    });
+
+    await sendRequest<IBackendRes<any>>({
+      url: `/api/revalidate`,
+      method: "POST",
+      queryParams: {
+        tag: "track-by-id",
+        secret: "justArandomString",
+      },
+    });
+
+    router.refresh();
+    firstViewRef.current = false;
   };
 
   return (
@@ -341,8 +394,12 @@ const WaveTrack = (props: IProps) => {
           gap: 15,
           padding: 20,
           height: 400,
+          borderRadius: 16,
+          overflow: "hidden",
+          border: "1px solid rgba(255,255,255,0.08)",
+          boxShadow: "0 24px 80px rgba(0,0,0,0.35)",
           background:
-            "linear-gradient(135deg, rgb(106, 112, 67) 0%, rgb(11, 15, 20) 100%)",
+            "radial-gradient(circle at 0% 0%, rgba(255,85,0,0.35), transparent 35%), radial-gradient(circle at 100% 100%, rgba(0,188,174,0.22), transparent 40%), linear-gradient(135deg, #21120d 0%, #181a1b 48%, #0d2523 100%)",
         }}
       >
         <div
@@ -477,7 +534,7 @@ const WaveTrack = (props: IProps) => {
         >
           {track?.imgUrl ? (
             <Image
-              src={`${process.env.NEXT_PUBLIC_BACKEND_URL}/images/${track?.imgUrl}`}
+              src={getImageUrl(track?.imgUrl)}
               width={250}
               height={250}
               alt="image track"

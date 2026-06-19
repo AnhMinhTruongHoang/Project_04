@@ -214,8 +214,9 @@ const LikeTrack = ({ track, buttonHeight = 36 }: IProps) => {
     <>
       <Box
         sx={{
-          mt: 2.5,
-          mx: 1,
+          mt: 2.2,
+          mx: 0,
+          px: 0.5,
           display: "flex",
           justifyContent: "space-between",
           alignItems: "center",
@@ -224,79 +225,79 @@ const LikeTrack = ({ track, buttonHeight = 36 }: IProps) => {
           gap: 2,
         }}
       >
-        {/* Dual button: Like + Add to playlist */}
+        {/* ACTION BUTTONS */}
         <Box
           sx={{
-            width: 360,
-            maxWidth: "100%",
-            height: buttonHeight,
             display: "flex",
-            borderRadius: "999px",
-            overflow: "hidden",
-
-            background: isLiked
-              ? "linear-gradient(90deg, #ffb199 0%, #ff9a9e 50%, #a18cd1 100%)"
-              : "linear-gradient(90deg, #ffecd2 0%, #fcb69f 50%, #a1c4fd 100%)",
-
-            border: "1px solid rgba(255,255,255,0.14)",
-            boxShadow: "0 12px 30px rgba(0,0,0,0.28)",
-            flexShrink: 0,
+            alignItems: "center",
+            gap: 1,
+            flexWrap: "wrap",
           }}
         >
           <Button
             onClick={handleLikeTrack}
             startIcon={<FavoriteIcon />}
             sx={{
-              flex: 1,
-              height: "100%",
-              borderRadius: 0,
-              color: "#ffffff",
+              height: 38,
+              px: 2.2,
+              borderRadius: "999px",
+              color: isLiked ? "#ff5500" : "#ffffff",
               textTransform: "none",
-              fontSize: 14,
+              fontSize: 13,
               fontWeight: 900,
-              background: "transparent",
+              backgroundColor: isLiked
+                ? "rgba(255,85,0,0.14)"
+                : "rgba(255,255,255,0.08)",
+              border: isLiked
+                ? "1px solid rgba(255,85,0,0.45)"
+                : "1px solid rgba(255,255,255,0.12)",
+              backdropFilter: "blur(10px)",
+              boxShadow: isLiked
+                ? "0 10px 24px rgba(255,85,0,0.18)"
+                : "0 10px 24px rgba(0,0,0,0.22)",
 
               "&:hover": {
-                backgroundColor: "rgba(255,255,255,0.13)",
+                backgroundColor: isLiked
+                  ? "rgba(255,85,0,0.2)"
+                  : "rgba(255,255,255,0.13)",
+                transform: "translateY(-1px)",
               },
 
               "& .MuiButton-startIcon": {
                 marginLeft: 0,
                 marginRight: "7px",
               },
+
               "& .MuiSvgIcon-root": {
-                fontSize: 20,
-                color: isLiked ? "#ff1744" : "#ffffff",
+                fontSize: 18,
+                color: isLiked ? "#ff5500" : "#ffffff",
               },
             }}
           >
             {isLiked ? "Liked" : "Like"}
           </Button>
 
-          <Box
-            sx={{
-              width: "1px",
-              height: "100%",
-              backgroundColor: "rgba(255,255,255,0.2)",
-              flexShrink: 0,
-            }}
-          />
-
           <Button
             onClick={handleOpenPlaylist}
             startIcon={<PlaylistAddRoundedIcon />}
             sx={{
-              flex: 1.45,
-              height: "100%",
-              borderRadius: 0,
+              height: 38,
+              px: 2.2,
+              borderRadius: "999px",
               color: "#ffffff",
               textTransform: "none",
-              fontSize: 14,
+              fontSize: 13,
               fontWeight: 900,
-              background: "transparent",
+              background:
+                "linear-gradient(135deg, rgba(255,85,0,0.18), rgba(0,188,174,0.14))",
+              border: "1px solid rgba(255,255,255,0.12)",
+              backdropFilter: "blur(10px)",
+              boxShadow: "0 10px 24px rgba(0,0,0,0.22)",
 
               "&:hover": {
-                backgroundColor: "rgba(255,255,255,0.13)",
+                background:
+                  "linear-gradient(135deg, rgba(255,85,0,0.26), rgba(0,188,174,0.2))",
+                transform: "translateY(-1px)",
               },
 
               "& .MuiButton-startIcon": {
@@ -305,7 +306,7 @@ const LikeTrack = ({ track, buttonHeight = 36 }: IProps) => {
               },
 
               "& .MuiSvgIcon-root": {
-                fontSize: 21,
+                fontSize: 20,
                 color: "#ffffff",
               },
             }}
@@ -314,40 +315,53 @@ const LikeTrack = ({ track, buttonHeight = 36 }: IProps) => {
           </Button>
         </Box>
 
-        {/* Track stats */}
+        {/* STATS */}
         <Box
           sx={{
             display: "flex",
             alignItems: "center",
-            gap: 2.2,
-            color: "#9a9a9a",
-            fontSize: 13,
-            fontWeight: 700,
+            gap: 1,
             flexShrink: 0,
           }}
         >
           <Box
             component="span"
             sx={{
+              height: 34,
+              px: 1.4,
               display: "flex",
               alignItems: "center",
-              gap: 0.4,
+              gap: 0.6,
+              borderRadius: "999px",
+              color: "#cfd3d6",
+              fontSize: 13,
+              fontWeight: 800,
+              backgroundColor: "rgba(255,255,255,0.06)",
+              border: "1px solid rgba(255,255,255,0.1)",
             }}
           >
-            <PlayArrowIcon sx={{ fontSize: 20, color: "#9a9a9a" }} />
-            {track?.countPlay}
+            <PlayArrowIcon sx={{ fontSize: 18, color: "#b8c0c5" }} />
+            {track?.countPlay ?? 0}
           </Box>
 
           <Box
             component="span"
             sx={{
+              height: 34,
+              px: 1.4,
               display: "flex",
               alignItems: "center",
-              gap: 0.4,
+              gap: 0.6,
+              borderRadius: "999px",
+              color: "#cfd3d6",
+              fontSize: 13,
+              fontWeight: 800,
+              backgroundColor: "rgba(255,255,255,0.06)",
+              border: "1px solid rgba(255,255,255,0.1)",
             }}
           >
-            <FavoriteIcon sx={{ fontSize: 18, color: "#9a9a9a" }} />
-            {track?.countLike}
+            <FavoriteIcon sx={{ fontSize: 17, color: "#b8c0c5" }} />
+            {track?.countLike ?? 0}
           </Box>
         </Box>
       </Box>

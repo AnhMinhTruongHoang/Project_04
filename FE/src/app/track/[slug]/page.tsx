@@ -4,7 +4,6 @@ import Box from "@mui/material/Box";
 import WaveTrack from "@/components/track/wave.track";
 import { sendRequest } from "@/utils/api";
 import { notFound } from "next/navigation";
-import AddPlaylistTrack from "@/app/(user)/playlist/components/add.playlist.track";
 
 type Props = {
   params: {
@@ -19,13 +18,18 @@ const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "";
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
 const DEFAULT_OG_IMAGE = `${SITE_URL}/images/logo/Sc.png`;
 
-const getTrackIdFromSlug = (slug?: string) => {
+// Giữ nguyên slug, không tách lấy id cuối nữa
+// VD: lofi-midnight-rain-1b0e0f.html => lofi-midnight-rain-1b0e0f
+const getTrackKeyFromSlug = (slug?: string) => {
   if (!slug) return "";
 
-  const cleanSlug = slug.replace(".html", "");
-  const parts = cleanSlug.split("-");
+  return decodeURIComponent(slug).replace(".html", "");
+};
 
-  return parts[parts.length - 1] || "";
+const getTrackId = (track?: ITrackTop) => {
+  if (!track) return "";
+
+  return (track as any)._id || (track as any).id || "";
 };
 
 const getOgImage = (imgUrl?: string) => {
@@ -37,13 +41,13 @@ const getOgImage = (imgUrl?: string) => {
     return `${SITE_URL}${imgUrl}`;
   }
 
-  return `${BACKEND_URL}/images/${imgUrl}`;
+  return `${BACKEND_URL}/uploads/images/${imgUrl}`;
 };
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const id = getTrackIdFromSlug(params?.slug);
+  const trackKey = getTrackKeyFromSlug(params?.slug);
 
-  if (!id) {
+  if (!trackKey) {
     return {
       title: "Track not found",
       description: "This track could not be found.",
@@ -58,7 +62,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
   try {
     const res = await sendRequest<IBackendRes<ITrackTop>>({
-      url: `${BACKEND_URL}/api/v1/tracks/${id}`,
+      url: `${BACKEND_URL}/api/v1/tracks/${trackKey}`,
       method: "GET",
     });
 
@@ -92,12 +96,12 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 }
 
 const DetailTrackPage = async ({ params }: Props) => {
-  const id = getTrackIdFromSlug(params?.slug);
+  const trackKey = getTrackKeyFromSlug(params?.slug);
 
-  if (!id) notFound();
+  if (!trackKey) notFound();
 
   const res = await sendRequest<IBackendRes<ITrackTop>>({
-    url: `${BACKEND_URL}/api/v1/tracks/${id}`,
+    url: `${BACKEND_URL}/api/v1/tracks/${trackKey}`,
     method: "GET",
     nextOption: {
       next: {
@@ -108,17 +112,11 @@ const DetailTrackPage = async ({ params }: Props) => {
 
   if (!res?.data) notFound();
 
-  const resComments = await sendRequest<
-    IBackendRes<IModelPaginate<ITrackComment>>
-  >({
-    url: `${BACKEND_URL}/api/v1/tracks/comments`,
-    method: "POST",
-    queryParams: {
-      current: 1,
-      pageSize: 100,
-      trackId: id,
-      sort: "-createdAt",
-    },
+  const trackId = getTrackId(res.data);
+
+  const resComments = await sendRequest<IBackendRes<ITrackComment[]>>({
+    url: `${BACKEND_URL}/api/v1/tracks/${trackId}/comments`,
+    method: "GET",
     nextOption: {
       next: {
         tags: ["track-comment"],
@@ -142,10 +140,7 @@ const DetailTrackPage = async ({ params }: Props) => {
           pb: 6,
         }}
       >
-        <WaveTrack
-          track={res.data}
-          comments={resComments?.data?.result ?? []}
-        />
+        <WaveTrack track={res.data} comments={resComments?.data ?? []} />
       </Container>
     </Box>
   );

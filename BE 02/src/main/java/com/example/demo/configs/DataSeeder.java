@@ -244,7 +244,7 @@ public class DataSeeder {
                     },
                     {
                             "Taboo",
-                            "Madism, Good Humans, Sadie Rose Van",
+                            "Madism, Good Humans",
                             "ncs",
                             "Taboo - Madism, Good Humans, Sadie Rose Van.jpg",
                             "Taboo - Madism, Good Humans, Sadie Rose Van.mp3"
@@ -280,7 +280,7 @@ public class DataSeeder {
                             "BLACKPINK - 뛰어(JUMP) MV.mp3"
                     },
                     {
-                            "Kill This Love.mp3",
+                            "Kill This Love",
                             "BLACKPINK",
                             "kpop",
                             "BLACKPINK - Kill This Love.jpeg",
@@ -313,6 +313,13 @@ public class DataSeeder {
                             "kpop",
                             "BLACKPINK - Shut Down.jpg",
                             "BLACKPINK - Shut Down.mp3"
+                    },
+                    {
+                            "Pink Venom",
+                            "BLACKPINK",
+                            "kpop",
+                            "Pink Venom.jpg",
+                            "Pink Venom.mp3"
                     },
 
                     // ===== LOFI =====
@@ -355,6 +362,13 @@ public class DataSeeder {
                             "Nơi Này Có Anh Sơn Tùng M-TP.mp3"
                     },
                     {
+                            "MUỘN RỒI MÀ SAO CÒN",
+                            "Sơn Tùng M-TP.",
+                            "pop",
+                            "MUỘN RỒI MÀ SAO CÒN.jpg",
+                            "MUỘN RỒI MÀ SAO CÒN.mp3"
+                    },
+                    {
                             "Không Phải Dạng Vừa Đâu",
                             "Sơn Tùng M-TP.",
                             "pop",
@@ -367,6 +381,13 @@ public class DataSeeder {
                             "pop",
                             "Lạc Trôi Sơn Tùng M-TP.jpg",
                             "Lạc Trôi Sơn Tùng M-TP.mp3"
+                    },
+                    {
+                            "ĐỪNG LÀM TRÁI TIM ANH ĐAU",
+                            "Sơn Tùng M-TP.",
+                            "pop",
+                            "ĐỪNG LÀM TRÁI TIM ANH ĐAU.jpg",
+                            "ĐỪNG LÀM TRÁI TIM ANH ĐAU.mp3"
                     },
             };
 

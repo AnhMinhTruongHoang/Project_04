@@ -113,7 +113,6 @@ export const sendRequestFile = async <T>(props: RequestFileProps) => {
   });
 };
 
-
 export const convertSlugUrl = (str: string) => {
   if (!str) return "";
 
@@ -310,27 +309,18 @@ export const deleteTrackApi = (id: string, accessToken?: string) => {
 export const getTopTracksApi = (category: string, limit = 10) => {
   return sendRequest<IBackendRes<ITrackTop[]>>({
     url: buildUrl("/api/v1/tracks/top"),
-    method: "POST",
-    body: {
-      category,
+    method: "GET",
+    queryParams: {
+      category: category.toLowerCase(),
       limit,
     },
   });
 };
 
-export const getTrackCommentsApi = (
-  trackId: string,
-  params: PaginationParams & { sort?: string } = {}
-) => {
-  return sendRequest<IBackendRes<IModelPaginate<ITrackComment>>>({
-    url: buildUrl("/api/v1/tracks/comments"),
-    method: "POST",
-    queryParams: {
-      current: params.current ?? 1,
-      pageSize: params.pageSize ?? 100,
-      trackId,
-      sort: params.sort ?? "-createdAt",
-    },
+export const getTrackCommentsApi = (trackId: string) => {
+  return sendRequest<IBackendRes<ITrackComment[]>>({
+    url: buildUrl(`/api/v1/tracks/${trackId}/comments`),
+    method: "GET",
   });
 };
 
@@ -355,29 +345,20 @@ export const getTracksByUserApi = (
 
 export const increaseTrackViewApi = (trackId: string) => {
   return sendRequest<IBackendRes<any>>({
-    url: buildUrl("/api/v1/tracks/increase-view"),
+    url: buildUrl(`/api/v1/tracks/${trackId}/play`),
     method: "POST",
-    body: {
-      trackId,
-    },
   });
 };
 
-export const searchTracksApi = (
-  title: string,
-  params: PaginationParams = {}
-) => {
-  return sendRequest<IBackendRes<IModelPaginate<ITrackTop>>>({
+export const searchTracksApi = (keyword: string) => {
+  return sendRequest<IBackendRes<ITrackTop[]>>({
     url: buildUrl("/api/v1/tracks/search"),
-    method: "POST",
-    body: {
-      title,
-      current: params.current ?? 1,
-      pageSize: params.pageSize ?? 10,
+    method: "GET",
+    queryParams: {
+      keyword,
     },
   });
 };
-
 /* =========================
    FILE UPLOAD APIs
 ========================= */
@@ -525,27 +506,39 @@ export const getPlaylistsByUserApi = (
 /* =========================
    LIKES APIs
 ========================= */
-
-export const likeTrackApi = (payload: LikePayload, accessToken?: string) => {
-  return sendRequest<IBackendRes<any>>({
-    url: buildUrl("/api/v1/likes"),
+export const likeTrackApi = (trackId: string, accessToken?: string) => {
+  return sendRequest<IBackendRes<ITrackTop>>({
+    url: buildUrl(`/api/v1/tracks/${trackId}/like`),
     method: "POST",
-    body: payload,
     headers: authHeaders(accessToken),
   });
 };
 
-export const getLikedTracksApi = (
-  accessToken?: string,
-  params: PaginationParams = {}
-) => {
-  return sendRequest<IBackendRes<IModelPaginate<ITrackTop>>>({
-    url: buildUrl("/api/v1/likes"),
+export const dislikeTrackApi = (trackId: string, accessToken?: string) => {
+  return sendRequest<IBackendRes<ITrackTop>>({
+    url: buildUrl(`/api/v1/tracks/${trackId}/dislike`),
+    method: "POST",
+    headers: authHeaders(accessToken),
+  });
+};
+
+export const getLikedTracksApi = (accessToken?: string) => {
+  return sendRequest<IBackendRes<ITrackTop[]>>({
+    url: buildUrl("/api/v1/tracks/liked"),
     method: "GET",
-    queryParams: {
-      current: params.current ?? 1,
-      pageSize: params.pageSize ?? 10,
-    },
+    headers: authHeaders(accessToken),
+  });
+};
+
+export const createTrackCommentApi = (
+  trackId: string,
+  payload: CreateCommentPayload,
+  accessToken?: string
+) => {
+  return sendRequest<IBackendRes<ITrackComment>>({
+    url: buildUrl(`/api/v1/tracks/${trackId}/comments`),
+    method: "POST",
+    body: payload,
     headers: authHeaders(accessToken),
   });
 };

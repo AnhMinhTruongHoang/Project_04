@@ -10,22 +10,29 @@ export const metadata: Metadata = {
 };
 
 export default async function HomePage() {
-  const chills = await sendRequest<IBackendRes<ITrackTop[]>>({
-    url: `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/v1/tracks/top`,
-    method: "POST",
-    body: { category: "CHILL", limit: 10 },
+  const ncs = await sendRequest<IBackendRes<ITrackTop[]>>({
+    url: `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/v1/tracks/top?category=ncs`,
+    method: "GET",
   });
 
-  const workouts = await sendRequest<IBackendRes<ITrackTop[]>>({
-    url: `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/v1/tracks/top`,
-    method: "POST",
-    body: { category: "WORKOUT", limit: 10 },
+  const pop = await sendRequest<IBackendRes<ITrackTop[]>>({
+    url: `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/v1/tracks/top?category=pop`,
+    method: "GET",
   });
 
-  const party = await sendRequest<IBackendRes<ITrackTop[]>>({
-    url: `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/v1/tracks/top`,
-    method: "POST",
-    body: { category: "PARTY", limit: 10 },
+  const kpop = await sendRequest<IBackendRes<ITrackTop[]>>({
+    url: `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/v1/tracks/top?category=kpop`,
+    method: "GET",
+  });
+
+  const lofi = await sendRequest<IBackendRes<ITrackTop[]>>({
+    url: `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/v1/tracks/top?category=lofi`,
+    method: "GET",
+  });
+
+  const edm = await sendRequest<IBackendRes<ITrackTop[]>>({
+    url: `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/v1/tracks/top?category=edm`,
+    method: "GET",
   });
 
   return (
@@ -52,9 +59,10 @@ export default async function HomePage() {
             minWidth: 0,
           }}
         >
-          <MainSlider title={"Top Chill"} data={chills?.data ?? []} />
-          <MainSlider title={"Top Workout"} data={workouts?.data ?? []} />
-          <MainSlider title={"Top Party"} data={party?.data ?? []} />
+          <MainSlider title="Top NCS" data={ncs?.data ?? []} />
+          <MainSlider title="Top POP" data={pop?.data ?? []} />
+          <MainSlider title="Top KPOP" data={kpop?.data ?? []} />
+          <MainSlider title="Top LOFI" data={lofi?.data ?? []} />
         </Box>
 
         <RightSidebar />

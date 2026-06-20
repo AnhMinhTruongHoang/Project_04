@@ -15,8 +15,6 @@ import TextField from "@mui/material/TextField";
 import Typography from "@mui/material/Typography";
 import Stack from "@mui/material/Stack";
 import MuiCard from "@mui/material/Card";
-import Snackbar from "@mui/material/Snackbar";
-import Alert from "@mui/material/Alert";
 import Avatar from "@mui/material/Avatar";
 import MenuItem from "@mui/material/MenuItem";
 import InputAdornment from "@mui/material/InputAdornment";
@@ -27,14 +25,7 @@ import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import Visibility from "@mui/icons-material/Visibility";
 import VisibilityOff from "@mui/icons-material/VisibilityOff";
 import { sendRequest } from "@/utils/api";
-import {
-  Checkbox,
-  Dialog,
-  DialogActions,
-  DialogContent,
-  DialogTitle,
-  FormControlLabel,
-} from "@mui/material";
+import { Checkbox, FormControlLabel } from "@mui/material";
 import TermsModal from "./termsModal";
 
 const Card = styled(MuiCard)(({ theme }) => ({
@@ -186,12 +177,12 @@ const AuthSignUp = () => {
         url: `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/v1/auth/register`,
         method: "POST",
         body: {
-          name,
-          email,
+          name: name.trim(),
+          email: email.trim(),
           password,
-          age,
+          age: Number(age),
           gender,
-          address,
+          address: address.trim(),
         },
       });
 

@@ -14,11 +14,31 @@ export const metadata: Metadata = {
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "";
 
+const getItemId = (item?: any) => {
+  return item?._id || item?.id || "";
+};
+
 const getUserIdFromSlug = (slug: string) => {
   if (!slug) return "";
 
-  const parts = slug.split("-");
-  return parts[parts.length - 1] || slug;
+  const cleanSlug = decodeURIComponent(slug).replace(".html", "");
+  const parts = cleanSlug.split("-");
+
+  return parts[parts.length - 1] || cleanSlug;
+};
+
+const normalizeUser = (user?: any, fallbackId = ""): IUser => {
+  const userId = getItemId(user) || fallbackId;
+
+  return {
+    ...user,
+    _id: userId,
+    id: userId,
+    name: user?.name || user?.email || "User",
+    email: user?.email || "",
+    role: user?.role || "USER",
+    type: user?.type || "SYSTEM",
+  } as any;
 };
 
 const ProfilePage = async ({ params }: { params: { slug: string } }) => {
@@ -34,7 +54,7 @@ const ProfilePage = async ({ params }: { params: { slug: string } }) => {
     : {};
 
   const [tracksRes, userRes] = await Promise.all([
-    sendRequest<IBackendRes<IModelPaginate<ITrackTop>>>({
+    sendRequest<IBackendRes<IModelPaginate<ITrackTop> | ITrackTop[]>>({
       url: `${BACKEND_URL}/api/v1/tracks/users`,
       method: "POST",
       queryParams: {
@@ -64,21 +84,20 @@ const ProfilePage = async ({ params }: { params: { slug: string } }) => {
     }),
   ]);
 
-  const tracks = tracksRes?.data?.result ?? [];
+  const responseTracks = tracksRes?.data as any;
+
+  const tracks: ITrackTop[] = Array.isArray(responseTracks)
+    ? responseTracks
+    : responseTracks?.result ?? [];
 
   const sessionUser = session?.user as any;
+  const sessionUserId = getItemId(sessionUser);
 
-  const profileUser =
-    userRes?.data ??
-    (sessionUser?._id === userId
-      ? sessionUser
-      : {
-          _id: userId,
-          name: "User",
-          email: "",
-          role: "USER",
-          type: "SYSTEM",
-        });
+  const profileUser = userRes?.data
+    ? normalizeUser(userRes.data, userId)
+    : sessionUserId === userId
+    ? normalizeUser(sessionUser, userId)
+    : normalizeUser(null, userId);
 
   return (
     <Box

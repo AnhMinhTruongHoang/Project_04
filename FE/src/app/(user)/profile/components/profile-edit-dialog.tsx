@@ -67,6 +67,10 @@ const ProfileEditDialog = ({ open, onClose, user }: Props) => {
   const [avatarError, setAvatarError] = useState(false);
   const [loading, setLoading] = useState(false);
 
+  const getUserId = (user?: Partial<IUser> | null) => {
+    return (user as any)?._id || (user as any)?.id || "";
+  };
+
   const getInitials = (name?: string, email?: string) => {
     const value = name?.trim() || email?.trim() || "User";
     const words = value.split(" ").filter(Boolean);
@@ -90,7 +94,7 @@ const ProfileEditDialog = ({ open, onClose, user }: Props) => {
     if (avatar.startsWith("http")) return avatar;
     if (avatar.startsWith("/")) return avatar;
 
-    return `${process.env.NEXT_PUBLIC_BACKEND_URL}/images/${avatar}`;
+    return `${process.env.NEXT_PUBLIC_BACKEND_URL}/uploads/images/${avatar}`;
   };
   const avatarUrl = useMemo(() => {
     return getUserAvatarUrl(user);
@@ -103,7 +107,7 @@ const ProfileEditDialog = ({ open, onClose, user }: Props) => {
     const parts = name.split(" ");
 
     setDisplayName(name);
-    setProfileUrl(`soundclone.com/${user?._id || ""}`);
+    setProfileUrl(`soundclone.com/${getUserId(user)}`);
     setFirstName(parts[0] || "");
     setLastName(parts.slice(1).join(" ") || "");
     setCity("");
@@ -113,8 +117,16 @@ const ProfileEditDialog = ({ open, onClose, user }: Props) => {
   }, [open, user]);
 
   const handleSave = async () => {
-    if (!user?._id) {
+    const userId = getUserId(user);
+    const accessToken = (session as any)?.access_token;
+
+    if (!userId) {
       toast.error("User not found.");
+      return;
+    }
+
+    if (!accessToken) {
+      toast.error("Please login first.");
       return;
     }
 
@@ -134,13 +146,14 @@ const ProfileEditDialog = ({ open, onClose, user }: Props) => {
         url: `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/v1/users`,
         method: "PATCH",
         body: {
-          _id: user._id,
+          id: userId,
+          _id: userId,
           name: displayName.trim(),
-          address: addressValue || user.address || "",
-          role: user.role,
+          address: addressValue || user?.address || "",
+          role: user?.role,
         },
         headers: {
-          Authorization: `Bearer ${(session as any)?.access_token}`,
+          Authorization: `Bearer ${accessToken}`,
         },
       });
 

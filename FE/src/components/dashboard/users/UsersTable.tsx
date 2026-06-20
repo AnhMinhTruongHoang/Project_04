@@ -49,6 +49,10 @@ const getInitials = (name?: string, email?: string) => {
   return value.slice(0, 2).toUpperCase();
 };
 
+const getItemId = (item?: any) => {
+  return item?._id || item?.id || "";
+};
+
 const UsersTable = ({ users, accessToken }: Props) => {
   const router = useRouter();
 
@@ -90,7 +94,7 @@ const UsersTable = ({ users, accessToken }: Props) => {
 
   const handleOpenEdit = (user: IUser) => {
     setEditUser({
-      _id: user._id,
+      _id: getItemId(user),
       name: user.name || "",
       email: user.email || "",
       age: user.age || "",
@@ -109,7 +113,15 @@ const UsersTable = ({ users, accessToken }: Props) => {
   };
 
   const handleSaveUser = async () => {
-    if (!editUser?._id) return;
+    if (!editUser?._id) {
+      alert("User not found.");
+      return;
+    }
+
+    if (!accessToken) {
+      alert("Please login first.");
+      return;
+    }
 
     setSaving(true);
 
@@ -117,10 +129,11 @@ const UsersTable = ({ users, accessToken }: Props) => {
       url: `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/v1/users`,
       method: "PATCH",
       body: {
+        id: editUser._id,
         _id: editUser._id,
         name: editUser.name,
         email: editUser.email,
-        age: editUser.age,
+        age: editUser.age ? Number(editUser.age) : undefined,
         gender: editUser.gender,
         address: editUser.address,
         role: editUser.role,
@@ -144,16 +157,28 @@ const UsersTable = ({ users, accessToken }: Props) => {
   };
 
   const handleDeleteUser = async (user: IUser) => {
+    const userId = getItemId(user);
+
+    if (!userId) {
+      alert("User not found.");
+      return;
+    }
+
+    if (!accessToken) {
+      alert("Please login first.");
+      return;
+    }
+
     const isConfirm = window.confirm(
       `Are you sure you want to delete "${user.name || user.email}"?`
     );
 
     if (!isConfirm) return;
 
-    setDeletingId(user._id);
+    setDeletingId(userId);
 
     const res = await sendRequest<IBackendRes<any>>({
-      url: `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/v1/users/${user._id}`,
+      url: `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/v1/users/${userId}`,
       method: "DELETE",
       headers: {
         Authorization: `Bearer ${accessToken}`,
@@ -317,7 +342,7 @@ const UsersTable = ({ users, accessToken }: Props) => {
             <Tooltip title="Delete user">
               <IconButton
                 onClick={() => handleDeleteUser(user)}
-                disabled={deletingId === user._id}
+                disabled={deletingId === getItemId(user)}
                 size="small"
                 sx={{
                   color: "#ff5a5a",
@@ -399,7 +424,7 @@ const UsersTable = ({ users, accessToken }: Props) => {
         <DataGrid
           rows={filteredUsers}
           columns={columns}
-          getRowId={(row) => row._id}
+          getRowId={(row) => getItemId(row)}
           autoHeight
           disableRowSelectionOnClick
           pageSizeOptions={[5, 10, 20, 50]}

@@ -19,17 +19,20 @@ const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "";
 const DashboardPlaylistsPage = async () => {
   const session = await getServerSession(authOptions);
   const accessToken = (session as any)?.access_token;
-
-  const res = await sendRequest<IBackendRes<IModelPaginate<IPlaylist>>>({
+  const res = await sendRequest<
+    IBackendRes<IModelPaginate<IPlaylist> | IPlaylist[]>
+  >({
     url: `${BACKEND_URL}/api/v1/playlists`,
     method: "GET",
     queryParams: {
       current: 1,
       pageSize: 100,
     },
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-    },
+    headers: accessToken
+      ? {
+          Authorization: `Bearer ${accessToken}`,
+        }
+      : {},
     nextOption: {
       next: {
         tags: ["dashboard-playlists"],
@@ -37,7 +40,11 @@ const DashboardPlaylistsPage = async () => {
     },
   });
 
-  const playlists = res?.data?.result ?? [];
+  const responseData = res?.data as any;
+
+  const playlists: IPlaylist[] = Array.isArray(responseData)
+    ? responseData
+    : responseData?.result ?? [];
 
   return (
     <Box>

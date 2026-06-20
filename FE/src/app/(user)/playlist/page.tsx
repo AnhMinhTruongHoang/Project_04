@@ -21,45 +21,68 @@ export const metadata: Metadata = {
   description: "miêu tả thôi mà",
 };
 
+const getItemId = (item?: any) => {
+  return item?._id || item?.id || "";
+};
+
 const isTrackObject = (
   track: string | ITrackTop | IShareTrack
 ): track is ITrackTop | IShareTrack => {
-  return typeof track === "object" && track !== null && "_id" in track;
+  return (
+    typeof track === "object" &&
+    track !== null &&
+    Boolean((track as any)._id || (track as any).id)
+  );
 };
 
 const toShareTrack = (track: ITrackTop | IShareTrack): IShareTrack => {
+  const trackId = getItemId(track);
+
   return {
     ...track,
+    _id: trackId,
+    id: trackId,
     isPlaying: "isPlaying" in track ? track.isPlaying : false,
-  };
+  } as any;
 };
 
 const PlaylistPage = async () => {
   const session = await getServerSession(authOptions);
+  const accessToken = (session as any)?.access_token;
 
-  const res = await sendRequest<IBackendRes<IModelPaginate<IPlaylist>>>({
+  const headers = accessToken
+    ? {
+        Authorization: `Bearer ${accessToken}`,
+      }
+    : {};
+
+  const res = await sendRequest<
+    IBackendRes<IModelPaginate<IPlaylist> | IPlaylist[]>
+  >({
     url: `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/v1/playlists/by-user`,
-    method: "POST",
+    method: "GET",
     queryParams: { current: 1, pageSize: 100 },
-    headers: {
-      Authorization: `Bearer ${session?.access_token}`,
-    },
+    headers,
     nextOption: {
       next: { tags: ["playlist-by-user"] },
     },
   });
 
-  const res1 = await sendRequest<IBackendRes<IModelPaginate<ITrackTop>>>({
+  const res1 = await sendRequest<
+    IBackendRes<IModelPaginate<ITrackTop> | ITrackTop[]>
+  >({
     url: `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/v1/tracks`,
     method: "GET",
     queryParams: { current: 1, pageSize: 100 },
-    headers: {
-      Authorization: `Bearer ${session?.access_token}`,
-    },
+    headers,
   });
 
-  const playlists = res?.data?.result ?? [];
-  const tracks = res1?.data?.result ?? [];
+  const getList = <T,>(data: any): T[] => {
+    return Array.isArray(data) ? data : data?.result ?? [];
+  };
+
+  const playlists = getList<IPlaylist>(res?.data);
+  const tracks = getList<ITrackTop>(res1?.data);
 
   return (
     <Box
@@ -201,7 +224,7 @@ const PlaylistPage = async () => {
 
               return (
                 <Accordion
-                  key={playlist._id}
+                  key={getItemId(playlist)}
                   disableGutters
                   sx={{
                     mb: 1.5,
@@ -277,7 +300,7 @@ const PlaylistPage = async () => {
                         const normalizedTrack = toShareTrack(track);
 
                         return (
-                          <Box key={normalizedTrack._id}>
+                          <Box key={getItemId(normalizedTrack)}>
                             {index === 0 && (
                               <Divider
                                 sx={{ borderColor: "rgba(255,255,255,0.08)" }}

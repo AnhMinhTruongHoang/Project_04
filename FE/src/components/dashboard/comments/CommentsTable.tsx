@@ -43,6 +43,10 @@ const formatMoment = (seconds = 0) => {
   return `${minutes}:${paddedSeconds}`;
 };
 
+const getItemId = (item?: any) => {
+  return item?._id || item?.id || "";
+};
+
 const getTrackTitle = (comment: ITrackComment) => {
   const track = comment.track as any;
 
@@ -99,16 +103,28 @@ const CommentsTable = ({ comments, accessToken }: Props) => {
   };
 
   const handleDeleteComment = async (comment: ITrackComment) => {
+    const commentId = getItemId(comment);
+
+    if (!commentId) {
+      alert("Comment not found.");
+      return;
+    }
+
+    if (!accessToken) {
+      alert("Please login first.");
+      return;
+    }
+
     const isConfirm = window.confirm(
       `Are you sure you want to delete this comment?`
     );
 
     if (!isConfirm) return;
 
-    setDeletingId(comment._id);
+    setDeletingId(commentId);
 
     const res = await sendRequest<IBackendRes<any>>({
-      url: `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/v1/comments/${comment._id}`,
+      url: `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/v1/comments/${commentId}`,
       method: "DELETE",
       headers: {
         Authorization: `Bearer ${accessToken}`,
@@ -323,7 +339,7 @@ const CommentsTable = ({ comments, accessToken }: Props) => {
           <Tooltip title="Delete comment">
             <IconButton
               onClick={() => handleDeleteComment(comment)}
-              disabled={deletingId === comment._id}
+              disabled={deletingId === getItemId(comment)}
               size="small"
               sx={{
                 color: "#ff5a5a",
@@ -404,7 +420,7 @@ const CommentsTable = ({ comments, accessToken }: Props) => {
         <DataGrid
           rows={filteredComments}
           columns={columns}
-          getRowId={(row) => row._id}
+          getRowId={(row) => getItemId(row)}
           autoHeight
           disableRowSelectionOnClick
           pageSizeOptions={[5, 10, 20, 50]}

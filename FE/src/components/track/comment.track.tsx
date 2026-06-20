@@ -29,6 +29,10 @@ const getInitials = (name?: string, email?: string) => {
   return value.slice(0, 2).toUpperCase();
 };
 
+const getTrackId = (track?: any) => {
+  return track?._id || track?.id || "";
+};
+
 const CommentTrack = (props: IProps) => {
   const router = useRouter();
   const hasMounted = useHasMounted();
@@ -36,6 +40,19 @@ const CommentTrack = (props: IProps) => {
   const { comments, track, wavesurfer } = props;
   const [yourComment, setYourComment] = useState("");
   const { data: session } = useSession();
+
+  const sessionAny = session as any;
+
+  const accessToken =
+    sessionAny?.access_token ||
+    sessionAny?.accessToken ||
+    sessionAny?.user?.access_token ||
+    sessionAny?.user?.accessToken ||
+    "";
+
+  const isLoggedIn = Boolean(accessToken || session?.user);
+
+  const trackId = getTrackId(track);
 
   const uploaderName = track?.uploader?.name || "User";
   const uploaderEmail = track?.uploader?.email || "Social user";
@@ -50,18 +67,21 @@ const CommentTrack = (props: IProps) => {
 
   const handleSubmit = async () => {
     if (!yourComment.trim()) return;
-    if (!track?._id) return;
+    if (!trackId) return;
+    if (!accessToken) {
+      console.log("Missing access token in session:", session);
+      return;
+    }
 
     const res = await sendRequest<IBackendRes<ITrackComment>>({
-      url: `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/v1/comments`,
+      url: `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/v1/tracks/${trackId}/comments`,
       method: "POST",
       body: {
         content: yourComment.trim(),
         moment: Math.round(wavesurfer?.getCurrentTime() ?? 0),
-        track: track._id,
       },
       headers: {
-        Authorization: `Bearer ${(session as any)?.access_token}`,
+        Authorization: `Bearer ${accessToken}`,
       },
     });
 
@@ -101,7 +121,7 @@ const CommentTrack = (props: IProps) => {
     >
       {/* Comment input */}
       <Box sx={{ mb: 4 }}>
-        {session?.user && (
+        {isLoggedIn && (
           <TextField
             value={yourComment}
             onChange={(e) => setYourComment(e.target.value)}
@@ -212,7 +232,7 @@ const CommentTrack = (props: IProps) => {
 
               return (
                 <Box
-                  key={comment._id}
+                  key={comment._id || (comment as any).id}
                   sx={{
                     display: "flex",
                     justifyContent: "space-between",
@@ -307,7 +327,9 @@ const CommentTrack = (props: IProps) => {
                       pt: 0.3,
                     }}
                   >
-                    {hasMounted && dayjs(comment.createdAt).fromNow()}
+                    {hasMounted && comment.createdAt
+                      ? dayjs(comment.createdAt).fromNow()
+                      : ""}
                   </Typography>
                 </Box>
               );

@@ -12,6 +12,7 @@ import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
 import MusicOffRoundedIcon from "@mui/icons-material/MusicOffRounded";
 import PlayArrowRoundedIcon from "@mui/icons-material/PlayArrowRounded";
 import FavoriteRoundedIcon from "@mui/icons-material/FavoriteRounded";
+import { useSearchParams } from "next/navigation";
 
 type Props = {
   query?: string;
@@ -21,19 +22,33 @@ const DEFAULT_IMAGE = "/audio/SC.png";
 const DEFAULT_AUDIO = "/audio/DemoS.mp3";
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "";
 
-const getTrackImage = (imgUrl?: string) => {
+const getTrackId = (track?: any) => {
+  return track?._id || track?.id || "";
+};
+
+const getTrackImage = (imgUrl?: string | null) => {
   if (!imgUrl) return DEFAULT_IMAGE;
   if (imgUrl.startsWith("http")) return imgUrl;
+  if (imgUrl.startsWith("/uploads/images")) return `${BACKEND_URL}${imgUrl}`;
   if (imgUrl.startsWith("/")) return imgUrl;
 
-  return `${BACKEND_URL}/images/${imgUrl}`;
+  return `${BACKEND_URL}/uploads/images/${imgUrl}`;
+};
+
+const getTrackAudio = (trackUrl?: string | null) => {
+  if (!trackUrl) return DEFAULT_AUDIO;
+  if (trackUrl.startsWith("http")) return trackUrl;
+  if (trackUrl.startsWith("/uploads/audio")) return `${BACKEND_URL}${trackUrl}`;
+  if (trackUrl.startsWith("/")) return `${BACKEND_URL}${trackUrl}`;
+
+  return `${BACKEND_URL}/uploads/audio/${trackUrl}`;
 };
 
 const ClientSearch = ({ query = "" }: Props) => {
+  const searchParams = useSearchParams();
   const [tracks, setTracks] = useState<ITrackTop[]>([]);
   const [loading, setLoading] = useState(false);
-
-  const keyword = query.trim();
+  const keyword = (searchParams.get("q") || query || "").trim();
 
   useEffect(() => {
     document.title = keyword
@@ -52,7 +67,9 @@ const ClientSearch = ({ query = "" }: Props) => {
       try {
         setLoading(true);
 
-        const res = await sendRequest<IBackendRes<IModelPaginate<ITrackTop>>>({
+        const res = await sendRequest<
+          IBackendRes<IModelPaginate<ITrackTop> | ITrackTop[]>
+        >({
           url: `${BACKEND_URL}/api/v1/tracks/search`,
           method: "POST",
           body: {
@@ -64,7 +81,13 @@ const ClientSearch = ({ query = "" }: Props) => {
 
         if (!active) return;
 
-        setTracks(res?.data?.result ?? []);
+        const responseData = res?.data as any;
+
+        const result: ITrackTop[] = Array.isArray(responseData)
+          ? responseData
+          : responseData?.result ?? [];
+
+        setTracks(result);
       } catch (error) {
         console.log("SEARCH TRACK ERROR:", error);
 
@@ -262,17 +285,20 @@ const ClientSearch = ({ query = "" }: Props) => {
           }}
         >
           {tracks.map((track) => {
+            const trackId = getTrackId(track);
             const imageSrc = getTrackImage(track?.imgUrl);
 
-            const href = `/track/${convertSlugUrl(track.title)}-${
-              track._id
-            }.html?audio=${encodeURIComponent(
-              track.trackUrl || DEFAULT_AUDIO
+            const trackSlug =
+              (track as any).slug ||
+              `${convertSlugUrl(track.title)}-${trackId}`;
+
+            const href = `/track/${trackSlug}.html?audio=${encodeURIComponent(
+              getTrackAudio(track.trackUrl)
             )}`;
 
             return (
               <Box
-                key={track._id}
+                key={getTrackId(track)}
                 sx={{
                   display: "flex",
                   alignItems: "center",

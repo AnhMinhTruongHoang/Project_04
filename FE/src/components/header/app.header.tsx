@@ -431,12 +431,10 @@ const AppHeader = () => {
         <MenuItem
           onClick={() => {
             setAnchorEl(null);
+            const userId = user?._id || user?.id;
 
-            if (user?._id) {
-              const name = convertSlugUrl(user?.name || "user");
-              router.push(`/profile/${name}-${user._id}`);
-            } else {
-              router.push("/auth/signin");
+            if (userId) {
+              router.push(`/profile/${userId}`);
             }
           }}
         >

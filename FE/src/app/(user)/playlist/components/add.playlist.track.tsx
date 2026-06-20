@@ -21,7 +21,6 @@ import Chip from "@mui/material/Chip";
 import Typography from "@mui/material/Typography";
 import PlaylistAddCheckRoundedIcon from "@mui/icons-material/PlaylistAddCheckRounded";
 import QueueMusicRoundedIcon from "@mui/icons-material/QueueMusicRounded";
-
 import { useToast } from "@/utils/toast";
 import { sendRequest } from "@/utils/api";
 
@@ -64,6 +63,10 @@ const AddPlaylistTrack = (props: IProps) => {
     };
   };
 
+  const getItemId = (item?: any): string => {
+    return item?._id || item?.id || "";
+  };
+
   const getPlaylistTrackId = (track: unknown): string => {
     if (!track) return "";
 
@@ -71,14 +74,20 @@ const AddPlaylistTrack = (props: IProps) => {
       return track;
     }
 
-    if (typeof track === "object" && "_id" in track) {
-      return String((track as any)._id);
+    if (typeof track === "object") {
+      return String((track as any)._id || (track as any).id || "");
     }
 
     return "";
   };
-
   const handleSubmit = async () => {
+    const accessToken = (session as any)?.access_token;
+
+    if (!accessToken) {
+      toast.error("Please login first.");
+      return;
+    }
+
     if (!playlistId) {
       toast.error("Please select a playlist.");
       return;
@@ -89,7 +98,9 @@ const AddPlaylistTrack = (props: IProps) => {
       return;
     }
 
-    const chosenPlaylist = playlists.find((item) => item._id === playlistId);
+    const chosenPlaylist = playlists.find(
+      (item) => getItemId(item) === playlistId
+    );
 
     if (!chosenPlaylist) {
       toast.error("Playlist not found.");
@@ -110,13 +121,13 @@ const AddPlaylistTrack = (props: IProps) => {
       url: `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/v1/playlists`,
       method: "PATCH",
       body: {
-        id: chosenPlaylist._id,
+        id: playlistId,
         title: chosenPlaylist.title,
         isPublic: chosenPlaylist.isPublic,
         tracks: mergedTracks,
       },
       headers: {
-        Authorization: `Bearer ${session?.access_token}`,
+        Authorization: `Bearer ${accessToken}`,
       },
     });
 
@@ -317,8 +328,10 @@ const AddPlaylistTrack = (props: IProps) => {
                 }}
               >
                 {playlists.map((item) => {
+                  const itemId = getItemId(item);
+
                   return (
-                    <MenuItem key={item._id} value={item._id}>
+                    <MenuItem key={itemId} value={itemId}>
                       {item.title}
                     </MenuItem>
                   );
@@ -432,11 +445,12 @@ const AddPlaylistTrack = (props: IProps) => {
                 }}
               >
                 {tracks.map((track) => {
-                  const value = `${track.title}###${track._id}`;
+                  const trackId = getItemId(track);
+                  const value = `${track.title}###${trackId}`;
 
                   return (
                     <MenuItem
-                      key={track._id}
+                      key={trackId}
                       value={value}
                       style={getStyles(value, tracksId, theme)}
                     >

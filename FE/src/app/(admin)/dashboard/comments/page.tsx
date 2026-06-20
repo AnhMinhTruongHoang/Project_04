@@ -20,16 +20,20 @@ const DashboardCommentsPage = async () => {
   const session = await getServerSession(authOptions);
   const accessToken = (session as any)?.access_token;
 
-  const res = await sendRequest<IBackendRes<IModelPaginate<ITrackComment>>>({
+  const res = await sendRequest<
+    IBackendRes<IModelPaginate<ITrackComment> | ITrackComment[]>
+  >({
     url: `${BACKEND_URL}/api/v1/comments`,
     method: "GET",
     queryParams: {
       current: 1,
       pageSize: 100,
     },
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-    },
+    headers: accessToken
+      ? {
+          Authorization: `Bearer ${accessToken}`,
+        }
+      : {},
     nextOption: {
       next: {
         tags: ["dashboard-comments"],
@@ -37,7 +41,11 @@ const DashboardCommentsPage = async () => {
     },
   });
 
-  const comments = res?.data?.result ?? [];
+  const responseData = res?.data as any;
+
+  const comments: ITrackComment[] = Array.isArray(responseData)
+    ? responseData
+    : responseData?.result ?? [];
 
   return (
     <Box>

@@ -28,7 +28,7 @@ const DashboardPage = async () => {
   };
 
   const [tracksRes, usersRes, playlistsRes, commentsRes] = await Promise.all([
-    sendRequest<IBackendRes<IModelPaginate<ITrackTop>>>({
+    sendRequest<IBackendRes<IModelPaginate<ITrackTop> | ITrackTop[]>>({
       url: `${BACKEND_URL}/api/v1/tracks`,
       method: "GET",
       queryParams: {
@@ -38,7 +38,7 @@ const DashboardPage = async () => {
       headers,
     }),
 
-    sendRequest<IBackendRes<IModelPaginate<IUser>>>({
+    sendRequest<IBackendRes<IModelPaginate<IUser> | IUser[]>>({
       url: `${BACKEND_URL}/api/v1/users`,
       method: "GET",
       queryParams: {
@@ -48,7 +48,7 @@ const DashboardPage = async () => {
       headers,
     }),
 
-    sendRequest<IBackendRes<IModelPaginate<IPlaylist>>>({
+    sendRequest<IBackendRes<IModelPaginate<IPlaylist> | IPlaylist[]>>({
       url: `${BACKEND_URL}/api/v1/playlists`,
       method: "GET",
       queryParams: {
@@ -58,7 +58,7 @@ const DashboardPage = async () => {
       headers,
     }),
 
-    sendRequest<IBackendRes<IModelPaginate<ITrackComment>>>({
+    sendRequest<IBackendRes<IModelPaginate<ITrackComment> | ITrackComment[]>>({
       url: `${BACKEND_URL}/api/v1/comments`,
       method: "GET",
       queryParams: {
@@ -69,10 +69,16 @@ const DashboardPage = async () => {
     }),
   ]);
 
-  const totalTracks = tracksRes?.data?.meta?.total ?? 0;
-  const totalUsers = usersRes?.data?.meta?.total ?? 0;
-  const totalPlaylists = playlistsRes?.data?.meta?.total ?? 0;
-  const totalComments = commentsRes?.data?.meta?.total ?? 0;
+  const getTotal = (data: any) => {
+    if (Array.isArray(data)) return data.length;
+
+    return data?.meta?.total ?? data?.total ?? data?.result?.length ?? 0;
+  };
+
+  const totalTracks = getTotal(tracksRes?.data);
+  const totalUsers = getTotal(usersRes?.data);
+  const totalPlaylists = getTotal(playlistsRes?.data);
+  const totalComments = getTotal(commentsRes?.data);
 
   return (
     <Box>

@@ -45,28 +45,52 @@ const AppFooter = () => {
   const [queueLoading, setQueueLoading] = useState(false);
   const [queueTracks, setQueueTracks] = useState<ITrackTop[]>([]);
   const [autoplayStation, setAutoplayStation] = useState(true);
-
   const queueOpen = Boolean(queueAnchorEl);
-
   const footerCurrentTime = Number(footerTrack?.currentTime || 0);
   const footerDuration = Number(footerTrack?.duration || 0);
+
+  const getTrackId = (track?: any) => {
+    return track?._id || track?.id || "";
+  };
+
+  const getImageUrl = (imgUrl?: string) => {
+    if (!imgUrl) return "/audio/SC.png";
+
+    if (imgUrl.startsWith("http")) return imgUrl;
+    if (imgUrl.startsWith("/")) return imgUrl;
+
+    return `${process.env.NEXT_PUBLIC_BACKEND_URL}/uploads/images/${imgUrl}`;
+  };
+
+  const getAudioUrl = (trackUrl?: string) => {
+    if (!trackUrl) return "";
+
+    if (trackUrl.startsWith("http")) return trackUrl;
+    if (trackUrl.startsWith("/")) {
+      return `${process.env.NEXT_PUBLIC_BACKEND_URL}${trackUrl}`;
+    }
+
+    return `${process.env.NEXT_PUBLIC_BACKEND_URL}/uploads/audio/${trackUrl}`;
+  };
 
   /// footer playlist
 
   const isTrackTopObject = (track: unknown): track is ITrackTop => {
-    return (
-      typeof track === "object" &&
-      track !== null &&
-      "_id" in track &&
-      "title" in track &&
-      "trackUrl" in track
-    );
+    if (typeof track !== "object" || track === null) return false;
+
+    const item = track as any;
+
+    return Boolean((item._id || item.id) && item.title && item.trackUrl);
   };
 
   const getTrackHref = (track: ITrackTop, autoplay = false) => {
-    const href = `/track/${convertSlugUrl(track.title)}-${
-      track._id
-    }.html?audio=${encodeURIComponent(track.trackUrl)}`;
+    const trackId = getTrackId(track);
+    const trackSlug =
+      (track as any).slug || `${convertSlugUrl(track.title)}-${trackId}`;
+
+    const href = `/track/${trackSlug}.html?audio=${encodeURIComponent(
+      getAudioUrl(track.trackUrl)
+    )}`;
 
     return autoplay ? `${href}&autoplay=1` : href;
   };
@@ -80,13 +104,11 @@ const AppFooter = () => {
     try {
       const accessToken = (session as any)?.access_token;
 
-      const res = await sendRequest<IBackendRes<IModelPaginate<IPlaylist>>>({
+      const res = await sendRequest<
+        IBackendRes<IPlaylist[] | IModelPaginate<IPlaylist>>
+      >({
         url: `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/v1/playlists/by-user`,
-        method: "POST",
-        queryParams: {
-          current: 1,
-          pageSize: 100,
-        },
+        method: "GET",
         headers: accessToken
           ? {
               Authorization: `Bearer ${accessToken}`,
@@ -94,7 +116,11 @@ const AppFooter = () => {
           : {},
       });
 
-      const playlists = res?.data?.result || [];
+      const responseData = res?.data as any;
+
+      const playlists: IPlaylist[] = Array.isArray(responseData)
+        ? responseData
+        : responseData?.result || [];
 
       const tracks: ITrackTop[] = playlists.flatMap((playlist) => {
         const playlistTracks = (playlist.tracks || []) as unknown[];
@@ -103,7 +129,7 @@ const AppFooter = () => {
       });
 
       const uniqueTracks = Array.from(
-        new Map(tracks.map((track) => [track._id, track])).values()
+        new Map(tracks.map((track) => [getTrackId(track), track])).values()
       );
 
       setQueueTracks(uniqueTracks);
@@ -146,9 +172,10 @@ const AppFooter = () => {
       source: "footer",
     } as any);
   };
-
   const getCurrentQueueIndex = (tracks: ITrackTop[]) => {
-    return tracks.findIndex((track) => track._id === currentTrack?._id);
+    const currentId = getTrackId(currentTrack);
+
+    return tracks.findIndex((track) => getTrackId(track) === currentId);
   };
 
   const handlePlayPreviousTrack = async () => {
@@ -200,13 +227,7 @@ const AppFooter = () => {
       footerTrack?.source === "footer-control");
 
   const getTrackImage = () => {
-    const imgUrl = currentTrack?.imgUrl;
-
-    if (!imgUrl) return "/audio/SC.png";
-    if (imgUrl.startsWith("http")) return imgUrl;
-    if (imgUrl.startsWith("/")) return imgUrl;
-
-    return `${process.env.NEXT_PUBLIC_BACKEND_URL}/images/${imgUrl}`;
+    return getImageUrl((currentTrack as any)?.imgUrl);
   };
 
   const handleChangeVolume = (value: number) => {
@@ -617,7 +638,7 @@ const AppFooter = () => {
               showSkipControls
               onClickPrevious={handlePlayPreviousTrack}
               onClickNext={handlePlayNextTrack}
-              src={`${process.env.NEXT_PUBLIC_BACKEND_URL}/tracks/${currentTrack.trackUrl}`}
+              src={getAudioUrl((currentTrack as any)?.trackUrl)}
               volume={0.5}
               style={{
                 boxShadow: "unset",

@@ -52,6 +52,7 @@ declare global {
     gender?: string;
     address?: string;
     isVerify?: boolean;
+    avatarUrl?: string;
     isDeleted?: boolean;
     createdAt?: string;
     updatedAt?: string;

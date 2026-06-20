@@ -260,7 +260,7 @@ public class DataSeeder {
                             "Wonder",
                             "Unknown Brain",
                             "ncs",
-                            "wonder.jpg",
+                            "ws.jpg",
                             "wonder.mp3"
                     },
                     {

@@ -26,6 +26,14 @@ interface IProps {
   buttonHeight?: number;
 }
 
+const getTrackId = (track?: any): string => {
+  return track?._id || track?.id || "";
+};
+
+const getPlaylistId = (playlist?: any): string => {
+  return playlist?._id || playlist?.id || "";
+};
+
 const getPlaylistTrackId = (track: unknown): string => {
   if (!track) return "";
 
@@ -33,8 +41,8 @@ const getPlaylistTrackId = (track: unknown): string => {
     return track;
   }
 
-  if (typeof track === "object" && "_id" in track) {
-    return String((track as any)._id);
+  if (typeof track === "object") {
+    return String((track as any)._id || (track as any).id || "");
   }
 
   return "";
@@ -51,54 +59,62 @@ const LikeTrack = ({ track, buttonHeight = 36 }: IProps) => {
   const [playlistId, setPlaylistId] = useState("");
   const [loadingPlaylists, setLoadingPlaylists] = useState(false);
   const [submittingPlaylist, setSubmittingPlaylist] = useState(false);
-
-  const isLiked = trackLikes?.some((t) => t._id === track?._id);
+  const trackId = getTrackId(track);
+  const accessToken = (session as any)?.access_token;
+  const isLiked = trackLikes?.some((t) => getTrackId(t) === trackId);
 
   const fetchData = async () => {
-    if (session?.access_token) {
-      const res2 = await sendRequest<IBackendRes<IModelPaginate<ITrackLike>>>({
-        url: `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/v1/likes`,
-        method: "GET",
-        queryParams: {
-          current: 1,
-          pageSize: 100,
-          sort: "-createdAt",
-        },
-        headers: {
-          Authorization: `Bearer ${session?.access_token}`,
-        },
-      });
+    if (!accessToken) return;
 
-      if (res2?.data?.result) {
-        setTrackLikes(res2?.data?.result);
-      }
-    }
+    const res = await sendRequest<
+      IBackendRes<ITrackLike[] | IModelPaginate<ITrackLike>>
+    >({
+      url: `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/v1/tracks/liked`,
+      method: "GET",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+    });
+
+    const responseData = res?.data as any;
+
+    const result: ITrackLike[] = Array.isArray(responseData)
+      ? responseData
+      : responseData?.result ?? [];
+
+    setTrackLikes(result);
   };
 
   const fetchPlaylists = async () => {
-    if (!session?.access_token) return;
+    if (!accessToken) return;
 
     setLoadingPlaylists(true);
 
     try {
-      const res = await sendRequest<IBackendRes<IModelPaginate<IPlaylist>>>({
+      const res = await sendRequest<
+        IBackendRes<IPlaylist[] | IModelPaginate<IPlaylist>>
+      >({
         url: `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/v1/playlists/by-user`,
-        method: "POST",
+        method: "GET",
         queryParams: {
           current: 1,
           pageSize: 100,
         },
         headers: {
-          Authorization: `Bearer ${session?.access_token}`,
+          Authorization: `Bearer ${accessToken}`,
         },
       });
 
-      const result = res?.data?.result || [];
+      const responseData = res?.data as any;
+
+      const result: IPlaylist[] = Array.isArray(responseData)
+        ? responseData
+        : responseData?.result ?? [];
 
       setPlaylists(result);
 
       if (result.length) {
-        setPlaylistId(result[0]._id);
+        setPlaylistId(getPlaylistId(result[0]));
       }
     } finally {
       setLoadingPlaylists(false);
@@ -107,28 +123,43 @@ const LikeTrack = ({ track, buttonHeight = 36 }: IProps) => {
 
   useEffect(() => {
     fetchData();
-  }, [session]);
+  }, [accessToken]);
 
   const handleLikeTrack = async () => {
-    if (!track?._id) {
-      return;
-    }
-
-    const quantity = isLiked ? -1 : 1;
-
-    await handleLikeTrackAction(track._id, quantity);
-
-    fetchData();
-    router.refresh();
-  };
-
-  const handleOpenPlaylist = async () => {
-    if (!track?._id) {
+    if (!trackId) {
       toast.error("Track not found.");
       return;
     }
 
-    if (!session?.access_token) {
+    if (!accessToken) {
+      toast.error("Please login to like this track.");
+      return;
+    }
+
+    const action = isLiked ? "dislike" : "like";
+
+    const res = await sendRequest<IBackendRes<any>>({
+      url: `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/v1/tracks/${trackId}/${action}`,
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+    });
+
+    if (res?.data || res?.statusCode === 200 || res?.statusCode === 201) {
+      await fetchData();
+      router.refresh();
+    } else {
+      toast.error(res?.message || "Can not update like.");
+    }
+  };
+
+  const handleOpenPlaylist = async () => {
+    if (!trackId) {
+      toast.error("Track not found.");
+      return;
+    }
+    if (!accessToken) {
       toast.error("Please login to add this track to playlist.");
       return;
     }
@@ -146,10 +177,14 @@ const LikeTrack = ({ track, buttonHeight = 36 }: IProps) => {
     setOpenPlaylist(false);
     setPlaylistId("");
   };
-
   const handleAddToPlaylist = async () => {
-    if (!track?._id) {
+    if (!trackId) {
       toast.error("Track not found.");
+      return;
+    }
+
+    if (!accessToken) {
+      toast.error("Please login first.");
       return;
     }
 
@@ -158,7 +193,9 @@ const LikeTrack = ({ track, buttonHeight = 36 }: IProps) => {
       return;
     }
 
-    const chosenPlaylist = playlists.find((item) => item._id === playlistId);
+    const chosenPlaylist = playlists.find(
+      (item) => getPlaylistId(item) === playlistId
+    );
 
     if (!chosenPlaylist) {
       toast.error("Playlist not found.");
@@ -169,7 +206,7 @@ const LikeTrack = ({ track, buttonHeight = 36 }: IProps) => {
       .map(getPlaylistTrackId)
       .filter(Boolean);
 
-    const mergedTracks = Array.from(new Set([...oldTracks, track._id]));
+    const mergedTracks = Array.from(new Set([...oldTracks, trackId]));
 
     setSubmittingPlaylist(true);
 
@@ -178,17 +215,17 @@ const LikeTrack = ({ track, buttonHeight = 36 }: IProps) => {
         url: `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/v1/playlists`,
         method: "PATCH",
         body: {
-          id: chosenPlaylist._id,
+          id: playlistId,
           title: chosenPlaylist.title,
           isPublic: chosenPlaylist.isPublic,
           tracks: mergedTracks,
         },
         headers: {
-          Authorization: `Bearer ${session?.access_token}`,
+          Authorization: `Bearer ${accessToken}`,
         },
       });
 
-      if (res?.data) {
+      if (res?.data || res?.statusCode === 200) {
         toast.success("Track added to playlist.");
 
         await sendRequest<IBackendRes<any>>({
@@ -416,12 +453,13 @@ const LikeTrack = ({ track, buttonHeight = 36 }: IProps) => {
           ) : playlists.length ? (
             <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
               {playlists.map((playlist) => {
-                const checked = playlistId === playlist._id;
+                const currentPlaylistId = getPlaylistId(playlist);
+                const checked = playlistId === currentPlaylistId;
 
                 return (
                   <Box
-                    key={playlist._id}
-                    onClick={() => setPlaylistId(playlist._id)}
+                    key={currentPlaylistId}
+                    onClick={() => setPlaylistId(currentPlaylistId)}
                     sx={{
                       px: 1.2,
                       py: 1,

@@ -17,12 +17,16 @@ import MusicNoteRoundedIcon from "@mui/icons-material/MusicNoteRounded";
 
 import { DataGrid, GridColDef } from "@mui/x-data-grid";
 
-import { sendRequest, convertSlugUrl } from "@/utils/api";
+import { sendRequest, convertSlugUrl, getAudioUrl } from "@/utils/api";
 import DashboardTableToolbar from "@/components/dashboard/components/DashboardTableToolbar";
 
 type Props = {
   tracks: ITrackTop[];
   accessToken?: string;
+};
+
+const getItemId = (item?: any) => {
+  return item?._id || item?.id || "";
 };
 
 const TracksTable = ({ tracks, accessToken }: Props) => {
@@ -49,16 +53,28 @@ const TracksTable = ({ tracks, accessToken }: Props) => {
   }, [tracks, searchValue]);
 
   const handleDeleteTrack = async (track: ITrackTop) => {
+    const trackId = getItemId(track);
+
+    if (!trackId) {
+      alert("Track not found.");
+      return;
+    }
+
+    if (!accessToken) {
+      alert("Please login first.");
+      return;
+    }
+
     const isConfirm = window.confirm(
       `Are you sure you want to delete "${track.title}"?`
     );
 
     if (!isConfirm) return;
 
-    setDeletingId(track._id);
+    setDeletingId(trackId);
 
     const res = await sendRequest<IBackendRes<any>>({
-      url: `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/v1/tracks/${track._id}`,
+      url: `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/v1/tracks/${trackId}`,
       method: "DELETE",
       headers: {
         Authorization: `Bearer ${accessToken}`,
@@ -219,9 +235,14 @@ const TracksTable = ({ tracks, accessToken }: Props) => {
       filterable: false,
       renderCell: (params) => {
         const track = params.row;
-        const href = `/track/${convertSlugUrl(track.title)}-${
-          track._id
-        }.html?audio=${encodeURIComponent(track.trackUrl)}`;
+        const trackId = getItemId(track);
+
+        const trackSlug =
+          (track as any).slug || `${convertSlugUrl(track.title)}-${trackId}`;
+
+        const href = `/track/${trackSlug}.html?audio=${encodeURIComponent(
+          getAudioUrl(track.trackUrl)
+        )}`;
 
         return (
           <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
@@ -246,7 +267,7 @@ const TracksTable = ({ tracks, accessToken }: Props) => {
             <Tooltip title="Delete track">
               <IconButton
                 onClick={() => handleDeleteTrack(track)}
-                disabled={deletingId === track._id}
+                disabled={deletingId === getItemId(track)}
                 size="small"
                 sx={{
                   color: "#ff5a5a",
@@ -328,7 +349,7 @@ const TracksTable = ({ tracks, accessToken }: Props) => {
         <DataGrid
           rows={filteredTracks}
           columns={columns}
-          getRowId={(row) => row._id}
+          getRowId={(row) => getItemId(row)}
           autoHeight
           disableRowSelectionOnClick
           pageSizeOptions={[5, 10, 20, 50]}

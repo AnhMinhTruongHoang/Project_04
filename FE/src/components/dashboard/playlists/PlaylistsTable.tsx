@@ -59,11 +59,15 @@ const getOwnerEmail = (playlist: IPlaylist) => {
   return "";
 };
 
+const getItemId = (item?: any) => {
+  return item?._id || item?.id || "";
+};
+
 const getTrackIds = (tracks: any[] = []) => {
   return tracks
     .map((track) => {
       if (typeof track === "string") return track;
-      if (typeof track === "object" && track !== null) return track._id;
+      if (typeof track === "object" && track !== null) return getItemId(track);
       return "";
     })
     .filter(Boolean);
@@ -110,7 +114,7 @@ const PlaylistsTable = ({ playlists, accessToken }: Props) => {
 
   const handleOpenEdit = (playlist: IPlaylist) => {
     setEditPlaylist({
-      _id: playlist._id,
+      _id: getItemId(playlist),
       title: playlist.title || "",
       isPublic: !!playlist.isPublic,
       tracks: getTrackIds(playlist.tracks as any[]),
@@ -126,7 +130,15 @@ const PlaylistsTable = ({ playlists, accessToken }: Props) => {
   };
 
   const handleSavePlaylist = async () => {
-    if (!editPlaylist?._id) return;
+    if (!editPlaylist?._id) {
+      alert("Playlist not found.");
+      return;
+    }
+
+    if (!accessToken) {
+      alert("Please login first.");
+      return;
+    }
 
     setSaving(true);
 
@@ -158,16 +170,28 @@ const PlaylistsTable = ({ playlists, accessToken }: Props) => {
   };
 
   const handleDeletePlaylist = async (playlist: IPlaylist) => {
+    const playlistId = getItemId(playlist);
+
+    if (!playlistId) {
+      alert("Playlist not found.");
+      return;
+    }
+
+    if (!accessToken) {
+      alert("Please login first.");
+      return;
+    }
+
     const isConfirm = window.confirm(
       `Are you sure you want to delete "${playlist.title}"?`
     );
 
     if (!isConfirm) return;
 
-    setDeletingId(playlist._id);
+    setDeletingId(playlistId);
 
     const res = await sendRequest<IBackendRes<any>>({
-      url: `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/v1/playlists/${playlist._id}`,
+      url: `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/v1/playlists/${playlistId}`,
       method: "DELETE",
       headers: {
         Authorization: `Bearer ${accessToken}`,
@@ -345,7 +369,7 @@ const PlaylistsTable = ({ playlists, accessToken }: Props) => {
             <Tooltip title="Delete playlist">
               <IconButton
                 onClick={() => handleDeletePlaylist(playlist)}
-                disabled={deletingId === playlist._id}
+                disabled={deletingId === getItemId(playlist)}
                 size="small"
                 sx={{
                   color: "#ff5a5a",
@@ -427,7 +451,7 @@ const PlaylistsTable = ({ playlists, accessToken }: Props) => {
         <DataGrid
           rows={filteredPlaylists}
           columns={columns}
-          getRowId={(row) => row._id}
+          getRowId={(row) => getItemId(row)}
           autoHeight
           disableRowSelectionOnClick
           pageSizeOptions={[5, 10, 20, 50]}

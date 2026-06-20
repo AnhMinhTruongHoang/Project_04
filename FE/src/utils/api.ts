@@ -4,9 +4,23 @@ import slugify from "slugify";
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "";
 
 const buildUrl = (path: string) => {
-  if (path.startsWith("http")) return path;
-  if (path.startsWith("/api")) return path;
-  return `${BACKEND_URL}${path}`;
+  if (!path) return "";
+
+  if (path.startsWith("http")) {
+    return path;
+  }
+
+  // API local của Next.js
+  if (path.startsWith("/api/revalidate")) {
+    return path;
+  }
+
+  // API backend Spring Boot
+  if (path.startsWith("/")) {
+    return `${BACKEND_URL}${path}`;
+  }
+
+  return `${BACKEND_URL}/${path}`;
 };
 
 const buildQueryUrl = (url: string, queryParams?: Record<string, any>) => {
@@ -27,6 +41,82 @@ const authHeaders = (accessToken?: string) => {
 
   return {
     Authorization: `Bearer ${accessToken}`,
+  };
+};
+
+export const getTrackId = (track?: any) => {
+  return track?._id || track?.id || "";
+};
+
+export const getUserId = (user?: any) => {
+  return user?._id || user?.id || "";
+};
+
+export const getImageUrl = (imgUrl?: string | null) => {
+  if (!imgUrl) return "/images/logo/Sc.png";
+
+  if (imgUrl.startsWith("http")) {
+    return imgUrl;
+  }
+
+  if (imgUrl.startsWith("/uploads/images")) {
+    return `${BACKEND_URL}${imgUrl}`;
+  }
+
+  if (imgUrl.startsWith("/")) {
+    return imgUrl;
+  }
+
+  return `${BACKEND_URL}/uploads/images/${imgUrl}`;
+};
+
+export const getAudioUrl = (trackUrl?: string | null) => {
+  if (!trackUrl) return "";
+
+  if (trackUrl.startsWith("http")) {
+    return trackUrl;
+  }
+
+  if (trackUrl.startsWith("/uploads/audio")) {
+    return `${BACKEND_URL}${trackUrl}`;
+  }
+
+  if (trackUrl.startsWith("/")) {
+    return `${BACKEND_URL}${trackUrl}`;
+  }
+
+  return `${BACKEND_URL}/uploads/audio/${trackUrl}`;
+};
+
+export const getAvatarUrl = (avatar?: string | null) => {
+  if (!avatar) return "";
+
+  if (avatar.startsWith("http")) {
+    return avatar;
+  }
+
+  if (avatar.startsWith("/uploads/images")) {
+    return `${BACKEND_URL}${avatar}`;
+  }
+
+  if (avatar.startsWith("/")) {
+    return avatar;
+  }
+
+  return `${BACKEND_URL}/uploads/images/${avatar}`;
+};
+
+export const normalizeTrack = <T extends any>(track?: T | null): T | null => {
+  if (!track) return null;
+
+  const id = getTrackId(track);
+
+  return {
+    ...track,
+    _id: id,
+    id,
+    imgUrl: (track as any).imgUrl,
+    trackUrl: (track as any).trackUrl,
   };
 };
 
@@ -169,14 +259,36 @@ export const logoutApi = (accessToken?: string) => {
   });
 };
 
-export const socialMediaLoginApi = (type: string, username: string) => {
+export const socialMediaLoginApi = (
+  payload:
+    | {
+        type: string;
+        email?: string | null;
+        username?: string | null;
+        name?: string | null;
+        avatarUrl?: string | null;
+        image?: string | null;
+      }
+    | string,
+  username?: string
+) => {
+  const body =
+    typeof payload === "string"
+      ? {
+          type: payload,
+          email: username,
+          username,
+        }
+      : {
+          ...payload,
+          username: payload.username || payload.email,
+          email: payload.email || payload.username,
+        };
+
   return sendRequest<IBackendRes<any>>({
     url: buildUrl("/api/v1/auth/social-media"),
     method: "POST",
-    body: {
-      type,
-      username,
-    },
+    body,
   });
 };
 
@@ -255,7 +367,7 @@ export const getTracksApi = (
   accessToken?: string,
   params: PaginationParams = {}
 ) => {
-  return sendRequest<IBackendRes<IModelPaginate<ITrackTop>>>({
+  return sendRequest<IBackendRes<IModelPaginate<ITrackTop> | ITrackTop[]>>({
     url: buildUrl("/api/v1/tracks"),
     method: "GET",
     queryParams: {
@@ -269,6 +381,13 @@ export const getTracksApi = (
 export const getTrackByIdApi = (id: string) => {
   return sendRequest<IBackendRes<ITrackTop>>({
     url: buildUrl(`/api/v1/tracks/${id}`),
+    method: "GET",
+  });
+};
+
+export const getTrackBySlugOrIdApi = (slugOrId: string) => {
+  return sendRequest<IBackendRes<ITrackTop>>({
+    url: buildUrl(`/api/v1/tracks/${slugOrId}`),
     method: "GET",
   });
 };
@@ -329,7 +448,7 @@ export const getTracksByUserApi = (
   accessToken?: string,
   params: PaginationParams = {}
 ) => {
-  return sendRequest<IBackendRes<IModelPaginate<ITrackTop>>>({
+  return sendRequest<IBackendRes<IModelPaginate<ITrackTop> | ITrackTop[]>>({
     url: buildUrl("/api/v1/tracks/users"),
     method: "POST",
     queryParams: {
@@ -359,6 +478,7 @@ export const searchTracksApi = (keyword: string) => {
     },
   });
 };
+
 /* =========================
    FILE UPLOAD APIs
 ========================= */
@@ -369,6 +489,7 @@ export const uploadFileApi = (
   accessToken?: string
 ) => {
   const formData = new FormData();
+
   formData.append("fileUpload", file);
 
   return sendRequestFile<IBackendRes<IUploadFileResponse>>({
@@ -415,6 +536,19 @@ export const createCommentApi = (
 ) => {
   return sendRequest<IBackendRes<ITrackComment>>({
     url: buildUrl("/api/v1/comments"),
+    method: "POST",
+    body: payload,
+    headers: authHeaders(accessToken),
+  });
+};
+
+export const createTrackCommentApi = (
+  trackId: string,
+  payload: CreateCommentPayload,
+  accessToken?: string
+) => {
+  return sendRequest<IBackendRes<ITrackComment>>({
+    url: buildUrl(`/api/v1/tracks/${trackId}/comments`),
     method: "POST",
     body: payload,
     headers: authHeaders(accessToken),
@@ -477,7 +611,7 @@ export const getPlaylistsApi = (
   accessToken?: string,
   params: PaginationParams = {}
 ) => {
-  return sendRequest<IBackendRes<IModelPaginate<IPlaylist>>>({
+  return sendRequest<IBackendRes<IModelPaginate<IPlaylist> | IPlaylist[]>>({
     url: buildUrl("/api/v1/playlists"),
     method: "GET",
     queryParams: {
@@ -492,12 +626,12 @@ export const getPlaylistsByUserApi = (
   accessToken?: string,
   params: PaginationParams = {}
 ) => {
-  return sendRequest<IBackendRes<IModelPaginate<IPlaylist>>>({
+  return sendRequest<IBackendRes<IModelPaginate<IPlaylist> | IPlaylist[]>>({
     url: buildUrl("/api/v1/playlists/by-user"),
-    method: "POST",
+    method: "GET",
     queryParams: {
       current: params.current ?? 1,
-      pageSize: params.pageSize ?? 10,
+      pageSize: params.pageSize ?? 100,
     },
     headers: authHeaders(accessToken),
   });
@@ -506,6 +640,7 @@ export const getPlaylistsByUserApi = (
 /* =========================
    LIKES APIs
 ========================= */
+
 export const likeTrackApi = (trackId: string, accessToken?: string) => {
   return sendRequest<IBackendRes<ITrackTop>>({
     url: buildUrl(`/api/v1/tracks/${trackId}/like`),
@@ -530,26 +665,13 @@ export const getLikedTracksApi = (accessToken?: string) => {
   });
 };
 
-export const createTrackCommentApi = (
-  trackId: string,
-  payload: CreateCommentPayload,
-  accessToken?: string
-) => {
-  return sendRequest<IBackendRes<ITrackComment>>({
-    url: buildUrl(`/api/v1/tracks/${trackId}/comments`),
-    method: "POST",
-    body: payload,
-    headers: authHeaders(accessToken),
-  });
-};
-
 /* =========================
    NEXT REVALIDATE API
 ========================= */
 
 export const revalidateApi = (tag: string) => {
   return sendRequest<IBackendRes<any>>({
-    url: "/api/revalidate",
+    url: buildUrl("/api/revalidate"),
     method: "POST",
     queryParams: {
       tag,

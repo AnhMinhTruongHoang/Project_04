@@ -6,7 +6,13 @@ import Typography from "@mui/material/Typography";
 import Stack from "@mui/material/Stack";
 import PlayArrowRoundedIcon from "@mui/icons-material/PlayArrowRounded";
 import FavoriteRoundedIcon from "@mui/icons-material/FavoriteRounded";
-import { convertSlugUrl, sendRequest } from "@/utils/api";
+import {
+  convertSlugUrl,
+  sendRequest,
+  getTrackId,
+  getImageUrl,
+  getAudioUrl,
+} from "@/utils/api";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/auth.options";
 import Image from "next/image";
@@ -17,31 +23,36 @@ export const metadata: Metadata = {
   description: "miêu tả thôi mà",
 };
 
-const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "";
-
-const getTrackImage = (imgUrl?: string) => {
+const getTrackImage = (imgUrl?: string | null) => {
   if (!imgUrl) return "/audio/SC.png";
-  if (imgUrl.startsWith("http")) return imgUrl;
-  if (imgUrl.startsWith("/")) return imgUrl;
-  return `${BACKEND_URL}/images/${imgUrl}`;
+
+  return getImageUrl(imgUrl);
 };
 
 const LikePage = async () => {
   const session = await getServerSession(authOptions);
+  const accessToken = (session as any)?.access_token;
 
-  const res = await sendRequest<IBackendRes<IModelPaginate<ITrackTop>>>({
-    url: `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/v1/likes`,
+  const res = await sendRequest<
+    IBackendRes<ITrackTop[] | IModelPaginate<ITrackTop>>
+  >({
+    url: `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/v1/tracks/liked`,
     method: "GET",
-    queryParams: { current: 1, pageSize: 100 },
-    headers: {
-      Authorization: `Bearer ${session?.access_token}`,
-    },
+    headers: accessToken
+      ? {
+          Authorization: `Bearer ${accessToken}`,
+        }
+      : {},
     nextOption: {
       next: { tags: ["liked-by-user"] },
     },
   });
 
-  const likes = res?.data?.result ?? [];
+  const responseData = res?.data as any;
+
+  const likes: ITrackTop[] = Array.isArray(responseData)
+    ? responseData
+    : responseData?.result ?? [];
 
   return (
     <Box
@@ -148,13 +159,19 @@ const LikePage = async () => {
           }}
         >
           {likes.map((track) => {
-            const href = `/track/${convertSlugUrl(track.title)}-${
-              track._id
-            }.html?audio=${track.trackUrl}`;
+            const trackId = getTrackId(track);
+
+            const trackSlug =
+              (track as any).slug ||
+              `${convertSlugUrl(track.title)}-${trackId}`;
+
+            const href = `/track/${trackSlug}.html?audio=${encodeURIComponent(
+              getAudioUrl(track.trackUrl)
+            )}`;
 
             return (
               <Box
-                key={track._id}
+                key={trackId}
                 sx={{
                   minWidth: 0,
                   borderRadius: 2,

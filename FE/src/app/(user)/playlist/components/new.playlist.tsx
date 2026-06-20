@@ -30,10 +30,20 @@ const NewPlaylist = () => {
 
   const handleClose = (_event?: any, reason?: string) => {
     if (reason === "backdropClick") return;
+
     setOpen(false);
+    setTitle("");
+    setIsPublic(true);
   };
 
   const handleSubmit = async () => {
+    const accessToken = (session as any)?.access_token;
+
+    if (!accessToken) {
+      toast.error("Please login first.");
+      return;
+    }
+
     if (!title.trim()) {
       toast.error("Playlist title is required.");
       return;
@@ -47,16 +57,13 @@ const NewPlaylist = () => {
         isPublic,
       },
       headers: {
-        Authorization: `Bearer ${session?.access_token}`,
+        Authorization: `Bearer ${accessToken}`,
       },
     });
 
     if (res.data) {
       toast.success("Playlist created successfully.");
-      setIsPublic(true);
-      setTitle("");
-      setOpen(false);
-
+      handleClose("", "");
       await sendRequest<IBackendRes<any>>({
         url: `/api/revalidate`,
         method: "POST",

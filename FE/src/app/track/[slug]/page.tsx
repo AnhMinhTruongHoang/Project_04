@@ -37,6 +37,10 @@ const getOgImage = (imgUrl?: string) => {
 
   if (imgUrl.startsWith("http")) return imgUrl;
 
+  if (imgUrl.startsWith("/uploads/images")) {
+    return `${BACKEND_URL}${imgUrl}`;
+  }
+
   if (imgUrl.startsWith("/")) {
     return `${SITE_URL}${imgUrl}`;
   }

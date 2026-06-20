@@ -20,16 +20,18 @@ const DashboardUsersPage = async () => {
   const session = await getServerSession(authOptions);
   const accessToken = (session as any)?.access_token;
 
-  const res = await sendRequest<IBackendRes<IModelPaginate<IUser>>>({
+  const res = await sendRequest<IBackendRes<IModelPaginate<IUser> | IUser[]>>({
     url: `${BACKEND_URL}/api/v1/users`,
     method: "GET",
     queryParams: {
       current: 1,
       pageSize: 100,
     },
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-    },
+    headers: accessToken
+      ? {
+          Authorization: `Bearer ${accessToken}`,
+        }
+      : {},
     nextOption: {
       next: {
         tags: ["dashboard-users"],
@@ -37,7 +39,11 @@ const DashboardUsersPage = async () => {
     },
   });
 
-  const users = res?.data?.result ?? [];
+  const responseData = res?.data as any;
+
+  const users: IUser[] = Array.isArray(responseData)
+    ? responseData
+    : responseData?.result ?? [];
 
   return (
     <Box>

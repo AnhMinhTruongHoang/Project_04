@@ -30,11 +30,6 @@ export default async function HomePage() {
     method: "GET",
   });
 
-  const edm = await sendRequest<IBackendRes<ITrackTop[]>>({
-    url: `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/v1/tracks/top?category=edm`,
-    method: "GET",
-  });
-
   return (
     <Box
       sx={{

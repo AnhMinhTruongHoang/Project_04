@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import Box from "@mui/material/Box";
@@ -10,8 +10,10 @@ import Typography from "@mui/material/Typography";
 import Divider from "@mui/material/Divider";
 import CircularProgress from "@mui/material/CircularProgress";
 import ClickAwayListener from "@mui/material/ClickAwayListener";
+
 import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
 import QueueMusicRoundedIcon from "@mui/icons-material/QueueMusicRounded";
+
 import { convertSlugUrl, sendRequest } from "@/utils/api";
 
 type SearchDropdownProps = {
@@ -22,18 +24,60 @@ const SearchDropdown = ({ onEmptySearch }: SearchDropdownProps) => {
   const DEFAULT_IMAGE = "/audio/SC.png";
   const DEFAULT_AUDIO = "/audio/DemoS.mp3";
   const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "";
+
   const router = useRouter();
+
   const [keyword, setKeyword] = useState("");
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [tracks, setTracks] = useState<ITrackTop[]>([]);
+
   const searchValue = keyword.trim();
-  const getTrackImage = (imgUrl?: string) => {
+
+  const getTrackId = (track?: any) => {
+    return track?._id || track?.id || "";
+  };
+
+  const getTrackImage = (imgUrl?: string | null) => {
     if (!imgUrl) return DEFAULT_IMAGE;
     if (imgUrl.startsWith("http")) return imgUrl;
+
+    if (imgUrl.startsWith("/uploads/images")) {
+      return `${BACKEND_URL}${imgUrl}`;
+    }
+
     if (imgUrl.startsWith("/")) return imgUrl;
 
-    return `${BACKEND_URL}/images/${imgUrl}`;
+    return `${BACKEND_URL}/uploads/images/${imgUrl}`;
+  };
+
+  const getTrackAudio = (trackUrl?: string | null) => {
+    if (!trackUrl) return DEFAULT_AUDIO;
+    if (trackUrl.startsWith("http")) return trackUrl;
+
+    if (trackUrl.startsWith("/uploads/audio")) {
+      return `${BACKEND_URL}${trackUrl}`;
+    }
+
+    if (trackUrl.startsWith("/")) return `${BACKEND_URL}${trackUrl}`;
+
+    return `${BACKEND_URL}/uploads/audio/${trackUrl}`;
+  };
+
+  const normalizeTracks = (data: any): ITrackTop[] => {
+    return Array.isArray(data) ? data : data?.result ?? [];
+  };
+
+  const filterTracksByKeyword = (tracks: ITrackTop[], keyword: string) => {
+    const lowerKeyword = keyword.trim().toLowerCase();
+
+    if (!lowerKeyword) return [];
+
+    return tracks.filter((track) => {
+      return [track.title, track.description, track.category]
+        .filter(Boolean)
+        .some((item) => String(item).toLowerCase().includes(lowerKeyword));
+    });
   };
 
   const handleGoSearch = (value?: string) => {
@@ -52,16 +96,21 @@ const SearchDropdown = ({ onEmptySearch }: SearchDropdownProps) => {
     }
 
     setOpen(false);
-    router.push(`/search?q=${encodeURIComponent(finalKeyword)}`);
+    router.replace(`/search?q=${encodeURIComponent(finalKeyword)}`);
   };
 
   const handleGoTrack = (track: ITrackTop) => {
+    const trackId = getTrackId(track);
+
+    const trackSlug =
+      (track as any).slug || `${convertSlugUrl(track.title)}-${trackId}`;
+
     setOpen(false);
 
     router.push(
-      `/track/${convertSlugUrl(track.title)}-${
-        track._id
-      }.html?audio=${encodeURIComponent(track.trackUrl || DEFAULT_AUDIO)}`
+      `/track/${trackSlug}.html?audio=${encodeURIComponent(
+        getTrackAudio(track.trackUrl)
+      )}`
     );
   };
 
@@ -78,19 +127,25 @@ const SearchDropdown = ({ onEmptySearch }: SearchDropdownProps) => {
       try {
         setLoading(true);
 
-        const res = await sendRequest<IBackendRes<IModelPaginate<ITrackTop>>>({
-          url: `${BACKEND_URL}/api/v1/tracks/search`,
-          method: "POST",
-          body: {
+        const res = await sendRequest<
+          IBackendRes<IModelPaginate<ITrackTop> | ITrackTop[]>
+        >({
+          url: `${BACKEND_URL}/api/v1/tracks`,
+          method: "GET",
+          queryParams: {
             current: 1,
-            pageSize: 5,
-            title: searchValue,
+            pageSize: 100,
           },
         });
 
         if (!active) return;
 
-        setTracks(res?.data?.result ?? []);
+        const result = filterTracksByKeyword(
+          normalizeTracks(res?.data),
+          searchValue
+        ).slice(0, 5);
+
+        setTracks(result);
       } catch (error) {
         console.log("SEARCH PREVIEW ERROR:", error);
 
@@ -201,7 +256,6 @@ const SearchDropdown = ({ onEmptySearch }: SearchDropdownProps) => {
               overflow: "hidden",
             }}
           >
-            {/* Search for */}
             <Box
               onMouseDown={(e) => {
                 e.preventDefault();
@@ -228,7 +282,6 @@ const SearchDropdown = ({ onEmptySearch }: SearchDropdownProps) => {
 
             <Divider sx={{ borderColor: "rgba(255,255,255,0.1)" }} />
 
-            {/* Loading */}
             {loading && (
               <Box
                 sx={{
@@ -248,14 +301,14 @@ const SearchDropdown = ({ onEmptySearch }: SearchDropdownProps) => {
               </Box>
             )}
 
-            {/* Related tracks */}
             {!loading &&
               tracks.slice(0, 3).map((track) => {
+                const trackId = getTrackId(track);
                 const imageSrc = getTrackImage(track.imgUrl);
 
                 return (
                   <Box
-                    key={track._id}
+                    key={trackId}
                     onMouseDown={(e) => {
                       e.preventDefault();
                       handleGoTrack(track);
@@ -332,12 +385,11 @@ const SearchDropdown = ({ onEmptySearch }: SearchDropdownProps) => {
                 );
               })}
 
-            {/* Suggestions */}
             {!loading && tracks.length > 0 && (
               <Box sx={{ py: 0.5 }}>
                 {tracks.slice(0, 5).map((track) => (
                   <Box
-                    key={`suggestion-${track._id}`}
+                    key={`suggestion-${getTrackId(track)}`}
                     onMouseDown={(e) => {
                       e.preventDefault();
                       handleGoSearch(track.title);

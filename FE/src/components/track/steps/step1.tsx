@@ -23,9 +23,15 @@ interface IProps {
 const Step1 = (props: IProps) => {
   const { trackUpload } = props;
   const { data: session } = useSession();
+  const accessToken = (session as any)?.access_token;
 
   const onDrop = useCallback(
     async (acceptedFiles: FileWithPath[]) => {
+      if (!accessToken) {
+        alert("Please login first.");
+        return;
+      }
+
       if (!acceptedFiles || !acceptedFiles[0]) return;
 
       const audio = acceptedFiles[0];
@@ -44,7 +50,7 @@ const Step1 = (props: IProps) => {
           formData,
           {
             headers: {
-              Authorization: `Bearer ${session?.access_token}`,
+              Authorization: `Bearer ${accessToken}`,
               target_type: "tracks",
             },
             onUploadProgress: (progressEvent) => {
@@ -74,7 +80,7 @@ const Step1 = (props: IProps) => {
         alert(error?.response?.data?.message || "Upload failed");
       }
     },
-    [session?.access_token, props]
+    [accessToken, props]
   );
 
   const { getRootProps, getInputProps, isDragActive, open } = useDropzone({

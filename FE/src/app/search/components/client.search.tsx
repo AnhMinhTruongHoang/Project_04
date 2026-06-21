@@ -312,7 +312,7 @@ const ClientSearch = ({ query = "" }: Props) => {
 
             const href = `/track/${trackSlug}.html?audio=${encodeURIComponent(
               getTrackAudio(track.trackUrl)
-            )}`;
+            )}&autoplay=1`;
 
             return (
               <Box

@@ -26,6 +26,7 @@ import { DataGrid, GridColDef } from "@mui/x-data-grid";
 
 import { sendRequest } from "@/utils/api";
 import DashboardTableToolbar from "@/components/dashboard/components/DashboardTableToolbar";
+import { useToast } from "@/utils/toast";
 
 type Props = {
   playlists: IPlaylist[];
@@ -80,12 +81,15 @@ const getTrackCount = (playlist: IPlaylist) => {
 
 const PlaylistsTable = ({ playlists, accessToken }: Props) => {
   const router = useRouter();
-
+  const toast = useToast();
   const [searchValue, setSearchValue] = useState("");
   const [deletingId, setDeletingId] = useState("");
   const [saving, setSaving] = useState(false);
   const [openEdit, setOpenEdit] = useState(false);
   const [editPlaylist, setEditPlaylist] = useState<EditPlaylistState | null>(
+    null
+  );
+  const [confirmPlaylist, setConfirmPlaylist] = useState<IPlaylist | null>(
     null
   );
 
@@ -169,24 +173,8 @@ const PlaylistsTable = ({ playlists, accessToken }: Props) => {
     alert(res?.message || "Update playlist failed.");
   };
 
-  const handleDeletePlaylist = async (playlist: IPlaylist) => {
+  const deletePlaylist = async (playlist: IPlaylist) => {
     const playlistId = getItemId(playlist);
-
-    if (!playlistId) {
-      alert("Playlist not found.");
-      return;
-    }
-
-    if (!accessToken) {
-      alert("Please login first.");
-      return;
-    }
-
-    const isConfirm = window.confirm(
-      `Are you sure you want to delete "${playlist.title}"?`
-    );
-
-    if (!isConfirm) return;
 
     setDeletingId(playlistId);
 
@@ -201,14 +189,31 @@ const PlaylistsTable = ({ playlists, accessToken }: Props) => {
     setDeletingId("");
 
     if (res?.data || res?.statusCode === 200) {
+      toast.success("Delete playlist successfully.");
+
       await revalidatePlaylists();
       router.refresh();
       return;
     }
 
-    alert(res?.message || "Delete playlist failed.");
+    toast.error(res?.message || "Delete playlist failed.");
   };
 
+  const handleDeletePlaylist = (playlist: IPlaylist) => {
+    const playlistId = getItemId(playlist);
+
+    if (!playlistId) {
+      toast.error("Playlist not found.");
+      return;
+    }
+
+    if (!accessToken) {
+      toast.error("Please login first.");
+      return;
+    }
+
+    setConfirmPlaylist(playlist);
+  };
   const columns: GridColDef<IPlaylist>[] = [
     {
       field: "title",
@@ -485,6 +490,7 @@ const PlaylistsTable = ({ playlists, accessToken }: Props) => {
             color: "#ffffff",
             fontWeight: 900,
             borderBottom: "1px solid rgba(255,255,255,0.08)",
+            textAlign: "center",
           }}
         >
           Edit playlist
@@ -493,6 +499,7 @@ const PlaylistsTable = ({ playlists, accessToken }: Props) => {
         <DialogContent sx={{ pt: 2.5 }}>
           <Box sx={{ display: "grid", gap: 2 }}>
             <TextField
+              style={{ marginTop: 20 }}
               label="Title"
               value={editPlaylist?.title || ""}
               onChange={(e) =>
@@ -598,6 +605,67 @@ const PlaylistsTable = ({ playlists, accessToken }: Props) => {
             }}
           >
             {saving ? "Saving..." : "Save changes"}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog
+        open={!!confirmPlaylist}
+        onClose={() => setConfirmPlaylist(null)}
+        PaperProps={{
+          sx: {
+            backgroundColor: "#181A1B",
+            color: "#ffffff",
+            borderRadius: 3,
+            border: "1px solid rgba(255,255,255,0.12)",
+            minWidth: 380,
+          },
+        }}
+      >
+        <DialogTitle sx={{ fontWeight: 900 }}>Delete playlist?</DialogTitle>
+
+        <DialogContent>
+          <Typography sx={{ color: "#bdbdbd", fontSize: 14 }}>
+            Are you sure you want to delete{" "}
+            <Box component="span" sx={{ color: "#ffffff", fontWeight: 900 }}>
+              {confirmPlaylist?.title}
+            </Box>
+            ?
+          </Typography>
+        </DialogContent>
+
+        <DialogActions sx={{ px: 3, pb: 2 }}>
+          <Button
+            onClick={() => setConfirmPlaylist(null)}
+            sx={{
+              color: "#cfcfcf",
+              fontWeight: 800,
+            }}
+          >
+            Cancel
+          </Button>
+
+          <Button
+            variant="contained"
+            onClick={async () => {
+              const selectedPlaylist = confirmPlaylist;
+              setConfirmPlaylist(null);
+
+              if (selectedPlaylist) {
+                await deletePlaylist(selectedPlaylist);
+              }
+            }}
+            sx={{
+              backgroundColor: "#ff4d4f",
+              color: "#ffffff",
+              fontWeight: 900,
+
+              "&:hover": {
+                backgroundColor: "#ff2f32",
+              },
+            }}
+          >
+            Delete
           </Button>
         </DialogActions>
       </Dialog>

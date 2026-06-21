@@ -80,13 +80,27 @@ export const authOptions: AuthOptions = {
       clientSecret: process.env.GITHUB_SECRET!,
     }),
     GoogleProvider({
-      clientId: process.env.GOOGLE_ID!,
-      clientSecret: process.env.GOOGLE_SECRET!,
+      clientId: process.env.GOOGLE_CLIENT_ID!,
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
+      authorization: {
+        params: {
+          scope: "openid email profile",
+          prompt: "select_account",
+        },
+      },
+      profile(profile: any) {
+        return {
+          id: profile.sub,
+          name: profile.name,
+          email: profile.email,
+          image: profile.picture,
+        };
+      },
     }),
   ],
 
   callbacks: {
-    async jwt({ token, user, account, trigger }) {
+    async jwt({ token, user, account, trigger, profile }) {
       if (trigger === "signIn" && account?.provider === "credentials") {
         const credentialUser = user as any;
         const backendUser = credentialUser?.user || credentialUser || {};
@@ -112,28 +126,49 @@ export const authOptions: AuthOptions = {
 
         return token;
       }
-
-      if (trigger === "signIn" && account?.provider !== "credentials") {
+      if (account?.provider && account.provider !== "credentials" && user) {
         const socialUser = user as any;
+        const socialProfile = profile as any;
+
+        const email =
+          socialUser?.email || socialProfile?.email || token?.email || "";
+
+        const name = socialUser?.name || socialProfile?.name || email;
+
+        const avatarUrl = socialUser?.image || socialProfile?.picture || "";
+
+        console.log("SOCIAL LOGIN PAYLOAD:", {
+          provider: account.provider,
+          email,
+          username: email,
+          name,
+          avatarUrl,
+        });
+
+        if (!email) {
+          throw new Error("Google account does not return email");
+        }
 
         const res = await sendRequest<IBackendRes<any>>({
           url: `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/v1/auth/social-media`,
           method: "POST",
           body: {
-            type: account?.provider?.toUpperCase(),
-            email: socialUser?.email,
-            username: socialUser?.email,
-            name: socialUser?.name,
-            avatarUrl: socialUser?.image,
+            type: account.provider.toUpperCase(),
+            email,
+            username: email,
+            name,
+            avatarUrl,
           },
         });
+
+        console.log("SOCIAL LOGIN RESPONSE:", res);
 
         if (!res?.data) {
           throw new Error(res?.message || "Social login failed");
         }
 
-        const backendData = res.data || {};
-        const backendUser = (backendData?.user || backendData || {}) as any;
+        const backendData = res.data as any;
+        const backendUser = backendData?.user || backendData || {};
 
         token.access_token =
           backendData?.access_token ||
@@ -154,13 +189,13 @@ export const authOptions: AuthOptions = {
           ...backendUser,
           _id: backendUser?._id || backendUser?.id,
           id: backendUser?.id || backendUser?._id,
-          email: backendUser?.email || socialUser?.email,
-          name: backendUser?.name || socialUser?.name || socialUser?.email,
+          email: backendUser?.email || email,
+          name: backendUser?.name || name || email,
           avatarUrl:
             backendUser?.avatarUrl ||
             backendUser?.avatar ||
             backendUser?.image ||
-            socialUser?.image,
+            avatarUrl,
         };
 
         return token;

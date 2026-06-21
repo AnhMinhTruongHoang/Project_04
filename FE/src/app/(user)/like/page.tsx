@@ -167,7 +167,7 @@ const LikePage = async () => {
 
             const href = `/track/${trackSlug}.html?audio=${encodeURIComponent(
               getAudioUrl(track.trackUrl)
-            )}`;
+            )}&autoplay=1`;
 
             return (
               <Box

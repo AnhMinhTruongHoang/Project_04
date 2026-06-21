@@ -19,10 +19,11 @@ import LikeTrack from "./like.track";
 interface IProps {
   track: ITrackTop | null;
   comments: ITrackComment[];
+  autoPlay?: boolean;
 }
 
 const WaveTrack = (props: IProps) => {
-  const { track, comments } = props;
+  const { track, comments, autoPlay = false } = props;
   const router = useRouter();
   const firstViewRef = useRef(true);
   const lastSyncSecondRef = useRef(-1);
@@ -58,39 +59,15 @@ const WaveTrack = (props: IProps) => {
   };
 
   const getAudioUrl = (trackUrl?: string | null) => {
+    const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "";
+
     if (!trackUrl) return "";
+    if (trackUrl.startsWith("http")) return trackUrl;
+    if (trackUrl.startsWith("/uploads/audio"))
+      return `${BACKEND_URL}${trackUrl}`;
+    if (trackUrl.startsWith("/")) return `${BACKEND_URL}${trackUrl}`;
 
-    if (trackUrl.startsWith("http")) {
-      return trackUrl;
-    }
-
-    return `${process.env.NEXT_PUBLIC_BACKEND_URL}/uploads/audio/${trackUrl}`;
-  };
-
-  const getInitials = (name?: string | null, email?: string | null) => {
-    const value = name?.trim() || email?.trim() || "User";
-    const words = value.split(" ").filter(Boolean);
-
-    if (words.length >= 2) {
-      return `${words[0][0]}${words[1][0]}`.toUpperCase();
-    }
-
-    return value.slice(0, 2).toUpperCase();
-  };
-
-  const getUserAvatarUrl = (user?: Partial<IUser> | null) => {
-    const avatar =
-      (user as any)?.avatar ||
-      (user as any)?.avatarUrl ||
-      (user as any)?.image ||
-      "";
-
-    if (!avatar) return "";
-
-    if (avatar.startsWith("http")) return avatar;
-    if (avatar.startsWith("/")) return avatar;
-
-    return `${process.env.NEXT_PUBLIC_BACKEND_URL}/uploads/images/${avatar}`;
+    return `${BACKEND_URL}/uploads/audio/${trackUrl}`;
   };
 
   const formatTime = (seconds: number) => {
@@ -162,16 +139,33 @@ const WaveTrack = (props: IProps) => {
 
   const wavesurfer = useWavesurfer(containerRef, optionsMemo);
 
-  const calLeft = (moment: number) => {
-    const currentDuration = wavesurfer?.getDuration() ?? 0;
+  useEffect(() => {
+    if (!wavesurfer) return;
+    if (!track) return;
+    if (!autoPlay) return;
 
-    if (!currentDuration) return "0%";
+    const playTrack = () => {
+      const trackId = getTrackId();
 
-    const percent = (moment / currentDuration) * 100;
-    const safePercent = Math.min(100, Math.max(0, percent));
+      if (!trackId) return;
 
-    return `${safePercent}%`;
-  };
+      setCurrentTrack({
+        ...track,
+        isPlaying: true,
+        source: "wave",
+        currentTime: 0,
+        duration: wavesurfer.getDuration() ?? 0,
+        seekTime: undefined,
+      } as any);
+
+      wavesurfer.play();
+      handleIncreaseView();
+    };
+
+    const timer = setTimeout(playTrack, 500);
+
+    return () => clearTimeout(timer);
+  }, [wavesurfer, autoPlay, (track as any)?._id, (track as any)?.id]);
 
   const syncWaveToFooter = (
     nextIsPlaying: boolean,
@@ -481,45 +475,6 @@ const WaveTrack = (props: IProps) => {
                 backdropFilter: "brightness(0.5)",
               }}
             ></div>
-
-            <div className="comments" style={{ position: "relative" }}>
-              {comments?.map((item) => {
-                const avatarUrl = getUserAvatarUrl(item.user);
-
-                return (
-                  <Tooltip title={item.content} arrow key={item._id}>
-                    <Avatar
-                      src={avatarUrl}
-                      alt={
-                        item.user?.name || item.user?.email || "User comment"
-                      }
-                      onPointerMove={() => {
-                        const hover = hoverRef.current;
-                        if (!hover) return;
-
-                        hover.style.width = calLeft(item.moment);
-                      }}
-                      sx={{
-                        position: "absolute",
-                        top: 71,
-                        left: calLeft(item.moment),
-                        zIndex: 20,
-                        width: 22,
-                        height: 22,
-                        bgcolor: "#ff5500",
-                        color: "#ffffff",
-                        fontSize: 8,
-                        fontWeight: 900,
-                        border: "1px solid rgba(255,255,255,0.9)",
-                        cursor: "pointer",
-                      }}
-                    >
-                      {getInitials(item.user?.name, item.user?.email)}
-                    </Avatar>
-                  </Tooltip>
-                );
-              })}
-            </div>
           </div>
         </div>
 

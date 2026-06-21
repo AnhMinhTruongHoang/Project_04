@@ -18,10 +18,11 @@ import TextField from "@mui/material/TextField";
 import MenuItem from "@mui/material/MenuItem";
 import DeleteRoundedIcon from "@mui/icons-material/DeleteRounded";
 import EditRoundedIcon from "@mui/icons-material/EditRounded";
-import PersonRoundedIcon from "@mui/icons-material/PersonRounded";
 import { DataGrid, GridColDef } from "@mui/x-data-grid";
 import { sendRequest } from "@/utils/api";
 import DashboardTableToolbar from "@/components/dashboard/components/DashboardTableToolbar";
+import { useToast } from "@/utils/toast";
+import { getUserAvatarUrl } from "@/utils/actions/getAvatar";
 
 type Props = {
   users: IUser[];
@@ -41,6 +42,8 @@ type EditUserState = {
 const getInitials = (name?: string, email?: string) => {
   const value = name?.trim() || email?.trim() || "User";
   const words = value.split(" ").filter(Boolean);
+  const toast = useToast();
+  const [confirmUser, setConfirmUser] = useState<IUser | null>(null);
 
   if (words.length >= 2) {
     return `${words[0][0]}${words[1][0]}`.toUpperCase();
@@ -55,7 +58,8 @@ const getItemId = (item?: any) => {
 
 const UsersTable = ({ users, accessToken }: Props) => {
   const router = useRouter();
-
+  const toast = useToast();
+  const [confirmUser, setConfirmUser] = useState<IUser | null>(null);
   const [searchValue, setSearchValue] = useState("");
   const [deletingId, setDeletingId] = useState("");
   const [saving, setSaving] = useState(false);
@@ -156,24 +160,8 @@ const UsersTable = ({ users, accessToken }: Props) => {
     alert(res?.message || "Update user failed.");
   };
 
-  const handleDeleteUser = async (user: IUser) => {
+  const deleteUser = async (user: IUser) => {
     const userId = getItemId(user);
-
-    if (!userId) {
-      alert("User not found.");
-      return;
-    }
-
-    if (!accessToken) {
-      alert("Please login first.");
-      return;
-    }
-
-    const isConfirm = window.confirm(
-      `Are you sure you want to delete "${user.name || user.email}"?`
-    );
-
-    if (!isConfirm) return;
 
     setDeletingId(userId);
 
@@ -188,12 +176,30 @@ const UsersTable = ({ users, accessToken }: Props) => {
     setDeletingId("");
 
     if (res?.data || res?.statusCode === 200) {
+      toast.success("Delete user successfully.");
+
       await revalidateUsers();
       router.refresh();
       return;
     }
 
-    alert(res?.message || "Delete user failed.");
+    toast.error(res?.message || "Delete user failed.");
+  };
+
+  const handleDeleteUser = (user: IUser) => {
+    const userId = getItemId(user);
+
+    if (!userId) {
+      toast.error("User not found.");
+      return;
+    }
+
+    if (!accessToken) {
+      toast.error("Please login first.");
+      return;
+    }
+
+    setConfirmUser(user);
   };
 
   const columns: GridColDef<IUser>[] = [
@@ -458,24 +464,38 @@ const UsersTable = ({ users, accessToken }: Props) => {
             color: "#ffffff",
             fontWeight: 900,
             borderBottom: "1px solid rgba(255,255,255,0.08)",
+            textAlign: "center",
           }}
         >
           Edit user
         </DialogTitle>
 
         <DialogContent sx={{ pt: 2.5 }}>
-          <Box sx={{ display: "flex", gap: 2, alignItems: "center", mb: 2.5 }}>
+          <Box
+            sx={{
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              justifyContent: "center",
+              textAlign: "center",
+              gap: 1.2,
+              mb: 5,
+              mt: 5,
+            }}
+          >
             <Avatar
+              src={getUserAvatarUrl(editUser) || undefined}
               sx={{
-                width: 60,
-                height: 60,
+                width: 70,
+                height: 70,
                 bgcolor: "#ff5500",
                 color: "#ffffff",
                 fontWeight: 900,
-                fontSize: 20,
+                fontSize: 22,
               }}
             >
-              {getInitials(editUser?.name, editUser?.email)}
+              {!getUserAvatarUrl(editUser) &&
+                getInitials(editUser?.name, editUser?.email)}
             </Avatar>
 
             <Box>
@@ -488,7 +508,6 @@ const UsersTable = ({ users, accessToken }: Props) => {
               </Typography>
             </Box>
           </Box>
-
           <Box sx={{ display: "grid", gap: 2 }}>
             <TextField
               label="Name"
@@ -527,6 +546,7 @@ const UsersTable = ({ users, accessToken }: Props) => {
             />
 
             <TextField
+              select
               label="Gender"
               value={editUser?.gender || ""}
               onChange={(e) =>
@@ -536,7 +556,11 @@ const UsersTable = ({ users, accessToken }: Props) => {
               }
               fullWidth
               sx={darkTextFieldSx}
-            />
+            >
+              <MenuItem value="MALE">Male</MenuItem>
+              <MenuItem value="FEMALE">Female</MenuItem>
+              <MenuItem value="OTHER">Other</MenuItem>
+            </TextField>
 
             <TextField
               label="Address"
@@ -603,6 +627,67 @@ const UsersTable = ({ users, accessToken }: Props) => {
             }}
           >
             {saving ? "Saving..." : "Save changes"}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog
+        open={!!confirmUser}
+        onClose={() => setConfirmUser(null)}
+        PaperProps={{
+          sx: {
+            backgroundColor: "#181A1B",
+            color: "#ffffff",
+            borderRadius: 3,
+            border: "1px solid rgba(255,255,255,0.12)",
+            minWidth: 380,
+          },
+        }}
+      >
+        <DialogTitle sx={{ fontWeight: 900 }}>Delete user?</DialogTitle>
+
+        <DialogContent>
+          <Typography sx={{ color: "#bdbdbd", fontSize: 14 }}>
+            Are you sure you want to delete{" "}
+            <Box component="span" sx={{ color: "#ffffff", fontWeight: 900 }}>
+              {confirmUser?.name || confirmUser?.email}
+            </Box>
+            ?
+          </Typography>
+        </DialogContent>
+
+        <DialogActions sx={{ px: 3, pb: 2 }}>
+          <Button
+            onClick={() => setConfirmUser(null)}
+            sx={{
+              color: "#cfcfcf",
+              fontWeight: 800,
+            }}
+          >
+            Cancel
+          </Button>
+
+          <Button
+            variant="contained"
+            onClick={async () => {
+              const selectedUser = confirmUser;
+              setConfirmUser(null);
+
+              if (selectedUser) {
+                await deleteUser(selectedUser);
+              }
+            }}
+            sx={{
+              backgroundColor: "#ff4d4f",
+              color: "#ffffff",
+              fontWeight: 900,
+
+              "&:hover": {
+                backgroundColor: "#ff2f32",
+              },
+            }}
+          >
+            Delete
           </Button>
         </DialogActions>
       </Dialog>

@@ -144,7 +144,11 @@ const DetailTrackPage = async ({ params }: Props) => {
           pb: 6,
         }}
       >
-        <WaveTrack track={res.data} comments={resComments?.data ?? []} />
+        <WaveTrack
+          track={res.data}
+          comments={resComments?.data ?? []}
+          autoPlay
+        />
       </Container>
     </Box>
   );

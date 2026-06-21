@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-
 import Box from "@mui/material/Box";
 
 import { getServerSession } from "next-auth";
@@ -14,7 +13,23 @@ export const metadata: Metadata = {
   description: "Manage comments on Sound Clone",
 };
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "";
+
+const getCommentsFromResponse = (res: any): ITrackComment[] => {
+  const data = res?.data;
+
+  if (Array.isArray(data)) return data;
+  if (Array.isArray(data?.result)) return data.result;
+  if (Array.isArray(data?.data)) return data.data;
+  if (Array.isArray(data?.content)) return data.content;
+  if (Array.isArray(data?.items)) return data.items;
+  if (Array.isArray(data?.comments)) return data.comments;
+
+  return [];
+};
 
 const DashboardCommentsPage = async () => {
   const session = await getServerSession(authOptions);
@@ -35,23 +50,19 @@ const DashboardCommentsPage = async () => {
         }
       : {},
     nextOption: {
-      next: {
-        tags: ["dashboard-comments"],
-      },
+      cache: "no-store",
     },
   });
 
-  const responseData = res?.data as any;
+  console.log("DASHBOARD COMMENTS RESPONSE:", res);
 
-  const comments: ITrackComment[] = Array.isArray(responseData)
-    ? responseData
-    : responseData?.result ?? [];
+  const comments = getCommentsFromResponse(res);
 
   return (
     <Box>
       <DashboardPageHeader
         title="Comments"
-        description="Manage track comments, users, comment time, and moderation actions."
+        description="Manage track comments, users, and moderation actions."
       />
 
       <CommentsTable comments={comments} accessToken={accessToken} />

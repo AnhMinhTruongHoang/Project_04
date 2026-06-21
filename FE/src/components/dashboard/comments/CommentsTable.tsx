@@ -3,75 +3,72 @@
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import dayjs from "dayjs";
-
 import Box from "@mui/material/Box";
-import Chip from "@mui/material/Chip";
-import IconButton from "@mui/material/IconButton";
-import Tooltip from "@mui/material/Tooltip";
-import Typography from "@mui/material/Typography";
 import Avatar from "@mui/material/Avatar";
-
-import DeleteRoundedIcon from "@mui/icons-material/DeleteRounded";
-import CommentRoundedIcon from "@mui/icons-material/CommentRounded";
-
+import Tooltip from "@mui/material/Tooltip";
+import IconButton from "@mui/material/IconButton";
+import Typography from "@mui/material/Typography";
 import { DataGrid, GridColDef } from "@mui/x-data-grid";
-
+import CommentRoundedIcon from "@mui/icons-material/CommentRounded";
+import DeleteRoundedIcon from "@mui/icons-material/DeleteRounded";
 import { sendRequest } from "@/utils/api";
-import DashboardTableToolbar from "@/components/dashboard/components/DashboardTableToolbar";
+import DashboardTableToolbar from "../components/DashboardTableToolbar";
+import { useToast } from "@/utils/toast";
+import {
+  Button,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
+} from "@mui/material";
 
 type Props = {
   comments: ITrackComment[];
   accessToken?: string;
 };
 
-const getInitials = (name?: string, email?: string) => {
-  const value = name?.trim() || email?.trim() || "User";
-  const words = value.split(" ").filter(Boolean);
-
-  if (words.length >= 2) {
-    return `${words[0][0]}${words[1][0]}`.toUpperCase();
-  }
-
-  return value.slice(0, 2).toUpperCase();
-};
-
-const formatMoment = (seconds = 0) => {
-  const minutes = Math.floor(seconds / 60);
-  const secondsRemainder = Math.round(seconds) % 60;
-  const paddedSeconds = `0${secondsRemainder}`.slice(-2);
-
-  return `${minutes}:${paddedSeconds}`;
-};
-
-const getItemId = (item?: any) => {
-  return item?._id || item?.id || "";
-};
-
-const getTrackTitle = (comment: ITrackComment) => {
-  const track = comment.track as any;
-
-  if (typeof track === "object" && track !== null) {
-    return track.title || "Unknown track";
-  }
-
-  return "Unknown track";
-};
-
-const getTrackCategory = (comment: ITrackComment) => {
-  const track = comment.track as any;
-
-  if (typeof track === "object" && track !== null) {
-    return track.category || "";
-  }
-
-  return "";
-};
-
 const CommentsTable = ({ comments, accessToken }: Props) => {
   const router = useRouter();
-
   const [searchValue, setSearchValue] = useState("");
   const [deletingId, setDeletingId] = useState("");
+  const [confirmComment, setConfirmComment] = useState<ITrackComment | null>(
+    null
+  );
+  const toast = useToast();
+  const getInitials = (name?: string, email?: string) => {
+    const value = name?.trim() || email?.trim() || "User";
+    const words = value.split(" ").filter(Boolean);
+
+    if (words.length >= 2) {
+      return `${words[0][0]}${words[1][0]}`.toUpperCase();
+    }
+
+    return value.slice(0, 2).toUpperCase();
+  };
+
+  const getItemId = (item?: any) => {
+    return item?._id || item?.id || "";
+  };
+
+  const getTrackTitle = (comment: ITrackComment) => {
+    const track = comment.track as any;
+
+    if (typeof track === "object" && track !== null) {
+      return track.title || "Unknown track";
+    }
+
+    return "Unknown track";
+  };
+
+  const getTrackCategory = (comment: ITrackComment) => {
+    const track = comment.track as any;
+
+    if (typeof track === "object" && track !== null) {
+      return track.category || "";
+    }
+
+    return "";
+  };
 
   const filteredComments = useMemo(() => {
     const keyword = searchValue.trim().toLowerCase();
@@ -102,24 +99,8 @@ const CommentsTable = ({ comments, accessToken }: Props) => {
     });
   };
 
-  const handleDeleteComment = async (comment: ITrackComment) => {
+  const deleteComment = async (comment: ITrackComment) => {
     const commentId = getItemId(comment);
-
-    if (!commentId) {
-      alert("Comment not found.");
-      return;
-    }
-
-    if (!accessToken) {
-      alert("Please login first.");
-      return;
-    }
-
-    const isConfirm = window.confirm(
-      `Are you sure you want to delete this comment?`
-    );
-
-    if (!isConfirm) return;
 
     setDeletingId(commentId);
 
@@ -134,37 +115,57 @@ const CommentsTable = ({ comments, accessToken }: Props) => {
     setDeletingId("");
 
     if (res?.data || res?.statusCode === 200) {
+      toast.success("Delete comment successfully.");
+
       await revalidateComments();
       router.refresh();
       return;
     }
 
-    alert(res?.message || "Delete comment failed.");
+    toast.error(res?.message || "Delete comment failed.");
+  };
+
+  const handleDeleteComment = (comment: ITrackComment) => {
+    const commentId = getItemId(comment);
+
+    if (!commentId) {
+      toast.error("Comment not found.");
+      return;
+    }
+
+    if (!accessToken) {
+      toast.error("Please login first.");
+      return;
+    }
+
+    setConfirmComment(comment);
   };
 
   const columns: GridColDef<ITrackComment>[] = [
     {
       field: "content",
       headerName: "Comment",
-      flex: 1.5,
-      minWidth: 300,
+      flex: 1.6,
+      minWidth: 330,
       sortable: true,
       renderCell: (params) => {
         const comment = params.row;
 
         return (
-          <Box sx={{ display: "flex", alignItems: "center", gap: 1.4 }}>
+          <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
             <Box
               sx={{
-                width: 42,
-                height: 42,
-                borderRadius: 2,
-                backgroundColor: "rgba(255,85,0,0.14)",
+                width: 44,
+                height: 44,
+                borderRadius: 2.4,
+                background:
+                  "linear-gradient(135deg, rgba(255,85,0,0.24), rgba(255,85,0,0.08))",
                 color: "#ff5500",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
                 flexShrink: 0,
+                border: "1px solid rgba(255,85,0,0.28)",
               }}
             >
               <CommentRoundedIcon />
@@ -180,6 +181,7 @@ const CommentsTable = ({ comments, accessToken }: Props) => {
                   overflow: "hidden",
                   textOverflow: "ellipsis",
                   whiteSpace: "nowrap",
+                  lineHeight: 1.35,
                 }}
               >
                 {comment.content || "Empty comment"}
@@ -190,9 +192,12 @@ const CommentsTable = ({ comments, accessToken }: Props) => {
                   color: "#8f8f8f",
                   fontSize: 12,
                   fontWeight: 700,
+                  mt: 0.3,
                 }}
               >
-                At {formatMoment(comment.moment)}
+                {comment.createdAt
+                  ? `Posted ${dayjs(comment.createdAt).format("DD/MM/YYYY")}`
+                  : "User comment"}
               </Typography>
             </Box>
           </Box>
@@ -203,7 +208,7 @@ const CommentsTable = ({ comments, accessToken }: Props) => {
       field: "user",
       headerName: "User",
       flex: 1,
-      minWidth: 230,
+      minWidth: 240,
       valueGetter: (params) =>
         params.row.user?.name || params.row.user?.email || "Unknown",
       renderCell: (params) => {
@@ -213,13 +218,14 @@ const CommentsTable = ({ comments, accessToken }: Props) => {
           <Box sx={{ display: "flex", alignItems: "center", gap: 1.2 }}>
             <Avatar
               sx={{
-                width: 36,
-                height: 36,
+                width: 38,
+                height: 38,
                 bgcolor: "#ff5500",
                 color: "#ffffff",
                 fontWeight: 900,
                 fontSize: 13,
                 flexShrink: 0,
+                border: "1px solid rgba(255,255,255,0.12)",
               }}
             >
               {getInitials(user?.name, user?.email)}
@@ -235,6 +241,7 @@ const CommentsTable = ({ comments, accessToken }: Props) => {
                   overflow: "hidden",
                   textOverflow: "ellipsis",
                   whiteSpace: "nowrap",
+                  lineHeight: 1.35,
                 }}
               >
                 {user?.name || "Social user"}
@@ -249,6 +256,7 @@ const CommentsTable = ({ comments, accessToken }: Props) => {
                   overflow: "hidden",
                   textOverflow: "ellipsis",
                   whiteSpace: "nowrap",
+                  mt: 0.2,
                 }}
               >
                 {user?.email || ""}
@@ -262,7 +270,7 @@ const CommentsTable = ({ comments, accessToken }: Props) => {
       field: "track",
       headerName: "Track",
       flex: 1,
-      minWidth: 220,
+      minWidth: 230,
       valueGetter: (params) => getTrackTitle(params.row),
       renderCell: (params) => (
         <Box sx={{ minWidth: 0 }}>
@@ -275,6 +283,7 @@ const CommentsTable = ({ comments, accessToken }: Props) => {
               overflow: "hidden",
               textOverflow: "ellipsis",
               whiteSpace: "nowrap",
+              lineHeight: 1.35,
             }}
           >
             {getTrackTitle(params.row)}
@@ -290,6 +299,7 @@ const CommentsTable = ({ comments, accessToken }: Props) => {
                 overflow: "hidden",
                 textOverflow: "ellipsis",
                 whiteSpace: "nowrap",
+                mt: 0.25,
               }}
             >
               {getTrackCategory(params.row)}
@@ -299,30 +309,24 @@ const CommentsTable = ({ comments, accessToken }: Props) => {
       ),
     },
     {
-      field: "moment",
-      headerName: "Moment",
-      width: 110,
-      align: "center",
-      headerAlign: "center",
-      valueFormatter: (params) => formatMoment(Number(params.value || 0)),
-      renderCell: (params) => (
-        <Chip
-          label={formatMoment(params.row.moment)}
-          size="small"
-          sx={{
-            color: "#ffffff",
-            backgroundColor: "rgba(255,255,255,0.08)",
-            fontWeight: 900,
-          }}
-        />
-      ),
-    },
-    {
       field: "createdAt",
       headerName: "Created",
-      width: 150,
+      width: 155,
       valueFormatter: (params) =>
         params.value ? dayjs(params.value).format("DD/MM/YYYY") : "",
+      renderCell: (params) => (
+        <Typography
+          sx={{
+            color: "#d7d7d7",
+            fontSize: 13,
+            fontWeight: 800,
+          }}
+        >
+          {params.row.createdAt
+            ? dayjs(params.row.createdAt).format("DD/MM/YYYY")
+            : ""}
+        </Typography>
+      ),
     },
     {
       field: "actions",
@@ -343,8 +347,17 @@ const CommentsTable = ({ comments, accessToken }: Props) => {
               size="small"
               sx={{
                 color: "#ff5a5a",
+                border: "1px solid rgba(255,90,90,0.18)",
+                backgroundColor: "rgba(255,90,90,0.06)",
+
                 "&:hover": {
-                  backgroundColor: "rgba(255,90,90,0.12)",
+                  backgroundColor: "rgba(255,90,90,0.14)",
+                  borderColor: "rgba(255,90,90,0.32)",
+                },
+
+                "&.Mui-disabled": {
+                  color: "rgba(255,255,255,0.25)",
+                  borderColor: "rgba(255,255,255,0.08)",
                 },
               }}
             >
@@ -366,38 +379,50 @@ const CommentsTable = ({ comments, accessToken }: Props) => {
       <Box
         sx={{
           width: "100%",
-          borderRadius: 3,
+          borderRadius: 4,
           overflow: "hidden",
-          backgroundColor: "#111314",
+          background:
+            "linear-gradient(180deg, rgba(24,26,27,0.98), rgba(17,19,20,0.98))",
           border: "1px solid rgba(255,255,255,0.08)",
+          boxShadow: "0 24px 80px rgba(0,0,0,0.28)",
 
           "& .MuiDataGrid-root": {
             border: "none",
             color: "#ffffff",
-            backgroundColor: "#111314",
+            backgroundColor: "transparent",
           },
 
           "& .MuiDataGrid-columnHeaders": {
-            backgroundColor: "#181A1B",
+            backgroundColor: "#1f2224",
             color: "#ffffff",
             borderBottom: "1px solid rgba(255,255,255,0.08)",
           },
 
+          "& .MuiDataGrid-columnHeader": {
+            outline: "none !important",
+          },
+
           "& .MuiDataGrid-columnHeaderTitle": {
             fontWeight: 900,
+            letterSpacing: "0.02em",
           },
 
           "& .MuiDataGrid-cell": {
-            borderBottom: "1px solid rgba(255,255,255,0.06)",
+            borderBottom: "1px solid rgba(255,255,255,0.055)",
             color: "#ffffff",
+            outline: "none !important",
+          },
+
+          "& .MuiDataGrid-row": {
+            transition: "0.16s ease",
           },
 
           "& .MuiDataGrid-row:hover": {
-            backgroundColor: "rgba(255,255,255,0.035)",
+            backgroundColor: "rgba(255,85,0,0.06)",
           },
 
           "& .MuiDataGrid-footerContainer": {
-            backgroundColor: "#181A1B",
+            backgroundColor: "#1a1d1f",
             borderTop: "1px solid rgba(255,255,255,0.08)",
             color: "#ffffff",
           },
@@ -406,8 +431,16 @@ const CommentsTable = ({ comments, accessToken }: Props) => {
             color: "#ffffff",
           },
 
-          "& .MuiSvgIcon-root": {
-            color: "inherit",
+          "& .MuiTablePagination-selectIcon": {
+            color: "#ffffff",
+          },
+
+          "& .MuiDataGrid-sortIcon": {
+            color: "#ffffff",
+          },
+
+          "& .MuiDataGrid-menuIconButton": {
+            color: "#ffffff",
           },
 
           "& .MuiDataGrid-overlay": {
@@ -434,6 +467,63 @@ const CommentsTable = ({ comments, accessToken }: Props) => {
           }}
         />
       </Box>
+
+      <Dialog
+        open={!!confirmComment}
+        onClose={() => setConfirmComment(null)}
+        PaperProps={{
+          sx: {
+            backgroundColor: "#181A1B",
+            color: "#ffffff",
+            borderRadius: 3,
+            border: "1px solid rgba(255,255,255,0.12)",
+            minWidth: 360,
+          },
+        }}
+      >
+        <DialogTitle sx={{ fontWeight: 900 }}>Delete comment?</DialogTitle>
+
+        <DialogContent>
+          <Typography sx={{ color: "#bdbdbd", fontSize: 14 }}>
+            Are you sure you want to delete this comment?
+          </Typography>
+        </DialogContent>
+
+        <DialogActions sx={{ px: 3, pb: 2 }}>
+          <Button
+            onClick={() => setConfirmComment(null)}
+            sx={{
+              color: "#cfcfcf",
+              fontWeight: 800,
+            }}
+          >
+            Cancel
+          </Button>
+
+          <Button
+            variant="contained"
+            onClick={async () => {
+              const selectedComment = confirmComment;
+              setConfirmComment(null);
+
+              if (selectedComment) {
+                await deleteComment(selectedComment);
+              }
+            }}
+            sx={{
+              backgroundColor: "#ff4d4f",
+              color: "#ffffff",
+              fontWeight: 900,
+
+              "&:hover": {
+                backgroundColor: "#ff2f32",
+              },
+            }}
+          >
+            Delete
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 };

@@ -1,6 +1,7 @@
 package com.example.demo.controllers;
 
 import java.util.Date;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.UUID;
@@ -15,8 +16,10 @@ import com.example.demo.dtos.LoginDTO;
 import com.example.demo.dtos.LoginResponseDTO;
 import com.example.demo.dtos.RegisterDTO;
 import com.example.demo.dtos.UserResponseDTO;
+import com.example.demo.entities.Playlist;
 import com.example.demo.entities.User;
 import com.example.demo.helpers.JwtHelper;
+import com.example.demo.repositories.PlaylistRepository;
 import com.example.demo.repositories.UserRepository;
 import com.example.demo.responses.ApiResponse;
 import com.example.demo.services.UserService;
@@ -32,6 +35,9 @@ public class AuthController {
 
 	@Autowired
 	private UserRepository userRepository;
+
+	@Autowired
+	private PlaylistRepository playlistRepository;
 
 	private String generateId() {
 		return UUID.randomUUID().toString().replace("-", "").substring(0, 24);
@@ -73,6 +79,22 @@ public class AuthController {
 		loginResponse.setUser(toUserResponseDTO(user));
 
 		return loginResponse;
+	}
+
+	private void createDefaultPlaylist(User user) {
+		Playlist playlist = new Playlist();
+
+		playlist.setId(generateId());
+		playlist.setTitle("My Playlist");
+		playlist.setIsPublic(false);
+		playlist.setUserId(user.getId());
+		playlist.setIsAlbum(false);
+		playlist.setIsDeleted(false);
+		playlist.setTracks(new HashSet<>());
+		playlist.setCreatedAt(new Date());
+		playlist.setUpdatedAt(new Date());
+
+		playlistRepository.save(playlist);
 	}
 
 	@PostMapping("login")
@@ -131,6 +153,7 @@ public class AuthController {
 			user.setUpdatedAt(new Date());
 
 			userService.save(user);
+			createDefaultPlaylist(user);
 
 			return new ResponseEntity<>(new ApiResponse<>(201, "User Register Success!", toUserResponseDTO(user)),
 					HttpStatus.CREATED);
@@ -260,13 +283,14 @@ public class AuthController {
 	}
 
 	@PostMapping("social-media")
-	public ResponseEntity<?> socialMedia(
-			@RequestParam(required = false) String type,
-			@RequestParam(required = false) String username,
-			@RequestParam(required = false) String email,
-			@RequestParam(required = false) String name,
-			@RequestParam(required = false) String avatarUrl) {
+	public ResponseEntity<?> socialMedia(@RequestBody(required = false) Map<String, Object> body) {
 		try {
+			String type = body != null && body.get("type") != null ? body.get("type").toString() : null;
+			String username = body != null && body.get("username") != null ? body.get("username").toString() : null;
+			String email = body != null && body.get("email") != null ? body.get("email").toString() : null;
+			String name = body != null && body.get("name") != null ? body.get("name").toString() : null;
+			String avatarUrl = body != null && body.get("avatarUrl") != null ? body.get("avatarUrl").toString() : null;
+
 			String loginEmail = email != null && !email.trim().isEmpty() ? email : username;
 
 			if (loginEmail == null || loginEmail.trim().isEmpty()) {
@@ -281,7 +305,7 @@ public class AuthController {
 				user.setId(generateId());
 				user.setEmail(loginEmail);
 				user.setUsername(loginEmail);
-				user.setName(name != null ? name : loginEmail);
+				user.setName(name != null && !name.trim().isEmpty() ? name : loginEmail);
 				user.setRole("USER");
 				user.setType(type != null ? type.toUpperCase() : "SOCIAL");
 				user.setIsVerify(true);
@@ -293,15 +317,17 @@ public class AuthController {
 				user.setUpdatedAt(new Date());
 
 				userRepository.save(user);
+				createDefaultPlaylist(user);
 			} else {
-				if (name != null) {
+				if (name != null && !name.trim().isEmpty()) {
 					user.setName(name);
 				}
 
-				if (avatarUrl != null) {
+				if (avatarUrl != null && !avatarUrl.trim().isEmpty()) {
 					user.setAvatarUrl(avatarUrl);
 				}
 
+				user.setType(type != null ? type.toUpperCase() : user.getType());
 				user.setUpdatedAt(new Date());
 			}
 

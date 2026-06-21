@@ -20,6 +20,7 @@ import { useRouter } from "next/navigation";
 import { handleLikeTrackAction } from "@/utils/actions/actions";
 import { Box } from "@mui/material";
 import { useToast } from "@/utils/toast";
+import { PlaylistAdd, UploadFile } from "@mui/icons-material";
 
 interface IProps {
   track: ITrackTop | null;
@@ -422,23 +423,30 @@ const LikeTrack = ({ track, buttonHeight = 36 }: IProps) => {
             fontSize: 22,
             fontWeight: 900,
             borderBottom: "1px solid rgba(255,255,255,0.08)",
+            textAlign: "center",
           }}
         >
           Add to playlist
         </DialogTitle>
 
-        <DialogContent sx={{ pt: "20px !important" }}>
-          <Typography
+        <DialogContent sx={{ pt: "20px !important", justifyContent: "center" }}>
+          <Box
             sx={{
-              color: "#bdbdbd",
-              fontSize: 13,
-              fontWeight: 700,
+              width: "100%",
+              display: "flex",
+              justifyContent: "center",
               mb: 2,
             }}
           >
-            Choose a playlist to add this track.
-          </Typography>
-
+            <PlaylistAdd
+              onClick={() => router.push("/playlist")}
+              sx={{
+                cursor: "pointer",
+                color: "#ff5500",
+                fontSize: 32,
+              }}
+            />
+          </Box>
           {loadingPlaylists ? (
             <Box
               sx={{

@@ -278,16 +278,8 @@ const CommentTrack = (props: IProps) => {
                           lineHeight: 1.4,
                         }}
                       >
-                        {commentName}{" "}
-                        <Box
-                          component="span"
-                          sx={{
-                            color: "#9b9b9b",
-                            fontWeight: 600,
-                          }}
-                        >
-                          at
-                        </Box>{" "}
+                        {commentName}
+
                         <Box
                           component="span"
                           onClick={() => handleJumpTrack(comment.moment)}

@@ -10,15 +10,20 @@ import Chip from "@mui/material/Chip";
 import IconButton from "@mui/material/IconButton";
 import Tooltip from "@mui/material/Tooltip";
 import Typography from "@mui/material/Typography";
-
 import DeleteRoundedIcon from "@mui/icons-material/DeleteRounded";
 import OpenInNewRoundedIcon from "@mui/icons-material/OpenInNewRounded";
 import MusicNoteRoundedIcon from "@mui/icons-material/MusicNoteRounded";
-
 import { DataGrid, GridColDef } from "@mui/x-data-grid";
-
-import { sendRequest, convertSlugUrl, getAudioUrl } from "@/utils/api";
+import { convertSlugUrl, getAudioUrl, sendRequest } from "@/utils/api";
 import DashboardTableToolbar from "@/components/dashboard/components/DashboardTableToolbar";
+import { useToast } from "@/utils/toast";
+import {
+  Button,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
+} from "@mui/material";
 
 type Props = {
   tracks: ITrackTop[];
@@ -33,6 +38,8 @@ const TracksTable = ({ tracks, accessToken }: Props) => {
   const router = useRouter();
   const [searchValue, setSearchValue] = useState("");
   const [deletingId, setDeletingId] = useState("");
+  const toast = useToast();
+  const [confirmTrack, setConfirmTrack] = useState<ITrackTop | null>(null);
 
   const filteredTracks = useMemo(() => {
     const keyword = searchValue.trim().toLowerCase();
@@ -52,24 +59,8 @@ const TracksTable = ({ tracks, accessToken }: Props) => {
     });
   }, [tracks, searchValue]);
 
-  const handleDeleteTrack = async (track: ITrackTop) => {
+  const deleteTrack = async (track: ITrackTop) => {
     const trackId = getItemId(track);
-
-    if (!trackId) {
-      alert("Track not found.");
-      return;
-    }
-
-    if (!accessToken) {
-      alert("Please login first.");
-      return;
-    }
-
-    const isConfirm = window.confirm(
-      `Are you sure you want to delete "${track.title}"?`
-    );
-
-    if (!isConfirm) return;
 
     setDeletingId(trackId);
 
@@ -84,11 +75,28 @@ const TracksTable = ({ tracks, accessToken }: Props) => {
     setDeletingId("");
 
     if (res?.data || res?.statusCode === 200) {
+      toast.success("Delete track successfully.");
       router.refresh();
       return;
     }
 
-    alert(res?.message || "Delete track failed.");
+    toast.error(res?.message || "Delete track failed.");
+  };
+
+  const handleDeleteTrack = (track: ITrackTop) => {
+    const trackId = getItemId(track);
+
+    if (!trackId) {
+      toast.error("Track not found.");
+      return;
+    }
+
+    if (!accessToken) {
+      toast.error("Please login first.");
+      return;
+    }
+
+    setConfirmTrack(track);
   };
 
   const columns: GridColDef<ITrackTop>[] = [
@@ -242,7 +250,7 @@ const TracksTable = ({ tracks, accessToken }: Props) => {
 
         const href = `/track/${trackSlug}.html?audio=${encodeURIComponent(
           getAudioUrl(track.trackUrl)
-        )}`;
+        )}&autoplay=1`;
 
         return (
           <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
@@ -363,6 +371,66 @@ const TracksTable = ({ tracks, accessToken }: Props) => {
           }}
         />
       </Box>
+      <Dialog
+        open={!!confirmTrack}
+        onClose={() => setConfirmTrack(null)}
+        PaperProps={{
+          sx: {
+            backgroundColor: "#181A1B",
+            color: "#ffffff",
+            borderRadius: 3,
+            border: "1px solid rgba(255,255,255,0.12)",
+            minWidth: 380,
+          },
+        }}
+      >
+        <DialogTitle sx={{ fontWeight: 900 }}>Delete track?</DialogTitle>
+
+        <DialogContent>
+          <Typography sx={{ color: "#bdbdbd", fontSize: 14 }}>
+            Are you sure you want to delete{" "}
+            <Box component="span" sx={{ color: "#ffffff", fontWeight: 900 }}>
+              {confirmTrack?.title}
+            </Box>
+            ?
+          </Typography>
+        </DialogContent>
+
+        <DialogActions sx={{ px: 3, pb: 2 }}>
+          <Button
+            onClick={() => setConfirmTrack(null)}
+            sx={{
+              color: "#cfcfcf",
+              fontWeight: 800,
+            }}
+          >
+            Cancel
+          </Button>
+
+          <Button
+            variant="contained"
+            onClick={async () => {
+              const selectedTrack = confirmTrack;
+              setConfirmTrack(null);
+
+              if (selectedTrack) {
+                await deleteTrack(selectedTrack);
+              }
+            }}
+            sx={{
+              backgroundColor: "#ff4d4f",
+              color: "#ffffff",
+              fontWeight: 900,
+
+              "&:hover": {
+                backgroundColor: "#ff2f32",
+              },
+            }}
+          >
+            Delete
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 };

@@ -261,7 +261,7 @@ public class DataSeeder {
                             "Unknown Brain",
                             "ncs",
                             "ws.jpg",
-                            "wonder.mp3"
+                            "ws.mp3"
                     },
                     {
                             "Overdrive",

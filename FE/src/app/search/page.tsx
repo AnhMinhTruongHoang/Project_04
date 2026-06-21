@@ -6,14 +6,18 @@ export const metadata: Metadata = {
   description: "Search tracks on Sound Clone",
 };
 
+export const dynamic = "force-dynamic";
+
 type Props = {
-  searchParams: {
+  searchParams?: {
     q?: string;
   };
 };
 
 const SearchPage = ({ searchParams }: Props) => {
-  return <ClientSearch query={searchParams?.q || ""} />;
+  const keyword = searchParams?.q || "";
+
+  return <ClientSearch key={keyword} query={keyword} />;
 };
 
 export default SearchPage;

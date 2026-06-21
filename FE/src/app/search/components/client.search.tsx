@@ -44,6 +44,22 @@ const getTrackAudio = (trackUrl?: string | null) => {
   return `${BACKEND_URL}/uploads/audio/${trackUrl}`;
 };
 
+const filterTracksByKeyword = (tracks: ITrackTop[], keyword: string) => {
+  const lowerKeyword = keyword.trim().toLowerCase();
+
+  if (!lowerKeyword) return [];
+
+  return tracks.filter((track) => {
+    return [track.title, track.description, track.category]
+      .filter(Boolean)
+      .some((item) => String(item).toLowerCase().includes(lowerKeyword));
+  });
+};
+
+const normalizeTracks = (data: any): ITrackTop[] => {
+  return Array.isArray(data) ? data : data?.result ?? [];
+};
+
 const ClientSearch = ({ query = "" }: Props) => {
   const searchParams = useSearchParams();
   const [tracks, setTracks] = useState<ITrackTop[]>([]);
@@ -66,30 +82,32 @@ const ClientSearch = ({ query = "" }: Props) => {
 
       try {
         setLoading(true);
+        console.log("[ClientSearch] Fetching with keyword:", keyword);
 
+        // Dùng GET như dropdown thay vì POST
         const res = await sendRequest<
           IBackendRes<IModelPaginate<ITrackTop> | ITrackTop[]>
         >({
-          url: `${BACKEND_URL}/api/v1/tracks/search`,
-          method: "POST",
-          body: {
+          url: `${BACKEND_URL}/api/v1/tracks`,
+          method: "GET",
+          queryParams: {
             current: 1,
-            pageSize: 20,
-            title: keyword,
+            pageSize: 100,
           },
         });
 
         if (!active) return;
 
-        const responseData = res?.data as any;
+        console.log("[ClientSearch] Response:", res);
 
-        const result: ITrackTop[] = Array.isArray(responseData)
-          ? responseData
-          : responseData?.result ?? [];
+        const result = filterTracksByKeyword(
+          normalizeTracks(res?.data),
+          keyword
+        );
 
         setTracks(result);
       } catch (error) {
-        console.log("SEARCH TRACK ERROR:", error);
+        console.error("[ClientSearch] FETCH ERROR:", error);
 
         if (!active) return;
 

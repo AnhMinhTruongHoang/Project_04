@@ -1,7 +1,8 @@
 export const getUserAvatarUrl = (user?: any) => {
   const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "";
 
-  const avatar = user?.avatarUrl || "";
+  const avatar =
+    user?.avatarUrl || user?.avatar || user?.image || user?.picture || "";
 
   if (!avatar) return "";
 
@@ -21,13 +22,32 @@ export const getUserAvatarUrl = (user?: any) => {
 };
 
 export const getInitials = (name?: string, email?: string) => {
-  const text = name || email || "U";
+  const value = name?.trim() || email?.trim() || "User";
+  const words = value.split(" ").filter(Boolean);
 
-  return text
-    .trim()
-    .split(" ")
-    .map((item) => item.charAt(0))
-    .join("")
-    .slice(0, 2)
-    .toUpperCase();
+  if (words.length >= 2) {
+    return `${words[0][0]}${words[1][0]}`.toUpperCase();
+  }
+
+  return value.slice(0, 2).toUpperCase();
+};
+
+export const getTrackImageUrl = (imgUrl?: string | null) => {
+  const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "";
+
+  if (!imgUrl) return "/images/logo/Sc.png";
+
+  if (imgUrl.startsWith("http")) {
+    return imgUrl;
+  }
+
+  if (imgUrl.startsWith("/uploads/images")) {
+    return `${BACKEND_URL}${imgUrl}`;
+  }
+
+  if (imgUrl.startsWith("/")) {
+    return imgUrl;
+  }
+
+  return `${BACKEND_URL}/uploads/images/${imgUrl}`;
 };

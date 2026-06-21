@@ -269,6 +269,14 @@ public class PlaylistController {
 		map.put("createdAt", track.getCreatedAt());
 		map.put("updatedAt", track.getUpdatedAt());
 
+		User uploader = null;
+
+		if (track.getUploaderId() != null) {
+			uploader = userRepository.findById(track.getUploaderId()).orElse(null);
+		}
+
+		map.put("uploader", toUserMap(uploader));
+
 		return map;
 	}
 

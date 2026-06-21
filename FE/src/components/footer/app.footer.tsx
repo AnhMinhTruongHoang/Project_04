@@ -202,6 +202,12 @@ const AppFooter = () => {
     handlePlayQueueTrack(tracks[nextIndex]);
   };
 
+  const handleAudioEnded = async () => {
+    if (!autoplayStation) return;
+
+    await handlePlayNextTrack();
+  };
+
   const handleSeekBy = (seconds: number) => {
     if (!footerDuration) return;
 
@@ -230,33 +236,84 @@ const AppFooter = () => {
     return getImageUrl((currentTrack as any)?.imgUrl);
   };
 
-  const handleChangeVolume = (value: number) => {
-    const nextVolume = Math.max(0, Math.min(1, value));
+  const setAppVolume = (value: number) => {
+    const safeVolume = Math.max(0, Math.min(1, value));
 
-    if (nextVolume > 0) {
-      previousVolumeRef.current = nextVolume;
+    setVolume(safeVolume);
+
+    if (safeVolume > 0) {
+      previousVolumeRef.current = safeVolume;
+      localStorage.setItem("soundclone-previous-volume", String(safeVolume));
     }
 
-    setVolume(nextVolume);
+    localStorage.setItem("soundclone-volume", String(safeVolume));
+
+    const audio = playerRef.current?.audio?.current;
+
+    if (audio) {
+      audio.volume = safeVolume;
+    }
 
     setCurrentTrack({
       ...currentTrack,
-      volume: nextVolume,
+      volume: safeVolume,
       source: "footer-control",
     } as any);
+  };
+
+  const handleChangeVolume = (value: number) => {
+    setAppVolume(value);
   };
 
   const handleToggleMute = () => {
     const nextVolume = volume > 0 ? 0 : previousVolumeRef.current || 0.5;
 
-    setVolume(nextVolume);
-
-    setCurrentTrack({
-      ...currentTrack,
-      volume: nextVolume,
-      source: "footer-control",
-    } as any);
+    setAppVolume(nextVolume);
   };
+
+  /// volume sync
+
+  useEffect(() => {
+    if (!hasMounted) return;
+
+    const audio = playerRef.current?.audio?.current;
+
+    if (audio) {
+      audio.volume = volume;
+    }
+  }, [hasMounted, volume]);
+
+  useEffect(() => {
+    if (!hasMounted) return;
+
+    const savedVolume = localStorage.getItem("soundclone-volume");
+    const savedPreviousVolume = localStorage.getItem(
+      "soundclone-previous-volume"
+    );
+
+    if (savedPreviousVolume) {
+      const nextPreviousVolume = Number(savedPreviousVolume);
+
+      if (!Number.isNaN(nextPreviousVolume) && nextPreviousVolume > 0) {
+        previousVolumeRef.current = Math.max(
+          0,
+          Math.min(1, nextPreviousVolume)
+        );
+      }
+    }
+
+    if (!savedVolume) return;
+
+    const nextVolume = Number(savedVolume);
+
+    if (Number.isNaN(nextVolume)) return;
+
+    const safeVolume = Math.max(0, Math.min(1, nextVolume));
+
+    setVolume(safeVolume);
+  }, [hasMounted]);
+
+  ////
 
   useEffect(() => {
     const audio = playerRef.current?.audio?.current;
@@ -638,8 +695,16 @@ const AppFooter = () => {
               showSkipControls
               onClickPrevious={handlePlayPreviousTrack}
               onClickNext={handlePlayNextTrack}
+              onEnded={handleAudioEnded}
               src={getAudioUrl((currentTrack as any)?.trackUrl)}
-              volume={0.5}
+              volume={volume}
+              onVolumeChange={(e: any) => {
+                const nextVolume = Number(e?.target?.volume ?? volume);
+
+                if (Number.isNaN(nextVolume)) return;
+
+                setAppVolume(nextVolume);
+              }}
               style={{
                 boxShadow: "unset",
                 background: "#181A1B",

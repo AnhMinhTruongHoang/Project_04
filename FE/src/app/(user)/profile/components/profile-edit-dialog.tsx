@@ -12,6 +12,7 @@ import Divider from "@mui/material/Divider";
 import { sendRequest } from "@/utils/api";
 import { useToast } from "@/utils/toast";
 import { Avatar } from "@mui/material";
+import { getInitials, getUserAvatarUrl } from "@/utils/actions/getAvatar";
 
 type Props = {
   open: boolean;
@@ -71,31 +72,6 @@ const ProfileEditDialog = ({ open, onClose, user }: Props) => {
     return (user as any)?._id || (user as any)?.id || "";
   };
 
-  const getInitials = (name?: string, email?: string) => {
-    const value = name?.trim() || email?.trim() || "User";
-    const words = value.split(" ").filter(Boolean);
-
-    if (words.length >= 2) {
-      return `${words[0][0]}${words[1][0]}`.toUpperCase();
-    }
-
-    return value.slice(0, 2).toUpperCase();
-  };
-
-  const getUserAvatarUrl = (user?: Partial<IUser> | null) => {
-    const avatar =
-      (user as any)?.avatar ||
-      (user as any)?.avatarUrl ||
-      (user as any)?.image ||
-      "";
-
-    if (!avatar) return "";
-
-    if (avatar.startsWith("http")) return avatar;
-    if (avatar.startsWith("/")) return avatar;
-
-    return `${process.env.NEXT_PUBLIC_BACKEND_URL}/uploads/images/${avatar}`;
-  };
   const avatarUrl = useMemo(() => {
     return getUserAvatarUrl(user);
   }, [user]);
@@ -232,7 +208,7 @@ const ProfileEditDialog = ({ open, onClose, user }: Props) => {
               }}
             >
               <Avatar
-                src={!avatarError ? avatarUrl : ""}
+                src={!avatarError ? avatarUrl || undefined : undefined}
                 alt={displayName || user?.email || "User"}
                 imgProps={{
                   onError: () => setAvatarError(true),
@@ -246,9 +222,8 @@ const ProfileEditDialog = ({ open, onClose, user }: Props) => {
                   fontWeight: 900,
                 }}
               >
-                {!avatarUrl || avatarError
-                  ? getInitials(displayName, user?.email)
-                  : null}
+                {(!avatarUrl || avatarError) &&
+                  getInitials(displayName, user?.email)}
               </Avatar>
 
               <Button

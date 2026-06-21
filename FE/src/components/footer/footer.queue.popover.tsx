@@ -6,7 +6,6 @@ import Typography from "@mui/material/Typography";
 import IconButton from "@mui/material/IconButton";
 import Switch from "@mui/material/Switch";
 import CircularProgress from "@mui/material/CircularProgress";
-
 import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
 import MoreHorizRoundedIcon from "@mui/icons-material/MoreHorizRounded";
 import FavoriteRoundedIcon from "@mui/icons-material/FavoriteRounded";
@@ -36,6 +35,18 @@ const getTrackImage = (track?: Partial<ITrackTop> | null) => {
   if (imgUrl.startsWith("/")) return imgUrl;
 
   return `${process.env.NEXT_PUBLIC_BACKEND_URL}/images/${imgUrl}`;
+};
+
+const getArtistName = (track?: any) => {
+  return (
+    track?.artistName ||
+    track?.artist ||
+    track?.author ||
+    track?.description ||
+    track?.uploader?.name ||
+    track?.uploader?.email ||
+    "Unknown"
+  );
 };
 
 const formatDuration = (seconds?: number) => {
@@ -261,9 +272,7 @@ const FooterQueuePopover = ({
 
                   <Box sx={{ minWidth: 0, flex: 1 }}>
                     <Typography
-                      title={
-                        track.uploader?.name || track.uploader?.email || ""
-                      }
+                      title={getArtistName(track)}
                       sx={{
                         color: "#8f8f8f",
                         fontSize: 12,
@@ -273,9 +282,7 @@ const FooterQueuePopover = ({
                         whiteSpace: "nowrap",
                       }}
                     >
-                      {track.uploader?.name ||
-                        track.uploader?.email ||
-                        "Unknown"}
+                      {getArtistName(track)}
                     </Typography>
 
                     <Typography

@@ -90,7 +90,7 @@ public class Track implements java.io.Serializable {
 		this.title = title;
 	}
 
-		@Column(name = "slug", unique = true, length = 600)
+	@Column(name = "slug", unique = true, length = 600)
 	public String getSlug() {
 		return this.slug;
 	}
@@ -161,15 +161,16 @@ public class Track implements java.io.Serializable {
 	public void setUploaderId(String uploaderId) {
 		this.uploaderId = uploaderId;
 	}
-	
-	@Column(name = "approvalStatus", length = 30)
-public String getApprovalStatus() {
-	return this.approvalStatus;
-}
 
-public void setApprovalStatus(String approvalStatus) {
-	this.approvalStatus = approvalStatus;
-}
+	@Column(name = "approvalStatus", length = 30)
+	public String getApprovalStatus() {
+		return this.approvalStatus;
+	}
+
+	public void setApprovalStatus(String approvalStatus) {
+		this.approvalStatus = approvalStatus;
+	}
+
 	@Column(name = "isDeleted")
 	public Boolean getIsDeleted() {
 		return this.isDeleted;

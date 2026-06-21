@@ -23,7 +23,7 @@ import jakarta.persistence.UniqueConstraint;
 @Entity
 @Table(name = "users", uniqueConstraints = @UniqueConstraint(columnNames = "email"))
 public class User implements java.io.Serializable {
-	
+
 	private String id;
 	private String email;
 	private String username;
@@ -194,12 +194,13 @@ public class User implements java.io.Serializable {
 
 	@Column(name = "avatar_url", length = 500)
 	public String getAvatarUrl() {
-	return avatarUrl;
-}
+		return avatarUrl;
+	}
 
-public void setAvatarUrl(String avatarUrl) {
-	this.avatarUrl = avatarUrl;
-}
+	public void setAvatarUrl(String avatarUrl) {
+		this.avatarUrl = avatarUrl;
+	}
+
 	@Column(name = "created_at")
 	public Date getCreatedAt() {
 		return this.createdAt;

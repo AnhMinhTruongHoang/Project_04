@@ -3,6 +3,7 @@ import Button from "@mui/material/Button";
 import Typography from "@mui/material/Typography";
 import CameraAltRoundedIcon from "@mui/icons-material/CameraAltRounded";
 import { Avatar } from "@mui/material";
+import { getUserAvatarUrl } from "@/utils/actions/getAvatar";
 
 type Props = {
   user: Partial<IUser> | null;
@@ -70,7 +71,7 @@ const ProfileHero = ({ user }: Props) => {
         }}
       >
         <Avatar
-          src=""
+          src={getUserAvatarUrl(user) || undefined}
           alt={displayName}
           sx={{
             width: { xs: 140, md: 190 },
@@ -83,7 +84,7 @@ const ProfileHero = ({ user }: Props) => {
             boxShadow: "0 18px 50px rgba(0,0,0,0.45)",
           }}
         >
-          {getInitials(user?.name, user?.email)}
+          {!getUserAvatarUrl(user) && getInitials(user?.name, user?.email)}
         </Avatar>
 
         <Box>

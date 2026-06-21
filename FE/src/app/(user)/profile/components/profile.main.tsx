@@ -18,6 +18,7 @@ import { convertSlugUrl } from "@/utils/api";
 import { useState } from "react";
 import ProfileShareDialog from "./profile-share-dialog";
 import ProfileEditDialog from "./profile-edit-dialog";
+import { getTrackImageUrl } from "@/utils/actions/getAvatar";
 
 type Props = {
   user: Partial<IUser> | null;
@@ -35,18 +36,18 @@ const ProfileMain = ({ user, tracks }: Props) => {
 
   ///
 
-  const getTrackImage = (imgUrl?: string) => {
-    if (!imgUrl) return DEFAULT_IMAGE;
-    if (imgUrl.startsWith("http")) return imgUrl;
-    if (imgUrl.startsWith("/")) return imgUrl;
-
-    return `${BACKEND_URL}/images/${imgUrl}`;
+  const getItemId = (item?: any) => {
+    return item?._id || item?.id || "";
   };
 
   const getTrackHref = (track: ITrackTop) => {
-    return `/track/${convertSlugUrl(track.title)}-${
-      track._id
-    }.html?audio=${encodeURIComponent(track.trackUrl || DEFAULT_AUDIO)}`;
+    const trackId = getItemId(track);
+
+    return `/track/${convertSlugUrl(
+      track.title
+    )}-${trackId}.html?audio=${encodeURIComponent(
+      track.trackUrl || DEFAULT_AUDIO
+    )}`;
   };
 
   const WaveBars = () => {
@@ -225,7 +226,7 @@ const ProfileMain = ({ user, tracks }: Props) => {
             >
               <Box
                 component="img"
-                src={getTrackImage(mainTrack.imgUrl)}
+                src={getTrackImageUrl(mainTrack.imgUrl)}
                 alt={mainTrack.title}
                 sx={{
                   width: "100%",

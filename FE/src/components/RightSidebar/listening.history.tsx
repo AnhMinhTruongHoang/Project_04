@@ -1,11 +1,79 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import Link from "next/link";
 import Box from "@mui/material/Box";
 import Typography from "@mui/material/Typography";
 import PlayArrowRoundedIcon from "@mui/icons-material/PlayArrowRounded";
 import FavoriteRoundedIcon from "@mui/icons-material/FavoriteRounded";
 import RepeatRoundedIcon from "@mui/icons-material/RepeatRounded";
 import ChatBubbleRoundedIcon from "@mui/icons-material/ChatBubbleRounded";
+import { convertSlugUrl, getTrackId } from "@/utils/api";
+import { getListeningHistory } from "@/utils/actions/history";
+import { getTrackImageUrl } from "@/utils/actions/getAvatar";
+
+const formatNumber = (value?: number) => {
+  const number = Number(value || 0);
+
+  if (number >= 1000000) return `${(number / 1000000).toFixed(1)}M`;
+  if (number >= 1000) return `${(number / 1000).toFixed(1)}K`;
+
+  return String(number);
+};
+
+const getArtistName = (track?: any) => {
+  return (
+    track?.artistName ||
+    track?.artist ||
+    track?.author ||
+    track?.description ||
+    track?.uploader?.name ||
+    track?.uploader?.email ||
+    "Unknown"
+  );
+};
+
+const getTrackHref = (track: ITrackTop) => {
+  const trackId = getTrackId(track);
+  const slug =
+    (track as any).slug || `${convertSlugUrl(track.title)}-${trackId}`;
+
+  return `/track/${slug}.html?audio=${encodeURIComponent(
+    track.trackUrl || ""
+  )}`;
+};
 
 const ListeningHistory = () => {
+  const [tracks, setTracks] = useState<ITrackTop[]>([]);
+
+  useEffect(() => {
+    setTracks(getListeningHistory());
+  }, []);
+
+  const latestTrack = tracks[0];
+
+  if (!latestTrack) {
+    return (
+      <Box sx={{ mb: 3 }}>
+        <Typography
+          sx={{
+            fontSize: 12,
+            fontWeight: 900,
+            color: "#d8d8d8",
+            textTransform: "uppercase",
+            mb: 1.5,
+          }}
+        >
+          Listening History
+        </Typography>
+
+        <Typography sx={{ fontSize: 13, color: "#9a9a9a", fontWeight: 800 }}>
+          No listening history yet.
+        </Typography>
+      </Box>
+    );
+  }
+
   return (
     <Box sx={{ mb: 3 }}>
       <Box
@@ -41,17 +109,30 @@ const ListeningHistory = () => {
         </Typography>
       </Box>
 
-      <Box sx={{ display: "flex", gap: 1.2 }}>
+      <Box
+        component={Link}
+        href={getTrackHref(latestTrack)}
+        sx={{
+          display: "flex",
+          gap: 1.2,
+          textDecoration: "none",
+          color: "inherit",
+        }}
+      >
         <Box
           component="img"
-          src="/images/user/zexsing.jpg"
-          alt="History track"
+          src={getTrackImageUrl(latestTrack.imgUrl)}
+          alt={latestTrack.title}
+          onError={(e) => {
+            e.currentTarget.src = "/audio/SC.png";
+          }}
           sx={{
             width: 44,
             height: 44,
             objectFit: "cover",
             borderRadius: "2px",
             bgcolor: "#111",
+            flexShrink: 0,
           }}
         />
 
@@ -63,53 +144,53 @@ const ListeningHistory = () => {
               color: "#ffffff",
               fontWeight: 900,
               lineHeight: 1.3,
-            }}
-          >
-            NCS
-          </Typography>
-
-          <Typography
-            noWrap
-            sx={{
-              fontSize: 13,
-              color: "#ffffff",
-              fontWeight: 900,
-              lineHeight: 1.3,
               mt: 0.2,
             }}
           >
-            ZEXSING, MXRCURY, Pharmagut - Overdrive
+            {latestTrack.title}
+          </Typography>
+          <Typography
+            noWrap
+            sx={{
+              fontSize: 10,
+              color: "#ffffff",
+              fontWeight: 900,
+              lineHeight: 1.3,
+            }}
+          >
+            <i> {getArtistName(latestTrack)}</i>
           </Typography>
 
           <Box
-            sx={{ display: "flex", alignItems: "center", gap: 0.9, mt: 0.7 }}
+            sx={{
+              display: "flex",
+              alignItems: "center",
+              gap: 0.9,
+              mt: 0.7,
+            }}
           >
             <Box sx={{ display: "flex", alignItems: "center", gap: 0.2 }}>
               <PlayArrowRoundedIcon sx={{ fontSize: 14, color: "#9a9a9a" }} />
               <Typography sx={{ fontSize: 11, color: "#9a9a9a" }}>
-                11.4K
+                {formatNumber(latestTrack.countPlay)}
               </Typography>
             </Box>
 
             <Box sx={{ display: "flex", alignItems: "center", gap: 0.2 }}>
               <FavoriteRoundedIcon sx={{ fontSize: 13, color: "#9a9a9a" }} />
               <Typography sx={{ fontSize: 11, color: "#9a9a9a" }}>
-                327
+                {formatNumber(latestTrack.countLike)}
               </Typography>
             </Box>
 
             <Box sx={{ display: "flex", alignItems: "center", gap: 0.2 }}>
               <RepeatRoundedIcon sx={{ fontSize: 13, color: "#9a9a9a" }} />
-              <Typography sx={{ fontSize: 11, color: "#9a9a9a" }}>
-                21
-              </Typography>
+              <Typography sx={{ fontSize: 11, color: "#9a9a9a" }}>0</Typography>
             </Box>
 
             <Box sx={{ display: "flex", alignItems: "center", gap: 0.2 }}>
               <ChatBubbleRoundedIcon sx={{ fontSize: 12, color: "#9a9a9a" }} />
-              <Typography sx={{ fontSize: 11, color: "#9a9a9a" }}>
-                11
-              </Typography>
+              <Typography sx={{ fontSize: 11, color: "#9a9a9a" }}>0</Typography>
             </Box>
           </Box>
         </Box>

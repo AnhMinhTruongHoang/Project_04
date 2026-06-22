@@ -1,11 +1,13 @@
 "use client";
 
+import { useEffect, useState } from "react";
+import Link from "next/link";
+import { useSession } from "next-auth/react";
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import Typography from "@mui/material/Typography";
 import Divider from "@mui/material/Divider";
 import Stack from "@mui/material/Stack";
-import Link from "next/link";
 import PlayArrowRoundedIcon from "@mui/icons-material/PlayArrowRounded";
 import FavoriteRoundedIcon from "@mui/icons-material/FavoriteRounded";
 import ShareRoundedIcon from "@mui/icons-material/ShareRounded";
@@ -14,31 +16,51 @@ import ContentCopyRoundedIcon from "@mui/icons-material/ContentCopyRounded";
 import MoreHorizRoundedIcon from "@mui/icons-material/MoreHorizRounded";
 import EventAvailableRoundedIcon from "@mui/icons-material/EventAvailableRounded";
 import LocationOnRoundedIcon from "@mui/icons-material/LocationOnRounded";
-import { convertSlugUrl } from "@/utils/api";
-import { useState } from "react";
+import { convertSlugUrl, sendRequest } from "@/utils/api";
+import { useToast } from "@/utils/toast";
+import { getTrackImageUrl } from "@/utils/actions/getAvatar";
 import ProfileShareDialog from "./profile-share-dialog";
 import ProfileEditDialog from "./profile-edit-dialog";
-import { getTrackImageUrl } from "@/utils/actions/getAvatar";
 
 type Props = {
   user: Partial<IUser> | null;
   tracks: ITrackTop[];
 };
 
+const getItemId = (item?: any) => {
+  return item?._id || item?.id || "";
+};
+
 const ProfileMain = ({ user, tracks }: Props) => {
-  const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "";
-  const DEFAULT_IMAGE = "/images/logo/Sc.png";
   const DEFAULT_AUDIO = "/audio/DemoS.mp3";
+
+  const toast = useToast();
+  const { data: session } = useSession();
+
   const displayName = user?.name || user?.email || "User";
   const mainTrack = tracks[0];
+
+  const profileUserId = getItemId(user);
+  const currentUserId = getItemId((session as any)?.user);
+  const isOwner = Boolean(profileUserId && currentUserId === profileUserId);
+
   const [openEdit, setOpenEdit] = useState(false);
   const [openShare, setOpenShare] = useState(false);
+  const [followersCount, setFollowersCount] = useState(user?.followers ?? 0);
+  const [isFollowing, setIsFollowing] = useState(false);
+  const [followLoading, setFollowLoading] = useState(false);
 
-  ///
+  useEffect(() => {
+    setFollowersCount(user?.followers ?? 0);
 
-  const getItemId = (item?: any) => {
-    return item?._id || item?.id || "";
-  };
+    if (!profileUserId) return;
+
+    const followedUsers = JSON.parse(
+      localStorage.getItem("soundclone-followed-users") || "[]"
+    ) as string[];
+
+    setIsFollowing(followedUsers.includes(profileUserId));
+  }, [profileUserId, user?.followers]);
 
   const getTrackHref = (track: ITrackTop) => {
     const trackId = getItemId(track);
@@ -48,6 +70,76 @@ const ProfileMain = ({ user, tracks }: Props) => {
     )}-${trackId}.html?audio=${encodeURIComponent(
       track.trackUrl || DEFAULT_AUDIO
     )}`;
+  };
+
+  const saveFollowState = (userId: string, followed: boolean) => {
+    const followedUsers = JSON.parse(
+      localStorage.getItem("soundclone-followed-users") || "[]"
+    ) as string[];
+
+    const nextUsers = followed
+      ? Array.from(new Set([...followedUsers, userId]))
+      : followedUsers.filter((id) => id !== userId);
+
+    localStorage.setItem(
+      "soundclone-followed-users",
+      JSON.stringify(nextUsers)
+    );
+  };
+
+  const handleToggleFollow = async () => {
+    const accessToken =
+      (session as any)?.accessToken ||
+      (session as any)?.access_token ||
+      (session as any)?.user?.access_token;
+
+    if (!profileUserId) {
+      toast.error("User not found.");
+      return;
+    }
+
+    if (!accessToken) {
+      toast.error("Please login first.");
+      return;
+    }
+
+    if (isOwner) {
+      toast.error("You cannot follow yourself.");
+      return;
+    }
+
+    const nextFollowState = !isFollowing;
+
+    try {
+      setFollowLoading(true);
+
+      const res = await sendRequest<IBackendRes<IUser>>({
+        url: `${
+          process.env.NEXT_PUBLIC_BACKEND_URL
+        }/api/v1/users/${profileUserId}/${
+          nextFollowState ? "follow" : "unfollow"
+        }`,
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      });
+
+      if (res?.data) {
+        setIsFollowing(nextFollowState);
+        saveFollowState(profileUserId, nextFollowState);
+        setFollowersCount(res.data.followers ?? followersCount);
+
+        toast.success(nextFollowState ? "Followed." : "Unfollowed.");
+        return;
+      }
+
+      toast.error(res?.message || "Follow failed.");
+    } catch (error) {
+      toast.error("Follow failed.");
+    } finally {
+      setFollowLoading(false);
+    }
   };
 
   const WaveBars = () => {
@@ -81,8 +173,6 @@ const ProfileMain = ({ user, tracks }: Props) => {
     );
   };
 
-  ///
-
   const tabs = [
     "All",
     "Popular tracks",
@@ -102,9 +192,7 @@ const ProfileMain = ({ user, tracks }: Props) => {
         py: 3,
       }}
     >
-      {/* Left content */}
       <Box sx={{ minWidth: 0 }}>
-        {/* Tabs + actions */}
         <Box
           sx={{
             display: "flex",
@@ -141,6 +229,31 @@ const ProfileMain = ({ user, tracks }: Props) => {
           </Stack>
 
           <Stack direction="row" spacing={1}>
+            {!isOwner && (
+              <Button
+                onClick={handleToggleFollow}
+                disabled={followLoading}
+                sx={{
+                  height: 36,
+                  px: 1.8,
+                  borderRadius: "5px",
+                  color: "#ffffff",
+                  backgroundColor: isFollowing ? "#ff5500" : "#242729",
+                  textTransform: "none",
+                  fontWeight: 900,
+                  "&:hover": {
+                    backgroundColor: isFollowing ? "#ff6a00" : "#303335",
+                  },
+                  "&.Mui-disabled": {
+                    color: "#777",
+                    backgroundColor: "#181A1B",
+                  },
+                }}
+              >
+                {followLoading ? "..." : isFollowing ? "Following" : "Follow"}
+              </Button>
+            )}
+
             <Button
               startIcon={<ShareRoundedIcon />}
               onClick={() => setOpenShare(true)}
@@ -317,7 +430,7 @@ const ProfileMain = ({ user, tracks }: Props) => {
               <Box sx={{ mt: 2 }}>
                 {tracks.slice(0, 5).map((track, index) => (
                   <Box
-                    key={track._id}
+                    key={getItemId(track) || index}
                     sx={{
                       display: "grid",
                       gridTemplateColumns: "32px 1fr auto",
@@ -431,7 +544,6 @@ const ProfileMain = ({ user, tracks }: Props) => {
         )}
       </Box>
 
-      {/* Right sidebar */}
       <Box
         sx={{
           display: { xs: "none", lg: "block" },
@@ -448,8 +560,8 @@ const ProfileMain = ({ user, tracks }: Props) => {
           }}
         >
           {[
-            ["Followers", 0],
-            ["Following", 0],
+            ["Followers", followersCount],
+            ["Following", user?.following ?? 0],
             ["Tracks", tracks.length],
           ].map(([label, value]) => (
             <Box key={label}>

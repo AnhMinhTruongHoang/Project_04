@@ -53,6 +53,8 @@ declare global {
     address?: string;
     isVerify?: boolean;
     avatarUrl?: string;
+    followers?: number;
+    following?: number;
     isDeleted?: boolean;
     createdAt?: string;
     updatedAt?: string;

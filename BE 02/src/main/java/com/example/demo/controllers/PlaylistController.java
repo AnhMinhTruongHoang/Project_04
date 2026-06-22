@@ -243,6 +243,8 @@ public class PlaylistController {
 		map.put("avatarUrl", user.getAvatarUrl());
 		map.put("avatar", user.getAvatarUrl());
 		map.put("image", user.getAvatarUrl());
+		map.put("followers", user.getFollowers() == null ? 0 : user.getFollowers());
+		map.put("following", user.getFollowing() == null ? 0 : user.getFollowing());
 
 		return map;
 	}

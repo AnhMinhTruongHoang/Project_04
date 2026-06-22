@@ -65,6 +65,8 @@ public class AuthController {
 		dto.setGender(user.getGender());
 		dto.setAge(user.getAge());
 		dto.setAvatarUrl(user.getAvatarUrl());
+		dto.setFollowers(user.getFollowers() == null ? 0 : user.getFollowers());
+		dto.setFollowing(user.getFollowing() == null ? 0 : user.getFollowing());
 		dto.setCreatedAt(user.getCreatedAt());
 		dto.setUpdatedAt(user.getUpdatedAt());
 
@@ -149,6 +151,8 @@ public class AuthController {
 			user.setIsVerify(true);
 			user.setCode("");
 			user.setRefreshToken("");
+			user.setFollowers(0);
+			user.setFollowing(0);
 			user.setCreatedAt(new Date());
 			user.setUpdatedAt(new Date());
 
@@ -313,6 +317,8 @@ public class AuthController {
 				user.setCode("");
 				user.setRefreshToken("");
 				user.setAvatarUrl(avatarUrl);
+				user.setFollowers(0);
+				user.setFollowing(0);
 				user.setCreatedAt(new Date());
 				user.setUpdatedAt(new Date());
 

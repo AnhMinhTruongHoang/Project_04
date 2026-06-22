@@ -17,6 +17,8 @@ public class UserResponseDTO {
 	private Boolean isVerify;
 	private String type;
 	private String avatarUrl;
+	private Integer followers;
+	private Integer following;
 	private Date createdAt;
 	private Date updatedAt;
 
@@ -126,6 +128,22 @@ public class UserResponseDTO {
 
 	public String getImage() {
 		return avatarUrl;
+	}
+
+	public Integer getFollowers() {
+		return followers;
+	}
+
+	public void setFollowers(Integer followers) {
+		this.followers = followers;
+	}
+
+	public Integer getFollowing() {
+		return following;
+	}
+
+	public void setFollowing(Integer following) {
+		this.following = following;
 	}
 
 	public Date getCreatedAt() {

@@ -38,6 +38,8 @@ public class User implements java.io.Serializable {
 	private String code;
 	private String refreshToken;
 	private String avatarUrl;
+	private Integer followers;
+	private Integer following;
 	private Date createdAt;
 	private Date updatedAt;
 
@@ -199,6 +201,22 @@ public class User implements java.io.Serializable {
 
 	public void setAvatarUrl(String avatarUrl) {
 		this.avatarUrl = avatarUrl;
+	}
+
+	public Integer getFollowers() {
+		return followers;
+	}
+
+	public void setFollowers(Integer followers) {
+		this.followers = followers;
+	}
+
+	public Integer getFollowing() {
+		return following;
+	}
+
+	public void setFollowing(Integer following) {
+		this.following = following;
 	}
 
 	@Column(name = "created_at")

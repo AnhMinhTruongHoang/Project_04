@@ -75,6 +75,8 @@ public class CommentController {
         map.put("email", user.getEmail());
         map.put("avatar", user.getAvatarUrl());
         map.put("avatarUrl", user.getAvatarUrl());
+        map.put("followers", user.getFollowers() == null ? 0 : user.getFollowers());
+        map.put("following", user.getFollowing() == null ? 0 : user.getFollowing());
 
         return map;
     }

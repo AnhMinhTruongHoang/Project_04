@@ -79,6 +79,8 @@ const UsersTable = ({ users, accessToken }: Props) => {
         user.type,
         user.gender,
         user.address,
+        user.following,
+        user.followers,
       ]
         .filter(Boolean)
         .some((item) => String(item).toLowerCase().includes(keyword));
@@ -306,6 +308,12 @@ const UsersTable = ({ users, accessToken }: Props) => {
     {
       field: "address",
       headerName: "Address",
+      flex: 1,
+      minWidth: 180,
+    },
+    {
+      field: "following",
+      headerName: "following",
       flex: 1,
       minWidth: 180,
     },

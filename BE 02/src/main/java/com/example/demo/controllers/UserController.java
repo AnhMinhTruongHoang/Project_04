@@ -20,8 +20,11 @@ import org.springframework.web.bind.annotation.*;
 import com.example.demo.dtos.UserDTO;
 import com.example.demo.entities.User;
 import com.example.demo.helpers.AuthHelper;
+import com.example.demo.helpers.JwtHelper;
 import com.example.demo.repositories.UserRepository;
 import com.example.demo.responses.ApiResponse;
+
+import io.jsonwebtoken.Claims;
 
 @RestController
 @RequestMapping({ "/api/users", "/api/v1/users" })
@@ -56,14 +59,16 @@ public class UserController {
 	}
 
 	private String getString(Map<String, Object> body, String... keys) {
-		if (body == null) return null;
+		if (body == null)
+			return null;
 
 		for (String key : keys) {
 			Object value = body.get(key);
 
 			if (value != null) {
 				String result = String.valueOf(value).trim();
-				if (!result.isEmpty()) return result;
+				if (!result.isEmpty())
+					return result;
 			}
 		}
 
@@ -71,11 +76,13 @@ public class UserController {
 	}
 
 	private Integer getInteger(Map<String, Object> body, String key) {
-		if (body == null) return null;
+		if (body == null)
+			return null;
 
 		Object value = body.get(key);
 
-		if (value == null) return null;
+		if (value == null)
+			return null;
 
 		try {
 			return Integer.parseInt(String.valueOf(value));
@@ -85,11 +92,13 @@ public class UserController {
 	}
 
 	private Boolean getBoolean(Map<String, Object> body, String key) {
-		if (body == null) return null;
+		if (body == null)
+			return null;
 
 		Object value = body.get(key);
 
-		if (value == null) return null;
+		if (value == null)
+			return null;
 
 		if (value instanceof Boolean) {
 			return (Boolean) value;
@@ -123,20 +132,50 @@ public class UserController {
 		Integer age = getInteger(body, "age");
 		Boolean isVerify = getBoolean(body, "isVerify");
 
-		if (email != null) user.setEmail(email);
-		if (username != null) user.setUsername(username);
-		if (name != null) user.setName(name);
-		if (role != null) user.setRole(role);
-		if (address != null) user.setAddress(address);
-		if (gender != null) user.setGender(gender);
-		if (type != null) user.setType(type);
-		if (avatarUrl != null) user.setAvatarUrl(avatarUrl);
-		if (age != null) user.setAge(age);
-		if (isVerify != null) user.setIsVerify(isVerify);
+		if (email != null)
+			user.setEmail(email);
+		if (username != null)
+			user.setUsername(username);
+		if (name != null)
+			user.setName(name);
+		if (role != null)
+			user.setRole(role);
+		if (address != null)
+			user.setAddress(address);
+		if (gender != null)
+			user.setGender(gender);
+		if (type != null)
+			user.setType(type);
+		if (avatarUrl != null)
+			user.setAvatarUrl(avatarUrl);
+		if (age != null)
+			user.setAge(age);
+		if (isVerify != null)
+			user.setIsVerify(isVerify);
 
 		if (password != null) {
 			user.setPassword(BCrypt.hashpw(password, BCrypt.gensalt()));
 		}
+	}
+
+	private User getCurrentUser(String authorization) {
+		try {
+			if (authorization == null || !authorization.startsWith("Bearer ")) {
+				return null;
+			}
+
+			String token = authorization.replace("Bearer ", "");
+			Claims claims = JwtHelper.verifyToken(token);
+			String email = claims.getSubject();
+
+			return userRepository.findByEmail(email);
+		} catch (Exception e) {
+			return null;
+		}
+	}
+
+	private int safeNumber(Integer value) {
+		return value == null ? 0 : value;
 	}
 
 	@GetMapping({ "/all", "/find-all" })
@@ -258,6 +297,8 @@ public class UserController {
 			user.setGender(getString(body, "gender"));
 			user.setType(getString(body, "type") != null ? getString(body, "type") : "SYSTEM");
 			user.setAvatarUrl(getString(body, "avatarUrl", "avatar", "image"));
+			user.setFollowers(0);
+			user.setFollowing(0);
 			user.setCreatedAt(new Date());
 			user.setUpdatedAt(new Date());
 
@@ -296,6 +337,104 @@ public class UserController {
 					HttpStatus.INTERNAL_SERVER_ERROR);
 		}
 	}
+
+	/// follow
+	@PostMapping("/{id}/follow")
+	public ResponseEntity<?> followUser(
+			@PathVariable String id,
+			@RequestHeader(value = "Authorization", required = false) String authorization) {
+
+		try {
+			User currentUser = getCurrentUser(authorization);
+
+			if (currentUser == null) {
+				return new ResponseEntity<>(
+						new ApiResponse<>(401, "Unauthorized", null),
+						HttpStatus.UNAUTHORIZED);
+			}
+
+			User targetUser = userRepository.findById(id).orElse(null);
+
+			if (targetUser == null) {
+				return new ResponseEntity<>(
+						new ApiResponse<>(404, "User not found", null),
+						HttpStatus.NOT_FOUND);
+			}
+
+			if (currentUser.getId().equals(targetUser.getId())) {
+				return new ResponseEntity<>(
+						new ApiResponse<>(400, "You cannot follow yourself", null),
+						HttpStatus.BAD_REQUEST);
+			}
+
+			targetUser.setFollowers(safeNumber(targetUser.getFollowers()) + 1);
+			currentUser.setFollowing(safeNumber(currentUser.getFollowing()) + 1);
+
+			targetUser.setUpdatedAt(new Date());
+			currentUser.setUpdatedAt(new Date());
+
+			userRepository.save(targetUser);
+			userRepository.save(currentUser);
+
+			return new ResponseEntity<>(
+					new ApiResponse<>(200, "Follow user success", toDTO(targetUser)),
+					HttpStatus.OK);
+
+		} catch (Exception e) {
+			return new ResponseEntity<>(
+					new ApiResponse<>(500, e.getMessage(), null),
+					HttpStatus.INTERNAL_SERVER_ERROR);
+		}
+	}
+
+	@PostMapping("/{id}/unfollow")
+	public ResponseEntity<?> unfollowUser(
+			@PathVariable String id,
+			@RequestHeader(value = "Authorization", required = false) String authorization) {
+
+		try {
+			User currentUser = getCurrentUser(authorization);
+
+			if (currentUser == null) {
+				return new ResponseEntity<>(
+						new ApiResponse<>(401, "Unauthorized", null),
+						HttpStatus.UNAUTHORIZED);
+			}
+
+			User targetUser = userRepository.findById(id).orElse(null);
+
+			if (targetUser == null) {
+				return new ResponseEntity<>(
+						new ApiResponse<>(404, "User not found", null),
+						HttpStatus.NOT_FOUND);
+			}
+
+			if (currentUser.getId().equals(targetUser.getId())) {
+				return new ResponseEntity<>(
+						new ApiResponse<>(400, "You cannot unfollow yourself", null),
+						HttpStatus.BAD_REQUEST);
+			}
+
+			targetUser.setFollowers(Math.max(0, safeNumber(targetUser.getFollowers()) - 1));
+			currentUser.setFollowing(Math.max(0, safeNumber(currentUser.getFollowing()) - 1));
+
+			targetUser.setUpdatedAt(new Date());
+			currentUser.setUpdatedAt(new Date());
+
+			userRepository.save(targetUser);
+			userRepository.save(currentUser);
+
+			return new ResponseEntity<>(
+					new ApiResponse<>(200, "Unfollow user success", toDTO(targetUser)),
+					HttpStatus.OK);
+
+		} catch (Exception e) {
+			return new ResponseEntity<>(
+					new ApiResponse<>(500, e.getMessage(), null),
+					HttpStatus.INTERNAL_SERVER_ERROR);
+		}
+	}
+	///
 
 	@RequestMapping(value = { "", "/update/{id}" }, method = { RequestMethod.PATCH, RequestMethod.PUT })
 	public ResponseEntity<?> update(
@@ -388,4 +527,5 @@ public class UserController {
 					HttpStatus.INTERNAL_SERVER_ERROR);
 		}
 	}
+
 }

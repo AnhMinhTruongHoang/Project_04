@@ -173,6 +173,8 @@ public class TrackController {
 		dto.setIsVerify(user.getIsVerify());
 		dto.setType(user.getType());
 		dto.setAvatarUrl(user.getAvatarUrl());
+		dto.setFollowers(user.getFollowers() == null ? 0 : user.getFollowers());
+		dto.setFollowing(user.getFollowing() == null ? 0 : user.getFollowing());
 		dto.setCreatedAt(user.getCreatedAt());
 		dto.setUpdatedAt(user.getUpdatedAt());
 
@@ -378,7 +380,8 @@ public class TrackController {
 		}
 	}
 
-	@RequestMapping(value = { "{id}", "update/{id}" }, method = { RequestMethod.PUT, RequestMethod.PATCH }, consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+	@RequestMapping(value = { "{id}", "update/{id}" }, method = { RequestMethod.PUT,
+			RequestMethod.PATCH }, consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
 	public ResponseEntity<?> update(
 			@PathVariable String id,
 			@RequestParam("title") String title,

@@ -18,6 +18,7 @@ import VolumeOffRoundedIcon from "@mui/icons-material/VolumeOffRounded";
 import FooterQueuePopover from "./footer.queue.popover";
 import { useSession } from "next-auth/react";
 import { convertSlugUrl, sendRequest } from "@/utils/api";
+import { saveListeningHistory } from "@/utils/actions/history";
 
 const formatTime = (seconds = 0) => {
   const minutes = Math.floor(seconds / 60);
@@ -72,6 +73,21 @@ const AppFooter = () => {
 
     return `${process.env.NEXT_PUBLIC_BACKEND_URL}/uploads/audio/${trackUrl}`;
   };
+  /// save history
+
+  useEffect(() => {
+    const trackId = getTrackId(currentTrack);
+
+    if (!trackId) return;
+    if (!currentTrack?.isPlaying) return;
+
+    saveListeningHistory(currentTrack as ITrackTop);
+  }, [
+    currentTrack?._id,
+    (currentTrack as any)?.id,
+    currentTrack?.trackUrl,
+    currentTrack?.isPlaying,
+  ]);
 
   /// footer playlist
 

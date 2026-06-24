@@ -10,11 +10,11 @@ export const metadata: Metadata = {
   metadataBase: new URL(
     process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"
   ),
-  title: "SoundCloud Clone",
-  description: "SoundCloud Clone",
+  title: "SoundClone",
+  description: "SoundClone",
   openGraph: {
-    title: "SoundCloud Clone",
-    description: "SoundCloud Clone",
+    title: "SoundClone",
+    description: "SoundClone",
     type: "website",
     images: ["/audio/SC.png"],
   },

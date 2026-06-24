@@ -258,7 +258,7 @@ const AuthSignUp = () => {
           >
             <Avatar
               src="/images/logo/Sc.png"
-              alt="SoundCloud Logo"
+              alt="SoundClone Logo"
               sx={{
                 width: 60,
                 height: 60,
@@ -291,7 +291,7 @@ const AuthSignUp = () => {
             <Typography
               sx={{ color: "#8B949E", textAlign: "center", fontSize: 14 }}
             >
-              Create your SoundCloud Clone account
+              Create your SoundClone account
             </Typography>
 
             <Typography

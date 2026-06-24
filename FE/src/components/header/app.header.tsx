@@ -155,7 +155,7 @@ const AppHeader = () => {
               >
                 <Image
                   src="/images/logo/Sc.png"
-                  alt="SoundCloud"
+                  alt="SoundClone"
                   fill
                   sizes="38px"
                   style={{

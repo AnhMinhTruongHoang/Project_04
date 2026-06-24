@@ -31,7 +31,6 @@ import Visibility from "@mui/icons-material/Visibility";
 import VisibilityOff from "@mui/icons-material/VisibilityOff";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 
-
 const Card = styled(MuiCard)(({ theme }) => ({
   display: "flex",
   flexDirection: "column",
@@ -76,8 +75,7 @@ const SignInContainer = styled(Stack)(({ theme }) => ({
     background:
       "linear-gradient(rgba(255,255,255,0.025) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.025) 1px, transparent 1px)",
     backgroundSize: "42px 42px",
-    maskImage:
-      "linear-gradient(to bottom, rgba(0,0,0,0.9), rgba(0,0,0,0.25))",
+    maskImage: "linear-gradient(to bottom, rgba(0,0,0,0.9), rgba(0,0,0,0.25))",
   },
 }));
 
@@ -86,7 +84,6 @@ const AuthSignIn = (props: any) => {
   const [showPassword, setShowPassword] = useState<boolean>(false);
   const [username, setUsername] = useState<string>("");
   const [password, setPassword] = useState<string>("");
-  
 
   const [isErrorUsername, setIsErrorUsername] = useState<boolean>(false);
   const [isErrorPassword, setIsErrorPassword] = useState<boolean>(false);
@@ -193,10 +190,9 @@ const AuthSignIn = (props: any) => {
               gap: 1,
             }}
           >
-            
             <Avatar
               src="/images/logo/Sc.png"
-              alt="SoundCloud Logo"
+              alt="SoundClone Logo"
               sx={{
                 width: 60,
                 height: 60,
@@ -233,7 +229,7 @@ const AuthSignIn = (props: any) => {
                 fontSize: 14,
               }}
             >
-              Welcome back to SoundCloud Clone
+              Welcome back to SoundClone
             </Typography>
           </Box>
 

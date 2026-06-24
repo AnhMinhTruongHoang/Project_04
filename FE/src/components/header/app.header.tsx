@@ -189,7 +189,7 @@ const AppHeader = () => {
 
               <Box
                 component={Link}
-                href="/feed"
+                href="/blog"
                 sx={navItemSx(isActive("/feed"))}
               >
                 Feed

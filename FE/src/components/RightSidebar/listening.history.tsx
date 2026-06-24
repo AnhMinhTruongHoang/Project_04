@@ -1,16 +1,16 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
 import Box from "@mui/material/Box";
 import Typography from "@mui/material/Typography";
 import PlayArrowRoundedIcon from "@mui/icons-material/PlayArrowRounded";
 import FavoriteRoundedIcon from "@mui/icons-material/FavoriteRounded";
 import RepeatRoundedIcon from "@mui/icons-material/RepeatRounded";
 import ChatBubbleRoundedIcon from "@mui/icons-material/ChatBubbleRounded";
-import { convertSlugUrl, getTrackId } from "@/utils/api";
+import { getTrackId } from "@/utils/api";
 import { getListeningHistory } from "@/utils/actions/history";
 import { getTrackImageUrl } from "@/utils/actions/getAvatar";
+import { useTrackContext } from "@/lib/track.wrapper";
 
 const formatNumber = (value?: number) => {
   const number = Number(value || 0);
@@ -33,24 +33,33 @@ const getArtistName = (track?: any) => {
   );
 };
 
-const getTrackHref = (track: ITrackTop) => {
-  const trackId = getTrackId(track);
-  const slug =
-    (track as any).slug || `${convertSlugUrl(track.title)}-${trackId}`;
-
-  return `/track/${slug}.html?audio=${encodeURIComponent(
-    track.trackUrl || ""
-  )}`;
-};
-
 const ListeningHistory = () => {
   const [tracks, setTracks] = useState<ITrackTop[]>([]);
+  const { setCurrentTrack } = useTrackContext() as ITrackContext;
 
   useEffect(() => {
     setTracks(getListeningHistory());
   }, []);
 
   const latestTrack = tracks[0];
+
+  const handlePlayHistoryTrack = (track: ITrackTop) => {
+    const trackId = getTrackId(track);
+
+    if (!trackId) return;
+
+    setCurrentTrack({
+      ...track,
+      _id: (track as any)._id || trackId,
+      id: (track as any).id || trackId,
+      isPlaying: true,
+      source: "footer",
+      currentTime: 0,
+      duration: 0,
+      seekTime: undefined,
+      seekId: Date.now(),
+    } as any);
+  };
 
   if (!latestTrack) {
     return (
@@ -110,13 +119,20 @@ const ListeningHistory = () => {
       </Box>
 
       <Box
-        component={Link}
-        href={getTrackHref(latestTrack)}
+        onClick={() => handlePlayHistoryTrack(latestTrack)}
         sx={{
           display: "flex",
           gap: 1.2,
           textDecoration: "none",
           color: "inherit",
+          cursor: "pointer",
+          borderRadius: "4px",
+          p: 0.4,
+          mx: -0.4,
+          transition: "0.2s ease",
+          "&:hover": {
+            backgroundColor: "rgba(255,255,255,0.06)",
+          },
         }}
       >
         <Box
@@ -149,6 +165,7 @@ const ListeningHistory = () => {
           >
             {latestTrack.title}
           </Typography>
+
           <Typography
             noWrap
             sx={{
@@ -158,7 +175,7 @@ const ListeningHistory = () => {
               lineHeight: 1.3,
             }}
           >
-            <i> {getArtistName(latestTrack)}</i>
+            <i>{getArtistName(latestTrack)}</i>
           </Typography>
 
           <Box

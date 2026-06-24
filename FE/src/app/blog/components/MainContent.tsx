@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { useEffect, useState } from "react";
 import Avatar from "@mui/material/Avatar";
 import AvatarGroup from "@mui/material/AvatarGroup";
 import Box from "@mui/material/Box";
@@ -12,8 +13,13 @@ import Grid from "@mui/material/Grid";
 import IconButton from "@mui/material/IconButton";
 import Typography from "@mui/material/Typography";
 import { styled } from "@mui/material/styles";
-import RssFeedRoundedIcon from "@mui/icons-material/RssFeedRounded";
 import Search from "./blogSearch";
+import { getTrackId } from "@/utils/api";
+import { getListeningHistory } from "@/utils/actions/history";
+import { useTrackContext } from "@/lib/track.wrapper";
+import { LibraryMusicOutlined } from "@mui/icons-material";
+import { useRouter } from "next/navigation";
+import { Pagination } from "@mui/material";
 
 const TEMP_IMAGE = "/images/user/NCS.jpg";
 const TEMP_AVATAR = "/images/user/NCS.jpg";
@@ -21,22 +27,24 @@ const TEMP_AVATAR = "/images/user/NCS.jpg";
 const cardData = [
   {
     img: TEMP_IMAGE,
-    tag: "Engineering",
-    title: "Revolutionizing software development with cutting-edge tools",
+    tag: "eMagazine",
+    title: "Sơn Tùng M-TP và câu chuyện tương tư của một chàng trai",
     description:
-      "Our latest engineering tools are designed to streamline workflows and boost productivity. Discover how these innovations are transforming the software development landscape.",
+      "Một layout eMagazine dark mode, nhiều ảnh lớn, nhiều khoảng thở, phù hợp để dựng lại bằng Figma rồi thay ảnh vào sau.",
+    href: "/eMagazine/sontung",
     authors: [
-      { name: "Remy Sharp", avatar: TEMP_AVATAR },
-      { name: "Travis Howard", avatar: TEMP_AVATAR },
+      { name: "Minh", avatar: TEMP_AVATAR },
+      { name: "SoundClone", avatar: TEMP_AVATAR },
     ],
   },
   {
     img: TEMP_IMAGE,
-    tag: "Product",
-    title: "Innovative product features that drive success",
+    tag: "Music",
+    title: "NCS eMagazine: Âm nhạc, cảm hứng và cộng đồng",
     description:
-      "Explore the key features of our latest product release that are helping businesses achieve their goals. From user-friendly interfaces to robust functionality, learn why our product stands out.",
-    authors: [{ name: "Erica Johns", avatar: TEMP_AVATAR }],
+      "Một bài eMagazine mẫu dành cho NCS, dùng layout visual lớn, card tối, accent neon và nhịp đọc hiện đại.",
+    href: "/eMagazine/ncs",
+    authors: [{ name: "Minh", avatar: TEMP_AVATAR }],
   },
   {
     img: TEMP_IMAGE,
@@ -44,6 +52,7 @@ const cardData = [
     title: "Designing for the future: trends and insights",
     description:
       "Stay ahead of the curve with the latest design trends and insights. Our design team shares their expertise on creating intuitive and visually stunning user experiences.",
+    href: "/eMagazine/sontung",
     authors: [{ name: "Kate Morrison", avatar: TEMP_AVATAR }],
   },
   {
@@ -52,6 +61,7 @@ const cardData = [
     title: "Our company's journey: milestones and achievements",
     description:
       "Take a look at our company's journey and the milestones we've achieved along the way. From humble beginnings to industry leader, discover our story of growth and success.",
+    href: "/eMagazine/ncs",
     authors: [{ name: "Cindy Baker", avatar: TEMP_AVATAR }],
   },
   {
@@ -59,7 +69,8 @@ const cardData = [
     tag: "Engineering",
     title: "Pioneering sustainable engineering solutions",
     description:
-      "Learn about our commitment to sustainability and the innovative engineering solutions we're implementing to create a greener future. Discover the impact of our eco-friendly initiatives.",
+      "Learn about our commitment to sustainability and the innovative engineering solutions we're implementing to create a greener future.",
+    href: "/eMagazine/sontung",
     authors: [
       { name: "Agnes Walker", avatar: TEMP_AVATAR },
       { name: "Trevor Henderson", avatar: TEMP_AVATAR },
@@ -70,7 +81,8 @@ const cardData = [
     tag: "Product",
     title: "Maximizing efficiency with our latest product updates",
     description:
-      "Our recent product updates are designed to help you maximize efficiency and achieve more. Get a detailed overview of the new features and improvements that can elevate your workflow.",
+      "Our recent product updates are designed to help you maximize efficiency and achieve more. Get a detailed overview of the new features.",
+    href: "/eMagazine/ncs",
     authors: [{ name: "Travis Howard", avatar: TEMP_AVATAR }],
   },
 ];
@@ -157,6 +169,34 @@ function Author({ authors }: { authors: { name: string; avatar: string }[] }) {
 }
 
 export default function MainContent() {
+  const router = useRouter();
+  const [tracks, setTracks] = useState<ITrackTop[]>([]);
+  const { setCurrentTrack } = useTrackContext() as ITrackContext;
+
+  useEffect(() => {
+    setTracks(getListeningHistory());
+  }, []);
+
+  const latestTrack = tracks[0];
+
+  const handlePlayHistoryTrack = (track: ITrackTop) => {
+    const trackId = getTrackId(track);
+
+    if (!trackId) return;
+
+    setCurrentTrack({
+      ...track,
+      _id: (track as any)._id || trackId,
+      id: (track as any).id || trackId,
+      isPlaying: true,
+      source: "footer",
+      currentTime: 0,
+      duration: 0,
+      seekTime: undefined,
+      seekId: Date.now(),
+    } as any);
+  };
+
   const [focusedCardIndex, setFocusedCardIndex] = React.useState<number | null>(
     null
   );
@@ -247,7 +287,9 @@ export default function MainContent() {
         <Search />
 
         <IconButton size="small" aria-label="RSS feed">
-          <RssFeedRoundedIcon />
+          <LibraryMusicOutlined
+            onClick={() => handlePlayHistoryTrack(latestTrack)}
+          />
         </IconButton>
       </Box>
 
@@ -337,7 +379,9 @@ export default function MainContent() {
               },
             }}
           >
-            <RssFeedRoundedIcon />
+            <LibraryMusicOutlined
+              onClick={() => handlePlayHistoryTrack(latestTrack)}
+            />
           </IconButton>
         </Box>
       </Box>
@@ -346,6 +390,7 @@ export default function MainContent() {
         <Grid item xs={12} md={6}>
           <StyledCard
             variant="outlined"
+            onClick={() => router.push(cardData[0].href || "/blog/sontung")}
             onFocus={() => handleFocus(0)}
             onBlur={handleBlur}
             tabIndex={0}
@@ -598,6 +643,44 @@ export default function MainContent() {
           </StyledCard>
         </Grid>
       </Grid>
+      <Box
+        sx={{
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+          width: "100%",
+          pt: 4,
+        }}
+      >
+        <Pagination
+          hidePrevButton
+          hideNextButton
+          count={10}
+          boundaryCount={10}
+          sx={{
+            "& .MuiPaginationItem-root": {
+              color: "#a7a7a7",
+              borderColor: "rgba(255,255,255,0.12)",
+              fontWeight: 800,
+            },
+
+            "& .MuiPaginationItem-root:hover": {
+              bgcolor: "rgba(0,255,224,0.08)",
+              color: "#00ffe0",
+            },
+
+            "& .Mui-selected": {
+              bgcolor: "#00ffe0 !important",
+              color: "#020617",
+              fontWeight: 900,
+            },
+
+            "& .MuiPaginationItem-ellipsis": {
+              color: "#8b949e",
+            },
+          }}
+        />
+      </Box>
     </Box>
   );
 }

@@ -9,7 +9,7 @@ const articles = [
   {
     title: "Sơn Tùng M-TP eMagazine",
     description: "Câu chuyện tương tư của một chàng trai.",
-    img: "/images/user/NCS.jpg",
+    img: "/images/media/sontungP.jpg",
     href: "/eMagazine/sontung",
   },
   {

@@ -7,9 +7,7 @@ import AvatarGroup from "@mui/material/AvatarGroup";
 import Box from "@mui/material/Box";
 import Card from "@mui/material/Card";
 import CardContent from "@mui/material/CardContent";
-import CardMedia from "@mui/material/CardMedia";
 import Chip from "@mui/material/Chip";
-import Grid from "@mui/material/Grid";
 import IconButton from "@mui/material/IconButton";
 import Typography from "@mui/material/Typography";
 import { styled } from "@mui/material/styles";
@@ -20,13 +18,13 @@ import { useTrackContext } from "@/lib/track.wrapper";
 import { LibraryMusicOutlined } from "@mui/icons-material";
 import { useRouter } from "next/navigation";
 import { Pagination } from "@mui/material";
+import EmagazineCardGrid from "./EmagazineCardGrid";
 
-const TEMP_IMAGE = "/images/user/NCS.jpg";
 const TEMP_AVATAR = "/images/user/NCS.jpg";
 
 const cardData = [
   {
-    img: TEMP_IMAGE,
+    img: "/images/media/sontungP.jpg",
     tag: "eMagazine",
     title: "Sơn Tùng M-TP và câu chuyện tương tư của một chàng trai",
     description:
@@ -38,7 +36,7 @@ const cardData = [
     ],
   },
   {
-    img: TEMP_IMAGE,
+    img: "/images/user/NCS.jpg",
     tag: "Music",
     title: "NCS eMagazine: Âm nhạc, cảm hứng và cộng đồng",
     description:
@@ -47,7 +45,7 @@ const cardData = [
     authors: [{ name: "Minh", avatar: TEMP_AVATAR }],
   },
   {
-    img: TEMP_IMAGE,
+    img: "/images/media/sontungP.jpg",
     tag: "Design",
     title: "Designing for the future: trends and insights",
     description:
@@ -56,7 +54,7 @@ const cardData = [
     authors: [{ name: "Kate Morrison", avatar: TEMP_AVATAR }],
   },
   {
-    img: TEMP_IMAGE,
+    img: "/images/user/NCS.jpg",
     tag: "Company",
     title: "Our company's journey: milestones and achievements",
     description:
@@ -65,7 +63,7 @@ const cardData = [
     authors: [{ name: "Cindy Baker", avatar: TEMP_AVATAR }],
   },
   {
-    img: TEMP_IMAGE,
+    img: "/images/media/sontungP.jpg",
     tag: "Engineering",
     title: "Pioneering sustainable engineering solutions",
     description:
@@ -77,7 +75,7 @@ const cardData = [
     ],
   },
   {
-    img: TEMP_IMAGE,
+    img: "/images/user/NCS.jpg",
     tag: "Product",
     title: "Maximizing efficiency with our latest product updates",
     description:
@@ -386,78 +384,7 @@ export default function MainContent() {
         </Box>
       </Box>
 
-      <Grid container spacing={2} columns={12}>
-        {cardData.map((card, index) => {
-          const isLargeCard = index === 0 || index === 1;
-
-          return (
-            <Grid item xs={12} md={isLargeCard ? 6 : 4} key={card.title}>
-              <StyledCard
-                variant="outlined"
-                onClick={() => router.push(card.href)}
-                onFocus={() => handleFocus(index)}
-                onBlur={handleBlur}
-                tabIndex={0}
-                className={focusedCardIndex === index ? "Mui-focused" : ""}
-                sx={{ height: "100%" }}
-              >
-                <CardMedia
-                  component="img"
-                  alt={card.title}
-                  image={card.img}
-                  sx={{
-                    aspectRatio: "16 / 9",
-                    objectFit: "cover",
-                    borderBottom: "1px solid rgba(255,255,255,0.08)",
-                  }}
-                />
-
-                <StyledCardContent>
-                  <Typography
-                    gutterBottom
-                    variant="caption"
-                    component="div"
-                    sx={{
-                      color: "#00ffe0",
-                      fontWeight: 900,
-                      letterSpacing: "0.12em",
-                      textTransform: "uppercase",
-                    }}
-                  >
-                    {card.tag}
-                  </Typography>
-
-                  <Typography
-                    gutterBottom
-                    variant="h6"
-                    component="div"
-                    sx={{
-                      color: "#ffffff",
-                      fontWeight: 900,
-                      lineHeight: 1.25,
-                    }}
-                  >
-                    {card.title}
-                  </Typography>
-
-                  <StyledTypography
-                    variant="body2"
-                    gutterBottom
-                    sx={{
-                      color: "#a7a7a7",
-                      lineHeight: 1.7,
-                    }}
-                  >
-                    {card.description}
-                  </StyledTypography>
-                </StyledCardContent>
-
-                <Author authors={card.authors} />
-              </StyledCard>
-            </Grid>
-          );
-        })}
-      </Grid>
+      <EmagazineCardGrid cards={cardData} />
 
       <Box
         sx={{

@@ -8,19 +8,49 @@ import Stack from "@mui/material/Stack";
 import Chip from "@mui/material/Chip";
 import Divider from "@mui/material/Divider";
 
-const DEFAULT_IMG = "/images/user/NCS.jpg";
-
 const MAGAZINE_IMAGES = {
-  "#IMG_HERO": DEFAULT_IMG,
-  "#IMG_01_FULL": DEFAULT_IMG,
-  "#IMG_02_VERTICAL": DEFAULT_IMG,
-  "#IMG_03_WIDE": DEFAULT_IMG,
-  "#IMG_04_LEFT": DEFAULT_IMG,
-  "#IMG_05_RIGHT": DEFAULT_IMG,
-  "#IMG_06_CLOSING": DEFAULT_IMG,
+  RISING_STAR: "/images/media/sontungP.jpg",
+  NO_1: "/images/media/sontungP.jpg",
+  STYLE_ICON: "/images/media/st003.jpg",
+  ASIAN_POP: "/images/media/st007.jpg",
+  CREATIVE_LEFT: "/images/media/st005.jpg",
+  CREATIVE_RIGHT: "/images/media/st006.jpg",
+  CLOSING_FRAME: "/images/media/st006.jpg",
+};
+
+const MAGAZINE_VIDEOS = {
+  NO_1: "https://www.youtube.com/watch?v=SlQR9iu09bQ&list=RDSlQR9iu09bQ&start_radio=1",
 };
 
 type ImageKey = keyof typeof MAGAZINE_IMAGES;
+
+const HASHTAGS: Record<ImageKey, string> = {
+  RISING_STAR: "#RISING_STAR",
+  NO_1: "#NO.1",
+  STYLE_ICON: "#STYLE_ICON",
+  ASIAN_POP: "#ASIAN_POP",
+  CREATIVE_LEFT: "#CREATIVE_VISION",
+  CREATIVE_RIGHT: "#NEW_WAVE",
+  CLOSING_FRAME: "#COME_MY_WAY",
+};
+
+const getYouTubeEmbedUrl = (url: string) => {
+  if (!url) return "";
+
+  if (url.includes("youtube.com/embed/")) return url;
+
+  if (url.includes("youtu.be/")) {
+    const id = url.split("youtu.be/")[1]?.split("?")[0];
+    return `https://www.youtube.com/embed/${id}`;
+  }
+
+  if (url.includes("watch?v=")) {
+    const id = url.split("watch?v=")[1]?.split("&")[0];
+    return `https://www.youtube.com/embed/${id}`;
+  }
+
+  return url;
+};
 
 const imageSx = {
   width: "100%",
@@ -29,7 +59,7 @@ const imageSx = {
   display: "block",
 };
 
-function ImageHash({
+function MagazineImage({
   id,
   sx,
   rounded = true,
@@ -50,7 +80,12 @@ function ImageHash({
         ...sx,
       }}
     >
-      <Box component="img" src={MAGAZINE_IMAGES[id]} alt={id} sx={imageSx} />
+      <Box
+        component="img"
+        src={MAGAZINE_IMAGES[id]}
+        alt={HASHTAGS[id]}
+        sx={imageSx}
+      />
 
       <Box
         sx={{
@@ -68,7 +103,67 @@ function ImageHash({
           letterSpacing: "0.08em",
         }}
       >
-        {id}
+        {HASHTAGS[id]}
+      </Box>
+    </Box>
+  );
+}
+
+function YouTubeBlock({
+  videoUrl,
+  hashtag = "#NO.1",
+  sx,
+  rounded = true,
+}: {
+  videoUrl: string;
+  hashtag?: string;
+  sx?: any;
+  rounded?: boolean;
+}) {
+  return (
+    <Box
+      sx={{
+        position: "relative",
+        overflow: "hidden",
+        borderRadius: rounded ? { xs: "22px", md: "32px" } : 0,
+        border: "1px solid rgba(255,255,255,0.12)",
+        bgcolor: "#111318",
+        boxShadow: "0 24px 80px rgba(0,0,0,0.45)",
+        ...sx,
+      }}
+    >
+      <Box
+        component="iframe"
+        src={getYouTubeEmbedUrl(videoUrl)}
+        title={hashtag}
+        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+        allowFullScreen
+        sx={{
+          width: "100%",
+          height: "100%",
+          border: 0,
+          display: "block",
+        }}
+      />
+
+      <Box
+        sx={{
+          position: "absolute",
+          left: 16,
+          bottom: 16,
+          px: 1.4,
+          py: 0.6,
+          borderRadius: "999px",
+          bgcolor: "rgba(0,0,0,0.72)",
+          border: "1px solid rgba(0,255,224,0.35)",
+          color: "#00ffe0",
+          fontSize: 12,
+          fontWeight: 900,
+          letterSpacing: "0.08em",
+          pointerEvents: "none",
+        }}
+      >
+        {hashtag}
       </Box>
     </Box>
   );
@@ -154,7 +249,6 @@ function QuoteBlock() {
           position: "relative",
           p: { xs: 4, md: 7 },
           borderRadius: { xs: "26px", md: "36px" },
-          bgcolor: "linear-gradient(135deg, #10131A, #071C1D)",
           background:
             "linear-gradient(135deg, rgba(18,22,32,0.98), rgba(4,29,30,0.95))",
           border: "1px solid rgba(0,255,224,0.22)",
@@ -184,8 +278,9 @@ function QuoteBlock() {
             letterSpacing: "-0.04em",
           }}
         >
-          “Một layout eMagazine nên tạo cảm giác như đang đọc một câu chuyện thị
-          giác, không chỉ là một bài viết có ảnh.”
+          “A pop star does not rise only through songs. He rises through image,
+          timing, emotion, and the ability to make every release feel like an
+          event.”
         </Typography>
 
         <Typography
@@ -199,7 +294,7 @@ function QuoteBlock() {
             textTransform: "uppercase",
           }}
         >
-          — Magazine note
+          — Magazine Note
         </Typography>
       </Box>
     </Container>
@@ -228,8 +323,8 @@ export default function SonTungMagazine() {
       >
         <Box
           component="img"
-          src={MAGAZINE_IMAGES["#IMG_HERO"]}
-          alt="#IMG_HERO"
+          src="/images/media/sontungmain.png"
+          alt="Sơn Tùng M-TP Magazine Cover"
           sx={{
             position: "absolute",
             inset: 0,
@@ -258,7 +353,11 @@ export default function SonTungMagazine() {
             pt: { xs: 14, md: 18 },
           }}
         >
-          <Stack direction="row" spacing={1.5} sx={{ mb: 3 }}>
+          <Stack
+            direction="row"
+            spacing={1.5}
+            sx={{ mb: 3, flexWrap: "wrap", rowGap: 1 }}
+          >
             <Chip
               label="EMAGAZINE"
               sx={{
@@ -270,11 +369,21 @@ export default function SonTungMagazine() {
             />
 
             <Chip
-              label="#IMG_HERO"
+              label="#EASTERN_RISING"
               sx={{
                 color: "#00ffe0",
                 bgcolor: "rgba(0,0,0,0.58)",
                 border: "1px solid rgba(0,255,224,0.35)",
+                fontWeight: 900,
+              }}
+            />
+
+            <Chip
+              label="#NO.1"
+              sx={{
+                color: "#ffffff",
+                bgcolor: "rgba(255,255,255,0.08)",
+                border: "1px solid rgba(255,255,255,0.18)",
                 fontWeight: 900,
               }}
             />
@@ -292,7 +401,7 @@ export default function SonTungMagazine() {
               textShadow: "0 18px 70px rgba(0,0,0,0.75)",
             }}
           >
-            Sơn Tùng M-TP và câu chuyện tương tư của một chàng trai
+            Sơn Tùng M-TP: The Eastern Star Who Turned Pop Into a Visual Era
           </Typography>
 
           <Typography
@@ -305,8 +414,8 @@ export default function SonTungMagazine() {
               fontWeight: 600,
             }}
           >
-            Một bản thiết kế eMagazine dark mode, nhiều ảnh lớn, nhiều khoảng
-            thở, phù hợp để bạn dựng lại bằng Figma rồi thay ảnh vào sau.
+            A cinematic eMagazine feature about image, ambition, sound, and the
+            making of a modern Asian pop icon.
           </Typography>
 
           <Typography
@@ -325,23 +434,28 @@ export default function SonTungMagazine() {
       </Box>
 
       {/* INTRO */}
-      <TextBlock eyebrow="Mở đầu">
+      <TextBlock eyebrow="Opening">
         <p>
-          Đây là phần lead mở bài. Bạn có thể viết một đoạn ngắn, mạnh, tạo cảm
-          giác như người đọc đang bước vào một câu chuyện dài hơi.
+          Sơn Tùng M-TP has never been just another name in Vietnamese pop. His
+          music travels with a complete visual language: fashion, typography,
+          attitude, color, silence, and timing. Every comeback feels built like
+          a campaign, not only a song release.
         </p>
 
         <p>
-          Layout này ưu tiên <span>ảnh lớn</span>, khoảng trắng, chữ lớn và các
-          block nội dung tách lớp rõ ràng. Sau khi làm ảnh bên Figma, bạn chỉ
-          cần thay đường dẫn trong object <strong>MAGAZINE_IMAGES</strong>.
+          In an era where music is watched as much as it is heard, he
+          understands one simple truth:{" "}
+          <span>the image arrives before the chorus</span>. That is why his
+          presence feels larger than a playlist. It feels like a magazine cover,
+          a mood board, and a headline at the same time.
         </p>
       </TextBlock>
 
       {/* IMAGE FULL */}
       <Container maxWidth="lg" sx={{ my: { xs: 7, md: 12 } }}>
-        <ImageHash
-          id="#IMG_01_FULL"
+        <YouTubeBlock
+          videoUrl={MAGAZINE_VIDEOS.NO_1}
+          hashtag="#NO.1"
           sx={{
             height: { xs: 320, sm: 460, md: 660 },
           }}
@@ -353,23 +467,27 @@ export default function SonTungMagazine() {
             color: "#8b949e",
             fontSize: 13,
             fontWeight: 700,
+            textAlign: "center",
           }}
         >
-          #IMG_01_FULL — ảnh ngang đầu bài, kích thước gợi ý 1180 x 660.
+          #NO.1 — a portrait of momentum, confidence, and carefully built pop
+          identity.
         </Typography>
       </Container>
 
       {/* BODY 01 */}
-      <TextBlock eyebrow="Chương 01" title="Khi hình ảnh dẫn dắt câu chuyện">
+      <TextBlock eyebrow="Chapter 01" title="The power of a controlled image">
         <p>
-          Một bài eMagazine tốt không chỉ là text dài. Nó cần nhịp: đoạn ngắn,
-          ảnh lớn, quote mạnh, rồi lại trở về phần nội dung chính.
+          The most interesting thing about Sơn Tùng is not only how he sounds,
+          but how precisely he appears. His styling often avoids randomness. A
+          suit, a color, a pose, a lyric teaser, or even an empty background can
+          become part of the message.
         </p>
 
         <p>
-          Bạn có thể dùng section này để kể về bối cảnh, nhân vật, hành trình
-          hoặc cảm xúc trung tâm của bài viết. Những từ khóa quan trọng có thể
-          highlight bằng màu <span>neon cyan</span>.
+          That control gives his releases a premium feeling. It makes the
+          audience wait, decode, share, and discuss. In modern pop, this is a
+          different kind of performance: the performance before the performance.
         </p>
       </TextBlock>
 
@@ -385,8 +503,8 @@ export default function SonTungMagazine() {
             alignItems: "center",
           }}
         >
-          <ImageHash
-            id="#IMG_02_VERTICAL"
+          <MagazineImage
+            id="STYLE_ICON"
             sx={{
               height: { xs: 520, md: 720 },
             }}
@@ -411,7 +529,7 @@ export default function SonTungMagazine() {
                 mb: 2,
               }}
             >
-              #IMG_02_VERTICAL
+              #STYLE_ICON
             </Typography>
 
             <Typography
@@ -425,7 +543,7 @@ export default function SonTungMagazine() {
                 mb: 3,
               }}
             >
-              Một khoảnh khắc dọc để cân lại bố cục
+              Fashion as part of the song
             </Typography>
 
             <Typography
@@ -436,9 +554,9 @@ export default function SonTungMagazine() {
                 fontWeight: 500,
               }}
             >
-              Ảnh dọc phù hợp cho chân dung, hậu trường, nhân vật chính hoặc một
-              frame cảm xúc. Phần text bên cạnh giúp người đọc không bị ngợp bởi
-              chuỗi ảnh ngang liên tục.
+              For artists like Sơn Tùng, fashion is not decoration. It is a
+              signal. It tells the viewer what kind of era they are entering
+              before the beat even drops.
             </Typography>
           </Box>
         </Box>
@@ -455,8 +573,8 @@ export default function SonTungMagazine() {
         >
           <Box
             component="img"
-            src={MAGAZINE_IMAGES["#IMG_03_WIDE"]}
-            alt="#IMG_03_WIDE"
+            src={MAGAZINE_IMAGES.ASIAN_POP}
+            alt="#ASIAN_POP"
             sx={{
               width: "100%",
               height: "100%",
@@ -488,7 +606,7 @@ export default function SonTungMagazine() {
           >
             <Box>
               <Chip
-                label="#IMG_03_WIDE"
+                label="#ASIAN_POP"
                 sx={{
                   color: "#00ffe0",
                   bgcolor: "rgba(0,0,0,0.6)",
@@ -508,7 +626,7 @@ export default function SonTungMagazine() {
                   letterSpacing: "-0.06em",
                 }}
               >
-                Full bleed image tạo cảm giác cinematic cho cả bài viết
+                A new pop language built from sound, styling, and spectacle
               </Typography>
             </Box>
           </Container>
@@ -516,22 +634,23 @@ export default function SonTungMagazine() {
       </Box>
 
       {/* BODY 02 */}
-      <TextBlock eyebrow="Chương 02" title="Nhịp đọc, khoảng thở và cảm xúc">
+      <TextBlock eyebrow="Chapter 02" title="Eastern rising, global-facing">
         <p>
-          Đoạn này dùng để triển khai phần nội dung sâu hơn. Bạn có thể kể về
-          một giai đoạn, một sản phẩm, một album, một nhân vật hoặc một câu
-          chuyện phía sau.
+          The phrase <strong>Eastern Rising</strong> is not about one artist
+          alone. It describes a wider cultural shift: Asian pop no longer waits
+          for permission to look expensive, ambitious, and global.
         </p>
 
         <p>
-          Với dark mode, nền nên đủ tối, nhưng text phải có độ tương phản cao.
-          Card nên dùng <strong>#0F1218</strong>, border mờ và accent màu{" "}
-          <span>#00FFE0</span>.
+          Sơn Tùng belongs to that shift. His best moments feel local and
+          international at the same time. He can carry Vietnamese identity while
+          using the visual grammar of world-class pop campaigns.
         </p>
 
         <p>
-          Khi code thành page thật, chỉ cần tách các block này thành component:
-          Hero, TextBlock, ImageBlock, QuoteBlock, SplitBlock, DoubleImageBlock.
+          That balance is difficult. Too local, and the work may feel limited.
+          Too global, and the artist risks losing texture. His strongest image
+          lives in the middle: recognizable, polished, and still personal.
         </p>
       </TextBlock>
 
@@ -544,15 +663,15 @@ export default function SonTungMagazine() {
             gap: { xs: 3, md: 4 },
           }}
         >
-          <ImageHash
-            id="#IMG_04_LEFT"
+          <MagazineImage
+            id="CREATIVE_LEFT"
             sx={{
               height: { xs: 520, md: 680 },
             }}
           />
 
-          <ImageHash
-            id="#IMG_05_RIGHT"
+          <MagazineImage
+            id="CREATIVE_RIGHT"
             sx={{
               height: { xs: 520, md: 680 },
             }}
@@ -565,27 +684,35 @@ export default function SonTungMagazine() {
             color: "#8b949e",
             fontSize: 13,
             fontWeight: 700,
+            textAlign: "center",
           }}
         >
-          #IMG_04_LEFT và #IMG_05_RIGHT — block 2 ảnh song song, gợi ý 570 x 680
-          mỗi ảnh.
+          #CREATIVE_VISION and #NEW_WAVE — two frames for the artist’s visual
+          identity.
         </Typography>
       </Container>
 
       {/* CLOSING */}
       <Container maxWidth="lg" sx={{ my: { xs: 8, md: 12 } }}>
-        <ImageHash
-          id="#IMG_06_CLOSING"
+        <MagazineImage
+          id="CLOSING_FRAME"
           sx={{
             height: { xs: 340, sm: 480, md: 620 },
           }}
         />
       </Container>
 
-      <TextBlock eyebrow="Kết">
+      <TextBlock eyebrow="Closing">
         <p>
-          Đây là phần kết bài. Viết ngắn, cảm xúc, gọn. Có thể dùng để tổng kết
-          tinh thần của nhân vật, sản phẩm hoặc câu chuyện chính.
+          Sơn Tùng M-TP’s story is not only about hit songs. It is about how an
+          artist can build a world around sound. His image is sharp, his timing
+          is calculated, and his audience understands the ritual of waiting.
+        </p>
+
+        <p>
+          That is why the cover line still works: <span>#RISING_STAR</span>. Not
+          because the rise is new, but because every era gives him another way
+          to rise again.
         </p>
       </TextBlock>
 
@@ -603,7 +730,7 @@ export default function SonTungMagazine() {
               textTransform: "uppercase",
             }}
           >
-            Thực hiện
+            Credits
           </Typography>
 
           <Typography
@@ -623,8 +750,8 @@ export default function SonTungMagazine() {
               fontWeight: 700,
             }}
           >
-            Image placeholders: #IMG_HERO, #IMG_01_FULL, #IMG_02_VERTICAL,
-            #IMG_03_WIDE, #IMG_04_LEFT, #IMG_05_RIGHT, #IMG_06_CLOSING.
+            Tags: #EASTERN_RISING, #RISING_STAR, #NO.1, #ASIAN_POP, #STYLE_ICON,
+            #COME_MY_WAY.
           </Typography>
         </Stack>
       </Container>

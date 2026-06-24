@@ -22,7 +22,6 @@ export default function BlogPage() {
         }}
       >
         <MainContent />
-        
       </Container>
 
       <BlogFooter />

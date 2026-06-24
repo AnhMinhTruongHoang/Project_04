@@ -387,262 +387,78 @@ export default function MainContent() {
       </Box>
 
       <Grid container spacing={2} columns={12}>
-        <Grid item xs={12} md={6}>
-          <StyledCard
-            variant="outlined"
-            onClick={() => router.push(cardData[0].href || "/blog/sontung")}
-            onFocus={() => handleFocus(0)}
-            onBlur={handleBlur}
-            tabIndex={0}
-            className={focusedCardIndex === 0 ? "Mui-focused" : ""}
-          >
-            <CardMedia
-              component="img"
-              alt={cardData[0].title}
-              image={cardData[0].img}
-              sx={{
-                aspectRatio: "16 / 9",
-                objectFit: "cover",
-                borderBottom: "1px solid",
-                borderColor: "divider",
-              }}
-            />
+        {cardData.map((card, index) => {
+          const isLargeCard = index === 0 || index === 1;
 
-            <StyledCardContent>
-              <Typography gutterBottom variant="caption" component="div">
-                {cardData[0].tag}
-              </Typography>
-
-              <Typography gutterBottom variant="h6" component="div">
-                {cardData[0].title}
-              </Typography>
-
-              <StyledTypography
-                variant="body2"
-                gutterBottom
-                sx={{ color: "#a7a7a7" }}
+          return (
+            <Grid item xs={12} md={isLargeCard ? 6 : 4} key={card.title}>
+              <StyledCard
+                variant="outlined"
+                onClick={() => router.push(card.href)}
+                onFocus={() => handleFocus(index)}
+                onBlur={handleBlur}
+                tabIndex={0}
+                className={focusedCardIndex === index ? "Mui-focused" : ""}
+                sx={{ height: "100%" }}
               >
-                {cardData[0].description}
-              </StyledTypography>
-            </StyledCardContent>
+                <CardMedia
+                  component="img"
+                  alt={card.title}
+                  image={card.img}
+                  sx={{
+                    aspectRatio: "16 / 9",
+                    objectFit: "cover",
+                    borderBottom: "1px solid rgba(255,255,255,0.08)",
+                  }}
+                />
 
-            <Author authors={cardData[0].authors} />
-          </StyledCard>
-        </Grid>
-
-        <Grid item xs={12} md={6}>
-          <StyledCard
-            variant="outlined"
-            onFocus={() => handleFocus(1)}
-            onBlur={handleBlur}
-            tabIndex={0}
-            className={focusedCardIndex === 1 ? "Mui-focused" : ""}
-          >
-            <CardMedia
-              component="img"
-              alt={cardData[1].title}
-              image={cardData[1].img}
-              sx={{
-                aspectRatio: "16 / 9",
-                objectFit: "cover",
-                borderBottom: "1px solid",
-                borderColor: "divider",
-              }}
-            />
-
-            <StyledCardContent>
-              <Typography gutterBottom variant="caption" component="div">
-                {cardData[1].tag}
-              </Typography>
-
-              <Typography gutterBottom variant="h6" component="div">
-                {cardData[1].title}
-              </Typography>
-
-              <StyledTypography
-                variant="body2"
-                gutterBottom
-                sx={{ color: "#a7a7a7" }}
-              >
-                {cardData[1].description}
-              </StyledTypography>
-            </StyledCardContent>
-
-            <Author authors={cardData[1].authors} />
-          </StyledCard>
-        </Grid>
-
-        <Grid item xs={12} md={4}>
-          <StyledCard
-            variant="outlined"
-            onFocus={() => handleFocus(2)}
-            onBlur={handleBlur}
-            tabIndex={0}
-            className={focusedCardIndex === 2 ? "Mui-focused" : ""}
-            sx={{ height: "100%" }}
-          >
-            <CardMedia
-              component="img"
-              alt={cardData[2].title}
-              image={cardData[2].img}
-              sx={{
-                height: { sm: "auto", md: "50%" },
-                aspectRatio: { sm: "16 / 9", md: "16 / 9" },
-                objectFit: "cover",
-              }}
-            />
-
-            <StyledCardContent>
-              <Typography gutterBottom variant="caption" component="div">
-                {cardData[2].tag}
-              </Typography>
-
-              <Typography gutterBottom variant="h6" component="div">
-                {cardData[2].title}
-              </Typography>
-
-              <StyledTypography
-                variant="body2"
-                gutterBottom
-                sx={{ color: "#a7a7a7" }}
-              >
-                {cardData[2].description}
-              </StyledTypography>
-            </StyledCardContent>
-
-            <Author authors={cardData[2].authors} />
-          </StyledCard>
-        </Grid>
-
-        <Grid item xs={12} md={4}>
-          <Box
-            sx={{
-              display: "flex",
-              flexDirection: "column",
-              gap: 2,
-              height: "100%",
-            }}
-          >
-            <StyledCard
-              variant="outlined"
-              onFocus={() => handleFocus(3)}
-              onBlur={handleBlur}
-              tabIndex={0}
-              className={focusedCardIndex === 3 ? "Mui-focused" : ""}
-              sx={{ height: "100%" }}
-            >
-              <StyledCardContent
-                sx={{
-                  display: "flex",
-                  flexDirection: "column",
-                  justifyContent: "space-between",
-                  height: "100%",
-                }}
-              >
-                <div>
-                  <Typography gutterBottom variant="caption" component="div">
-                    {cardData[3].tag}
+                <StyledCardContent>
+                  <Typography
+                    gutterBottom
+                    variant="caption"
+                    component="div"
+                    sx={{
+                      color: "#00ffe0",
+                      fontWeight: 900,
+                      letterSpacing: "0.12em",
+                      textTransform: "uppercase",
+                    }}
+                  >
+                    {card.tag}
                   </Typography>
 
-                  <Typography gutterBottom variant="h6" component="div">
-                    {cardData[3].title}
+                  <Typography
+                    gutterBottom
+                    variant="h6"
+                    component="div"
+                    sx={{
+                      color: "#ffffff",
+                      fontWeight: 900,
+                      lineHeight: 1.25,
+                    }}
+                  >
+                    {card.title}
                   </Typography>
 
                   <StyledTypography
                     variant="body2"
                     gutterBottom
-                    sx={{ color: "#a7a7a7" }}
+                    sx={{
+                      color: "#a7a7a7",
+                      lineHeight: 1.7,
+                    }}
                   >
-                    {cardData[3].description}
+                    {card.description}
                   </StyledTypography>
-                </div>
-              </StyledCardContent>
+                </StyledCardContent>
 
-              <Author authors={cardData[3].authors} />
-            </StyledCard>
-
-            <StyledCard
-              variant="outlined"
-              onFocus={() => handleFocus(4)}
-              onBlur={handleBlur}
-              tabIndex={0}
-              className={focusedCardIndex === 4 ? "Mui-focused" : ""}
-              sx={{ height: "100%" }}
-            >
-              <StyledCardContent
-                sx={{
-                  display: "flex",
-                  flexDirection: "column",
-                  justifyContent: "space-between",
-                  height: "100%",
-                }}
-              >
-                <div>
-                  <Typography gutterBottom variant="caption" component="div">
-                    {cardData[4].tag}
-                  </Typography>
-
-                  <Typography gutterBottom variant="h6" component="div">
-                    {cardData[4].title}
-                  </Typography>
-
-                  <StyledTypography
-                    variant="body2"
-                    gutterBottom
-                    sx={{ color: "#a7a7a7" }}
-                  >
-                    {cardData[4].description}
-                  </StyledTypography>
-                </div>
-              </StyledCardContent>
-
-              <Author authors={cardData[4].authors} />
-            </StyledCard>
-          </Box>
-        </Grid>
-
-        <Grid item xs={12} md={4}>
-          <StyledCard
-            variant="outlined"
-            onFocus={() => handleFocus(5)}
-            onBlur={handleBlur}
-            tabIndex={0}
-            className={focusedCardIndex === 5 ? "Mui-focused" : ""}
-            sx={{ height: "100%" }}
-          >
-            <CardMedia
-              component="img"
-              alt={cardData[5].title}
-              image={cardData[5].img}
-              sx={{
-                height: { sm: "auto", md: "50%" },
-                aspectRatio: { sm: "16 / 9", md: "16 / 9" },
-                objectFit: "cover",
-              }}
-            />
-
-            <StyledCardContent>
-              <Typography gutterBottom variant="caption" component="div">
-                {cardData[5].tag}
-              </Typography>
-
-              <Typography gutterBottom variant="h6" component="div">
-                {cardData[5].title}
-              </Typography>
-
-              <StyledTypography
-                variant="body2"
-                gutterBottom
-                sx={{ color: "#a7a7a7" }}
-              >
-                {cardData[5].description}
-              </StyledTypography>
-            </StyledCardContent>
-
-            <Author authors={cardData[5].authors} />
-          </StyledCard>
-        </Grid>
+                <Author authors={card.authors} />
+              </StyledCard>
+            </Grid>
+          );
+        })}
       </Grid>
+
       <Box
         sx={{
           display: "flex",

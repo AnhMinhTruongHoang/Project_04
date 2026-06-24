@@ -1,63 +1,67 @@
-
-import AppFooter from '@/components/footer/app.footer';
-import AppHeader from '@/components/header/app.header';
-import type { Metadata } from 'next'
-import Script from 'next/script';
+import AppFooter from "@/components/footer/app.footer";
+import AppHeader from "@/components/header/app.header";
+import { Box } from "@mui/material";
+import type { Metadata } from "next";
+import Script from "next/script";
 
 export const metadata: Metadata = {
-  title: 'Tiêu đề from layout',
-  description: 'miêu tả layout thôi mà',
-}
+  title: "Tiêu đề from layout",
+  description: "miêu tả layout thôi mà",
+};
 
 const test = {
   "@context": "https://schema.org",
   "@type": "Store",
-  "name": "Tiki",
-  "image": {
+  name: "Tiki",
+  image: {
     "@type": "ImageObject",
-    "url": "https://salt.tikicdn.com/cache/w500/ts/upload/c0/8b/46/c3f0dc850dd93bfa7af7ada0cbd75dc0.png",
-    "width": 1080,
-    "height": 1080
+    url: "https://salt.tikicdn.com/cache/w500/ts/upload/c0/8b/46/c3f0dc850dd93bfa7af7ada0cbd75dc0.png",
+    width: 1080,
+    height: 1080,
   },
-  "telephone": "19006035",
-  "url": "https://tiki.vn/",
-  "address": {
+  telephone: "19006035",
+  url: "https://tiki.vn/",
+  address: {
     "@type": "PostalAddress",
-    "streetAddress": "52 Ut Tich, Ward 4, Tan Binh District, Ho Chi Minh City",
-    "addressLocality": "Ho Chi Minh",
-    "postalCode": "700000",
-    "addressRegion": "Ho Chi Minh",
-    "addressCountry": "VN"
+    streetAddress: "52 Ut Tich, Ward 4, Tan Binh District, Ho Chi Minh City",
+    addressLocality: "Ho Chi Minh",
+    postalCode: "700000",
+    addressRegion: "Ho Chi Minh",
+    addressCountry: "VN",
   },
-  "priceRange": "1000 - 1000000000",
-  "openingHoursSpecification": [
+  priceRange: "1000 - 1000000000",
+  openingHoursSpecification: [
     {
       "@type": "OpeningHoursSpecification",
-      "dayOfWeek": [
+      dayOfWeek: [
         "Monday",
         "Tuesday",
         "Wednesday",
         "Thursday",
         "Friday",
         "Saturday",
-        "Sunday"
+        "Sunday",
       ],
-      "opens": "08:00",
-      "closes": "21:00"
-    }
+      opens: "08:00",
+      closes: "21:00",
+    },
   ],
-  "geo": {
+  geo: {
     "@type": "GeoCoordinates",
-    "latitude": "10.79664498748942",
-    "longitude": "106.65856519879867"
-  }
-}
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+    latitude: "10.79664498748942",
+    longitude: "106.65856519879867",
+  },
+};
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   return (
     <>
       <AppHeader />
       {children}
-      <div style={{ marginBottom: "100px" }}></div>
+      <Box sx={{ marginBottom: "100px" }}></Box>
       <AppFooter />
       <Script
         type="application/ld+json"

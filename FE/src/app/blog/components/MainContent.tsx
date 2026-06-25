@@ -20,7 +20,7 @@ import { useRouter } from "next/navigation";
 import { Pagination } from "@mui/material";
 import EmagazineCardGrid from "./EmagazineCardGrid";
 
-const TEMP_AVATAR = "/images/user/NCS.jpg";
+const TEMP_AVATAR = "/images/logo/Sc.png";
 
 const cardData = [
   {
@@ -45,7 +45,7 @@ const cardData = [
     authors: [{ name: "Minh", avatar: TEMP_AVATAR }],
   },
   {
-    img: "/images/media/sontungP.jpg",
+    img: "/images/logo/ads.jpg",
     tag: "Design",
     title: "Designing for the future: trends and insights",
     description:
@@ -54,7 +54,7 @@ const cardData = [
     authors: [{ name: "Kate Morrison", avatar: TEMP_AVATAR }],
   },
   {
-    img: "/images/user/NCS.jpg",
+    img: "/images/logo/ads.jpg",
     tag: "Company",
     title: "Our company's journey: milestones and achievements",
     description:
@@ -75,7 +75,7 @@ const cardData = [
     ],
   },
   {
-    img: "/images/user/NCS.jpg",
+    img: "/images/logo/ads.jpg",
     tag: "Product",
     title: "Maximizing efficiency with our latest product updates",
     description:

@@ -15,7 +15,7 @@ const articles = [
   {
     title: "NCS eMagazine",
     description: "Câu chuyện âm nhạc và cảm hứng.",
-    img: "/images/user/NCS.jpg",
+    img: "/images/logo/NCS.jpg",
     href: "/eMagazine/ncs",
   },
 ];

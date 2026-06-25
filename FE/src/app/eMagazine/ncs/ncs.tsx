@@ -3,33 +3,41 @@ import Box from "@mui/material/Box";
 import Container from "@mui/material/Container";
 import Typography from "@mui/material/Typography";
 import Stack from "@mui/material/Stack";
-import Divider from "@mui/material/Divider";
 import Button from "@mui/material/Button";
 import TextField from "@mui/material/TextField";
+import NcsTrackSlider from "@/app/blog/components/NcsTrackSlider";
 
 const DEFAULT_IMG = "/images/user/NCS.jpg";
 
 const IMG = {
   HERO: DEFAULT_IMG,
-  IMG_01: DEFAULT_IMG,
-  IMG_02: DEFAULT_IMG,
-  IMG_03: DEFAULT_IMG,
-  IMG_04: DEFAULT_IMG,
-  IMG_05_LEFT: DEFAULT_IMG,
-  IMG_05_RIGHT: DEFAULT_IMG,
-  IMG_06: DEFAULT_IMG,
-  IMG_07: DEFAULT_IMG,
+  IMG_01: "/images/media/ncs001.jpg",
+  IMG_02: "/images/media/ncs002.jpg",
+  IMG_03: "/images/media/ncs003.jpg",
+  IMG_05_LEFT: "/images/media/ncs004.jpg",
+  IMG_05_RIGHT: "/images/media/ncs005.jpg",
+};
+
+const IMG_TAGS = {
+  HERO: "#NCS_UNIVERSE",
+  IMG_01: "#CIRCLE_COLORS",
+  IMG_02: "#NCS_PLAYLIST",
+  IMG_03: "#FOUNDER_VISION",
+  IMG_05_LEFT: "#DIRTY_PALM",
+  IMG_05_RIGHT: "#UNKNOWN_BRAIN",
 };
 
 type ImgKey = keyof typeof IMG;
 
 function ImageBlock({
-  hash,
+  image,
+  tag,
   caption,
   wide = false,
   height = 520,
 }: {
-  hash: ImgKey;
+  image: ImgKey;
+  tag: string;
   caption?: string;
   wide?: boolean;
   height?: number | { xs: number; md: number };
@@ -52,8 +60,8 @@ function ImageBlock({
       >
         <Box
           component="img"
-          src={IMG[hash]}
-          alt={hash}
+          src={IMG[image]}
+          alt={tag}
           sx={{
             width: "100%",
             height: "100%",
@@ -77,7 +85,7 @@ function ImageBlock({
             border: "1px solid rgba(0,255,224,0.35)",
           }}
         >
-          #{hash}
+          {tag}
         </Box>
       </Box>
 
@@ -217,7 +225,7 @@ export default function NcsMagazine() {
             border: "1px solid rgba(0,255,224,0.35)",
           }}
         >
-          #HERO
+          {IMG_TAGS.HERO}
         </Box>
 
         <Container
@@ -253,7 +261,7 @@ export default function NcsMagazine() {
               textShadow: "0 24px 80px rgba(0,0,0,0.85)",
             }}
           >
-            NCS và hành trình đưa âm nhạc điện tử đến cộng đồng sáng tạo
+            NCS: The Colored Circles That Powered a Generation of Creators
           </Typography>
 
           <Typography
@@ -266,8 +274,9 @@ export default function NcsMagazine() {
               fontWeight: 600,
             }}
           >
-            Một layout eMagazine mô phỏng phong cách báo dài: ảnh lớn, text rộng
-            vừa phải, hình ảnh xen kẽ theo nhịp kể chuyện.
+            From copyright-free music to creator culture, NoCopyrightSounds
+            turned electronic tracks into a visual language recognized by
+            millions of video makers.
           </Typography>
 
           <Stack
@@ -320,7 +329,7 @@ export default function NcsMagazine() {
               textTransform: "uppercase",
             }}
           >
-            Thực hiện: Minh
+            Created by Minh
           </Typography>
 
           <Typography
@@ -330,7 +339,7 @@ export default function NcsMagazine() {
               fontWeight: 700,
             }}
           >
-            12 phút đọc • 2026
+            12 min read • 2026
           </Typography>
         </Box>
       </ArticleContainer>
@@ -339,18 +348,18 @@ export default function NcsMagazine() {
       <ArticleContainer>
         <Box sx={{ pt: { xs: 5, md: 8 } }}>
           <DropCapParagraph>
-            NCS không chỉ là một kênh nhạc điện tử quen thuộc với cộng đồng sáng
-            tạo nội dung. Với nhiều người, đó còn là nơi bắt đầu của những video
-            đầu tiên, những bản edit đầu tiên và cả cảm giác tự do khi âm nhạc
-            có thể được chia sẻ rộng rãi.
+            NCS is more than a music channel. For many creators, it was the
+            soundtrack of their first gaming montage, their first cinematic
+            edit, their first YouTube intro, and their first feeling that music
+            could be used freely without destroying a project through copyright
+            problems.
           </DropCapParagraph>
 
           <Paragraph>
-            Từ những bản nhạc mạnh mẽ, giai điệu bắt tai đến phong cách hình ảnh
-            nhận diện rõ ràng, NCS tạo ra một thế giới mà âm thanh, màu sắc và
-            chuyển động đi cùng nhau. Đó là lý do một bài eMagazine về NCS nên
-            được xây bằng những mảng hình ảnh lớn, nhịp đọc nhanh và cảm giác
-            hiện đại.
+            Its identity is simple but powerful: electronic music, bold visual
+            circles, high-energy drops, and a promise that creators can build
+            with sound. That promise helped NCS become a bridge between artists,
+            listeners, streamers, editors, and independent video makers.
           </Paragraph>
         </Box>
       </ArticleContainer>
@@ -358,28 +367,38 @@ export default function NcsMagazine() {
       {/* IMAGE 01 */}
       <ArticleContainer>
         <ImageBlock
-          hash="IMG_01"
+          image="IMG_01"
+          tag={IMG_TAGS.IMG_01}
           height={{ xs: 320, md: 540 }}
-          caption="#IMG_01 — ảnh mở đầu sau phần lead, gợi ý 1180x660 khi export từ Figma."
+          caption="#CIRCLE_COLORS — the visual language of NCS: simple circles, strong colors, and instant recognition."
         />
       </ArticleContainer>
 
       {/* BODY 01 */}
       <ArticleContainer>
         <Paragraph>
-          Điểm đặc biệt của NCS nằm ở khả năng tạo cảm giác “ngay lập tức”. Chỉ
-          cần vài giây đầu, người nghe đã có thể nhận ra tinh thần năng lượng,
-          tốc độ và sự bùng nổ thường thấy trong các track electronic.
+          The colored circle became one of NCS’s strongest design choices. It is
+          not complicated, but that is exactly why it works. A track can be
+          remembered by sound, but the circle makes it easier to recognize
+          visually before the first beat even starts.
         </Paragraph>
 
         <Paragraph>
-          Với creator, điều này cực kỳ quan trọng. Một đoạn intro tốt giúp video
-          cuốn hơn. Một đoạn drop đúng lúc giúp montage có lực hơn. Một nền nhạc
-          phù hợp có thể biến một sản phẩm nhỏ thành một trải nghiệm đáng nhớ.
+          In a crowded platform like YouTube, that kind of design matters. NCS
+          did not need a complex cover for every song. It needed a repeatable
+          system: color, motion, rhythm, and a center point that felt like a
+          portal into the track.
+        </Paragraph>
+
+        <Paragraph>
+          For creators, NCS became a practical library. For listeners, it became
+          a discovery engine. For artists, it became a stage where electronic
+          music could travel through gaming videos, edits, livestreams, short
+          films, and online culture.
         </Paragraph>
       </ArticleContainer>
 
-      {/* IMAGE 02 */}
+      {/* PLAYLIST SECTION */}
       <Box sx={{ my: { xs: 5, md: 8 } }}>
         <Box
           sx={{
@@ -393,7 +412,7 @@ export default function NcsMagazine() {
           <Box
             component="img"
             src={IMG.IMG_02}
-            alt="IMG_02"
+            alt={IMG_TAGS.IMG_02}
             sx={{
               width: "100%",
               height: "100%",
@@ -423,32 +442,7 @@ export default function NcsMagazine() {
               pb: { xs: 5, md: 8 },
             }}
           >
-            <Box sx={{ maxWidth: 680 }}>
-              <Typography
-                sx={{
-                  color: "#00ffe0",
-                  fontSize: 13,
-                  fontWeight: 900,
-                  letterSpacing: "0.16em",
-                  textTransform: "uppercase",
-                  mb: 2,
-                }}
-              >
-                #IMG_02
-              </Typography>
-
-              <Typography
-                sx={{
-                  color: "#ffffff",
-                  fontSize: { xs: 34, md: 58 },
-                  lineHeight: { xs: "44px", md: "68px" },
-                  fontWeight: 950,
-                  letterSpacing: "-0.06em",
-                }}
-              >
-                Khi âm thanh trở thành màu sắc của một thế hệ creator
-              </Typography>
-            </Box>
+            <NcsTrackSlider />
           </Container>
         </Box>
       </Box>
@@ -456,26 +450,53 @@ export default function NcsMagazine() {
       {/* BODY 02 */}
       <ArticleContainer>
         <Paragraph>
-          Nếu nhìn NCS như một thương hiệu thị giác, có thể thấy mọi thứ đều rất
-          rõ: nền tối, màu neon, chuyển động mạnh và cảm giác tương lai. Những
-          yếu tố này rất hợp với giao diện dark mode của một music app.
+          NCS works because it understands a creator’s workflow. A video editor
+          does not always need a famous song. Sometimes they need a clean intro,
+          a strong build-up, a drop that matches a transition, and a track that
+          will not block their upload.
         </Paragraph>
 
         <Paragraph>
-          Đó cũng là lý do layout này dùng nhiều khoảng đen, nhiều vùng ảnh rộng
-          và các nhãn ảnh dạng hash. Khi bạn hoàn thiện hình bên Figma, chỉ cần
-          thay đường dẫn trong object <strong>IMG</strong>, toàn bộ bài sẽ đổi
-          visual mà không cần sửa layout.
+          That is why the NCS sound often feels immediate. It has to support a
+          visual moment quickly. It has to move fast, stay memorable, and leave
+          enough space for footage, voice-over, montage, or gameplay.
         </Paragraph>
       </ArticleContainer>
 
       {/* IMAGE 03 */}
       <ArticleContainer>
         <ImageBlock
-          hash="IMG_03"
+          image="IMG_03"
+          tag={IMG_TAGS.IMG_03}
           height={{ xs: 340, md: 560 }}
-          caption="#IMG_03 — ảnh minh họa phần giữa bài."
+          caption="#FOUNDER_VISION — from a copyright problem to a creator-first music ecosystem."
         />
+      </ArticleContainer>
+
+      {/* FOUNDER SECTION */}
+      <ArticleContainer>
+        <Paragraph>
+          The story of NCS begins with a problem many creators know too well:
+          finding music that can be used online without running into copyright
+          trouble. Billy Woodford started the idea in 2011 after dealing with
+          that exact problem around YouTube gaming content.
+        </Paragraph>
+
+        <Paragraph>
+          That origin explains the future of NCS. It was not built only as a
+          label in the traditional sense. It was built as infrastructure for
+          digital creators: a place where music could be discovered, credited,
+          shared, downloaded, and reused inside the culture that YouTube helped
+          create.
+        </Paragraph>
+
+        <Paragraph>
+          Looking forward, the most interesting direction for NCS is not simply
+          releasing more tracks. It is becoming a deeper bridge between artists
+          and creators: better licensing clarity, stronger artist discovery,
+          more visual identity, and music that can move across YouTube, TikTok,
+          livestreaming, games, and short-form video.
+        </Paragraph>
       </ArticleContainer>
 
       {/* QUOTE */}
@@ -498,8 +519,8 @@ export default function NcsMagazine() {
               letterSpacing: "-0.04em",
             }}
           >
-            “Một bản nhạc đúng khoảnh khắc có thể làm hình ảnh trở nên sống động
-            hơn gấp nhiều lần.”
+            “A good creator track does not just fill silence. It gives the edit
+            direction, energy, timing, and identity.”
           </Typography>
 
           <Typography
@@ -517,27 +538,21 @@ export default function NcsMagazine() {
         </Box>
       </ArticleContainer>
 
-      {/* IMAGE 04 */}
-      <ArticleContainer>
-        <ImageBlock
-          hash="IMG_04"
-          height={{ xs: 340, md: 560 }}
-          caption="#IMG_04 — ảnh nhấn trước phần 2 ảnh song song."
-        />
-      </ArticleContainer>
-
       {/* BODY 03 */}
       <ArticleContainer>
         <Paragraph>
-          Trong một bài dài, ảnh không chỉ để minh họa. Ảnh là nhịp nghỉ, là
-          đoạn chuyển cảnh, là cách giữ người đọc ở lại. Cứ sau một vài đoạn
-          chữ, một visual lớn sẽ kéo cảm xúc quay trở lại.
+          Inside the NCS world, artists can feel very different from one
+          another. Some are known through names, faces, live presence, and
+          producer identity. Others feel more mysterious, more symbol-driven, or
+          more project-focused. That contrast is part of what makes the catalog
+          flexible.
         </Paragraph>
 
         <Paragraph>
-          Với NCS, bạn có thể thiết kế ảnh theo hướng: waveform, visualizer, sân
-          khấu ánh sáng, typography lớn, hoặc các khối màu neon đặc trưng. Không
-          cần quá nhiều chi tiết, chỉ cần nhất quán.
+          In electronic music, identity can be loud or hidden. A producer can
+          appear directly, perform openly, and build a personal image. Another
+          project can keep the face secondary and let the name, logo, sound, and
+          atmosphere do the storytelling.
         </Paragraph>
       </ArticleContainer>
 
@@ -562,7 +577,7 @@ export default function NcsMagazine() {
             <Box
               component="img"
               src={IMG.IMG_05_LEFT}
-              alt="IMG_05_LEFT"
+              alt={IMG_TAGS.IMG_05_LEFT}
               sx={{
                 width: "100%",
                 height: "100%",
@@ -584,7 +599,7 @@ export default function NcsMagazine() {
                 border: "1px solid rgba(0,255,224,0.35)",
               }}
             >
-              #IMG_05_LEFT
+              {IMG_TAGS.IMG_05_LEFT}
             </Box>
           </Box>
 
@@ -599,7 +614,7 @@ export default function NcsMagazine() {
             <Box
               component="img"
               src={IMG.IMG_05_RIGHT}
-              alt="IMG_05_RIGHT"
+              alt={IMG_TAGS.IMG_05_RIGHT}
               sx={{
                 width: "100%",
                 height: "100%",
@@ -621,7 +636,7 @@ export default function NcsMagazine() {
                 border: "1px solid rgba(0,255,224,0.35)",
               }}
             >
-              #IMG_05_RIGHT
+              {IMG_TAGS.IMG_05_RIGHT}
             </Box>
           </Box>
         </Box>
@@ -635,43 +650,60 @@ export default function NcsMagazine() {
             fontStyle: "italic",
           }}
         >
-          #IMG_05_LEFT và #IMG_05_RIGHT — block 2 ảnh song song giống nhịp
-          eMagazine cuối bài.
+          #DIRTY_PALM and #UNKNOWN_BRAIN — two different ways electronic artists
+          can build identity inside the same creator-driven ecosystem.
         </Typography>
       </ArticleContainer>
 
-      {/* IMAGE 06 */}
+      {/* DIRTY PALM / UNKNOWN BRAIN */}
       <ArticleContainer>
-        <ImageBlock
-          hash="IMG_06"
-          height={{ xs: 340, md: 560 }}
-          caption="#IMG_06 — ảnh kết trước đoạn closing."
-        />
+        <Paragraph>
+          <b style={{ color: "#F7A02A" }}> Dirty Palm</b> represents the more
+          visible producer energy: sharp, club-ready, direct, and
+          performance-friendly. His NCS profile is tied to Future House and
+          Trap, a sound world that often feels aggressive, energetic, bouncy,
+          and built for movement.
+        </Paragraph>
+
+        <Paragraph>
+          That kind of identity is easier to read as an individual producer
+          brand. The name can connect to a person, a DJ image, a live presence,
+          and a clearer artist face. It fits the side of EDM where personality,
+          crowd energy, and producer recognition matter.
+        </Paragraph>
+
+        <Paragraph>
+          <b style={{ color: "#45D155" }}> Unknown Brain</b> works differently.
+          The name itself feels like a concept: less about a visible face, more
+          about a mysterious project identity. Tracks connected to the project
+          often sit around electronic and bass moods, with dramatic melodies,
+          vocal hooks, heavy drops, and cinematic tension.
+        </Paragraph>
+
+        <Paragraph>
+          This is the difference between showing the artist and hiding behind
+          the world of the sound. Dirty Palm can feel like a producer stepping
+          into the light. Unknown Brain can feel like a symbol stepping out of
+          the dark. Both approaches work, because NCS gives space for both: the
+          face and the mask, the performer and the project.
+        </Paragraph>
       </ArticleContainer>
 
       {/* FINAL */}
       <ArticleContainer>
         <Paragraph>
-          NCS có thể được nhìn như một thư viện âm thanh, nhưng với rất nhiều
-          người làm nội dung, nó còn là ký ức của những lần đầu tiên tự dựng một
-          video, tự chọn một bản nhạc và tự kể câu chuyện của mình bằng hình
-          ảnh.
+          NCS can be seen as a music library, but that description is too small.
+          For many creators, it became a memory: the first intro, the first
+          edit, the first montage, the first upload that felt complete because
+          the music finally matched the picture.
         </Paragraph>
 
         <Paragraph>
-          Chính sự mở đó khiến NCS vượt khỏi phạm vi một kênh nhạc. Nó trở thành
-          một phần của văn hóa sáng tạo số, nơi âm nhạc không chỉ để nghe mà còn
-          để dựng, để chia sẻ và để truyền cảm hứng.
+          Its future depends on the same idea that started it: making music
+          useful, visible, and open for digital creativity. As creator culture
+          keeps changing, NCS still has a clear role — not only as a label, but
+          as a soundtrack system for people building stories online.
         </Paragraph>
-      </ArticleContainer>
-
-      {/* IMAGE 07 */}
-      <ArticleContainer>
-        <ImageBlock
-          hash="IMG_07"
-          height={{ xs: 340, md: 560 }}
-          caption="#IMG_07 — ảnh cuối bài."
-        />
       </ArticleContainer>
 
       {/* CREDIT */}
@@ -691,7 +723,7 @@ export default function NcsMagazine() {
               mb: 1,
             }}
           >
-            Thực hiện:
+            Credits:
           </Typography>
 
           <Typography
@@ -720,14 +752,14 @@ export default function NcsMagazine() {
               mb: 3,
             }}
           >
-            Bình luận (0)
+            Comments (0)
           </Typography>
 
           <TextField
             fullWidth
             multiline
             minRows={4}
-            placeholder="Gửi bình luận"
+            placeholder="Write a comment"
             sx={{
               bgcolor: "#fff",
               "& .MuiOutlinedInput-root": {
@@ -751,7 +783,7 @@ export default function NcsMagazine() {
                 },
               }}
             >
-              Gửi bình luận
+              Send comment
             </Button>
           </Box>
         </Box>

@@ -4,6 +4,7 @@ import NextAuthWrapper from "@/lib/next.auth.wrapper";
 import NProgressWrapper from "@/lib/nprogress.wrapper";
 import { TrackContextProvider } from "@/lib/track.wrapper";
 import { ToastProvider } from "@/utils/toast";
+import AppFooter from "@/components/footer/app.footer";
 import "../app/globals.scss";
 
 export const metadata: Metadata = {
@@ -32,7 +33,11 @@ export default function RootLayout({
           <NProgressWrapper>
             <NextAuthWrapper>
               <ToastProvider>
-                <TrackContextProvider>{children}</TrackContextProvider>
+                <TrackContextProvider>
+                  {children}
+
+                  <AppFooter />
+                </TrackContextProvider>
               </ToastProvider>
             </NextAuthWrapper>
           </NProgressWrapper>

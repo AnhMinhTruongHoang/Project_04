@@ -7,6 +7,7 @@ import Typography from "@mui/material/Typography";
 import Stack from "@mui/material/Stack";
 import Chip from "@mui/material/Chip";
 import Divider from "@mui/material/Divider";
+import SonTungTrackSlider from "@/app/blog/components/SonTungTrackSlider";
 
 const MAGAZINE_IMAGES = {
   RISING_STAR: "/images/media/sontungP.jpg",
@@ -15,7 +16,6 @@ const MAGAZINE_IMAGES = {
   ASIAN_POP: "/images/media/st007.jpg",
   CREATIVE_LEFT: "/images/media/st005.jpg",
   CREATIVE_RIGHT: "/images/media/st006.jpg",
-  CLOSING_FRAME: "/images/media/st006.jpg",
 };
 
 const MAGAZINE_VIDEOS = {
@@ -31,7 +31,6 @@ const HASHTAGS: Record<ImageKey, string> = {
   ASIAN_POP: "#ASIAN_POP",
   CREATIVE_LEFT: "#CREATIVE_VISION",
   CREATIVE_RIGHT: "#NEW_WAVE",
-  CLOSING_FRAME: "#COME_MY_WAY",
 };
 
 const getYouTubeEmbedUrl = (url: string) => {
@@ -604,31 +603,7 @@ export default function SonTungMagazine() {
               pb: { xs: 5, md: 8 },
             }}
           >
-            <Box>
-              <Chip
-                label="#ASIAN_POP"
-                sx={{
-                  color: "#00ffe0",
-                  bgcolor: "rgba(0,0,0,0.6)",
-                  border: "1px solid rgba(0,255,224,0.35)",
-                  fontWeight: 900,
-                  mb: 2,
-                }}
-              />
-
-              <Typography
-                sx={{
-                  maxWidth: 720,
-                  color: "#ffffff",
-                  fontSize: { xs: 34, md: 56 },
-                  lineHeight: { xs: "44px", md: "66px" },
-                  fontWeight: 950,
-                  letterSpacing: "-0.06em",
-                }}
-              >
-                A new pop language built from sound, styling, and spectacle
-              </Typography>
-            </Box>
+            <SonTungTrackSlider />
           </Container>
         </Box>
       </Box>
@@ -693,14 +668,6 @@ export default function SonTungMagazine() {
       </Container>
 
       {/* CLOSING */}
-      <Container maxWidth="lg" sx={{ my: { xs: 8, md: 12 } }}>
-        <MagazineImage
-          id="CLOSING_FRAME"
-          sx={{
-            height: { xs: 340, sm: 480, md: 620 },
-          }}
-        />
-      </Container>
 
       <TextBlock eyebrow="Closing">
         <p>

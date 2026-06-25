@@ -26,9 +26,9 @@ const cardData = [
   {
     img: "/images/media/sontungP.jpg",
     tag: "eMagazine",
-    title: "Sơn Tùng M-TP và câu chuyện tương tư của một chàng trai",
+    title: "Sơn Tùng M-TP: The Eastern Star Who Turned Pop Into a Visual Era",
     description:
-      "Một layout eMagazine dark mode, nhiều ảnh lớn, nhiều khoảng thở, phù hợp để dựng lại bằng Figma rồi thay ảnh vào sau.",
+      "A cinematic dark-mode eMagazine feature about image, ambition, sound, and the making of a modern Asian pop icon.",
     href: "/eMagazine/sontung",
     authors: [
       { name: "Minh", avatar: TEMP_AVATAR },
@@ -38,36 +38,36 @@ const cardData = [
   {
     img: "/images/user/NCS.jpg",
     tag: "Music",
-    title: "NCS eMagazine: Âm nhạc, cảm hứng và cộng đồng",
+    title: "NCS: The Colored Circles That Powered a Generation of Creators",
     description:
-      "Một bài eMagazine mẫu dành cho NCS, dùng layout visual lớn, card tối, accent neon và nhịp đọc hiện đại.",
+      "An eMagazine feature about NoCopyrightSounds, creator culture, electronic music, and the visual identity behind the NCS universe.",
     href: "/eMagazine/ncs",
     authors: [{ name: "Minh", avatar: TEMP_AVATAR }],
   },
   {
     img: "/images/logo/ads.jpg",
     tag: "Design",
-    title: "Designing for the future: trends and insights",
+    title: "Designing the SoundClone visual system",
     description:
-      "Stay ahead of the curve with the latest design trends and insights. Our design team shares their expertise on creating intuitive and visually stunning user experiences.",
+      "A look at the dark interface, neon accents, music cards, and visual decisions that shape the SoundClone listening experience.",
     href: "/eMagazine/sontung",
     authors: [{ name: "Kate Morrison", avatar: TEMP_AVATAR }],
   },
   {
     img: "/images/logo/ads.jpg",
     tag: "Company",
-    title: "Our company's journey: milestones and achievements",
+    title: "Inside SoundClone: building a music platform for creators",
     description:
-      "Take a look at our company's journey and the milestones we've achieved along the way. From humble beginnings to industry leader, discover our story of growth and success.",
+      "From music discovery to artist pages and interactive playlists, explore how SoundClone connects listeners, creators, and tracks.",
     href: "/eMagazine/ncs",
     authors: [{ name: "Cindy Baker", avatar: TEMP_AVATAR }],
   },
   {
     img: "/images/media/sontungP.jpg",
     tag: "Engineering",
-    title: "Pioneering sustainable engineering solutions",
+    title: "Engineering a smooth player experience",
     description:
-      "Learn about our commitment to sustainability and the innovative engineering solutions we're implementing to create a greener future.",
+      "A closer look at track context, global playback, AppFooter integration, and the technical flow behind playing music across pages.",
     href: "/eMagazine/sontung",
     authors: [
       { name: "Agnes Walker", avatar: TEMP_AVATAR },
@@ -77,9 +77,9 @@ const cardData = [
   {
     img: "/images/logo/ads.jpg",
     tag: "Product",
-    title: "Maximizing efficiency with our latest product updates",
+    title: "Making playlists feel faster, cleaner, and more immersive",
     description:
-      "Our recent product updates are designed to help you maximize efficiency and achieve more. Get a detailed overview of the new features.",
+      "How SoundClone uses sliders, compact cards, hover states, and database-powered tracks to create a better music browsing experience.",
     href: "/eMagazine/ncs",
     authors: [{ name: "Travis Howard", avatar: TEMP_AVATAR }],
   },

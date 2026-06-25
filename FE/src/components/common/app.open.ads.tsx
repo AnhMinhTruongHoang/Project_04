@@ -4,12 +4,13 @@ import { useEffect, useState } from "react";
 import Box from "@mui/material/Box";
 import Dialog from "@mui/material/Dialog";
 import IconButton from "@mui/material/IconButton";
-import Button from "@mui/material/Button";
 import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
+import { useRouter } from "next/navigation";
 
 const ADS_STORAGE_KEY = "soundcloud_app_open_ads_seen";
 
 const AppOpenAds = () => {
+  const router = useRouter();
   const [open, setOpen] = useState(false);
 
   useEffect(() => {
@@ -27,6 +28,12 @@ const AppOpenAds = () => {
   const handleClose = () => {
     sessionStorage.setItem(ADS_STORAGE_KEY, "true");
     setOpen(false);
+  };
+
+  const handleGoToMagazine = () => {
+    sessionStorage.setItem(ADS_STORAGE_KEY, "true");
+    setOpen(false);
+    router.push("/eMagazine/sontung");
   };
 
   return (
@@ -50,6 +57,7 @@ const AppOpenAds = () => {
           backgroundColor: "#111314",
           border: "1px solid rgba(255,255,255,0.12)",
           boxShadow: "0 34px 100px rgba(0,0,0,0.78)",
+          cursor: "pointer",
         },
       }}
       slotProps={{
@@ -62,7 +70,10 @@ const AppOpenAds = () => {
       }}
     >
       <IconButton
-        onClick={handleClose}
+        onClick={(event) => {
+          event.stopPropagation();
+          handleClose();
+        }}
         sx={{
           position: "absolute",
           top: 12,
@@ -83,17 +94,25 @@ const AppOpenAds = () => {
       </IconButton>
 
       <Box
-        component="img"
-        src="/images/logo/ads.jpg"
-        alt="Advertisement"
+        onClick={handleGoToMagazine}
         sx={{
           width: "100%",
           maxHeight: "88vh",
-          display: "block",
-          objectFit: "contain",
           backgroundColor: "#000000",
         }}
-      />
+      >
+        <Box
+          component="img"
+          src="/images/media/sontungP.jpg"
+          alt="Sơn Tùng eMagazine"
+          sx={{
+            width: "100%",
+            maxHeight: "88vh",
+            display: "block",
+            objectFit: "contain",
+          }}
+        />
+      </Box>
     </Dialog>
   );
 };

@@ -268,15 +268,19 @@ const AppFooter = () => {
 
     if (audio) {
       audio.volume = safeVolume;
+      audio.muted = safeVolume === 0;
     }
 
     setCurrentTrack({
       ...currentTrack,
       volume: safeVolume,
+      muted: safeVolume === 0,
       source: "footer-control",
+      seekTime: undefined,
+      seekId: undefined,
+      volumeId: Date.now(),
     } as any);
   };
-
   const handleChangeVolume = (value: number) => {
     setAppVolume(value);
   };

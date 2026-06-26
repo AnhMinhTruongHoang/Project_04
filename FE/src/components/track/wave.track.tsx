@@ -159,6 +159,9 @@ const WaveTrack = (props: IProps) => {
       source: "wave",
       currentTime: nextCurrentTime ?? wavesurfer?.getCurrentTime() ?? 0,
       duration: nextDuration ?? wavesurfer?.getDuration() ?? 0,
+      volume: (currentTrack as any)?.volume,
+      muted: (currentTrack as any)?.muted,
+      volumeId: (currentTrack as any)?.volumeId,
       seekTime: undefined,
       seekId: undefined,
     } as any);
@@ -322,7 +325,13 @@ const WaveTrack = (props: IProps) => {
     if (footerTrack?.source !== "footer-control") return;
 
     if (typeof footerTrack.volume === "number") {
-      wavesurfer.setVolume(footerTrack.volume);
+      const safeVolume = Math.max(0, Math.min(1, footerTrack.volume));
+
+      wavesurfer.setVolume(safeVolume);
+
+      if (typeof (wavesurfer as any).setMuted === "function") {
+        (wavesurfer as any).setMuted(safeVolume === 0);
+      }
     }
 
     if (typeof footerTrack.seekTime === "number") {
@@ -365,6 +374,8 @@ const WaveTrack = (props: IProps) => {
     (currentTrack as any)?.seekId,
     (currentTrack as any)?.source,
     (currentTrack as any)?.volume,
+    (currentTrack as any)?.volumeId,
+    (currentTrack as any)?.muted,
     (track as any)?._id,
     (track as any)?.id,
   ]);
@@ -389,6 +400,12 @@ const WaveTrack = (props: IProps) => {
     (currentTrack as any)?._id,
     (currentTrack as any)?.id,
     currentTrack?.isPlaying,
+    (currentTrack as any)?.seekTime,
+    (currentTrack as any)?.seekId,
+    (currentTrack as any)?.source,
+    (currentTrack as any)?.volume,
+    (currentTrack as any)?.volumeId,
+    (currentTrack as any)?.muted,
     (track as any)?._id,
     (track as any)?.id,
   ]);

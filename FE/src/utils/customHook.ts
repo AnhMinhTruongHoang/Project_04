@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import WaveSurfer from "wavesurfer.js";
 import { WaveSurferOptions } from "wavesurfer.js";
 
@@ -17,15 +17,44 @@ export const useWavesurfer = (
   options: Omit<WaveSurferOptions, "container">
 ) => {
   const [wavesurfer, setWavesurfer] = useState<WaveSurfer | null>(null);
+  const wavesurferRef = useRef<WaveSurfer | null>(null);
+
+  const destroyCurrentWaveSurfer = () => {
+    const currentWs = wavesurferRef.current;
+
+    if (currentWs) {
+      try {
+        currentWs.pause();
+      } catch {}
+
+      try {
+        currentWs.empty();
+      } catch {}
+
+      try {
+        currentWs.destroy();
+      } catch {}
+    }
+
+    wavesurferRef.current = null;
+    setWavesurfer(null);
+
+    if (containerRef.current) {
+      containerRef.current.innerHTML = "";
+    }
+  };
 
   useEffect(() => {
     if (!containerRef.current) return;
 
-    containerRef.current.innerHTML = "";
+    destroyCurrentWaveSurfer();
 
     const ws = WaveSurfer.create({
       ...options,
       container: containerRef.current,
+      backend: "MediaElement",
+      mediaControls: false,
+      autoplay: false,
       renderFunction: (channels, ctx) => {
         const { width, height } = ctx.canvas;
         const barWidth = options.barWidth || 2;
@@ -87,14 +116,25 @@ export const useWavesurfer = (
       },
     });
 
+    wavesurferRef.current = ws;
     setWavesurfer(ws);
 
     return () => {
       try {
         ws.pause();
+      } catch {}
+
+      try {
         ws.empty();
+      } catch {}
+
+      try {
         ws.destroy();
       } catch {}
+
+      if (wavesurferRef.current === ws) {
+        wavesurferRef.current = null;
+      }
 
       setWavesurfer(null);
 

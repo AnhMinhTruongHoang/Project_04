@@ -1,13 +1,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { usePathname, useRouter } from "next/navigation";
 import Box from "@mui/material/Box";
 import Typography from "@mui/material/Typography";
 import PlayArrowRoundedIcon from "@mui/icons-material/PlayArrowRounded";
 import FavoriteRoundedIcon from "@mui/icons-material/FavoriteRounded";
 import RepeatRoundedIcon from "@mui/icons-material/RepeatRounded";
 import ChatBubbleRoundedIcon from "@mui/icons-material/ChatBubbleRounded";
-import { getTrackId } from "@/utils/api";
+import { convertSlugUrl, getTrackId } from "@/utils/api";
 import { getListeningHistory } from "@/utils/actions/history";
 import { getTrackImageUrl } from "@/utils/actions/getAvatar";
 import { useTrackContext } from "@/lib/track.wrapper";
@@ -33,9 +34,39 @@ const getArtistName = (track?: any) => {
   );
 };
 
+const getAudioUrl = (trackUrl?: string) => {
+  if (!trackUrl) return "";
+
+  if (trackUrl.startsWith("http")) return trackUrl;
+
+  if (trackUrl.startsWith("/")) {
+    return `${process.env.NEXT_PUBLIC_BACKEND_URL}${trackUrl}`;
+  }
+
+  return `${process.env.NEXT_PUBLIC_BACKEND_URL}/uploads/audio/${trackUrl}`;
+};
+
+const getTrackHref = (track: ITrackTop, autoplay = true) => {
+  const trackId = getTrackId(track);
+
+  const trackSlug =
+    (track as any).slug || `${convertSlugUrl(track.title)}-${trackId}`;
+
+  const href = `/track/${trackSlug}.html?audio=${encodeURIComponent(
+    getAudioUrl(track.trackUrl)
+  )}`;
+
+  return autoplay ? `${href}&autoplay=1` : href;
+};
+
 const ListeningHistory = () => {
+  const router = useRouter();
+  const pathname = usePathname();
+
   const [tracks, setTracks] = useState<ITrackTop[]>([]);
   const { setCurrentTrack } = useTrackContext() as ITrackContext;
+
+  const isTrackDetailPage = pathname?.startsWith("/track/");
 
   useEffect(() => {
     setTracks(getListeningHistory());
@@ -48,6 +79,23 @@ const ListeningHistory = () => {
 
     if (!trackId) return;
 
+    if (isTrackDetailPage) {
+      setCurrentTrack({
+        ...track,
+        _id: (track as any)._id || trackId,
+        id: (track as any).id || trackId,
+        isPlaying: false,
+        source: "wave",
+        currentTime: 0,
+        duration: 0,
+        seekTime: undefined,
+        seekId: undefined,
+      } as any);
+
+      router.push(getTrackHref(track, true));
+      return;
+    }
+
     setCurrentTrack({
       ...track,
       _id: (track as any)._id || trackId,
@@ -57,7 +105,7 @@ const ListeningHistory = () => {
       currentTime: 0,
       duration: 0,
       seekTime: undefined,
-      seekId: Date.now(),
+      seekId: undefined,
     } as any);
   };
 

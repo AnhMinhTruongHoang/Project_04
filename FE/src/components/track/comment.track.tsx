@@ -9,6 +9,7 @@ import dayjs from "dayjs";
 import WaveSurfer from "wavesurfer.js";
 import relativeTime from "dayjs/plugin/relativeTime";
 import { useHasMounted } from "@/utils/customHook";
+import { getInitials, getUserAvatarUrl } from "@/utils/actions/getAvatar";
 
 dayjs.extend(relativeTime);
 
@@ -18,19 +19,46 @@ interface IProps {
   wavesurfer: WaveSurfer | null;
 }
 
-const getInitials = (name?: string, email?: string) => {
-  const value = name?.trim() || email?.trim() || "User";
-  const words = value.split(" ").filter(Boolean);
-
-  if (words.length >= 2) {
-    return `${words[0][0]}${words[1][0]}`.toUpperCase();
-  }
-
-  return value.slice(0, 2).toUpperCase();
-};
-
 const getTrackId = (track?: any) => {
   return track?._id || track?.id || "";
+};
+
+const getUserName = (user?: any) => {
+  const username = user?.username?.trim();
+  const email = user?.email?.trim();
+  const name = user?.name?.trim();
+
+  const isBadName =
+    !name ||
+    name.toLowerCase() === "user" ||
+    name.toLowerCase() === "social user" ||
+    name.toLowerCase() === "unknown";
+
+  if (!isBadName) return name;
+
+  if (username && username.includes("@")) {
+    return username.split("@")[0];
+  }
+
+  if (username) return username;
+
+  if (email) return email.split("@")[0];
+
+  return "User";
+};
+
+const getUserEmail = (user?: any) => {
+  return user?.email || "";
+};
+
+const getCommentUser = (comment?: any) => {
+  return comment?.user || comment?.createdBy || comment?.author || null;
+};
+
+const getTrackUploader = (track?: any) => {
+  return (
+    track?.uploader || track?.user || track?.artist || track?.createdBy || null
+  );
 };
 
 const CommentTrack = (props: IProps) => {
@@ -54,20 +82,15 @@ const CommentTrack = (props: IProps) => {
 
   const trackId = getTrackId(track);
 
-  const uploaderName = track?.uploader?.name || "User";
-  const uploaderEmail = track?.uploader?.email || "Social user";
-
-  const formatTime = (seconds: number) => {
-    const minutes = Math.floor(seconds / 60);
-    const secondsRemainder = Math.round(seconds) % 60;
-    const paddedSeconds = `0${secondsRemainder}`.slice(-2);
-
-    return `${minutes}:${paddedSeconds}`;
-  };
+  const uploader = getTrackUploader(track);
+  const uploaderName = getUserName(uploader);
+  const uploaderEmail = getUserEmail(uploader);
+  const uploaderAvatarUrl = getUserAvatarUrl(uploader);
 
   const handleSubmit = async () => {
     if (!yourComment.trim()) return;
     if (!trackId) return;
+
     if (!accessToken) {
       console.log("Missing access token in session:", session);
       return;
@@ -101,16 +124,6 @@ const CommentTrack = (props: IProps) => {
     }
   };
 
-  const handleJumpTrack = (moment: number) => {
-    if (!wavesurfer) return;
-
-    const duration = wavesurfer.getDuration();
-    if (!duration) return;
-
-    wavesurfer.seekTo(moment / duration);
-    wavesurfer.play();
-  };
-
   return (
     <Box
       sx={{
@@ -119,7 +132,6 @@ const CommentTrack = (props: IProps) => {
         color: "#ffffff",
       }}
     >
-      {/* Comment input */}
       <Box sx={{ mb: 4 }}>
         {isLoggedIn && (
           <TextField
@@ -174,7 +186,6 @@ const CommentTrack = (props: IProps) => {
           alignItems: "flex-start",
         }}
       >
-        {/* Left uploader avatar */}
         <Box
           sx={{
             width: 190,
@@ -182,9 +193,13 @@ const CommentTrack = (props: IProps) => {
             display: { xs: "none", md: "flex" },
             flexDirection: "column",
             alignItems: "center",
+            position: "sticky",
+            top: 90,
           }}
         >
           <Avatar
+            src={uploaderAvatarUrl}
+            alt={uploaderName}
             sx={{
               width: 150,
               height: 150,
@@ -193,7 +208,7 @@ const CommentTrack = (props: IProps) => {
               fontSize: 42,
               fontWeight: 900,
               border: "3px solid rgba(255,85,0,0.45)",
-              boxShadow: "0 0 30px rgba(255,85,0,0.18)",
+              boxShadow: "0 0 34px rgba(255,85,0,0.2)",
               mb: 1.5,
             }}
           >
@@ -201,11 +216,11 @@ const CommentTrack = (props: IProps) => {
           </Avatar>
 
           <Typography
-            title={uploaderEmail}
+            title={uploaderName}
             sx={{
               width: 150,
               color: "#ffffff",
-              fontSize: 14,
+              fontSize: 15,
               fontWeight: 900,
               overflow: "hidden",
               textOverflow: "ellipsis",
@@ -213,11 +228,29 @@ const CommentTrack = (props: IProps) => {
               textAlign: "center",
             }}
           >
-            {uploaderEmail}
+            {uploaderName}
           </Typography>
+
+          {uploaderEmail && (
+            <Typography
+              title={uploaderEmail}
+              sx={{
+                width: 150,
+                color: "#9a9a9a",
+                fontSize: 12,
+                fontWeight: 700,
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                whiteSpace: "nowrap",
+                textAlign: "center",
+                mt: 0.4,
+              }}
+            >
+              {uploaderEmail}
+            </Typography>
+          )}
         </Box>
 
-        {/* Right comments */}
         <Box
           sx={{
             flex: 1,
@@ -226,9 +259,10 @@ const CommentTrack = (props: IProps) => {
         >
           {comments?.length ? (
             comments.map((comment) => {
-              const commentName =
-                comment?.user?.name || comment?.user?.email || "User";
-              const commentEmail = comment?.user?.email || "";
+              const user = getCommentUser(comment);
+              const commentName = getUserName(user);
+              const commentEmail = getUserEmail(user);
+              const commentAvatarUrl = getUserAvatarUrl(user);
 
               return (
                 <Box
@@ -237,12 +271,14 @@ const CommentTrack = (props: IProps) => {
                     display: "flex",
                     justifyContent: "space-between",
                     gap: 2,
-                    py: 1.4,
-                    borderBottom: "1px solid rgba(255,255,255,0.06)",
+                    py: 1.6,
+                    px: 1.2,
+                    borderBottom: "1px solid rgba(255,255,255,0.07)",
+                    borderRadius: 2,
                     transition: "0.18s ease",
 
                     "&:hover": {
-                      backgroundColor: "rgba(255,255,255,0.025)",
+                      backgroundColor: "rgba(255,255,255,0.035)",
                     },
                   }}
                 >
@@ -252,25 +288,36 @@ const CommentTrack = (props: IProps) => {
                       gap: 1.4,
                       alignItems: "flex-start",
                       minWidth: 0,
+                      flex: 1,
                     }}
                   >
                     <Avatar
+                      src={commentAvatarUrl}
+                      alt={commentName}
                       sx={{
-                        width: 40,
-                        height: 40,
+                        width: 42,
+                        height: 42,
                         bgcolor: "#ff5500",
                         color: "#ffffff",
                         fontSize: 14,
                         fontWeight: 900,
                         flexShrink: 0,
-                        border: "1px solid rgba(255,255,255,0.08)",
+                        border: "1px solid rgba(255,255,255,0.12)",
                       }}
                     >
                       {getInitials(commentName, commentEmail)}
                     </Avatar>
 
-                    <Box sx={{ minWidth: 0 }}>
+                    <Box
+                      sx={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 0.8,
+                        flexWrap: "wrap",
+                      }}
+                    >
                       <Typography
+                        title={commentName}
                         sx={{
                           color: "#ffffff",
                           fontSize: 13,
@@ -279,50 +326,21 @@ const CommentTrack = (props: IProps) => {
                         }}
                       >
                         {commentName}
+                      </Typography>
 
-                        <Box
-                          component="span"
-                          onClick={() => handleJumpTrack(comment.moment)}
+                      {hasMounted && comment.createdAt && (
+                        <Typography
                           sx={{
-                            color: "#ff5500",
-                            cursor: "pointer",
-                            fontWeight: 900,
-
-                            "&:hover": {
-                              textDecoration: "underline",
-                            },
+                            color: "#8f8f8f",
+                            fontSize: 12,
+                            fontWeight: 700,
                           }}
                         >
-                          {formatTime(comment.moment)}
-                        </Box>
-                      </Typography>
-
-                      <Typography
-                        sx={{
-                          color: "#e7e7e7",
-                          fontSize: 14,
-                          lineHeight: 1.5,
-                          mt: 0.5,
-                          wordBreak: "break-word",
-                        }}
-                      >
-                        {comment.content}
-                      </Typography>
+                          {dayjs(comment.createdAt).fromNow()}
+                        </Typography>
+                      )}
                     </Box>
                   </Box>
-
-                  <Typography
-                    sx={{
-                      color: "#8f8f8f",
-                      fontSize: 12,
-                      whiteSpace: "nowrap",
-                      pt: 0.3,
-                    }}
-                  >
-                    {hasMounted && comment.createdAt
-                      ? dayjs(comment.createdAt).fromNow()
-                      : ""}
-                  </Typography>
                 </Box>
               );
             })

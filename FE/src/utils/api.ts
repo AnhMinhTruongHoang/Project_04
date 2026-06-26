@@ -679,3 +679,26 @@ export const revalidateApi = (tag: string) => {
     },
   });
 };
+
+/* =========================
+   LeaderBoard API
+========================= */
+
+export const getArtistLeaderboard = async (
+  limit = 10
+): Promise<ArtistLeaderboardItem[]> => {
+  const res = await fetch(
+    `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/v1/users/leaderboard/artists?limit=${limit}`,
+    {
+      cache: "no-store",
+    }
+  );
+
+  if (!res.ok) {
+    throw new Error("Failed to fetch artist leaderboard");
+  }
+
+  const json = (await res.json()) as ArtistLeaderboardResponse;
+
+  return Array.isArray(json?.data) ? json.data : [];
+};

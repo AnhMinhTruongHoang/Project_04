@@ -7,10 +7,8 @@ import { WaveSurferOptions } from "wavesurfer.js";
 import PlayArrowIcon from "@mui/icons-material/PlayArrow";
 import PauseIcon from "@mui/icons-material/Pause";
 import "../../styles/wave.scss";
-import { Avatar, Tooltip } from "@mui/material";
 import { useTrackContext } from "@/lib/track.wrapper";
 import { sendRequest } from "@/utils/api";
-import CommentTrack from "./comment.track";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 
@@ -18,12 +16,10 @@ import LikeTrack from "./like.track";
 
 interface IProps {
   track: ITrackTop | null;
-  comments: ITrackComment[];
   autoPlay?: boolean;
 }
-
 const WaveTrack = (props: IProps) => {
-  const { track, comments, autoPlay = false } = props;
+  const { track, autoPlay = false } = props;
   const router = useRouter();
   const firstViewRef = useRef(true);
   const lastSyncSecondRef = useRef(-1);
@@ -508,14 +504,6 @@ const WaveTrack = (props: IProps) => {
 
       <div>
         <LikeTrack track={track} />
-      </div>
-
-      <div>
-        <CommentTrack
-          comments={comments}
-          track={track}
-          wavesurfer={wavesurfer}
-        />
       </div>
     </div>
   );

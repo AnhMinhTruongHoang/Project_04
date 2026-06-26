@@ -292,4 +292,27 @@ declare global {
   type RequestFileProps = Omit<IRequest, "body"> & {
     body?: BodyInit | FormData | null;
   };
+
+  export type ArtistLeaderboardItem = {
+    _id?: string;
+    id?: string;
+    name: string;
+    email?: string;
+    username?: string;
+    avatarUrl?: string;
+    avatar?: string;
+    role?: string;
+    type?: string;
+    followers?: number | null;
+    following?: number | null;
+    tracks?: number | null;
+    trackCount?: number | null;
+    totalTracks?: number | null;
+  };
+
+  type ArtistLeaderboardResponse = {
+    statusCode?: number;
+    message?: string;
+    data?: ArtistLeaderboardItem[];
+  };
 }

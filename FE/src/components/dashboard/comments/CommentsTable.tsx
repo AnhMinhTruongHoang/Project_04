@@ -21,6 +21,7 @@ import {
   DialogContent,
   DialogTitle,
 } from "@mui/material";
+import { getInitials, getUserAvatarUrl } from "@/utils/actions/getAvatar";
 
 type Props = {
   comments: ITrackComment[];
@@ -34,20 +35,73 @@ const CommentsTable = ({ comments, accessToken }: Props) => {
   const [confirmComment, setConfirmComment] = useState<ITrackComment | null>(
     null
   );
+
   const toast = useToast();
-  const getInitials = (name?: string, email?: string) => {
-    const value = name?.trim() || email?.trim() || "User";
-    const words = value.split(" ").filter(Boolean);
-
-    if (words.length >= 2) {
-      return `${words[0][0]}${words[1][0]}`.toUpperCase();
-    }
-
-    return value.slice(0, 2).toUpperCase();
-  };
 
   const getItemId = (item?: any) => {
     return item?._id || item?.id || "";
+  };
+
+  const getCommentUser = (comment?: any) => {
+    return (
+      comment?.user ||
+      comment?.createdBy ||
+      comment?.author ||
+      comment?.created_by ||
+      comment?.userInfo ||
+      comment?.account || {
+        name:
+          comment?.userName ||
+          comment?.username ||
+          comment?.name ||
+          comment?.createdByName ||
+          comment?.authorName,
+        email:
+          comment?.userEmail ||
+          comment?.email ||
+          comment?.createdByEmail ||
+          comment?.authorEmail,
+        avatarUrl:
+          comment?.userAvatarUrl ||
+          comment?.avatarUrl ||
+          comment?.userAvatar ||
+          comment?.avatar ||
+          comment?.image ||
+          comment?.picture,
+      }
+    );
+  };
+
+  const getUserName = (user?: any) => {
+    if (!user) return "User";
+
+    if (typeof user === "string") {
+      return user.includes("@") ? user.split("@")[0] : user;
+    }
+
+    const value =
+      user?.name ||
+      user?.fullName ||
+      user?.displayName ||
+      user?.username ||
+      user?.email ||
+      "User";
+
+    const cleanValue = String(value).trim();
+
+    if (!cleanValue) return "User";
+
+    if (cleanValue.includes("@")) {
+      return cleanValue.split("@")[0];
+    }
+
+    return cleanValue;
+  };
+
+  const getUserEmail = (user?: any) => {
+    if (!user || typeof user === "string") return "";
+
+    return user?.email || "";
   };
 
   const getTrackTitle = (comment: ITrackComment) => {
@@ -76,10 +130,12 @@ const CommentsTable = ({ comments, accessToken }: Props) => {
     if (!keyword) return comments;
 
     return comments.filter((comment) => {
+      const user = getCommentUser(comment);
+
       return [
         comment.content,
-        comment.user?.name,
-        comment.user?.email,
+        getUserName(user),
+        getUserEmail(user),
         getTrackTitle(comment),
         getTrackCategory(comment),
       ]
@@ -209,14 +265,21 @@ const CommentsTable = ({ comments, accessToken }: Props) => {
       headerName: "User",
       flex: 1,
       minWidth: 240,
-      valueGetter: (params) =>
-        params.row.user?.name || params.row.user?.email || "Unknown",
+      valueGetter: (params) => {
+        const user = getCommentUser(params.row);
+        return getUserName(user) || getUserEmail(user) || "Unknown";
+      },
       renderCell: (params) => {
-        const user = params.row.user;
+        const user = getCommentUser(params.row);
+        const userName = getUserName(user);
+        const userEmail = getUserEmail(user);
+        const userAvatarUrl = getUserAvatarUrl(user);
 
         return (
           <Box sx={{ display: "flex", alignItems: "center", gap: 1.2 }}>
             <Avatar
+              src={userAvatarUrl}
+              alt={userName}
               sx={{
                 width: 38,
                 height: 38,
@@ -228,12 +291,12 @@ const CommentsTable = ({ comments, accessToken }: Props) => {
                 border: "1px solid rgba(255,255,255,0.12)",
               }}
             >
-              {getInitials(user?.name, user?.email)}
+              {getInitials(userName, userEmail)}
             </Avatar>
 
             <Box sx={{ minWidth: 0 }}>
               <Typography
-                title={user?.name}
+                title={userName}
                 sx={{
                   color: "#ffffff",
                   fontSize: 13,
@@ -244,11 +307,11 @@ const CommentsTable = ({ comments, accessToken }: Props) => {
                   lineHeight: 1.35,
                 }}
               >
-                {user?.name || "Social user"}
+                {userName || "User"}
               </Typography>
 
               <Typography
-                title={user?.email}
+                title={userEmail}
                 sx={{
                   color: "#8f8f8f",
                   fontSize: 12,
@@ -259,7 +322,7 @@ const CommentsTable = ({ comments, accessToken }: Props) => {
                   mt: 0.2,
                 }}
               >
-                {user?.email || ""}
+                {userEmail}
               </Typography>
             </Box>
           </Box>

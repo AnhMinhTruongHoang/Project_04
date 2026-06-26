@@ -14,9 +14,9 @@ import { getInitials, getUserAvatarUrl } from "@/utils/actions/getAvatar";
 dayjs.extend(relativeTime);
 
 interface IProps {
-  comments: ITrackComment[];
   track: ITrackTop | null;
-  wavesurfer: WaveSurfer | null;
+  comments?: ITrackComment[];
+  wavesurfer?: WaveSurfer | null;
 }
 
 const getTrackId = (track?: any) => {
@@ -24,35 +24,66 @@ const getTrackId = (track?: any) => {
 };
 
 const getUserName = (user?: any) => {
-  const username = user?.username?.trim();
-  const email = user?.email?.trim();
-  const name = user?.name?.trim();
+  if (!user) return "User";
 
-  const isBadName =
-    !name ||
-    name.toLowerCase() === "user" ||
-    name.toLowerCase() === "social user" ||
-    name.toLowerCase() === "unknown";
-
-  if (!isBadName) return name;
-
-  if (username && username.includes("@")) {
-    return username.split("@")[0];
+  if (typeof user === "string") {
+    return user.includes("@") ? user.split("@")[0] : user;
   }
 
-  if (username) return username;
+  const name =
+    user?.name ||
+    user?.fullName ||
+    user?.displayName ||
+    user?.username ||
+    user?.email ||
+    "";
 
-  if (email) return email.split("@")[0];
+  const cleanName = String(name).trim();
 
-  return "User";
+  const isBadName =
+    !cleanName ||
+    cleanName.toLowerCase() === "user" ||
+    cleanName.toLowerCase() === "social user" ||
+    cleanName.toLowerCase() === "unknown";
+
+  if (isBadName) return "User";
+
+  if (cleanName.includes("@")) {
+    return cleanName.split("@")[0];
+  }
+
+  return cleanName;
 };
 
 const getUserEmail = (user?: any) => {
-  return user?.email || "";
+  if (!user || typeof user === "string") return "";
+
+  return user?.email || user?.username || "";
 };
 
 const getCommentUser = (comment?: any) => {
-  return comment?.user || comment?.createdBy || comment?.author || null;
+  return (
+    comment?.user ||
+    comment?.createdBy ||
+    comment?.author ||
+    comment?.created_by ||
+    comment?.userInfo ||
+    comment?.account ||
+    comment?.owner || {
+      name:
+        comment?.userName ||
+        comment?.username ||
+        comment?.name ||
+        comment?.createdByName ||
+        comment?.authorName,
+      email:
+        comment?.userEmail ||
+        comment?.email ||
+        comment?.createdByEmail ||
+        comment?.authorEmail,
+      avatar: comment?.userAvatar || comment?.avatar || comment?.avatarUrl,
+    }
+  );
 };
 
 const getTrackUploader = (track?: any) => {
@@ -65,7 +96,7 @@ const CommentTrack = (props: IProps) => {
   const router = useRouter();
   const hasMounted = useHasMounted();
 
-  const { comments, track, wavesurfer } = props;
+  const { comments = [], track, wavesurfer = null } = props;
   const [yourComment, setYourComment] = useState("");
   const { data: session } = useSession();
 
@@ -308,37 +339,54 @@ const CommentTrack = (props: IProps) => {
                       {getInitials(commentName, commentEmail)}
                     </Avatar>
 
-                    <Box
-                      sx={{
-                        display: "flex",
-                        alignItems: "center",
-                        gap: 0.8,
-                        flexWrap: "wrap",
-                      }}
-                    >
-                      <Typography
-                        title={commentName}
+                    <Box sx={{ minWidth: 0, flex: 1 }}>
+                      <Box
                         sx={{
-                          color: "#ffffff",
-                          fontSize: 13,
-                          fontWeight: 900,
-                          lineHeight: 1.4,
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 0.8,
+                          flexWrap: "wrap",
+                          mb: 0.4,
                         }}
                       >
-                        {commentName}
-                      </Typography>
-
-                      {hasMounted && comment.createdAt && (
                         <Typography
+                          title={commentName}
                           sx={{
-                            color: "#8f8f8f",
-                            fontSize: 12,
-                            fontWeight: 700,
+                            color: "#ffffff",
+                            fontSize: 13,
+                            fontWeight: 900,
+                            lineHeight: 1.4,
                           }}
                         >
-                          {dayjs(comment.createdAt).fromNow()}
+                          {commentName}
                         </Typography>
-                      )}
+
+                        {hasMounted && comment.createdAt && (
+                          <Typography
+                            sx={{
+                              color: "#8f8f8f",
+                              fontSize: 12,
+                              fontWeight: 700,
+                            }}
+                          >
+                            {dayjs(comment.createdAt).fromNow()}
+                          </Typography>
+                        )}
+                      </Box>
+
+                      <Typography
+                        sx={{
+                          color: "#d6d6d6",
+                          fontSize: 14,
+                          fontWeight: 500,
+                          lineHeight: 1.5,
+                          wordBreak: "break-word",
+                        }}
+                      >
+                        {(comment as any).content ||
+                          (comment as any).comment ||
+                          ""}
+                      </Typography>
                     </Box>
                   </Box>
                 </Box>

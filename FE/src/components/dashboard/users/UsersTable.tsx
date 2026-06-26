@@ -22,7 +22,7 @@ import { DataGrid, GridColDef } from "@mui/x-data-grid";
 import { sendRequest } from "@/utils/api";
 import DashboardTableToolbar from "@/components/dashboard/components/DashboardTableToolbar";
 import { useToast } from "@/utils/toast";
-import { getUserAvatarUrl } from "@/utils/actions/getAvatar";
+import { getInitials, getUserAvatarUrl } from "@/utils/actions/getAvatar";
 
 type Props = {
   users: IUser[];
@@ -37,19 +37,10 @@ type EditUserState = {
   gender: string;
   address: string;
   role: string;
-};
-
-const getInitials = (name?: string, email?: string) => {
-  const value = name?.trim() || email?.trim() || "User";
-  const words = value.split(" ").filter(Boolean);
-  const toast = useToast();
-  const [confirmUser, setConfirmUser] = useState<IUser | null>(null);
-
-  if (words.length >= 2) {
-    return `${words[0][0]}${words[1][0]}`.toUpperCase();
-  }
-
-  return value.slice(0, 2).toUpperCase();
+  avatarUrl?: string;
+  avatar?: string;
+  image?: string;
+  picture?: string;
 };
 
 const getItemId = (item?: any) => {
@@ -59,6 +50,7 @@ const getItemId = (item?: any) => {
 const UsersTable = ({ users, accessToken }: Props) => {
   const router = useRouter();
   const toast = useToast();
+
   const [confirmUser, setConfirmUser] = useState<IUser | null>(null);
   const [searchValue, setSearchValue] = useState("");
   const [deletingId, setDeletingId] = useState("");
@@ -99,6 +91,8 @@ const UsersTable = ({ users, accessToken }: Props) => {
   };
 
   const handleOpenEdit = (user: IUser) => {
+    const userAny = user as any;
+
     setEditUser({
       _id: getItemId(user),
       name: user.name || "",
@@ -107,6 +101,10 @@ const UsersTable = ({ users, accessToken }: Props) => {
       gender: user.gender || "",
       address: user.address || "",
       role: user.role || "USER",
+      avatarUrl: userAny.avatarUrl || "",
+      avatar: userAny.avatar || "",
+      image: userAny.image || "",
+      picture: userAny.picture || "",
     });
 
     setOpenEdit(true);
@@ -114,18 +112,19 @@ const UsersTable = ({ users, accessToken }: Props) => {
 
   const handleCloseEdit = () => {
     if (saving) return;
+
     setOpenEdit(false);
     setEditUser(null);
   };
 
   const handleSaveUser = async () => {
     if (!editUser?._id) {
-      alert("User not found.");
+      toast.error("User not found.");
       return;
     }
 
     if (!accessToken) {
-      alert("Please login first.");
+      toast.error("Please login first.");
       return;
     }
 
@@ -152,6 +151,8 @@ const UsersTable = ({ users, accessToken }: Props) => {
     setSaving(false);
 
     if (res?.data || res?.statusCode === 200) {
+      toast.success("Update user successfully.");
+
       await revalidateUsers();
       setOpenEdit(false);
       setEditUser(null);
@@ -159,7 +160,7 @@ const UsersTable = ({ users, accessToken }: Props) => {
       return;
     }
 
-    alert(res?.message || "Update user failed.");
+    toast.error(res?.message || "Update user failed.");
   };
 
   const deleteUser = async (user: IUser) => {
@@ -213,10 +214,15 @@ const UsersTable = ({ users, accessToken }: Props) => {
       sortable: true,
       renderCell: (params) => {
         const user = params.row;
+        const userName = user.name || "Social user";
+        const userEmail = user.email || "";
+        const userAvatarUrl = getUserAvatarUrl(user);
 
         return (
           <Box sx={{ display: "flex", alignItems: "center", gap: 1.4 }}>
             <Avatar
+              src={userAvatarUrl}
+              alt={userName}
               sx={{
                 width: 42,
                 height: 42,
@@ -227,12 +233,12 @@ const UsersTable = ({ users, accessToken }: Props) => {
                 flexShrink: 0,
               }}
             >
-              {getInitials(user.name, user.email)}
+              {getInitials(userName, userEmail)}
             </Avatar>
 
             <Box sx={{ minWidth: 0 }}>
               <Typography
-                title={user.name}
+                title={userName}
                 sx={{
                   color: "#ffffff",
                   fontSize: 14,
@@ -248,7 +254,7 @@ const UsersTable = ({ users, accessToken }: Props) => {
               </Typography>
 
               <Typography
-                title={user.email}
+                title={userEmail}
                 sx={{
                   color: "#8f8f8f",
                   fontSize: 12,
@@ -258,7 +264,7 @@ const UsersTable = ({ users, accessToken }: Props) => {
                   whiteSpace: "nowrap",
                 }}
               >
-                {user.email}
+                {userEmail}
               </Typography>
             </Box>
           </Box>
@@ -492,7 +498,8 @@ const UsersTable = ({ users, accessToken }: Props) => {
             }}
           >
             <Avatar
-              src={getUserAvatarUrl(editUser) || undefined}
+              src={getUserAvatarUrl(editUser)}
+              alt={editUser?.name || "User"}
               sx={{
                 width: 70,
                 height: 70,
@@ -502,8 +509,7 @@ const UsersTable = ({ users, accessToken }: Props) => {
                 fontSize: 22,
               }}
             >
-              {!getUserAvatarUrl(editUser) &&
-                getInitials(editUser?.name, editUser?.email)}
+              {getInitials(editUser?.name, editUser?.email)}
             </Avatar>
 
             <Box>
@@ -516,6 +522,7 @@ const UsersTable = ({ users, accessToken }: Props) => {
               </Typography>
             </Box>
           </Box>
+
           <Box sx={{ display: "grid", gap: 2 }}>
             <TextField
               label="Name"

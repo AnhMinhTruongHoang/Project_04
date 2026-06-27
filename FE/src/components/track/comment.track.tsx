@@ -22,44 +22,64 @@ interface IProps {
 const getTrackId = (track?: any) => {
   return track?._id || track?.id || "";
 };
-
+///
 const getUserName = (user?: any) => {
   if (!user) return "User";
 
   if (typeof user === "string") {
-    return user.includes("@") ? user.split("@")[0] : user;
+    if (user.includes("@")) return user.split("@")[0];
+
+    // Nếu backend chỉ trả userId dạng string thì không lấy làm tên
+    return "User";
   }
 
-  const name =
-    user?.name ||
-    user?.fullName ||
-    user?.displayName ||
-    user?.username ||
-    user?.email ||
-    "";
+  const email = String(user?.email || "").trim();
+  const username = String(user?.username || "").trim();
+  const fullName = String(user?.fullName || "").trim();
+  const displayName = String(user?.displayName || "").trim();
+  const name = String(user?.name || "").trim();
 
-  const cleanName = String(name).trim();
+  const isBadName = (value: string) => {
+    const lower = value.toLowerCase();
 
-  const isBadName =
-    !cleanName ||
-    cleanName.toLowerCase() === "user" ||
-    cleanName.toLowerCase() === "social user" ||
-    cleanName.toLowerCase() === "unknown";
+    return (
+      !value ||
+      lower === "user" ||
+      lower === "social user" ||
+      lower === "unknown" ||
+      lower === "unknown user"
+    );
+  };
 
-  if (isBadName) return "User";
+  // Ưu tiên fullName/displayName nếu có tên thật
+  if (!isBadName(fullName)) return fullName;
+  if (!isBadName(displayName)) return displayName;
 
-  if (cleanName.includes("@")) {
-    return cleanName.split("@")[0];
+  // Nếu name là "User" thì bỏ qua, lấy email/username
+  if (!isBadName(name)) {
+    return name.includes("@") ? name.split("@")[0] : name;
   }
 
-  return cleanName;
+  if (email) return email.split("@")[0];
+
+  if (username) {
+    return username.includes("@") ? username.split("@")[0] : username;
+  }
+
+  return "User";
 };
 
 const getUserEmail = (user?: any) => {
-  if (!user || typeof user === "string") return "";
+  if (!user) return "";
 
-  return user?.email || user?.username || "";
+  if (typeof user === "string") {
+    return user.includes("@") ? user : "";
+  }
+
+  return user?.email || "";
 };
+
+///
 
 const getCommentUser = (comment?: any) => {
   return (

@@ -1,0 +1,511 @@
+SOLUTION CHECKLIST - BUG DUAL AUDIO / MUTE FOOTER / SEEK FOOTER
+
+Mục tiêu:
+- Ở trang /track/... chỉ cho WaveTrack / WaveSurfer phát audio thật.
+- AppFooter ở trang /track chỉ làm remote control: play/pause, seek, volume.
+- Không để react-h5-audio-player trong AppFooter phát song song với WaveSurfer.
+- Chỉ render duy nhất 1 AppFooter trong toàn app.
+
+==================================================
+1. CHECK DUPLICATE APPFOOTER
+==================================================
+
+Chạy lệnh:
+
+Get-ChildItem -Recurse .\src -Include *.tsx,*.ts | Select-String "import AppFooter|<AppFooter|TrackContextProvider"
+
+Kết quả đúng chỉ nên còn:
+
+src\app\layout.tsx: import { TrackContextProvider } from "@/lib/track.wrapper";
+src\app\layout.tsx: import AppFooter from "@/components/footer/app.footer";
+src\app\layout.tsx: <TrackContextProvider>
+src\app\layout.tsx: <AppFooter />
+src\app\layout.tsx: </TrackContextProvider>
+src\lib\track.wrapper.tsx: export const TrackContextProvider = ...
+
+Nếu còn AppFooter ở các file này thì XÓA:
+- src/app/(user)/layout.tsx
+- src/app/blog/page.tsx
+- src/app/search/layout.tsx
+- src/app/track/layout.tsx
+- bất kỳ page/layout con nào khác
+
+Chỉ giữ AppFooter ở root:
+src/app/layout.tsx
+
+Root layout đúng:
+
+<TrackContextProvider>
+  {children}
+  <AppFooter />
+</TrackContextProvider>
+
+==================================================
+2. APPFOOTER - FIX CỨNG TRANG /track
+==================================================
+
+Trong src/components/footer/app.footer.tsx
+
+Tìm đoạn:
+
+const isWaveControlled =
+  isTrackDetailPage &&
+  (footerTrack?.source === "wave" ||
+    footerTrack?.source === "footer-control");
+
+Thêm dưới:
+
+const shouldUseWaveFooter = isTrackDetailPage;
+
+Sau đó đổi render:
+
+Từ:
+{isWaveControlled ? (
+
+Thành:
+{shouldUseWaveFooter ? (
+
+Ý nghĩa:
+- Cứ vào /track/... thì AppFooter KHÔNG BAO GIỜ render <AudioPlayer />
+- AppFooter chỉ render UI control custom cho WaveSurfer
+- Chặn dual audio tuyệt đối ở track detail page
+
+==================================================
+3. APPFOOTER - PAUSE AUDIOPLAYER KHI Ở /track
+==================================================
+
+Trong app.footer.tsx, tìm useEffect điều khiển audio:
+
+useEffect(() => {
+  const audio = playerRef.current?.audio?.current;
+  if (!audio) return;
+
+  ...
+}, [...]);
+
+Đổi thành:
+
+useEffect(() => {
+  const audio = playerRef.current?.audio?.current;
+  if (!audio) return;
+
+  if (shouldUseWaveFooter) {
+    suppressFooterAudioEventRef.current = true;
+
+    audio.pause();
+    audio.currentTime = 0;
+
+    window.setTimeout(() => {
+      suppressFooterAudioEventRef.current = false;
+    }, 0);
+
+    return;
+  }
+
+  if (previousTrackUrlRef.current !== currentTrack?.trackUrl) {
+    audio.currentTime = 0;
+    previousTrackUrlRef.current = currentTrack?.trackUrl || "";
+  }
+
+  if (currentTrack?.isPlaying === false) {
+    audio.pause();
+    return;
+  }
+
+  if (currentTrack?.isPlaying === true) {
+    audio.play();
+  }
+}, [
+  currentTrack?._id,
+  currentTrack?.trackUrl,
+  currentTrack?.isPlaying,
+  shouldUseWaveFooter,
+]);
+
+Nhớ có ref này ở đầu AppFooter:
+
+const suppressFooterAudioEventRef = useRef(false);
+
+==================================================
+4. APPFOOTER - CHẶN AUDIOPLAYER EVENT ĐỔI SOURCE SAI
+==================================================
+
+Trong <AudioPlayer />
+
+Sửa onPlay:
+
+onPlay={() => {
+  if (suppressFooterAudioEventRef.current) return;
+  if (isTrackDetailPage) return;
+
+  setCurrentTrack({
+    ...currentTrack,
+    isPlaying: true,
+    source: "footer",
+  } as any);
+}}
+
+Sửa onPause:
+
+onPause={() => {
+  if (suppressFooterAudioEventRef.current) return;
+  if (isTrackDetailPage) return;
+
+  setCurrentTrack({
+    ...currentTrack,
+    isPlaying: false,
+    source: "footer",
+  } as any);
+}}
+
+Thêm prop muted:
+
+muted={volume === 0}
+
+Ví dụ:
+
+<AudioPlayer
+  ref={playerRef}
+  layout="horizontal-reverse"
+  showSkipControls
+  onClickPrevious={handlePlayPreviousTrack}
+  onClickNext={handlePlayNextTrack}
+  onEnded={handleAudioEnded}
+  src={getAudioUrl((currentTrack as any)?.trackUrl)}
+  volume={volume}
+  muted={volume === 0}
+  ...
+/>
+
+==================================================
+5. APPFOOTER - PLAY/PAUSE BUTTON Ở WAVE MODE
+==================================================
+
+Trong nút play/pause custom của footer, đổi setCurrentTrack thành:
+
+setCurrentTrack({
+  ...currentTrack,
+  isPlaying: !currentTrack.isPlaying,
+  source: "footer-control",
+  seekTime: undefined,
+  seekId: undefined,
+  volume,
+  muted: volume === 0,
+  volumeId: Date.now(),
+} as any);
+
+==================================================
+6. APPFOOTER - SEEK FOOTER PHẢI GIỮ VOLUME/MUTED
+==================================================
+
+Trong handleSeekBy, setCurrentTrack nên là:
+
+setCurrentTrack({
+  ...currentTrack,
+  currentTime: nextTime,
+  seekTime: nextTime,
+  seekId: Date.now(),
+  source: "footer-control",
+  volume,
+  muted: volume === 0,
+  volumeId: Date.now(),
+} as any);
+
+Trong Slider progress onChangeCommitted, setCurrentTrack nên là:
+
+setCurrentTrack({
+  ...currentTrack,
+  currentTime: Number(value),
+  seekTime: Number(value),
+  seekId: Date.now(),
+  source: "footer-control",
+  volume,
+  muted: volume === 0,
+  volumeId: Date.now(),
+} as any);
+
+==================================================
+7. WAVETRACK - THÊM REF GIỮ VOLUME/MUTED MỚI NHẤT
+==================================================
+
+Trong src/components/track/wave.track.tsx
+
+Tìm đoạn:
+
+const firstViewRef = useRef(true);
+const lastSyncSecondRef = useRef(-1);
+const lastHandledSeekIdRef = useRef<number | string | null>(null);
+
+Thêm dưới:
+
+const latestVolumeRef = useRef(0.5);
+const latestMutedRef = useRef(false);
+const latestVolumeIdRef = useRef<number | string | undefined>(undefined);
+
+==================================================
+8. WAVETRACK - SYNC VOLUME TỪ FOOTER SANG WAVESURFER
+==================================================
+
+Sau dòng:
+
+const wavesurfer = useWavesurfer(containerRef, optionsMemo);
+
+Thêm:
+
+useEffect(() => {
+  const footerTrack = currentTrack as any;
+
+  if (typeof footerTrack?.volume === "number") {
+    latestVolumeRef.current = Math.max(0, Math.min(1, footerTrack.volume));
+  }
+
+  if (typeof footerTrack?.muted === "boolean") {
+    latestMutedRef.current = footerTrack.muted;
+  } else {
+    latestMutedRef.current = latestVolumeRef.current === 0;
+  }
+
+  latestVolumeIdRef.current = footerTrack?.volumeId;
+
+  if (wavesurfer) {
+    wavesurfer.setVolume(
+      latestMutedRef.current ? 0 : latestVolumeRef.current
+    );
+  }
+}, [
+  wavesurfer,
+  (currentTrack as any)?.volume,
+  (currentTrack as any)?.muted,
+  (currentTrack as any)?.volumeId,
+]);
+
+==================================================
+9. WAVETRACK - SỬA syncWaveToFooter KHÔNG GHI ĐÈ MẤT MUTE
+==================================================
+
+Trong syncWaveToFooter, đổi:
+
+volume: (currentTrack as any)?.volume,
+muted: (currentTrack as any)?.muted,
+volumeId: (currentTrack as any)?.volumeId,
+
+Thành:
+
+volume: latestVolumeRef.current,
+muted: latestMutedRef.current,
+volumeId: latestVolumeIdRef.current,
+
+Full đoạn:
+
+setCurrentTrack({
+  ...track,
+  isPlaying: nextIsPlaying,
+  source: "wave",
+  currentTime: nextCurrentTime ?? wavesurfer?.getCurrentTime() ?? 0,
+  duration: nextDuration ?? wavesurfer?.getDuration() ?? 0,
+  volume: latestVolumeRef.current,
+  muted: latestMutedRef.current,
+  volumeId: latestVolumeIdRef.current,
+  seekTime: undefined,
+  seekId: undefined,
+} as any);
+
+==================================================
+10. WAVETRACK - NHẬN VOLUME TỪ FOOTER-CONTROL
+==================================================
+
+Trong effect xử lý footer-control, tìm đoạn:
+
+if (typeof footerTrack.volume === "number") {
+  const safeVolume = Math.max(0, Math.min(1, footerTrack.volume));
+
+  wavesurfer.setVolume(safeVolume);
+
+  if (typeof (wavesurfer as any).setMuted === "function") {
+    (wavesurfer as any).setMuted(safeVolume === 0);
+  }
+}
+
+Đổi thành:
+
+if (typeof footerTrack.volume === "number") {
+  const safeVolume = Math.max(0, Math.min(1, footerTrack.volume));
+  const safeMuted = Boolean(footerTrack.muted || safeVolume === 0);
+
+  latestVolumeRef.current = safeVolume;
+  latestMutedRef.current = safeMuted;
+  latestVolumeIdRef.current = footerTrack.volumeId;
+
+  wavesurfer.setVolume(safeMuted ? 0 : safeVolume);
+}
+
+==================================================
+11. WAVETRACK - SEEK TỪ FOOTER KHÔNG ĐƯỢC PLAY AUDIOPLAYER
+==================================================
+
+Trong WaveTrack, đoạn seek từ footer-control nên giữ:
+
+if (typeof footerTrack.seekTime === "number") {
+  const seekId = footerTrack.seekId ?? footerTrack.seekTime;
+
+  if (lastHandledSeekIdRef.current === seekId) return;
+
+  lastHandledSeekIdRef.current = seekId;
+
+  const waveDuration = wavesurfer.getDuration();
+
+  if (waveDuration) {
+    const nextTime = Math.min(
+      Math.max(Number(footerTrack.seekTime), 0),
+      waveDuration
+    );
+
+    wavesurfer.setTime(nextTime);
+    setTime(formatTime(nextTime));
+    lastSyncSecondRef.current = Math.floor(nextTime);
+  }
+
+  return;
+}
+
+Quan trọng:
+- Sau khi xử lý seek phải return;
+- Không để rơi xuống play/pause phía dưới nếu chỉ đang tua.
+
+==================================================
+12. CUSTOM HOOK useWavesurfer - CHECK DESTROY INSTANCE CŨ
+==================================================
+
+Trong src/utils/customHook.ts, useWavesurfer phải có cleanup kiểu:
+
+return () => {
+  try {
+    ws.pause();
+  } catch {}
+
+  try {
+    ws.empty();
+  } catch {}
+
+  try {
+    ws.destroy();
+  } catch {}
+
+  if (wavesurferRef.current === ws) {
+    wavesurferRef.current = null;
+  }
+
+  setWavesurfer(null);
+
+  if (containerRef.current) {
+    containerRef.current.innerHTML = "";
+  }
+};
+
+Nếu thiếu destroy thì khi đổi bài có thể còn WaveSurfer cũ phát ngầm.
+
+==================================================
+13. LISTENING HISTORY - TRÊN /track PHẢI PUSH ROUTE, KHÔNG PLAY FOOTER
+==================================================
+
+Trong ListeningHistory, logic đúng:
+
+if (isTrackDetailPage) {
+  setCurrentTrack({
+    ...track,
+    _id: (track as any)._id || trackId,
+    id: (track as any).id || trackId,
+    isPlaying: false,
+    source: "wave",
+    currentTime: 0,
+    duration: 0,
+    seekTime: undefined,
+    seekId: undefined,
+  } as any);
+
+  router.push(getTrackHref(track, true));
+  return;
+}
+
+Ngoài trang /track thì mới:
+
+setCurrentTrack({
+  ...track,
+  _id: (track as any)._id || trackId,
+  id: (track as any).id || trackId,
+  isPlaying: true,
+  source: "footer",
+  currentTime: 0,
+  duration: 0,
+  seekTime: undefined,
+  seekId: undefined,
+} as any);
+
+==================================================
+14. DEBUG NẾU VẪN BUG
+==================================================
+
+Thêm log trong AppFooter:
+
+console.log("FOOTER DEBUG:", {
+  pathname,
+  isTrackDetailPage,
+  shouldUseWaveFooter,
+  source: footerTrack?.source,
+  isPlaying: footerTrack?.isPlaying,
+  volume,
+  muted: footerTrack?.muted,
+  trackUrl: footerTrack?.trackUrl,
+});
+
+Thêm log trong WaveTrack:
+
+console.log("WAVE DEBUG:", {
+  source: (currentTrack as any)?.source,
+  isPlaying: currentTrack?.isPlaying,
+  volume: (currentTrack as any)?.volume,
+  muted: (currentTrack as any)?.muted,
+  seekTime: (currentTrack as any)?.seekTime,
+  seekId: (currentTrack as any)?.seekId,
+});
+
+Nếu thấy source bị đổi thành "footer" khi đang ở /track thì AppFooter vẫn đang bị AudioPlayer event can thiệp.
+
+==================================================
+15. TEST SAU KHI FIX
+==================================================
+
+Restart FE:
+
+npm run dev
+
+Test:
+
+1. Vào /track/...
+2. Bấm play ở WaveTrack
+3. Bấm mute ở footer
+   Kết quả đúng: WaveSurfer im hoàn toàn
+4. Bấm +10 / -10 ở footer
+   Kết quả đúng: chỉ tua WaveSurfer, không phát thêm tiếng thứ 2
+5. Kéo progress footer
+   Kết quả đúng: chỉ WaveSurfer tua
+6. Bấm Listening History khi đang ở /track
+   Kết quả đúng: route sang bài mới, WaveSurfer mới phát, không có footer audio song song
+7. Sang page khác không phải /track
+   Kết quả đúng: AppFooter AudioPlayer phát bình thường
+
+==================================================
+KẾT LUẬN
+==================================================
+
+Nếu bug dual audio/mute quay lại, check theo thứ tự:
+
+1. AppFooter có bị render nhiều lần không.
+2. Trên /track có còn render <AudioPlayer /> không.
+3. WaveTrack có ghi đè mất volume/muted khi timeupdate không.
+4. useWavesurfer có destroy instance cũ không.
+5. ListeningHistory trên /track có set source="footer" sai không.
+
+Rule cuối:
+- /track: WaveSurfer là audio thật, AppFooter chỉ control.
+- page khác: AppFooter AudioPlayer là audio thật.

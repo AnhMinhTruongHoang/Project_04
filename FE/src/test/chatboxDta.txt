@@ -1,0 +1,950 @@
+Copy nguyên input này sang chat khác để nạp context SoundClone:
+
+```txt
+PROJECT SOUNDCLONE / PROJECT_04 - FULL CONTEXT SUMMARY
+
+Ngôn ngữ user muốn: Tiếng Việt, giải thích trực tiếp, ưu tiên code thay thế nguyên đoạn, nói rõ sửa file nào, xóa dòng nào, thêm dòng nào. User hay nói “render lại” = đưa full snippet để copy. Dự án tên ReactSouldCloud / SoundClone.
+
+==================================================
+1. TỔNG QUAN PROJECT
+==================================================
+
+Project SoundClone là web nghe nhạc dạng SoundCloud clone.
+
+Stack:
+- FE: Next.js App Router, React, TypeScript, MUI, NextAuth, react-h5-audio-player, WaveSurfer.js.
+- BE: Spring Boot, Java 17, MySQL/XAMPP, Spring Data JPA, BCrypt.
+- Local FE: http://localhost:3000
+- Local BE: http://localhost:8000
+- DB: demo_hibernate
+- Upload folder BE:
+  F:\ReactSouldCloud\BE\uploads\images\
+  F:\ReactSouldCloud\BE\uploads\audio\
+
+Repo:
+- GitHub: AnhMinhTruongHoang/Project_04
+- Branch chính: master
+
+==================================================
+2. CẤU TRÚC FE QUAN TRỌNG
+==================================================
+
+Root layout:
+src/app/layout.tsx
+
+Root layout hiện đúng:
+- Bọc toàn app bằng:
+  <TrackContextProvider>
+    {children}
+    <AppFooter />
+  </TrackContextProvider>
+
+Lưu ý cực quan trọng:
+- AppFooter chỉ được render 1 lần ở src/app/layout.tsx.
+- Không được render AppFooter ở:
+  src/app/(user)/layout.tsx
+  src/app/blog/page.tsx
+  src/app/search/layout.tsx
+  src/app/track/layout.tsx
+  hoặc page/layout con khác.
+- Nếu render nhiều AppFooter sẽ bị dual audio / mute không ăn.
+
+Lệnh check duplicate AppFooter:
+
+Get-ChildItem -Recurse .\src -Include *.tsx,*.ts | Select-String "import AppFooter|<AppFooter|TrackContextProvider"
+
+Kết quả đúng chỉ nên còn:
+src\app\layout.tsx import TrackContextProvider
+src\app\layout.tsx import AppFooter
+src\app\layout.tsx <TrackContextProvider>
+src\app\layout.tsx <AppFooter />
+src\lib\track.wrapper.tsx export TrackContextProvider
+
+==================================================
+3. TRACK CONTEXT
+==================================================
+
+File:
+src/lib/track.wrapper.tsx
+
+Context dùng để share currentTrack giữa WaveTrack, AppFooter, slider, listening history.
+
+currentTrack có các field chính:
+- _id / id
+- title
+- description
+- category
+- imgUrl
+- trackUrl
+- countLike
+- countPlay
+- uploader
+- isPlaying
+- source
+- currentTime
+- duration
+- seekTime
+- seekId
+- volume
+- muted
+- volumeId
+
+source rule:
+- "wave": WaveTrack / WaveSurfer là audio chính
+- "footer-control": AppFooter điều khiển WaveTrack
+- "footer": AppFooter AudioPlayer là audio chính
+- "sontung-slider", "ncs-slider": slider set bài cho footer
+
+Rule:
+- Trang /track: WaveSurfer là audio thật, AppFooter chỉ remote control.
+- Trang khác: AppFooter AudioPlayer là audio thật.
+
+==================================================
+4. AUDIO FLOW / BUG DUAL AUDIO
+==================================================
+
+Có 2 audio engine:
+1. WaveTrack dùng WaveSurfer.js
+2. AppFooter dùng react-h5-audio-player
+
+Bug từng gặp:
+- Dual audio khi tua từ footer.
+- Mute ở footer không hoạt động.
+- Bấm Listening History làm AppFooter phát chồng với WaveTrack.
+
+Nguyên nhân lớn nhất từng tìm ra:
+- AppFooter bị render nhiều lần ở root layout + layout/page con.
+- Sau khi xóa duplicate AppFooter, còn 1 footer ở root layout thì work.
+
+Nếu bug quay lại, check:
+1. AppFooter có bị render nhiều lần không.
+2. Ở /track có còn render AudioPlayer không.
+3. WaveTrack có ghi đè volume/muted khi timeupdate không.
+4. useWavesurfer có destroy instance cũ không.
+5. ListeningHistory ở /track có set source="footer" sai không.
+
+Giải pháp phòng thủ nếu bug quay lại:
+Trong AppFooter:
+- Tạo:
+  const shouldUseWaveFooter = isTrackDetailPage;
+- Render:
+  {shouldUseWaveFooter ? custom wave control UI : <AudioPlayer />}
+- Nghĩa là vào /track thì không bao giờ render AudioPlayer.
+- AudioPlayer onPlay/onPause phải return nếu isTrackDetailPage.
+- Mute/seek/play ở footer-control phải giữ volume/muted/volumeId.
+
+==================================================
+5. APPFOOTER
+==================================================
+
+File:
+src/components/footer/app.footer.tsx
+
+Nhiệm vụ:
+- Footer player global.
+- Page thường dùng <AudioPlayer />.
+- Page /track dùng custom control UI để điều khiển WaveSurfer.
+- Có queue popover, previous/next, autoplay station, volume, mute, seek.
+
+Các logic chính:
+- isTrackDetailPage = pathname?.startsWith("/track/")
+- isWaveControlled = isTrackDetailPage && source wave/footer-control
+- Nếu bug quay lại nên chuyển sang shouldUseWaveFooter = isTrackDetailPage.
+
+Mute:
+- volume state default 0.5
+- previousVolumeRef giữ volume trước mute
+- handleToggleMute:
+  nếu volume > 0 => set 0
+  nếu volume = 0 => khôi phục previousVolumeRef hoặc 0.5
+- setAppVolume update:
+  setVolume(safeVolume)
+  localStorage soundclone-volume
+  currentTrack.volume
+  currentTrack.muted
+  source footer-control
+  volumeId Date.now()
+
+Listening history / queue:
+- Nếu đang ở /track khi chọn bài khác:
+  set source = "wave", isPlaying false rồi router.push track detail autoplay=1
+- Nếu không ở /track:
+  set source = "footer", isPlaying true
+
+==================================================
+6. WAVETRACK
+==================================================
+
+File:
+src/components/track/wave.track.tsx
+
+Nhiệm vụ:
+- Render track detail player bằng WaveSurfer.
+- Hiển thị title, description, waveform, image, LikeTrack, CommentTrack.
+- Sync state sang AppFooter.
+- Nhận footer-control từ AppFooter để play/pause/seek/volume.
+
+Props:
+interface IProps {
+  track: ITrackTop | null;
+  comments?: ITrackComment[];
+  autoPlay?: boolean;
+}
+
+Important:
+- autoPlay nếu URL có autoplay=1 thì WaveTrack tự play sau 500ms.
+- Khi play WaveTrack:
+  setCurrentTrack({
+    ...track,
+    isPlaying: true,
+    source: "wave",
+    currentTime: 0,
+    duration: wavesurfer.getDuration(),
+    seekTime: undefined,
+    seekId: undefined
+  })
+- Khi pause/play/timeupdate/decode thì syncWaveToFooter cập nhật footer.
+
+useWavesurfer:
+- File src/utils/customHook.ts
+- Hook đã có cleanup:
+  pause()
+  empty()
+  destroy()
+  setWavesurfer(null)
+  containerRef.current.innerHTML = ""
+- Điều này giúp tránh WaveSurfer cũ phát ngầm khi đổi bài.
+
+Nếu bug mute quay lại:
+- Thêm latestVolumeRef/latestMutedRef/latestVolumeIdRef trong WaveTrack.
+- syncWaveToFooter dùng ref mới nhất thay vì currentTrack cũ.
+- Khi nhận footer-control volume thì wavesurfer.setVolume(muted ? 0 : volume).
+
+==================================================
+7. COMMENT TRACK
+==================================================
+
+File đúng render comment ở detail track:
+src/components/track/comment.track.tsx
+
+Không phải CommentsTable dashboard.
+
+Bug từng gặp:
+- Avatar comment không hiện.
+- Tên user comment sai thành "User".
+- Time mark 0:00 không muốn hiện.
+- Comment content bị mất khi sửa UI.
+
+Fix:
+- Import helper:
+  import { getInitials, getUserAvatarUrl } from "@/utils/actions/getAvatar";
+- Avatar phải có src={getUserAvatarUrl(user)}.
+- Nếu user.name = "User" nhưng email có thì nên hiển thị email split trước @.
+- Xóa timemark 0:00 khỏi UI nếu không cần jump to moment.
+- Nội dung comment nên lấy từ:
+  comment.content || comment.comment || comment.text || comment.message || ""
+
+Helper name tốt:
+const getUserName = (user?: any) => {
+  const email = user?.email?.trim();
+  const username = user?.username?.trim();
+  const name = user?.name?.trim();
+  const badNames = ["user", "social user", "unknown", "unknown user"];
+
+  if (email) return email.split("@")[0];
+  if (username && username.includes("@")) return username.split("@")[0];
+  if (username && !badNames.includes(username.toLowerCase())) return username;
+  if (name && !badNames.includes(name.toLowerCase())) return name;
+  return "User";
+};
+
+Nếu FE không có email/avatarUrl trong comment.user thì phải sửa BE API comment trả user đầy đủ.
+
+==================================================
+8. COMMENTS TABLE DASHBOARD
+==================================================
+
+File:
+CommentsTable.tsx
+
+Đây là bảng DataGrid admin dashboard, không phải comment UI ở detail track.
+
+Nhiệm vụ:
+- List comment
+- Search comment
+- Delete comment
+- Dialog confirm delete
+- Revalidate dashboard-comments
+
+Avatar ở CommentsTable:
+- Cần src={getUserAvatarUrl(user)}
+- Nhưng nếu không render trong page detail thì log không hiện ở trang detail là bình thường.
+
+==================================================
+9. LIKE TRACK / PLAYLIST
+==================================================
+
+File:
+src/components/track/like.track.tsx
+
+Không liên quan trực tiếp đến comment bug.
+
+Nhiệm vụ:
+- Like/dislike track
+- Add track to playlist
+- Modal chọn playlist
+- Fetch liked tracks
+- Fetch playlists by user
+- PATCH playlist thêm track
+- Revalidate playlist-by-user
+
+Nó không render comment/avatar/name comment.
+
+==================================================
+10. LISTENING HISTORY
+==================================================
+
+File có liên quan:
+src/components/sidebar/listening.history hoặc tương tự.
+User cũng có MainContent blog dùng getListeningHistory.
+
+Rule quan trọng:
+Nếu click Listening History khi đang ở /track:
+- Không set source="footer".
+- Phải set source="wave" rồi router.push sang detail bài mới với autoplay=1.
+
+Logic đúng:
+
+if (isTrackDetailPage) {
+  setCurrentTrack({
+    ...track,
+    _id: track._id || trackId,
+    id: track.id || trackId,
+    isPlaying: false,
+    source: "wave",
+    currentTime: 0,
+    duration: 0,
+    seekTime: undefined,
+    seekId: undefined,
+  });
+  router.push(getTrackHref(track, true));
+  return;
+}
+
+Nếu không ở /track:
+set source="footer", isPlaying=true.
+
+==================================================
+11. eMAGAZINE / BLOG
+==================================================
+
+Route:
+src/app/eMagazine/page.tsx
+src/app/eMagazine/[slug]/page.tsx
+src/app/eMagazine/sontung/sontung.tsx
+src/app/eMagazine/ncs/ncs.tsx
+
+Dynamic route:
+src/app/eMagazine/[slug]/page.tsx
+
+Map slug:
+- /eMagazine/sontung -> SonTungMagazine
+- /eMagazine/ncs -> NcsMagazine
+
+Code đúng:
+import { notFound } from "next/navigation";
+import SonTungMagazine from "../sontung/sontung";
+import NcsMagazine from "../ncs/ncs";
+
+const magazineMap = {
+  sontung: SonTungMagazine,
+  ncs: NcsMagazine,
+};
+
+type MagazineSlug = keyof typeof magazineMap;
+
+export default function Page({ params }: { params: { slug: string } }) {
+  const Component = magazineMap[params.slug as MagazineSlug];
+  if (!Component) notFound();
+  return <Component />;
+}
+
+Blog/eMagazine cardData có các bài:
+- Sơn Tùng M-TP: The Eastern Star Who Turned Pop Into a Visual Era
+- NCS: The Colored Circles That Powered a Generation of Creators
+- Designing the SoundClone visual system
+- Inside SoundClone: building a music platform for creators
+- Engineering a smooth player experience
+- Making playlists feel faster, cleaner, and more immersive
+
+==================================================
+12. SONTUNG MAGAZINE
+==================================================
+
+File:
+src/app/eMagazine/sontung/sontung.tsx
+
+Title:
+Sơn Tùng M-TP: The Eastern Star Who Turned Pop Into a Visual Era
+
+Tags:
+#RISING_STAR
+#NO.1
+#STYLE_ICON
+#ASIAN_POP
+#CREATIVE_VISION
+#NEW_WAVE
+#COME_MY_WAY
+
+Có SonTungTrackSlider trong section Asian Pop.
+
+SonTungTrackSlider:
+- Fetch tracks category pop
+- Filter titles Sơn Tùng:
+  HAY TRAO CHO ANH
+  COME MY WAY
+  Nơi Này Có Anh Sơn
+  MUỘN RỒI MÀ SAO CÒN
+  Lạc Trôi Sơn
+- Play slider setCurrentTrack source "sontung-slider"
+- AppFooter nhận và phát nếu không ở /track.
+
+==================================================
+13. NCS MAGAZINE
+==================================================
+
+File:
+src/app/eMagazine/ncs/ncs.tsx
+
+Title:
+NCS: The Colored Circles That Powered a Generation of Creators
+
+Nội dung English:
+- Circle colors / identity NCS
+- Founder Billy Woodford
+- Purpose copyright-free music for creators
+- Dirty Palm vs Unknown Brain
+- NCS playlist section
+
+Tags:
+#NCS_UNIVERSE
+#CIRCLE_COLORS
+#NCS_PLAYLIST
+#FOUNDER_VISION
+#DIRTY_PALM
+#UNKNOWN_BRAIN
+
+NcsTrackSlider:
+File:
+src/app/eMagazine/ncs/NcsTrackSlider.tsx
+
+Fetch:
+GET /api/v1/tracks/top?category=ncs
+
+UI compact horizontal playlist style.
+
+==================================================
+14. APP OPEN ADS
+==================================================
+
+Component:
+AppOpenAds
+
+Bug fixed:
+- Next App Router phải import useRouter từ next/navigation, không dùng next/router.
+- Không đặt onClick ở Dialog tổng nếu close icon cũng nằm trong đó.
+- Close icon phải event.stopPropagation().
+- Click image/wrapper thì router.push("/eMagazine/sontung").
+
+Storage:
+sessionStorage key:
+soundcloud_app_open_ads_seen
+
+==================================================
+15. IMAGE / AVATAR HELPER
+==================================================
+
+File:
+src/utils/actions/getAvatar.ts hoặc tương tự.
+
+Helper hiện có:
+getUserAvatarUrl(user)
+getInitials(name,email)
+getTrackImageUrl(imgUrl)
+
+Logic:
+getUserAvatarUrl:
+- lấy user.avatarUrl || avatar || image || picture
+- nếu http -> return
+- nếu /uploads/images -> BACKEND_URL + path
+- nếu / -> return
+- còn lại -> BACKEND_URL/uploads/images/avatar
+
+getTrackImageUrl:
+- nếu null -> /images/logo/Sc.png
+- http -> return
+- /uploads/images -> BACKEND_URL + path
+- / -> return
+- còn lại -> BACKEND_URL/uploads/images/imgUrl
+
+==================================================
+16. BACKEND SPRING BOOT
+==================================================
+
+BE path:
+F:\ReactSouldCloud\BE
+
+application.properties nên dùng:
+spring.application.name=DemoSession2_WebAPI_C2310L
+server.port=8000
+
+spring.datasource.url=jdbc:mysql://localhost:3306/demo_hibernate?createDatabaseIfNotExist=true&useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
+spring.datasource.username=${DB_USERNAME:root}
+spring.datasource.password=${DB_PASSWORD:}
+
+spring.jpa.hibernate.ddl-auto=update
+spring.jpa.properties.hibernate.enable_lazy_load_no_trans=true
+spring.jpa.database-platform=org.hibernate.dialect.MySQLDialect
+spring.jpa.hibernate.naming.physical-strategy=org.hibernate.boot.model.naming.PhysicalNamingStrategyStandardImpl
+spring.jpa.open-in-view=false
+
+images_url=http://localhost:8000/uploads/images/
+audio_url=http://localhost:8000/uploads/audio/
+
+spring.servlet.multipart.max-file-size=50MB
+spring.servlet.multipart.max-request-size=50MB
+
+XAMPP default root pass rỗng:
+spring.datasource.password=
+
+Nếu máy đang dùng pass 123456:
+spring.datasource.password=123456
+
+Lỗi Unknown database demo_hibernate:
+- Tạo DB:
+CREATE DATABASE demo_hibernate CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+- Hoặc thêm createDatabaseIfNotExist=true trong datasource URL.
+
+Nếu muốn drop DB reseed:
+DROP DATABASE demo_hibernate;
+Sau đó tạo lại DB hoặc để createDatabaseIfNotExist tự tạo.
+
+==================================================
+17. DATASEEDER
+==================================================
+
+File:
+DataSeeder.java
+
+Mục tiêu:
+- Seed admin
+- Seed demo user
+- Seed artist accounts từ track description
+- Seed tracks
+- Map track.uploaderId đúng artist, không phải admin
+- Seed avatar artist
+
+Rule artist account:
+- Artist lấy từ description.
+- Nếu nhiều artist thì lấy artist đầu tiên:
+  ZEXSING, MXRCURY, Pharmagut -> ZEXSING
+  Dexter King ft. Alexis Donn -> Dexter King
+  DJSM & Ima Sobé -> DJSM
+- Email = normalize name:
+  Sơn Tùng M-TP / Son Tung MTP -> sontungmtp@gmail.com
+  Unknown Brain -> unknownbrain@gmail.com
+- username = email
+- password = 123456
+- role = USER
+- type = ARTIST
+- followers = 0
+- following = 0
+- isVerify = true
+- avatarUrl = http://localhost:8000/uploads/images/{emailName}.jpg
+- fallback default.png nếu file không tồn tại
+
+Admin và demo user:
+- admin@gmail.com username admin@gmail.com
+- user@gmail.com username user@gmail.com
+- followers/following phải là 0, không null.
+
+Fix SQL nếu followers/following null:
+UPDATE users SET followers = 0 WHERE followers IS NULL;
+UPDATE users SET following = 0 WHERE following IS NULL;
+
+Fix SQL nếu username rỗng:
+UPDATE users SET username = email WHERE username IS NULL OR username = '';
+
+==================================================
+18. ARTIST ACCOUNTS SEED
+==================================================
+
+Danh sách artist seed từ track hiện tại:
+
+Unknown Brain
+email: unknownbrain@gmail.com
+username: unknownbrain@gmail.com
+password: 123456
+avatar: unknownbrain.jpg
+
+DJSM
+email: djsm@gmail.com
+username: djsm@gmail.com
+password: 123456
+avatar: djsm.jpg
+
+Nurko
+email: nurko@gmail.com
+username: nurko@gmail.com
+password: 123456
+avatar: nurko.jpg
+
+Mblue
+email: mblue@gmail.com
+username: mblue@gmail.com
+password: 123456
+avatar: mblue.jpg
+
+Meyo
+email: meyo@gmail.com
+username: meyo@gmail.com
+password: 123456
+avatar: meyo.jpg
+
+Crystal Skies
+email: crystalskies@gmail.com
+username: crystalskies@gmail.com
+password: 123456
+avatar: crystalskies.jpg
+
+Nightcore - Try
+email có thể là nightcoretry@gmail.com nếu không split " - "
+hoặc nightcore@gmail.com nếu thêm separator " - "
+password: 123456
+
+Dirty Palm
+email: dirtypalm@gmail.com
+username: dirtypalm@gmail.com
+password: 123456
+avatar: dirtypalm.jpg
+
+Dexter King
+email: dexterking@gmail.com
+username: dexterking@gmail.com
+password: 123456
+avatar: dexterking.jpg
+
+Reaktive
+email: reaktive@gmail.com
+username: reaktive@gmail.com
+password: 123456
+avatar: reaktive.jpg
+
+Madism
+email: madism@gmail.com
+username: madism@gmail.com
+password: 123456
+avatar: madism.jpg
+
+Neovaii
+email: neovaii@gmail.com
+username: neovaii@gmail.com
+password: 123456
+avatar: neovaii.jpg
+
+ZEXSING
+email: zexsing@gmail.com
+username: zexsing@gmail.com
+password: 123456
+avatar: zexsing.jpg
+
+BLACKPINK
+email: blackpink@gmail.com
+username: blackpink@gmail.com
+password: 123456
+avatar: blackpink.jpg
+
+bootleg
+email: bootleg@gmail.com
+username: bootleg@gmail.com
+password: 123456
+avatar: bootleg.jpg
+
+2AM
+email: 2am@gmail.com
+username: 2am@gmail.com
+password: 123456
+avatar: 2am.jpg
+
+Sơn Tùng M-TP / Son Tung MTP
+email: sontungmtp@gmail.com
+username: sontungmtp@gmail.com
+password: 123456
+avatar: sontungmtp.jpg
+
+Folder avatar:
+F:\ReactSouldCloud\BE\uploads\images\
+
+==================================================
+19. ARTIST LEADERBOARD API
+==================================================
+
+Mục tiêu:
+FE SuggestedArtists lấy artist theo followers.
+Nếu tất cả followers = 0 thì random.
+Refresh list:
+- nếu all zero thì random lại
+- nếu có followers thì fetch leaderboard lại
+
+BE repository đúng:
+package com.example.demo.repositories;
+
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.repository.JpaRepository;
+import com.example.demo.entities.User;
+
+public interface UserRepository extends JpaRepository<User, String> {
+    User findByEmail(String email);
+    Page<User> findByType(String type, Pageable pageable);
+}
+
+Lưu ý import sai từng gặp:
+Sai:
+import org.hibernate.query.Page;
+import org.springframework.boot.data.autoconfigure.web.DataWebProperties.Pageable;
+
+Đúng:
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+
+API:
+GET /api/v1/users/leaderboard/artists?limit=10
+
+Sort theo followers, không phải following.
+followers = người khác follow artist này.
+following = artist này follow bao nhiêu người.
+
+Response nên là:
+{
+  statusCode: 200,
+  message: "...",
+  data: [
+    {
+      _id,
+      id,
+      name,
+      email,
+      username,
+      avatarUrl,
+      role,
+      type,
+      followers,
+      following
+    }
+  ]
+}
+
+FE service:
+src/services/artist.api.ts
+
+export type ArtistLeaderboardItem = {
+  _id?: string;
+  id?: string;
+  name: string;
+  email?: string;
+  username?: string;
+  avatarUrl?: string;
+  avatar?: string;
+  role?: string;
+  type?: string;
+  followers?: number | null;
+  following?: number | null;
+  tracks?: number | null;
+  trackCount?: number | null;
+  totalTracks?: number | null;
+};
+
+export const getArtistLeaderboard = async (
+  limit = 10
+): Promise<ArtistLeaderboardItem[]> => {
+  const res = await fetch(
+    `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/v1/users/leaderboard/artists?limit=${limit}`,
+    { cache: "no-store" }
+  );
+
+  if (!res.ok) throw new Error("Failed to fetch artist leaderboard");
+
+  const json = await res.json();
+  return Array.isArray(json?.data) ? json.data : [];
+};
+
+Type bug đã fix:
+- followers có thể null nên type phải là number | null.
+- formatNumber nhận value?: number | null.
+- getTrackCount return number.
+
+==================================================
+20. SUGGESTED ARTISTS
+==================================================
+
+File:
+SuggestedArtists.tsx
+
+UI giữ nguyên:
+- Artists You Should Follow
+- Refresh list
+- Avatar, name, verified icon, followers, tracks, Follow button
+
+Logic:
+- Import getArtistLeaderboard từ service, không fetch trực tiếp trong component.
+- Nếu data empty dùng FALLBACK_ARTISTS.
+- Nếu all followers = 0 thì shuffle slice 3.
+- Refresh list nếu all zero thì shuffle lại.
+
+Helper:
+formatNumber(value?: number | null)
+getArtistId
+getArtistAvatar
+getTrackCount
+shuffleList
+
+==================================================
+21. NEXTAUTH / AUTH
+==================================================
+
+NextAuth Credentials:
+- FE login POST tới BE /api/v1/auth/login
+- 401 -> invalid email/password
+- 400 -> inactive account / verify
+- Session/JWT lưu access_token / accessToken / user access_token tùy mapping.
+- Component thường lấy token như:
+const sessionAny = session as any;
+const accessToken =
+  sessionAny?.access_token ||
+  sessionAny?.accessToken ||
+  sessionAny?.user?.access_token ||
+  sessionAny?.user?.accessToken ||
+  "";
+
+BE login:
+POST http://localhost:8000/api/v1/auth/login
+Body:
+{
+  "email": "admin@gmail.com",
+  "password": "123456"
+}
+
+==================================================
+22. IMAGE CONFIG / NEXT
+==================================================
+
+Next image remotePatterns phải allow:
+http://localhost:8000/uploads/images/**
+
+Nếu ảnh MUI Avatar dùng img bình thường thì ít cần next.config.
+Nếu dùng next/image từ BE thì cần config.
+
+==================================================
+23. COMMON BUGS ĐÃ GẶP
+==================================================
+
+1. Unknown database demo_hibernate:
+- Tạo DB hoặc datasource createDatabaseIfNotExist=true.
+
+2. AppFooter không hiện:
+- Root layout chưa render <AppFooter /> trong TrackContextProvider.
+
+3. Double AppFooter / dual audio:
+- AppFooter render ở root + child layouts/pages.
+- Xóa hết, chỉ giữ root.
+
+4. Mute footer không ăn:
+- Có 2 AudioPlayer cùng phát hoặc WaveTrack ghi đè volume/muted.
+- Check duplicate AppFooter trước.
+
+5. Avatar comment không hiện:
+- Sai file, sửa CommentsTable nhưng page detail dùng CommentTrack.
+- Avatar phải có src={getUserAvatarUrl(user)}.
+- API phải trả avatarUrl trong user.
+
+6. Name comment hiện User:
+- user.name trong DB/API là "User".
+- Ưu tiên email split @ trước nếu name xấu.
+
+7. Comment content mất:
+- Render đúng comment.content.
+- Thêm fallback comment.comment/text/message.
+
+8. Route eMagazine 404:
+- Cần dynamic route [slug]/page.tsx map slug.
+
+9. next/router error:
+- App Router phải dùng next/navigation.
+
+10. FE gọi nhầm localhost:3000/api/v1:
+- Dùng NEXT_PUBLIC_BACKEND_URL cho BE absolute URL.
+
+11. Git push bị non-fast-forward:
+- Nếu muốn ghi đè master:
+  git push origin master --force-with-lease
+- Nếu muốn merge trước:
+  git pull origin master --rebase
+  git push origin master
+
+==================================================
+24. GIT COMMANDS
+==================================================
+
+Check status:
+git status
+
+Push thường:
+git push origin master
+
+Nếu bị rejected non-fast-forward và chắc chắn muốn push code local lên master:
+git push origin master --force-with-lease
+
+Nếu vẫn bị:
+git push origin master --force
+
+Nếu muốn pull trước:
+git pull origin master --rebase
+git push origin master
+
+==================================================
+25. CURRENT FINAL STATE / IMPORTANT NOTES
+==================================================
+
+Hiện tại đã fix:
+- AppFooter chỉ còn render ở src/app/layout.tsx.
+- Dual audio/mute có vẻ work sau khi xóa duplicate footer.
+- Không cần tiếp tục patch AppFooter/WaveTrack nếu test đã ổn.
+- Nếu bug quay lại thì áp dụng checklist dual audio ở trên.
+
+Root AppFooter đúng:
+src/app/layout.tsx có:
+<TrackContextProvider>
+  {children}
+  <AppFooter />
+</TrackContextProvider>
+
+Không được thêm AppFooter ở layout/page khác nữa.
+
+==================================================
+26. CÁCH TRẢ LỜI CHO USER
+==================================================
+
+User thích:
+- Tiếng Việt.
+- Giải thích ngắn, đi thẳng vào lỗi.
+- Chỉ rõ file nào, xóa dòng nào, thêm dòng nào.
+- Khi bảo “render lại” thì đưa full code hoặc full đoạn thay thế.
+- Khi bảo “1 input” thì đưa 1 code block duy nhất để copy.
+- Tránh nói lý thuyết dài nếu chưa cần.
+- Nếu bug code, ưu tiên flow:
+  1. Nguyên nhân
+  2. File cần sửa
+  3. Đoạn cần xóa/thay
+  4. Test lại bằng command/case cụ thể
+```

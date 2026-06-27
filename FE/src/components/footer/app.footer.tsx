@@ -36,6 +36,7 @@ const AppFooter = () => {
   const playerRef = useRef<any>(null);
   const previousTrackUrlRef = useRef("");
   const previousVolumeRef = useRef(0.5);
+  const suppressFooterAudioEventRef = useRef(false);
   const [volume, setVolume] = useState(0.5);
   const { currentTrack, setCurrentTrack } = useTrackContext() as ITrackContext;
   const footerTrack = currentTrack as any;
@@ -339,14 +340,21 @@ const AppFooter = () => {
     const audio = playerRef.current?.audio?.current;
     if (!audio) return;
 
-    // Khi đang ở track detail, WaveSurfer là audio chính.
-    // Footer chỉ làm control, không phát audio riêng để tránh dual audio.
-    if (isWaveControlled) {
+    // Trang detail: WaveSurfer là audio chính.
+    // Chặn AudioPlayer của footer phát song song.
+    if (isWaveControlled || isTrackDetailPage) {
+      suppressFooterAudioEventRef.current = true;
+
       audio.pause();
+      audio.currentTime = 0;
+
+      window.setTimeout(() => {
+        suppressFooterAudioEventRef.current = false;
+      }, 0);
+
       return;
     }
 
-    // Chỉ reset về 0 khi đổi bài, không reset mỗi lần play/pause.
     if (previousTrackUrlRef.current !== currentTrack?.trackUrl) {
       audio.currentTime = 0;
       previousTrackUrlRef.current = currentTrack?.trackUrl || "";
@@ -365,8 +373,10 @@ const AppFooter = () => {
     currentTrack?.trackUrl,
     currentTrack?.isPlaying,
     isWaveControlled,
+    isTrackDetailPage,
   ]);
 
+  ///
   if (!hasMounted) return <></>;
 
   if (!currentTrack?._id) return <></>;
@@ -718,6 +728,7 @@ const AppFooter = () => {
               onEnded={handleAudioEnded}
               src={getAudioUrl((currentTrack as any)?.trackUrl)}
               volume={volume}
+              muted={volume === 0}
               onVolumeChange={(e: any) => {
                 const nextVolume = Number(e?.target?.volume ?? volume);
 
@@ -730,6 +741,9 @@ const AppFooter = () => {
                 background: "#181A1B",
               }}
               onPlay={() => {
+                if (suppressFooterAudioEventRef.current) return;
+                if (isTrackDetailPage) return;
+
                 setCurrentTrack({
                   ...currentTrack,
                   isPlaying: true,
@@ -737,6 +751,9 @@ const AppFooter = () => {
                 } as any);
               }}
               onPause={() => {
+                if (suppressFooterAudioEventRef.current) return;
+                if (isTrackDetailPage) return;
+
                 setCurrentTrack({
                   ...currentTrack,
                   isPlaying: false,

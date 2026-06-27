@@ -3,7 +3,6 @@ import Container from "@mui/material/Container";
 import MainContent from "./components/MainContent";
 import BlogFooter from "./components/blogFooter";
 import AppHeader from "@/components/header/app.header";
-import AppFooter from "@/components/footer/app.footer";
 
 export default function BlogPage() {
   return (
@@ -25,8 +24,6 @@ export default function BlogPage() {
       </Container>
 
       <BlogFooter />
-
-      <AppFooter />
     </>
   );
 }

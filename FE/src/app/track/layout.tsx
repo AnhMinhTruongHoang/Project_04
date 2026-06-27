@@ -1,4 +1,3 @@
-import AppFooter from "@/components/footer/app.footer";
 import AppHeader from "@/components/header/app.header";
 import { Box } from "@mui/material";
 import type { Metadata } from "next";
@@ -62,7 +61,7 @@ export default function RootLayout({
       <AppHeader />
       {children}
       <Box sx={{ marginBottom: "100px" }}></Box>
-      <AppFooter />
+
       <Script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(test) }}

@@ -1,4 +1,3 @@
-import AppFooter from "@/components/footer/app.footer";
 import AppHeader from "@/components/header/app.header";
 import AppOpenAds from "@/components/common/app.open.ads";
 import type { Metadata } from "next";
@@ -67,8 +66,6 @@ export default function RootLayout({
       <AppOpenAds />
 
       <div style={{ marginBottom: "100px" }}></div>
-
-      <AppFooter />
 
       <Script
         type="application/ld+json"

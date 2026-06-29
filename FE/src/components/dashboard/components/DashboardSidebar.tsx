@@ -15,6 +15,7 @@ import CommentRoundedIcon from "@mui/icons-material/CommentRounded";
 import HomeRoundedIcon from "@mui/icons-material/HomeRounded";
 import ChevronLeftRoundedIcon from "@mui/icons-material/ChevronLeftRounded";
 import ChevronRightRoundedIcon from "@mui/icons-material/ChevronRightRounded";
+import { ArticleOutlined } from "@mui/icons-material";
 
 type Props = {
   collapsed: boolean;
@@ -26,6 +27,11 @@ const menuItems = [
     label: "Overview",
     href: "/dashboard",
     icon: <DashboardRoundedIcon />,
+  },
+  {
+    label: "Categories",
+    href: "/dashboard/category",
+    icon: <ArticleOutlined />,
   },
   {
     label: "Tracks",

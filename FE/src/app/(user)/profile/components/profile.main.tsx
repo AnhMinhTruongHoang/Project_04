@@ -21,6 +21,7 @@ import { useToast } from "@/utils/toast";
 import { getTrackImageUrl } from "@/utils/actions/getAvatar";
 import ProfileShareDialog from "./profile-share-dialog";
 import ProfileEditDialog from "./profile-edit-dialog";
+import VerifiedRoundedIcon from "@mui/icons-material/VerifiedRounded";
 
 type Props = {
   user: Partial<IUser> | null;
@@ -29,6 +30,10 @@ type Props = {
 
 const getItemId = (item?: any) => {
   return item?._id || item?.id || "";
+};
+
+const isArtist = (user?: any) => {
+  return String(user?.type || "").toUpperCase() === "ARTIST";
 };
 
 const ProfileMain = ({ user, tracks }: Props) => {
@@ -43,7 +48,7 @@ const ProfileMain = ({ user, tracks }: Props) => {
   const profileUserId = getItemId(user);
   const currentUserId = getItemId((session as any)?.user);
   const isOwner = Boolean(profileUserId && currentUserId === profileUserId);
-
+  const showArtistBadge = isArtist(user);
   const [openEdit, setOpenEdit] = useState(false);
   const [openShare, setOpenShare] = useState(false);
   const [followersCount, setFollowersCount] = useState(user?.followers ?? 0);
@@ -272,25 +277,26 @@ const ProfileMain = ({ user, tracks }: Props) => {
             >
               Share
             </Button>
-
-            <Button
-              startIcon={<EditRoundedIcon />}
-              onClick={() => setOpenEdit(true)}
-              sx={{
-                height: 36,
-                px: 1.8,
-                borderRadius: "5px",
-                color: "#ffffff",
-                backgroundColor: "#242729",
-                textTransform: "none",
-                fontWeight: 900,
-                "&:hover": {
-                  backgroundColor: "#303335",
-                },
-              }}
-            >
-              Edit
-            </Button>
+            {isOwner && (
+              <Button
+                startIcon={<EditRoundedIcon />}
+                onClick={() => setOpenEdit(true)}
+                sx={{
+                  height: 36,
+                  px: 1.8,
+                  borderRadius: "5px",
+                  color: "#ffffff",
+                  backgroundColor: "#242729",
+                  textTransform: "none",
+                  fontWeight: 900,
+                  "&:hover": {
+                    backgroundColor: "#303335",
+                  },
+                }}
+              >
+                Edit
+              </Button>
+            )}
           </Stack>
         </Box>
 
@@ -380,15 +386,30 @@ const ProfileMain = ({ user, tracks }: Props) => {
                 </Box>
 
                 <Box sx={{ minWidth: 0 }}>
-                  <Typography
-                    sx={{
-                      color: "#b8b8b8",
-                      fontSize: 13,
-                      fontWeight: 800,
-                    }}
-                  >
-                    {displayName}
-                  </Typography>
+                  <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
+                    <Typography
+                      sx={{
+                        color: "#b8b8b8",
+                        fontSize: 13,
+                        fontWeight: 800,
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                        whiteSpace: "nowrap",
+                      }}
+                    >
+                      {displayName}
+                    </Typography>
+
+                    {showArtistBadge && (
+                      <VerifiedRoundedIcon
+                        sx={{
+                          fontSize: 16,
+                          color: "#4da3ff",
+                          flexShrink: 0,
+                        }}
+                      />
+                    )}
+                  </Box>
 
                   <Typography
                     component={Link}
@@ -680,7 +701,7 @@ const ProfileMain = ({ user, tracks }: Props) => {
       />
 
       <ProfileEditDialog
-        open={openEdit}
+        open={isOwner && openEdit}
         onClose={() => setOpenEdit(false)}
         user={user}
       />

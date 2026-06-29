@@ -1,6 +1,6 @@
 package com.example.demo.dtos;
 
-import java.util.Date;
+import java.time.LocalDateTime;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 
@@ -10,7 +10,11 @@ public class TrackDTO {
 	private String title;
 	private String slug;
 	private String description;
+
 	private String category;
+	private String categoryId;
+	private String categoryName;
+
 	private String imgUrl;
 	private String trackUrl;
 	private Integer countLike;
@@ -19,8 +23,8 @@ public class TrackDTO {
 	private UserDTO uploader;
 	private Boolean isDeleted;
 	private String approvalStatus;
-	private Date createdAt;
-	private Date updatedAt;
+	private LocalDateTime createdAt;
+	private LocalDateTime updatedAt;
 
 	public TrackDTO() {
 	}
@@ -62,12 +66,29 @@ public class TrackDTO {
 		this.description = description;
 	}
 
+	// FE cũ vẫn đọc field này: track.category = "ncs", "kpop", "pop", ...
 	public String getCategory() {
 		return category;
 	}
 
 	public void setCategory(String category) {
 		this.category = category;
+	}
+
+	public String getCategoryId() {
+		return categoryId;
+	}
+
+	public void setCategoryId(String categoryId) {
+		this.categoryId = categoryId;
+	}
+
+	public String getCategoryName() {
+		return categoryName;
+	}
+
+	public void setCategoryName(String categoryName) {
+		this.categoryName = categoryName;
 	}
 
 	public String getImgUrl() {
@@ -129,24 +150,24 @@ public class TrackDTO {
 	public String getApprovalStatus() {
 		return approvalStatus;
 	}
-	
+
 	public void setApprovalStatus(String approvalStatus) {
 		this.approvalStatus = approvalStatus;
 	}
 
-	public Date getCreatedAt() {
+	public LocalDateTime getCreatedAt() {
 		return createdAt;
 	}
 
-	public void setCreatedAt(Date createdAt) {
+	public void setCreatedAt(LocalDateTime createdAt) {
 		this.createdAt = createdAt;
 	}
 
-	public Date getUpdatedAt() {
+	public LocalDateTime getUpdatedAt() {
 		return updatedAt;
 	}
 
-	public void setUpdatedAt(Date updatedAt) {
+	public void setUpdatedAt(LocalDateTime updatedAt) {
 		this.updatedAt = updatedAt;
 	}
 }

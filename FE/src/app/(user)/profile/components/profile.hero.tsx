@@ -2,6 +2,7 @@ import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import Typography from "@mui/material/Typography";
 import CameraAltRoundedIcon from "@mui/icons-material/CameraAltRounded";
+import VerifiedRoundedIcon from "@mui/icons-material/VerifiedRounded";
 import { Avatar } from "@mui/material";
 import { getUserAvatarUrl } from "@/utils/actions/getAvatar";
 
@@ -14,7 +15,8 @@ const ProfileHero = ({ user }: Props) => {
   const displayName = user?.name || user?.email || "User";
   const subName = user?.email || user?.address || "Sound Clone user";
 
-  ///get Al avatar
+  const showArtistBadge = String(user?.type || "").toUpperCase() === "ARTIST";
+
   const getInitials = (name?: string, email?: string) => {
     const value = name?.trim() || email?.trim() || "User";
 
@@ -88,24 +90,44 @@ const ProfileHero = ({ user }: Props) => {
         </Avatar>
 
         <Box>
-          <Typography
+          <Box
             component="h1"
             sx={{
-              display: "inline-block",
+              display: "flex",
+              alignItems: "center",
+              gap: 0.8,
+              width: "fit-content",
               px: 1,
               py: 0.4,
+              m: 0,
+              mb: 1,
               backgroundColor: "rgba(0,0,0,0.72)",
               color: "#ffffff",
-              fontSize: { xs: 26, md: 34 },
-              fontWeight: 900,
               lineHeight: 1.2,
-              mb: 1,
             }}
           >
-            {displayName}
-          </Typography>
+            <Typography
+              component="span"
+              sx={{
+                color: "#ffffff",
+                fontSize: { xs: 26, md: 34 },
+                fontWeight: 900,
+                lineHeight: 1.2,
+              }}
+            >
+              {displayName}
+            </Typography>
 
-          <Box />
+            {showArtistBadge && (
+              <VerifiedRoundedIcon
+                sx={{
+                  fontSize: { xs: 22, md: 28 },
+                  color: "#4da3ff",
+                  flexShrink: 0,
+                }}
+              />
+            )}
+          </Box>
 
           <Typography
             sx={{

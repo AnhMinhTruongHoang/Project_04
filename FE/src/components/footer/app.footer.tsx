@@ -19,6 +19,8 @@ import FooterQueuePopover from "./footer.queue.popover";
 import { useSession } from "next-auth/react";
 import { convertSlugUrl, sendRequest } from "@/utils/api";
 import { saveListeningHistory } from "@/utils/actions/history";
+import { getUserHref } from "@/utils/actions/navigation";
+import Link from "next/link";
 
 const formatTime = (seconds = 0) => {
   const minutes = Math.floor(seconds / 60);
@@ -383,8 +385,26 @@ const AppFooter = () => {
 
   ///
 
+  const footerTrackHref = currentTrack ? getTrackHref(currentTrack) : "#";
+
+  const footerArtist = (currentTrack as any)?.uploader ||
+    (currentTrack as any)?.user ||
+    (currentTrack as any)?.artist ||
+    (currentTrack as any)?.createdBy || {
+      _id: (currentTrack as any)?.uploaderId,
+      id: (currentTrack as any)?.uploaderId,
+      name: (currentTrack as any)?.description,
+    };
+
+  const footerArtistHref = getUserHref(footerArtist);
+
+  const canOpenTrack = footerTrackHref !== "#";
+  const canOpenArtist = footerArtistHref !== "#";
+
+  ///
+
   return (
-    <div style={{ marginTop: 50 }}>
+    <div>
       <AppBar
         position="fixed"
         sx={{
@@ -475,7 +495,6 @@ const AppFooter = () => {
                 minWidth: 0,
               }}
             >
-              {/* Shuffle */}
               <IconButton
                 disabled
                 sx={{
@@ -493,7 +512,6 @@ const AppFooter = () => {
                 <ShuffleRoundedIcon />
               </IconButton>
 
-              {/* Back 10s */}
               <IconButton
                 onClick={() => handleSeekBy(-10)}
                 sx={{
@@ -514,7 +532,6 @@ const AppFooter = () => {
                 <Replay10RoundedIcon />
               </IconButton>
 
-              {/* Play / Pause */}
               <IconButton
                 onClick={() => {
                   setCurrentTrack({
@@ -545,7 +562,6 @@ const AppFooter = () => {
                 {currentTrack.isPlaying ? <PauseIcon /> : <PlayArrowIcon />}
               </IconButton>
 
-              {/* Forward 10s */}
               <IconButton
                 onClick={() => handleSeekBy(10)}
                 sx={{
@@ -566,7 +582,6 @@ const AppFooter = () => {
                 <Forward10RoundedIcon />
               </IconButton>
 
-              {/* Volume */}
               <Box
                 sx={{
                   display: "flex",
@@ -642,7 +657,6 @@ const AppFooter = () => {
                 />
               </Box>
 
-              {/* Current time */}
               <Typography
                 sx={{
                   color: "#ff5500",
@@ -656,7 +670,6 @@ const AppFooter = () => {
                 {formatTime(footerCurrentTime)}
               </Typography>
 
-              {/* Progress */}
               <Slider
                 value={footerDuration ? footerCurrentTime : 0}
                 min={0}
@@ -705,7 +718,6 @@ const AppFooter = () => {
                 }}
               />
 
-              {/* Duration */}
               <Typography
                 sx={{
                   color: "#ffffff",
@@ -763,72 +775,127 @@ const AppFooter = () => {
             />
           )}
 
-          {/* Track info + queue icon */}
-          <div
-            style={{
+          <Box
+            sx={{
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
               gap: "10px",
               width: "320px",
               minWidth: "320px",
-              paddingRight: "10px",
+              pr: "10px",
             }}
           >
-            <img
-              src={getTrackImage()}
-              alt={currentTrack.title}
-              onError={(e) => {
-                e.currentTarget.src = "/audio/SC.png";
+            <Box
+              component={Link}
+              href={footerTrackHref}
+              onClick={(event) => {
+                if (!canOpenTrack) event.preventDefault();
               }}
-              style={{
-                width: "38px",
-                height: "38px",
-                objectFit: "cover",
+              sx={{
+                width: 38,
+                height: 38,
+                flexShrink: 0,
+                display: "block",
                 borderRadius: "3px",
+                overflow: "hidden",
+                cursor: canOpenTrack ? "pointer" : "default",
                 backgroundColor: "#111",
-              }}
-            />
 
-            <div
-              style={{
+                "&:hover img": canOpenTrack
+                  ? {
+                      opacity: 0.82,
+                      transform: "scale(1.04)",
+                    }
+                  : {},
+              }}
+            >
+              <Box
+                component="img"
+                src={getTrackImage()}
+                alt={currentTrack?.title || "track image"}
+                onError={(e: any) => {
+                  e.currentTarget.src = "/audio/SC.png";
+                }}
+                sx={{
+                  width: "100%",
+                  height: "100%",
+                  objectFit: "cover",
+                  display: "block",
+                  transition: "0.18s ease",
+                }}
+              />
+            </Box>
+
+            <Box
+              sx={{
                 display: "flex",
                 flexDirection: "column",
                 alignItems: "start",
                 justifyContent: "center",
                 width: "220px",
                 overflow: "hidden",
+                minWidth: 0,
               }}
             >
-              <div
-                title={currentTrack.description}
-                style={{
+              <Typography
+                component={Link}
+                href={footerArtistHref}
+                onClick={(event) => {
+                  if (!canOpenArtist) event.preventDefault();
+                }}
+                title={currentTrack?.description || "Unknown artist"}
+                sx={{
                   width: "100%",
                   color: "#a8a8a8",
                   fontSize: "12px",
-                  overflow: "hidden",
-                  textOverflow: "ellipsis",
-                  whiteSpace: "nowrap",
-                }}
-              >
-                {currentTrack.description}
-              </div>
-
-              <div
-                title={currentTrack.title}
-                style={{
-                  width: "100%",
-                  color: "#ffffff",
-                  fontSize: "13px",
                   fontWeight: 700,
                   overflow: "hidden",
                   textOverflow: "ellipsis",
                   whiteSpace: "nowrap",
+                  textDecoration: "none",
+                  cursor: canOpenArtist ? "pointer" : "default",
+
+                  "&:hover": canOpenArtist
+                    ? {
+                        color: "#ff5500",
+                      }
+                    : {},
                 }}
               >
-                {currentTrack.title}
-              </div>
-            </div>
+                {footerArtist?.name ||
+                  currentTrack?.description ||
+                  "Unknown artist"}
+              </Typography>
+
+              <Typography
+                component={Link}
+                href={footerTrackHref}
+                onClick={(event) => {
+                  if (!canOpenTrack) event.preventDefault();
+                }}
+                title={currentTrack?.title || "Unknown track"}
+                sx={{
+                  width: "100%",
+                  color: "#ffffff",
+                  fontSize: 13,
+                  fontWeight: 800,
+                  textDecoration: "none",
+                  cursor: canOpenTrack ? "pointer" : "default",
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                  whiteSpace: "nowrap",
+
+                  "&:hover": canOpenTrack
+                    ? {
+                        color: "#ff5500",
+                      }
+                    : {},
+                }}
+              >
+                {currentTrack?.title || "Unknown track"}
+              </Typography>
+            </Box>
 
             <IconButton
               onClick={handleOpenQueue}
@@ -845,7 +912,7 @@ const AppFooter = () => {
             >
               <QueueMusicRoundedIcon />
             </IconButton>
-          </div>
+          </Box>
         </Container>
       </AppBar>
 

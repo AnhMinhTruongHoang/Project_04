@@ -702,3 +702,113 @@ export const getArtistLeaderboard = async (
 
   return Array.isArray(json?.data) ? json.data : [];
 };
+
+// ===================== CATEGORY API =====================
+
+export const getCategoryId = (category?: ICategory | any) => {
+  return category?._id || category?.id || "";
+};
+
+// GET /api/v1/categories?current=1&pageSize=100
+export const getCategories = async (
+  current = 1,
+  pageSize = 100,
+  accessToken?: string
+) => {
+  return await sendRequest<
+    IBackendRes<IModelPaginate<ICategory> | ICategory[]>
+  >({
+    url: `${BACKEND_URL}/api/v1/categories`,
+    method: "GET",
+    queryParams: {
+      current,
+      pageSize,
+    },
+    headers: accessToken
+      ? {
+          Authorization: `Bearer ${accessToken}`,
+        }
+      : {},
+    nextOption: {
+      cache: "no-store",
+    },
+  });
+};
+
+// GET /api/v1/categories/all
+export const getAllCategories = async () => {
+  return await sendRequest<IBackendRes<ICategory[]>>({
+    url: `${BACKEND_URL}/api/v1/categories/all`,
+    method: "GET",
+  });
+};
+
+// GET /api/v1/categories/{id}
+export const getCategoryById = async (id: string) => {
+  return await sendRequest<IBackendRes<ICategory>>({
+    url: `${BACKEND_URL}/api/v1/categories/${id}`,
+    method: "GET",
+  });
+};
+
+// GET /api/v1/categories/slug/{slug}
+export const getCategoryBySlug = async (slug: string) => {
+  return await sendRequest<IBackendRes<ICategory>>({
+    url: `${BACKEND_URL}/api/v1/categories/slug/${slug}`,
+    method: "GET",
+  });
+};
+
+// POST /api/v1/categories
+export const createCategory = async (
+  data: ICreateCategory,
+  accessToken?: string
+) => {
+  return await sendRequest<IBackendRes<ICategory>>({
+    url: `${BACKEND_URL}/api/v1/categories`,
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+    },
+    body: data,
+  });
+};
+
+// PUT /api/v1/categories/{id}
+export const updateCategory = async (
+  id: string,
+  data: IUpdateCategory,
+  accessToken?: string
+) => {
+  return await sendRequest<IBackendRes<ICategory>>({
+    url: `${BACKEND_URL}/api/v1/categories/${id}`,
+    method: "PUT",
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+    },
+    body: data,
+  });
+};
+
+// DELETE /api/v1/categories/{id}
+export const deleteCategoryApi = async (id: string, accessToken?: string) => {
+  return await sendRequest<IBackendRes<null>>({
+    url: `${BACKEND_URL}/api/v1/categories/${id}`,
+    method: "DELETE",
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+    },
+  });
+};
+
+// GET tracks theo category slug
+// GET /api/v1/tracks/top?category=ncs
+export const getTracksByCategory = async (categorySlug: string) => {
+  return await sendRequest<IBackendRes<ITrackTop[]>>({
+    url: `${BACKEND_URL}/api/v1/tracks/top`,
+    method: "GET",
+    queryParams: {
+      category: categorySlug,
+    },
+  });
+};

@@ -1,6 +1,7 @@
 package com.example.demo.controllers;
 
 import java.text.Normalizer;
+import java.time.LocalDateTime;
 import java.util.Date;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -28,6 +29,7 @@ import com.example.demo.dtos.CreateAlbumDTO;
 import com.example.demo.dtos.CreateCommentDTO;
 import com.example.demo.dtos.TrackDTO;
 import com.example.demo.dtos.UserDTO;
+import com.example.demo.entities.Category;
 import com.example.demo.entities.Comment;
 import com.example.demo.entities.Playlist;
 import com.example.demo.entities.Track;
@@ -35,6 +37,7 @@ import com.example.demo.entities.User;
 
 import com.example.demo.helpers.FileHelper;
 import com.example.demo.helpers.JwtHelper;
+import com.example.demo.repositories.CategoryRepository;
 import com.example.demo.repositories.CommentRepository;
 import com.example.demo.repositories.TrackRepository;
 import com.example.demo.repositories.UserRepository;
@@ -61,6 +64,9 @@ public class TrackController {
 
 	@Autowired
 	private CommentRepository commentRepository;
+
+	@Autowired
+	private CategoryRepository categoryRepository;
 
 	@Value("${images_url}")
 	private String imagesUrl;
@@ -140,7 +146,11 @@ public class TrackController {
 			return "track";
 		}
 
-		String normalized = Normalizer.normalize(input, Normalizer.Form.NFD);
+		String prepared = input.trim()
+				.replace("Đ", "D")
+				.replace("đ", "d");
+
+		String normalized = Normalizer.normalize(prepared, Normalizer.Form.NFD);
 
 		String slug = normalized.replaceAll("\\p{M}", "")
 				.toLowerCase()
@@ -153,6 +163,80 @@ public class TrackController {
 	private String createSlug(String title, String id) {
 		String suffix = id.length() >= 6 ? id.substring(0, 6) : id;
 		return slugify(title) + "-" + suffix;
+	}
+
+	private String getIdSuffixFromSlug(String slug) {
+		if (slug == null || slug.trim().isEmpty()) {
+			return "";
+		}
+
+		String cleanSlug = slug.trim().replace(".html", "");
+		int lastDashIndex = cleanSlug.lastIndexOf("-");
+
+		if (lastDashIndex < 0 || lastDashIndex >= cleanSlug.length() - 1) {
+			return "";
+		}
+
+		return cleanSlug.substring(lastDashIndex + 1);
+	}
+
+	private Track findTrackBySlugOrId(String value) {
+		if (value == null || value.trim().isEmpty()) {
+			return null;
+		}
+
+		String cleanValue = value.trim().replace(".html", "");
+
+		Track track = trackRepository.findBySlugAndIsDeletedFalseAndApprovalStatus(cleanValue, TRACK_APPROVED);
+
+		if (track != null) {
+			return track;
+		}
+
+		track = trackRepository.findById(cleanValue).orElse(null);
+
+		if (track != null) {
+			return track;
+		}
+
+		String idPrefix = getIdSuffixFromSlug(cleanValue);
+
+		if (idPrefix == null || idPrefix.trim().isEmpty()) {
+			return null;
+		}
+
+		return trackRepository.findFirstByIdStartingWithAndIsDeletedFalseAndApprovalStatus(
+				idPrefix,
+				TRACK_APPROVED);
+	}
+
+	private Category findOrCreateCategory(String categoryName) {
+		String cleanName = categoryName == null ? "unknown" : categoryName.trim().toLowerCase();
+		String slug = slugify(cleanName);
+
+		Category category = categoryRepository.findBySlug(slug);
+
+		if (category != null) {
+			return category;
+		}
+
+		category = new Category();
+
+		category.setId(generateId());
+		category.setName(cleanName.toUpperCase());
+		category.setSlug(slug);
+		category.setDescription(cleanName.toUpperCase() + " tracks");
+		category.setIsDeleted(false);
+
+		return categoryRepository.save(category);
+	}
+
+	private Category getTrackCategory(Track track) {
+		if (track == null || track.getCategoryId() == null || track.getCategoryId().trim().isEmpty()) {
+			return null;
+		}
+
+		return categoryRepository.findById(track.getCategoryId()).orElse(null);
 	}
 
 	private UserDTO toUserDTO(User user) {
@@ -186,13 +270,25 @@ public class TrackController {
 			return null;
 		}
 
+		Category category = getTrackCategory(track);
+
 		TrackDTO dto = new TrackDTO();
 
 		dto.setId(track.getId());
 		dto.setTitle(track.getTitle());
 		dto.setSlug(track.getSlug());
 		dto.setDescription(track.getDescription());
-		dto.setCategory(track.getCategory());
+
+		dto.setCategoryId(track.getCategoryId());
+
+		if (category != null) {
+			dto.setCategory(category.getSlug());
+			dto.setCategoryName(category.getName());
+		} else {
+			dto.setCategory(null);
+			dto.setCategoryName(null);
+		}
+
 		dto.setImgUrl(fullImageUrl(track.getImgUrl()));
 		dto.setTrackUrl(fullAudioUrl(track.getTrackUrl()));
 		dto.setCountLike(track.getCountLike() == null ? 0 : track.getCountLike());
@@ -262,7 +358,7 @@ public class TrackController {
 
 			String cleanTitle = title.trim();
 			String cleanDescription = description.trim();
-			String cleanCategory = category.trim().toLowerCase();
+			Category categoryEntity = findOrCreateCategory(category);
 
 			String imageName = FileHelper.upload(image, "uploads/images");
 			String audioName = FileHelper.upload(audio, "uploads/audio");
@@ -273,7 +369,7 @@ public class TrackController {
 			track.setTitle(cleanTitle);
 			track.setSlug(createSlug(cleanTitle, id));
 			track.setDescription(cleanDescription);
-			track.setCategory(cleanCategory);
+			track.setCategoryId(categoryEntity.getId());
 			track.setImgUrl(imageName);
 			track.setTrackUrl(audioName);
 			track.setCountLike(0);
@@ -281,8 +377,8 @@ public class TrackController {
 			track.setUploaderId(user.getId());
 			track.setIsDeleted(false);
 			track.setApprovalStatus(isAdmin(user) ? TRACK_APPROVED : TRACK_PENDING);
-			track.setCreatedAt(new Date());
-			track.setUpdatedAt(new Date());
+			track.setCreatedAt(LocalDateTime.now());
+			track.setUpdatedAt(LocalDateTime.now());
 
 			trackRepository.save(track);
 
@@ -363,11 +459,7 @@ public class TrackController {
 	@GetMapping("{slug}")
 	public ResponseEntity<?> findBySlug(@PathVariable String slug) {
 		try {
-			Track track = trackRepository.findBySlugAndIsDeletedFalseAndApprovalStatus(slug, TRACK_APPROVED);
-
-			if (track == null) {
-				track = trackRepository.findById(slug).orElse(null);
-			}
+			Track track = findTrackBySlugOrId(slug);
 
 			if (track == null || Boolean.TRUE.equals(track.getIsDeleted()) || !isApproved(track)) {
 				return ResponseEntity.status(404).body(new ApiResponse<>(404, "Track not found", null));
@@ -410,12 +502,12 @@ public class TrackController {
 
 			String cleanTitle = title.trim();
 			String cleanDescription = description.trim();
-			String cleanCategory = category.trim().toLowerCase();
+			Category categoryEntity = findOrCreateCategory(category);
 
 			track.setTitle(cleanTitle);
 			track.setSlug(createSlug(cleanTitle, track.getId()));
 			track.setDescription(cleanDescription);
-			track.setCategory(cleanCategory);
+			track.setCategoryId(categoryEntity.getId());
 
 			if (!isAdmin(user)) {
 				track.setApprovalStatus(TRACK_PENDING);
@@ -431,7 +523,7 @@ public class TrackController {
 				track.setTrackUrl(audioName);
 			}
 
-			track.setUpdatedAt(new Date());
+			track.setUpdatedAt(LocalDateTime.now());
 
 			trackRepository.save(track);
 
@@ -463,7 +555,7 @@ public class TrackController {
 			}
 
 			track.setIsDeleted(true);
-			track.setUpdatedAt(new Date());
+			track.setUpdatedAt(LocalDateTime.now());
 
 			trackRepository.save(track);
 
@@ -597,7 +689,7 @@ public class TrackController {
 			}
 
 			track.setCountLike(track.getCountLike() + 1);
-			track.setUpdatedAt(new Date());
+			track.setUpdatedAt(LocalDateTime.now());
 
 			userRepository.save(user);
 			trackRepository.save(track);
@@ -639,7 +731,7 @@ public class TrackController {
 				track.setCountLike(track.getCountLike() - 1);
 			}
 
-			track.setUpdatedAt(new Date());
+			track.setUpdatedAt(LocalDateTime.now());
 
 			userRepository.save(user);
 			trackRepository.save(track);
@@ -707,7 +799,7 @@ public class TrackController {
 			}
 
 			track.setCountPlay(track.getCountPlay() + 1);
-			track.setUpdatedAt(new Date());
+			track.setUpdatedAt(LocalDateTime.now());
 
 			trackRepository.save(track);
 
@@ -734,9 +826,11 @@ public class TrackController {
 	@GetMapping("/top")
 	public ResponseEntity<?> getTopTracksByCategory(@RequestParam String category) {
 		try {
+			String categorySlug = slugify(category);
+
 			List<Track> tracks = trackRepository
-					.findByCategoryAndIsDeletedFalseAndApprovalStatusOrderByCountPlayDesc(
-							category.trim().toLowerCase(),
+					.findByCategoryInfo_SlugAndIsDeletedFalseAndApprovalStatusOrderByCountPlayDesc(
+							categorySlug,
 							TRACK_APPROVED);
 
 			return ResponseEntity.ok(new ApiResponse<>(200, "Fetch top tracks success", toTrackDTOList(tracks)));

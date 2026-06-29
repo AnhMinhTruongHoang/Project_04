@@ -4,20 +4,24 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.text.Normalizer;
+import java.time.LocalDateTime;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
-import java.util.HashMap;
-import java.util.Map;
+
 import org.mindrot.jbcrypt.BCrypt;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
+import com.example.demo.entities.Category;
 import com.example.demo.entities.Playlist;
 import com.example.demo.entities.Track;
 import com.example.demo.entities.User;
+import com.example.demo.repositories.CategoryRepository;
 import com.example.demo.repositories.PlaylistRepository;
 import com.example.demo.repositories.TrackRepository;
 import com.example.demo.repositories.UserRepository;
@@ -34,18 +38,26 @@ public class DataSeeder {
                         return "track";
                 }
 
-                String normalized = Normalizer.normalize(input, Normalizer.Form.NFD);
+                String prepared = input.trim()
+                                .replace("Đ", "D")
+                                .replace("đ", "d");
 
-                return normalized.replaceAll("\\p{M}", "")
+                String normalized = Normalizer.normalize(prepared, Normalizer.Form.NFD);
+
+                String slug = normalized.replaceAll("\\p{M}", "")
                                 .toLowerCase()
                                 .replaceAll("[^a-z0-9]+", "-")
                                 .replaceAll("^-+|-+$", "");
+
+                return slug.isEmpty() ? "track" : slug;
         }
 
-        private boolean hasTrackTitle(TrackRepository trackRepository, String title) {
+        private Track findTrackByTitle(TrackRepository trackRepository, String title) {
                 return trackRepository.findAll()
                                 .stream()
-                                .anyMatch(track -> title.equalsIgnoreCase(track.getTitle()));
+                                .filter(track -> title.equalsIgnoreCase(track.getTitle()))
+                                .findFirst()
+                                .orElse(null);
         }
 
         private String imageOrDefault(String fileName, String defaultImage) {
@@ -103,7 +115,10 @@ public class DataSeeder {
         }
 
         private String artistEmailFromName(String artistName) {
-                String normalized = Normalizer.normalize(artistName, Normalizer.Form.NFD);
+                String prepared = artistName == null ? "unknownartist"
+                                : artistName.replace("Đ", "D").replace("đ", "d");
+
+                String normalized = Normalizer.normalize(prepared, Normalizer.Form.NFD);
 
                 String emailName = normalized
                                 .replaceAll("\\p{M}", "")
@@ -127,7 +142,58 @@ public class DataSeeder {
                 return "http://localhost:8000/uploads/images/" + avatar;
         }
 
-        ////
+        private Category createSeedCategory(
+                        CategoryRepository categoryRepository,
+                        String rawCategoryName,
+                        String description) {
+
+                String cleanName = rawCategoryName == null || rawCategoryName.trim().isEmpty()
+                                ? "unknown"
+                                : rawCategoryName.trim().toLowerCase();
+
+                String slug = slugify(cleanName);
+
+                Category category = categoryRepository.findBySlug(slug);
+
+                if (category != null) {
+                        boolean changed = false;
+
+                        if (category.getName() == null || category.getName().trim().isEmpty()) {
+                                category.setName(cleanName.toUpperCase());
+                                changed = true;
+                        }
+
+                        if (category.getDescription() == null || category.getDescription().trim().isEmpty()) {
+                                category.setDescription(description);
+                                changed = true;
+                        }
+
+                        if (category.getIsDeleted() == null || Boolean.TRUE.equals(category.getIsDeleted())) {
+                                category.setIsDeleted(false);
+                                changed = true;
+                        }
+
+                        if (changed) {
+                                category.setUpdatedAt(new Date());
+                                categoryRepository.save(category);
+                        }
+
+                        return category;
+                }
+
+                category = new Category();
+
+                category.setId(id());
+                category.setName(cleanName.toUpperCase());
+                category.setSlug(slug);
+                category.setDescription(description);
+                category.setIsDeleted(false);
+                category.setCreatedAt(new Date());
+                category.setUpdatedAt(new Date());
+
+                return categoryRepository.save(category);
+        }
+
         private User createSeedArtist(
                         UserRepository userRepository,
                         Map<String, User> artistCache,
@@ -207,14 +273,12 @@ public class DataSeeder {
                 return artist;
         }
 
-        /////
-
         private Track createTrack(
                         TrackRepository trackRepository,
                         User uploader,
                         String title,
                         String description,
-                        String category,
+                        Category category,
                         String imgUrl,
                         String trackUrl) {
 
@@ -226,7 +290,7 @@ public class DataSeeder {
                 track.setTitle(title.trim());
                 track.setSlug(slugify(title) + "-" + trackId.substring(0, 6));
                 track.setDescription(description);
-                track.setCategory(category.trim().toLowerCase());
+                track.setCategoryId(category.getId());
                 track.setImgUrl(imgUrl);
                 track.setTrackUrl(trackUrl);
                 track.setCountLike(0);
@@ -234,17 +298,34 @@ public class DataSeeder {
                 track.setUploaderId(uploader.getId());
                 track.setIsDeleted(false);
                 track.setApprovalStatus("APPROVED");
-                track.setCreatedAt(new Date());
-                track.setUpdatedAt(new Date());
+                track.setCreatedAt(LocalDateTime.now());
+                track.setUpdatedAt(LocalDateTime.now());
 
                 return trackRepository.save(track);
+        }
+
+        private void updateExistingTrackCategoryIfNeeded(
+                        TrackRepository trackRepository,
+                        Track track,
+                        Category category) {
+
+                if (track == null || category == null) {
+                        return;
+                }
+
+                if (track.getCategoryId() == null || track.getCategoryId().trim().isEmpty()) {
+                        track.setCategoryId(category.getId());
+                        track.setUpdatedAt(LocalDateTime.now());
+                        trackRepository.save(track);
+                }
         }
 
         @Bean
         CommandLineRunner seedData(
                         UserRepository userRepository,
                         TrackRepository trackRepository,
-                        PlaylistRepository playlistRepository) {
+                        PlaylistRepository playlistRepository,
+                        CategoryRepository categoryRepository) {
 
                 return args -> {
 
@@ -304,10 +385,9 @@ public class DataSeeder {
                         }
 
                         // ===== TRACK SEED =====
-                        // Dùng lại file bạn đã upload test trước đó.
-                        // Nếu muốn đổi file, đổi 2 filename này.
                         String defaultImage = "default.png";
                         String defaultAudio = "default.wav";
+
                         // Mỗi dòng: title, description, category, image file, audio file
                         String[][] seedTracks = {
                                         // ===== NCS =====
@@ -541,14 +621,21 @@ public class DataSeeder {
                         for (String[] item : seedTracks) {
                                 String title = item[0];
                                 String description = cleanArtistText(item[1]);
-                                String category = item[2];
+                                String categoryName = item[2];
 
                                 String image = imageOrDefault(item[3], defaultImage);
                                 String audio = audioOrDefault(item[4], defaultAudio);
 
                                 User artist = createSeedArtist(userRepository, artistCache, description);
 
-                                if (!hasTrackTitle(trackRepository, title)) {
+                                Category category = createSeedCategory(
+                                                categoryRepository,
+                                                categoryName,
+                                                categoryName.toUpperCase() + " tracks");
+
+                                Track existingTrack = findTrackByTitle(trackRepository, title);
+
+                                if (existingTrack == null) {
                                         createTrack(
                                                         trackRepository,
                                                         artist,
@@ -557,7 +644,71 @@ public class DataSeeder {
                                                         category,
                                                         image,
                                                         audio);
+                                } else {
+                                        updateExistingTrackCategoryIfNeeded(
+                                                        trackRepository,
+                                                        existingTrack,
+                                                        category);
                                 }
+                        }
+
+                        // ===== EXTRA CATEGORY SEED - chưa có track nào =====
+                        String[][] extraCategories = {
+                                        {
+                                                        "edm",
+                                                        "Electronic dance music"
+                                        },
+                                        {
+                                                        "chill",
+                                                        "Chill and relaxing tracks"
+                                        },
+                                        {
+                                                        "workout",
+                                                        "Workout and energy tracks"
+                                        },
+                                        {
+                                                        "party",
+                                                        "Party and dance tracks"
+                                        },
+                                        {
+                                                        "remix",
+                                                        "Remix tracks"
+                                        },
+                                        {
+                                                        "rap",
+                                                        "Rap and hip hop music"
+                                        },
+                                        {
+                                                        "rock",
+                                                        "Rock music"
+                                        },
+                                        {
+                                                        "acoustic",
+                                                        "Acoustic music"
+                                        },
+                                        {
+                                                        "instrumental",
+                                                        "Instrumental music"
+                                        },
+                                        {
+                                                        "ballad",
+                                                        "Ballad music"
+                                        },
+                                        {
+                                                        "indie",
+                                                        "Indie music"
+                                        },
+                                        {
+                                                        "rnb",
+                                                        "R&B music"
+                                        }
+                        };
+
+                        for (String[] item : extraCategories) {
+                                createSeedCategory(
+                                                categoryRepository,
+                                                item[0],
+                                                item[1]);
                         }
 
                         // ===== PLAYLIST SEED =====

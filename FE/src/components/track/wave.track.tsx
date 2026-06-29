@@ -13,6 +13,8 @@ import { useRouter } from "next/navigation";
 import Image from "next/image";
 import LikeTrack from "./like.track";
 import CommentTrack from "./comment.track";
+import { getUserHref } from "@/utils/actions/navigation";
+import Link from "next/link";
 
 interface IProps {
   track: ITrackTop | null;
@@ -420,6 +422,15 @@ const WaveTrack = (props: IProps) => {
     }
   }, [wavesurfer]);
 
+  const artist = (track as any)?.uploader || {
+    _id: (track as any)?.uploaderId,
+    id: (track as any)?.uploaderId,
+    name: track?.description,
+  };
+
+  const artistHref = getUserHref(artist);
+  const canOpenArtistProfile = artistHref !== "#";
+
   return (
     <div style={{ marginTop: 20 }}>
       <div
@@ -484,19 +495,33 @@ const WaveTrack = (props: IProps) => {
               >
                 {track?.title}
               </div>
-
-              <div
+              <Link
+                href={artistHref}
+                onClick={(event) => {
+                  if (!canOpenArtistProfile) {
+                    event.preventDefault();
+                  }
+                }}
                 style={{
-                  padding: "0 5px",
-                  marginTop: 10,
-                  background: "#333",
-                  fontSize: 20,
+                  display: "block",
+                  textDecoration: "none",
                   width: "fit-content",
-                  color: "white",
                 }}
               >
-                {track?.description}
-              </div>
+                <div
+                  style={{
+                    padding: "0 5px",
+                    marginTop: 10,
+                    background: "#333",
+                    fontSize: 20,
+                    width: "fit-content",
+                    color: "white",
+                    cursor: canOpenArtistProfile ? "pointer" : "default",
+                  }}
+                >
+                  {track?.description}
+                </div>
+              </Link>
             </div>
           </div>
 

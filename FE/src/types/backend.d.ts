@@ -5,7 +5,7 @@ declare global {
 
   type UserRole = "USER" | "ADMIN" | string;
 
-  type UserType = "SYSTEM" | "GOOGLE" | "GITHUB" | string;
+  type UserType = "SYSTEM" | "GOOGLE" | "GITHUB" | "ARTIST" | string;
 
   type TrackCategory =
     | "CHILL"
@@ -315,4 +315,29 @@ declare global {
     message?: string;
     data?: ArtistLeaderboardItem[];
   };
+
+  export interface ICategory {
+    _id?: string;
+    id?: string;
+    name: string;
+    slug: string;
+    description?: string;
+    isDeleted?: boolean;
+    trackCount?: number;
+    createdAt?: string;
+    updatedAt?: string;
+  }
+
+  export interface ICreateCategory {
+    name: string;
+    slug?: string;
+    description?: string;
+  }
+
+  export interface IUpdateCategory {
+    name?: string;
+    slug?: string;
+    description?: string;
+    isDeleted?: boolean;
+  }
 }

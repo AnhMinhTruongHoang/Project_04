@@ -1,7 +1,5 @@
 package com.example.demo.controllers.admin;
 
-import java.util.Date;
-
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -9,8 +7,8 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
-
-import com.example.demo.dtos.UpdateTrackDTO;
+import java.text.Normalizer;
+import java.time.LocalDateTime;
 import com.example.demo.entities.Track;
 import com.example.demo.entities.User;
 import com.example.demo.helpers.FileHelper;
@@ -18,6 +16,8 @@ import com.example.demo.helpers.JwtHelper;
 import com.example.demo.repositories.TrackRepository;
 import com.example.demo.repositories.UserRepository;
 import com.example.demo.responses.ApiResponse;
+import com.example.demo.entities.Category;
+import com.example.demo.repositories.CategoryRepository;
 
 import io.jsonwebtoken.Claims;
 import jakarta.servlet.http.HttpServletRequest;
@@ -31,6 +31,9 @@ public class AdminTrackController {
 
 	@Autowired
 	private UserRepository userRepository;
+
+	@Autowired
+	private CategoryRepository categoryRepository;
 
 	// GET TRACKS WITH PAGINATE
 	@GetMapping("find-all")
@@ -63,6 +66,51 @@ public class AdminTrackController {
 
 			return ResponseEntity.status(500).body(new ApiResponse(500, e.getMessage(), null));
 		}
+	}
+
+	private String slugify(String input) {
+		if (input == null || input.trim().isEmpty()) {
+			return "track";
+		}
+
+		String prepared = input.trim()
+				.replace("Đ", "D")
+				.replace("đ", "d");
+
+		String normalized = Normalizer.normalize(prepared, Normalizer.Form.NFD);
+
+		String slug = normalized.replaceAll("\\p{M}", "")
+				.toLowerCase()
+				.replaceAll("[^a-z0-9]+", "-")
+				.replaceAll("^-+|-+$", "");
+
+		return slug.isEmpty() ? "track" : slug;
+	}
+
+	private String createSlug(String title, String id) {
+		String suffix = id.length() >= 6 ? id.substring(0, 6) : id;
+		return slugify(title) + "-" + suffix;
+	}
+
+	private Category findOrCreateCategory(String categoryName) {
+		String cleanName = categoryName == null ? "unknown" : categoryName.trim().toLowerCase();
+		String slug = slugify(cleanName);
+
+		Category category = categoryRepository.findBySlug(slug);
+
+		if (category != null) {
+			return category;
+		}
+
+		category = new Category();
+
+		category.setId(java.util.UUID.randomUUID().toString().replace("-", "").substring(0, 24));
+		category.setName(cleanName.toUpperCase());
+		category.setSlug(slug);
+		category.setDescription(cleanName.toUpperCase() + " tracks");
+		category.setIsDeleted(false);
+
+		return categoryRepository.save(category);
 	}
 
 	// GET TRACK BY ID
@@ -161,11 +209,15 @@ public class AdminTrackController {
 			}
 
 			// ===== UPDATE TEXT =====
-			track.setTitle(title);
+			Category categoryEntity = findOrCreateCategory(category);
 
-			track.setDescription(description);
+			track.setTitle(title.trim());
 
-			track.setCategory(category);
+			track.setSlug(createSlug(title.trim(), track.getId()));
+
+			track.setDescription(description.trim());
+
+			track.setCategoryId(categoryEntity.getId());
 
 			// ===== UPDATE IMAGE =====
 			if (image != null && !image.isEmpty()) {
@@ -183,7 +235,7 @@ public class AdminTrackController {
 				track.setTrackUrl(audioName);
 			}
 
-			track.setUpdatedAt(new Date());
+			track.setUpdatedAt(LocalDateTime.now());
 
 			trackRepository.save(track);
 
@@ -265,7 +317,7 @@ public class AdminTrackController {
 			// ===== SOFT DELETE =====
 			track.setIsDeleted(true);
 
-			track.setUpdatedAt(new Date());
+			track.setUpdatedAt(LocalDateTime.now());
 
 			trackRepository.save(track);
 
@@ -294,70 +346,70 @@ public class AdminTrackController {
 	}
 
 	@PatchMapping({ "/approve/{id}", "/{id}/approve" })
-public ResponseEntity<?> approveTrack(
-		@PathVariable String id,
-		@RequestHeader("Authorization") String authorization) {
+	public ResponseEntity<?> approveTrack(
+			@PathVariable String id,
+			@RequestHeader("Authorization") String authorization) {
 
-	try {
-		String token = authorization.replace("Bearer ", "");
-		Claims claims = JwtHelper.verifyToken(token);
-		String email = claims.getSubject();
+		try {
+			String token = authorization.replace("Bearer ", "");
+			Claims claims = JwtHelper.verifyToken(token);
+			String email = claims.getSubject();
 
-		User admin = userRepository.findByEmail(email);
+			User admin = userRepository.findByEmail(email);
 
-		if (admin == null || !"ADMIN".equals(admin.getRole())) {
-			return ResponseEntity.status(403).body(new ApiResponse<>(403, "Access denied", null));
+			if (admin == null || !"ADMIN".equals(admin.getRole())) {
+				return ResponseEntity.status(403).body(new ApiResponse<>(403, "Access denied", null));
+			}
+
+			Track track = trackRepository.findById(id).orElse(null);
+
+			if (track == null || Boolean.TRUE.equals(track.getIsDeleted())) {
+				return ResponseEntity.status(404).body(new ApiResponse<>(404, "Track not found", null));
+			}
+
+			track.setApprovalStatus("APPROVED");
+			track.setUpdatedAt(LocalDateTime.now());
+
+			trackRepository.save(track);
+
+			return ResponseEntity.ok(new ApiResponse<>(200, "Approve track success", track));
+
+		} catch (Exception e) {
+			return ResponseEntity.internalServerError().body(new ApiResponse<>(500, e.getMessage(), null));
 		}
-
-		Track track = trackRepository.findById(id).orElse(null);
-
-		if (track == null || Boolean.TRUE.equals(track.getIsDeleted())) {
-			return ResponseEntity.status(404).body(new ApiResponse<>(404, "Track not found", null));
-		}
-
-		track.setApprovalStatus("APPROVED");
-		track.setUpdatedAt(new Date());
-
-		trackRepository.save(track);
-
-		return ResponseEntity.ok(new ApiResponse<>(200, "Approve track success", track));
-
-	} catch (Exception e) {
-		return ResponseEntity.internalServerError().body(new ApiResponse<>(500, e.getMessage(), null));
 	}
-}
 
-@PatchMapping({ "/reject/{id}", "/{id}/reject" })
-public ResponseEntity<?> rejectTrack(
-		@PathVariable String id,
-		@RequestHeader("Authorization") String authorization) {
+	@PatchMapping({ "/reject/{id}", "/{id}/reject" })
+	public ResponseEntity<?> rejectTrack(
+			@PathVariable String id,
+			@RequestHeader("Authorization") String authorization) {
 
-	try {
-		String token = authorization.replace("Bearer ", "");
-		Claims claims = JwtHelper.verifyToken(token);
-		String email = claims.getSubject();
+		try {
+			String token = authorization.replace("Bearer ", "");
+			Claims claims = JwtHelper.verifyToken(token);
+			String email = claims.getSubject();
 
-		User admin = userRepository.findByEmail(email);
+			User admin = userRepository.findByEmail(email);
 
-		if (admin == null || !"ADMIN".equals(admin.getRole())) {
-			return ResponseEntity.status(403).body(new ApiResponse<>(403, "Access denied", null));
+			if (admin == null || !"ADMIN".equals(admin.getRole())) {
+				return ResponseEntity.status(403).body(new ApiResponse<>(403, "Access denied", null));
+			}
+
+			Track track = trackRepository.findById(id).orElse(null);
+
+			if (track == null || Boolean.TRUE.equals(track.getIsDeleted())) {
+				return ResponseEntity.status(404).body(new ApiResponse<>(404, "Track not found", null));
+			}
+
+			track.setApprovalStatus("REJECTED");
+			track.setUpdatedAt(LocalDateTime.now());
+
+			trackRepository.save(track);
+
+			return ResponseEntity.ok(new ApiResponse<>(200, "Reject track success", track));
+
+		} catch (Exception e) {
+			return ResponseEntity.internalServerError().body(new ApiResponse<>(500, e.getMessage(), null));
 		}
-
-		Track track = trackRepository.findById(id).orElse(null);
-
-		if (track == null || Boolean.TRUE.equals(track.getIsDeleted())) {
-			return ResponseEntity.status(404).body(new ApiResponse<>(404, "Track not found", null));
-		}
-
-		track.setApprovalStatus("REJECTED");
-		track.setUpdatedAt(new Date());
-
-		trackRepository.save(track);
-
-		return ResponseEntity.ok(new ApiResponse<>(200, "Reject track success", track));
-
-	} catch (Exception e) {
-		return ResponseEntity.internalServerError().body(new ApiResponse<>(500, e.getMessage(), null));
 	}
-}
 }

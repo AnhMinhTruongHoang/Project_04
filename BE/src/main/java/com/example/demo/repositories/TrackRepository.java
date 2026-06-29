@@ -22,19 +22,32 @@ public interface TrackRepository extends JpaRepository<Track, String> {
 
 	Track findBySlugAndIsDeletedFalse(String slug);
 
+	Track findFirstByIdStartingWithAndIsDeletedFalseAndApprovalStatus(
+			String idPrefix,
+			String approvalStatus);
+
 	List<Track> findByUploaderId(String uploaderId);
 
 	List<Track> findByUploaderIdAndIsDeletedFalse(String uploaderId);
 
-	List<Track> findByCategoryAndIsDeletedFalseOrderByCountPlayDesc(String category);
+	List<Track> findByCategoryIdAndIsDeletedFalseOrderByCountPlayDesc(String categoryId);
 
-	List<Track> findByCategoryAndIsDeletedFalseAndApprovalStatusOrderByCountPlayDesc(String category,
+	List<Track> findByCategoryIdAndIsDeletedFalseAndApprovalStatusOrderByCountPlayDesc(
+			String categoryId,
+			String approvalStatus);
+
+	List<Track> findByCategoryInfo_SlugAndIsDeletedFalseAndApprovalStatusOrderByCountPlayDesc(
+			String slug,
 			String approvalStatus);
 
 	List<Track> findByTitleContainingAndIsDeletedFalse(String keyword);
 
 	List<Track> findByTitleContainingIgnoreCaseAndIsDeletedFalse(String keyword);
 
-	List<Track> findByTitleContainingIgnoreCaseAndIsDeletedFalseAndApprovalStatus(String keyword,
+	List<Track> findByTitleContainingIgnoreCaseAndIsDeletedFalseAndApprovalStatus(
+			String keyword,
 			String approvalStatus);
+
+	//// count songs in category
+	long countByCategoryIdAndIsDeletedFalse(String categoryId);
 }

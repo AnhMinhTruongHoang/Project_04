@@ -13,6 +13,7 @@ import Divider from "@mui/material/Divider";
 import Link from "next/link";
 import Image from "next/image";
 import { convertSlugUrl } from "@/utils/api";
+import { getUserHref } from "@/utils/actions/navigation";
 
 interface IProps {
   data: ITrackTop[];
@@ -144,13 +145,24 @@ const MainSlider = (props: IProps) => {
 
     if (!trackSlug) return null;
 
+    const trackHref = `/track/${trackSlug}.html?audio=${encodeURIComponent(
+      audioUrl
+    )}`;
+
+    const profileHref = getUserHref((track as any).uploader);
+    const canOpenProfile = profileHref !== "#";
+
     return (
       <div className="track" key={trackId || trackSlug}>
-        <div
+        <Link
+          href={trackHref}
           style={{
             position: "relative",
+            display: "block",
             height: "150px",
             width: "150px",
+            textDecoration: "none",
+            color: "unset",
           }}
         >
           <Image
@@ -162,7 +174,7 @@ const MainSlider = (props: IProps) => {
               borderRadius: 4,
             }}
           />
-        </div>
+        </Link>
 
         <Link
           style={{
@@ -170,9 +182,7 @@ const MainSlider = (props: IProps) => {
             color: "unset",
             fontSize: "14px",
           }}
-          href={`/track/${trackSlug}.html?audio=${encodeURIComponent(
-            audioUrl
-          )}`}
+          href={trackHref}
         >
           <div
             style={{
@@ -189,8 +199,15 @@ const MainSlider = (props: IProps) => {
           </div>
         </Link>
 
-        <div
+        <Link
+          href={profileHref}
+          onClick={(event) => {
+            if (!canOpenProfile) {
+              event.preventDefault();
+            }
+          }}
           style={{
+            display: "block",
             marginBottom: "7px",
             color: "#ccc",
             fontSize: "13px",
@@ -198,11 +215,13 @@ const MainSlider = (props: IProps) => {
             whiteSpace: "nowrap",
             overflow: "hidden",
             textOverflow: "ellipsis",
+            textDecoration: "none",
+            cursor: canOpenProfile ? "pointer" : "default",
           }}
           title={track.description}
         >
           {track.description}
-        </div>
+        </Link>
       </div>
     );
   };

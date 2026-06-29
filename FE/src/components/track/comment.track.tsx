@@ -1,15 +1,34 @@
 "use client";
 
-import { sendRequest } from "@/utils/api";
-import { Avatar, Box, TextField, Typography } from "@mui/material";
-import { useState } from "react";
-import { useSession } from "next-auth/react";
+import { useState, type MouseEvent } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
+
+import {
+  Avatar,
+  Box,
+  Button,
+  IconButton,
+  Popover,
+  TextField,
+  Tooltip,
+  Typography,
+} from "@mui/material";
+
+import AddReactionRoundedIcon from "@mui/icons-material/AddReactionRounded";
+import ChatBubbleRoundedIcon from "@mui/icons-material/ChatBubbleRounded";
+import SendRoundedIcon from "@mui/icons-material/SendRounded";
+import VerifiedRoundedIcon from "@mui/icons-material/VerifiedRounded";
+
 import dayjs from "dayjs";
-import WaveSurfer from "wavesurfer.js";
 import relativeTime from "dayjs/plugin/relativeTime";
+import WaveSurfer from "wavesurfer.js";
+
+import { sendRequest } from "@/utils/api";
 import { useHasMounted } from "@/utils/customHook";
 import { getInitials, getUserAvatarUrl } from "@/utils/actions/getAvatar";
+import { getUserHref } from "@/utils/actions/navigation";
 
 dayjs.extend(relativeTime);
 
@@ -22,14 +41,16 @@ interface IProps {
 const getTrackId = (track?: any) => {
   return track?._id || track?.id || "";
 };
-///
+
+const isArtist = (user?: any) => {
+  return String(user?.type || "").toUpperCase() === "ARTIST";
+};
+
 const getUserName = (user?: any) => {
   if (!user) return "User";
 
   if (typeof user === "string") {
     if (user.includes("@")) return user.split("@")[0];
-
-    // Nếu backend chỉ trả userId dạng string thì không lấy làm tên
     return "User";
   }
 
@@ -51,11 +72,9 @@ const getUserName = (user?: any) => {
     );
   };
 
-  // Ưu tiên fullName/displayName nếu có tên thật
   if (!isBadName(fullName)) return fullName;
   if (!isBadName(displayName)) return displayName;
 
-  // Nếu name là "User" thì bỏ qua, lấy email/username
   if (!isBadName(name)) {
     return name.includes("@") ? name.split("@")[0] : name;
   }
@@ -76,20 +95,24 @@ const getUserEmail = (user?: any) => {
     return user.includes("@") ? user : "";
   }
 
-  return user?.email || "";
+  return user?.email || user?.username || "";
 };
 
-///
-
 const getCommentUser = (comment?: any) => {
-  return (
+  const rawUser =
     comment?.user ||
     comment?.createdBy ||
     comment?.author ||
     comment?.created_by ||
     comment?.userInfo ||
     comment?.account ||
-    comment?.owner || {
+    comment?.owner ||
+    {};
+
+  if (typeof rawUser === "string") {
+    return {
+      _id: rawUser,
+      id: rawUser,
       name:
         comment?.userName ||
         comment?.username ||
@@ -101,25 +124,79 @@ const getCommentUser = (comment?: any) => {
         comment?.email ||
         comment?.createdByEmail ||
         comment?.authorEmail,
-      avatar: comment?.userAvatar || comment?.avatar || comment?.avatarUrl,
-    }
-  );
+      avatarUrl: comment?.userAvatar || comment?.avatarUrl || comment?.avatar,
+    };
+  }
+
+  return {
+    ...rawUser,
+    _id:
+      rawUser?._id ||
+      rawUser?.id ||
+      comment?.userId ||
+      comment?.createdById ||
+      comment?.authorId,
+    id:
+      rawUser?.id ||
+      rawUser?._id ||
+      comment?.userId ||
+      comment?.createdById ||
+      comment?.authorId,
+    name:
+      rawUser?.name ||
+      rawUser?.fullName ||
+      rawUser?.displayName ||
+      comment?.userName ||
+      comment?.username ||
+      comment?.name ||
+      comment?.createdByName ||
+      comment?.authorName,
+    username:
+      rawUser?.username ||
+      comment?.username ||
+      comment?.userEmail ||
+      comment?.email ||
+      comment?.createdByEmail ||
+      comment?.authorEmail,
+    email:
+      rawUser?.email ||
+      comment?.userEmail ||
+      comment?.email ||
+      comment?.createdByEmail ||
+      comment?.authorEmail,
+    avatarUrl:
+      rawUser?.avatarUrl ||
+      rawUser?.avatar ||
+      rawUser?.image ||
+      comment?.userAvatar ||
+      comment?.avatarUrl ||
+      comment?.avatar,
+    type: rawUser?.type || comment?.userType || comment?.type,
+  };
 };
 
 const getTrackUploader = (track?: any) => {
   return (
-    track?.uploader || track?.user || track?.artist || track?.createdBy || null
+    track?.uploader ||
+    track?.user ||
+    track?.artist ||
+    track?.createdBy || {
+      _id: track?.uploaderId,
+      id: track?.uploaderId,
+      name: track?.description,
+    }
   );
 };
 
-const CommentTrack = (props: IProps) => {
+const CommentTrack = ({ comments = [], track, wavesurfer = null }: IProps) => {
   const router = useRouter();
   const hasMounted = useHasMounted();
 
-  const { comments = [], track, wavesurfer = null } = props;
   const [yourComment, setYourComment] = useState("");
-  const { data: session } = useSession();
+  const [submitting, setSubmitting] = useState(false);
+  const [emojiAnchorEl, setEmojiAnchorEl] = useState<HTMLElement | null>(null);
 
+  const { data: session } = useSession();
   const sessionAny = session as any;
 
   const accessToken =
@@ -130,6 +207,26 @@ const CommentTrack = (props: IProps) => {
     "";
 
   const isLoggedIn = Boolean(accessToken || session?.user);
+  const openEmojiPicker = Boolean(emojiAnchorEl);
+
+  const commentEmojis = [
+    "🔥",
+    "😍",
+    "😂",
+    "🎧",
+    "❤️",
+    "👏",
+    "😮",
+    "💯",
+    "😎",
+    "🥹",
+    "🤯",
+    "🙌",
+    "💥",
+    "🎵",
+    "🎶",
+    "🖤",
+  ];
 
   const trackId = getTrackId(track);
 
@@ -137,6 +234,22 @@ const CommentTrack = (props: IProps) => {
   const uploaderName = getUserName(uploader);
   const uploaderEmail = getUserEmail(uploader);
   const uploaderAvatarUrl = getUserAvatarUrl(uploader);
+  const uploaderHref = getUserHref(uploader);
+  const canOpenUploaderProfile = uploaderHref !== "#";
+  const uploaderIsArtist = isArtist(uploader);
+
+  const handleOpenEmojiPicker = (event: MouseEvent<HTMLElement>) => {
+    setEmojiAnchorEl(event.currentTarget);
+  };
+
+  const handleCloseEmojiPicker = () => {
+    setEmojiAnchorEl(null);
+  };
+
+  const handleAddEmoji = (emoji: string) => {
+    setYourComment((prev) => `${prev}${emoji}`);
+    handleCloseEmojiPicker();
+  };
 
   const handleSubmit = async () => {
     if (!yourComment.trim()) return;
@@ -147,31 +260,37 @@ const CommentTrack = (props: IProps) => {
       return;
     }
 
-    const res = await sendRequest<IBackendRes<ITrackComment>>({
-      url: `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/v1/tracks/${trackId}/comments`,
-      method: "POST",
-      body: {
-        content: yourComment.trim(),
-        moment: Math.round(wavesurfer?.getCurrentTime() ?? 0),
-      },
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-      },
-    });
+    try {
+      setSubmitting(true);
 
-    if (res.data) {
-      setYourComment("");
-
-      await sendRequest<IBackendRes<any>>({
-        url: `/api/revalidate`,
+      const res = await sendRequest<IBackendRes<ITrackComment>>({
+        url: `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/v1/tracks/${trackId}/comments`,
         method: "POST",
-        queryParams: {
-          tag: "track-comment",
-          secret: "justArandomString",
+        body: {
+          content: yourComment.trim(),
+          moment: Math.round(wavesurfer?.getCurrentTime() ?? 0),
+        },
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
         },
       });
 
-      router.refresh();
+      if (res.data) {
+        setYourComment("");
+
+        await sendRequest<IBackendRes<any>>({
+          url: `/api/revalidate`,
+          method: "POST",
+          queryParams: {
+            tag: "track-comment",
+            secret: "justArandomString",
+          },
+        });
+
+        router.refresh();
+      }
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -179,56 +298,223 @@ const CommentTrack = (props: IProps) => {
     <Box
       sx={{
         mt: 6,
-        pb: 10,
+        pb: 6,
         color: "#ffffff",
       }}
     >
-      <Box sx={{ mb: 4 }}>
-        {isLoggedIn && (
-          <TextField
-            value={yourComment}
-            onChange={(e) => setYourComment(e.target.value)}
-            fullWidth
-            label="Comments"
-            placeholder="Write a comment..."
-            variant="standard"
-            onKeyDown={(e) => {
-              if (e.key === "Enter") {
-                e.preventDefault();
-                handleSubmit();
-              }
-            }}
-            sx={{
-              input: {
-                color: "#ffffff",
-                fontSize: 14,
-                fontWeight: 700,
-              },
+      <Box
+        sx={{
+          mb: 3,
+          display: "flex",
+          alignItems: "center",
+          gap: 1,
+        }}
+      >
+        <ChatBubbleRoundedIcon sx={{ color: "#ff5500", fontSize: 22 }} />
 
-              label: {
-                color: "#8f8f8f",
-                fontWeight: 700,
-              },
+        <Typography
+          sx={{
+            color: "#ffffff",
+            fontSize: 18,
+            fontWeight: 900,
+          }}
+        >
+          Comments
+        </Typography>
 
-              "& label.Mui-focused": {
-                color: "#ff5500",
-              },
-
-              "& .MuiInput-underline:before": {
-                borderBottomColor: "rgba(255,255,255,0.12)",
-              },
-
-              "& .MuiInput-underline:hover:before": {
-                borderBottomColor: "rgba(255,255,255,0.28)",
-              },
-
-              "& .MuiInput-underline:after": {
-                borderBottomColor: "#ff5500",
-              },
-            }}
-          />
-        )}
+        <Typography
+          sx={{
+            color: "#8f8f8f",
+            fontSize: 13,
+            fontWeight: 800,
+          }}
+        >
+          {comments.length}
+        </Typography>
       </Box>
+
+      {isLoggedIn && (
+        <Box
+          sx={{
+            mb: 4,
+            p: 2,
+            borderRadius: 3,
+            backgroundColor: "#111314",
+            border: "1px solid rgba(255,255,255,0.08)",
+          }}
+        >
+          <Box
+            sx={{
+              display: "flex",
+              alignItems: "flex-end",
+              gap: 1.2,
+            }}
+          >
+            <TextField
+              value={yourComment}
+              onChange={(e) => setYourComment(e.target.value)}
+              fullWidth
+              placeholder="Write a comment..."
+              variant="standard"
+              multiline
+              maxRows={4}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !e.shiftKey) {
+                  e.preventDefault();
+                  handleSubmit();
+                }
+              }}
+              sx={{
+                "& .MuiInputBase-root": {
+                  color: "#ffffff",
+                  fontSize: 14,
+                  fontWeight: 700,
+                },
+
+                "& .MuiInputBase-input::placeholder": {
+                  color: "#8f8f8f",
+                  opacity: 1,
+                },
+
+                "& .MuiInput-underline:before": {
+                  borderBottomColor: "rgba(255,255,255,0.12)",
+                },
+
+                "& .MuiInput-underline:hover:before": {
+                  borderBottomColor: "rgba(255,255,255,0.28)",
+                },
+
+                "& .MuiInput-underline:after": {
+                  borderBottomColor: "#ff5500",
+                },
+              }}
+            />
+
+            <Tooltip title="Add emoji">
+              <IconButton
+                onClick={handleOpenEmojiPicker}
+                sx={{
+                  width: 38,
+                  height: 38,
+                  borderRadius: 2,
+                  color: openEmojiPicker ? "#ff5500" : "#cfcfcf",
+                  backgroundColor: openEmojiPicker
+                    ? "rgba(255,85,0,0.16)"
+                    : "rgba(255,255,255,0.06)",
+                  border: "1px solid rgba(255,255,255,0.08)",
+                  flexShrink: 0,
+                  "&:hover": {
+                    color: "#ff5500",
+                    backgroundColor: "rgba(255,85,0,0.18)",
+                    borderColor: "rgba(255,85,0,0.35)",
+                  },
+                }}
+              >
+                <AddReactionRoundedIcon sx={{ fontSize: 20 }} />
+              </IconButton>
+            </Tooltip>
+
+            <Button
+              onClick={handleSubmit}
+              disabled={!yourComment.trim() || submitting}
+              variant="contained"
+              sx={{
+                minWidth: 44,
+                width: 44,
+                height: 38,
+                borderRadius: 2,
+                backgroundColor: "#ff5500",
+                color: "#ffffff",
+                boxShadow: "none",
+                flexShrink: 0,
+                "&:hover": {
+                  backgroundColor: "#ff6a1f",
+                  boxShadow: "none",
+                },
+                "&.Mui-disabled": {
+                  backgroundColor: "rgba(255,255,255,0.08)",
+                  color: "#6f6f6f",
+                },
+              }}
+            >
+              <SendRoundedIcon sx={{ fontSize: 18 }} />
+            </Button>
+          </Box>
+
+          <Popover
+            open={openEmojiPicker}
+            anchorEl={emojiAnchorEl}
+            onClose={handleCloseEmojiPicker}
+            anchorOrigin={{
+              vertical: "top",
+              horizontal: "center",
+            }}
+            transformOrigin={{
+              vertical: "bottom",
+              horizontal: "center",
+            }}
+            PaperProps={{
+              sx: {
+                mt: -1,
+                p: 1,
+                width: 214,
+                borderRadius: 3,
+                backgroundColor: "#181A1B",
+                color: "#ffffff",
+                border: "1px solid rgba(255,255,255,0.12)",
+                boxShadow: "0 18px 50px rgba(0,0,0,0.45)",
+              },
+            }}
+          >
+            <Box
+              sx={{
+                display: "grid",
+                gridTemplateColumns: "repeat(4, 1fr)",
+                gap: 0.6,
+              }}
+            >
+              {commentEmojis.map((emoji) => (
+                <IconButton
+                  key={emoji}
+                  onClick={() => handleAddEmoji(emoji)}
+                  sx={{
+                    width: 44,
+                    height: 40,
+                    borderRadius: 2,
+                    fontSize: 20,
+                    backgroundColor: "rgba(255,255,255,0.05)",
+                    border: "1px solid rgba(255,255,255,0.06)",
+                    "&:hover": {
+                      backgroundColor: "rgba(255,85,0,0.18)",
+                      borderColor: "rgba(255,85,0,0.35)",
+                      transform: "translateY(-1px)",
+                    },
+                  }}
+                >
+                  {emoji}
+                </IconButton>
+              ))}
+            </Box>
+          </Popover>
+        </Box>
+      )}
+
+      {!isLoggedIn && (
+        <Box
+          sx={{
+            mb: 4,
+            p: 2.2,
+            borderRadius: 3,
+            backgroundColor: "#111314",
+            border: "1px solid rgba(255,255,255,0.08)",
+            color: "#9a9a9a",
+            fontSize: 14,
+            fontWeight: 800,
+          }}
+        >
+          Login to write a comment.
+        </Box>
+      )}
 
       <Box
         sx={{
@@ -246,41 +532,101 @@ const CommentTrack = (props: IProps) => {
             alignItems: "center",
             position: "sticky",
             top: 90,
+            p: 2,
+            borderRadius: 4,
+            background:
+              "linear-gradient(180deg, rgba(255,85,0,0.08), rgba(255,255,255,0.025))",
+            border: "1px solid rgba(255,255,255,0.08)",
           }}
         >
-          <Avatar
-            src={uploaderAvatarUrl}
-            alt={uploaderName}
+          <Box
+            component={Link}
+            href={uploaderHref}
+            onClick={(event) => {
+              if (!canOpenUploaderProfile) {
+                event.preventDefault();
+              }
+            }}
             sx={{
-              width: 150,
-              height: 150,
-              bgcolor: "#ff5500",
-              color: "#ffffff",
-              fontSize: 42,
-              fontWeight: 900,
-              border: "3px solid rgba(255,85,0,0.45)",
-              boxShadow: "0 0 34px rgba(255,85,0,0.2)",
-              mb: 1.5,
+              textDecoration: "none",
+              cursor: canOpenUploaderProfile ? "pointer" : "default",
             }}
           >
-            {getInitials(uploaderName, uploaderEmail)}
-          </Avatar>
+            <Avatar
+              src={uploaderAvatarUrl}
+              alt={uploaderName}
+              sx={{
+                width: 132,
+                height: 132,
+                bgcolor: "#ff5500",
+                color: "#ffffff",
+                fontSize: 38,
+                fontWeight: 900,
+                cursor: canOpenUploaderProfile ? "pointer" : "default",
+                border: "3px solid rgba(255,85,0,0.45)",
+                boxShadow: "0 0 34px rgba(255,85,0,0.18)",
+                mb: 1.5,
+                transition: "0.2s ease",
+                "&:hover": canOpenUploaderProfile
+                  ? {
+                      transform: "scale(1.035)",
+                      boxShadow: "0 0 42px rgba(255,85,0,0.28)",
+                    }
+                  : {},
+              }}
+            >
+              {getInitials(uploaderName, uploaderEmail)}
+            </Avatar>
+          </Box>
 
-          <Typography
-            title={uploaderName}
+          <Box
             sx={{
+              display: "flex",
+              alignItems: "center",
+              gap: 0.5,
               width: 150,
-              color: "#ffffff",
-              fontSize: 15,
-              fontWeight: 900,
-              overflow: "hidden",
-              textOverflow: "ellipsis",
-              whiteSpace: "nowrap",
-              textAlign: "center",
+              justifyContent: "center",
             }}
           >
-            {uploaderName}
-          </Typography>
+            <Typography
+              component={Link}
+              href={uploaderHref}
+              onClick={(event) => {
+                if (!canOpenUploaderProfile) {
+                  event.preventDefault();
+                }
+              }}
+              title={uploaderName}
+              sx={{
+                color: "#ffffff",
+                fontSize: 15,
+                fontWeight: 900,
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                whiteSpace: "nowrap",
+                textAlign: "center",
+                textDecoration: "none",
+                cursor: canOpenUploaderProfile ? "pointer" : "default",
+                "&:hover": canOpenUploaderProfile
+                  ? {
+                      color: "#ff5500",
+                    }
+                  : {},
+              }}
+            >
+              {uploaderName}
+            </Typography>
+
+            {uploaderIsArtist && (
+              <VerifiedRoundedIcon
+                sx={{
+                  fontSize: 16,
+                  color: "#4da3ff",
+                  flexShrink: 0,
+                }}
+              />
+            )}
+          </Box>
 
           {uploaderEmail && (
             <Typography
@@ -294,7 +640,7 @@ const CommentTrack = (props: IProps) => {
                 textOverflow: "ellipsis",
                 whiteSpace: "nowrap",
                 textAlign: "center",
-                mt: 0.4,
+                mt: 0.5,
               }}
             >
               {uploaderEmail}
@@ -306,6 +652,10 @@ const CommentTrack = (props: IProps) => {
           sx={{
             flex: 1,
             minWidth: 0,
+            borderRadius: 4,
+            backgroundColor: "#101213",
+            border: "1px solid rgba(255,255,255,0.07)",
+            overflow: "hidden",
           }}
         >
           {comments?.length ? (
@@ -314,19 +664,26 @@ const CommentTrack = (props: IProps) => {
               const commentName = getUserName(user);
               const commentEmail = getUserEmail(user);
               const commentAvatarUrl = getUserAvatarUrl(user);
+              const commentUserHref = getUserHref(user);
+              const canOpenCommentProfile = commentUserHref !== "#";
+              const commentUserIsArtist = isArtist(user);
 
               return (
                 <Box
                   key={comment._id || (comment as any).id}
                   sx={{
                     display: "flex",
-                    justifyContent: "space-between",
-                    gap: 2,
-                    py: 1.6,
-                    px: 1.2,
-                    borderBottom: "1px solid rgba(255,255,255,0.07)",
-                    borderRadius: 2,
+                    gap: 1.4,
+                    alignItems: "flex-start",
+                    minWidth: 0,
+                    py: 1.8,
+                    px: { xs: 1.4, md: 2 },
+                    borderBottom: "1px solid rgba(255,255,255,0.06)",
                     transition: "0.18s ease",
+
+                    "&:last-of-type": {
+                      borderBottom: "none",
+                    },
 
                     "&:hover": {
                       backgroundColor: "rgba(255,255,255,0.035)",
@@ -334,80 +691,109 @@ const CommentTrack = (props: IProps) => {
                   }}
                 >
                   <Box
+                    component={Link}
+                    href={commentUserHref}
+                    onClick={(event) => {
+                      if (!canOpenCommentProfile) {
+                        event.preventDefault();
+                      }
+                    }}
                     sx={{
-                      display: "flex",
-                      gap: 1.4,
-                      alignItems: "flex-start",
-                      minWidth: 0,
-                      flex: 1,
+                      textDecoration: "none",
+                      flexShrink: 0,
+                      cursor: canOpenCommentProfile ? "pointer" : "default",
                     }}
                   >
                     <Avatar
                       src={commentAvatarUrl}
                       alt={commentName}
                       sx={{
-                        width: 42,
-                        height: 42,
+                        width: 44,
+                        height: 44,
                         bgcolor: "#ff5500",
                         color: "#ffffff",
                         fontSize: 14,
                         fontWeight: 900,
-                        flexShrink: 0,
-                        border: "1px solid rgba(255,255,255,0.12)",
+                        border: "1px solid rgba(255,255,255,0.14)",
+                        cursor: canOpenCommentProfile ? "pointer" : "default",
                       }}
                     >
                       {getInitials(commentName, commentEmail)}
                     </Avatar>
+                  </Box>
 
-                    <Box sx={{ minWidth: 0, flex: 1 }}>
-                      <Box
+                  <Box sx={{ minWidth: 0, flex: 1 }}>
+                    <Box
+                      sx={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 0.7,
+                        flexWrap: "wrap",
+                        mb: 0.5,
+                      }}
+                    >
+                      <Typography
+                        component={Link}
+                        href={commentUserHref}
+                        onClick={(event) => {
+                          if (!canOpenCommentProfile) {
+                            event.preventDefault();
+                          }
+                        }}
+                        title={commentName}
                         sx={{
-                          display: "flex",
-                          alignItems: "center",
-                          gap: 0.8,
-                          flexWrap: "wrap",
-                          mb: 0.4,
+                          color: "#ffffff",
+                          fontSize: 13,
+                          fontWeight: 900,
+                          lineHeight: 1.4,
+                          textDecoration: "none",
+                          cursor: canOpenCommentProfile ? "pointer" : "default",
+                          "&:hover": canOpenCommentProfile
+                            ? {
+                                color: "#ff5500",
+                              }
+                            : {},
                         }}
                       >
-                        <Typography
-                          title={commentName}
+                        {commentName}
+                      </Typography>
+
+                      {commentUserIsArtist && (
+                        <VerifiedRoundedIcon
                           sx={{
-                            color: "#ffffff",
-                            fontSize: 13,
-                            fontWeight: 900,
-                            lineHeight: 1.4,
+                            fontSize: 15,
+                            color: "#4da3ff",
+                            flexShrink: 0,
+                          }}
+                        />
+                      )}
+
+                      {hasMounted && comment.createdAt && (
+                        <Typography
+                          sx={{
+                            color: "#8f8f8f",
+                            fontSize: 12,
+                            fontWeight: 700,
                           }}
                         >
-                          {commentName}
+                          {dayjs(comment.createdAt).fromNow()}
                         </Typography>
-
-                        {hasMounted && comment.createdAt && (
-                          <Typography
-                            sx={{
-                              color: "#8f8f8f",
-                              fontSize: 12,
-                              fontWeight: 700,
-                            }}
-                          >
-                            {dayjs(comment.createdAt).fromNow()}
-                          </Typography>
-                        )}
-                      </Box>
-
-                      <Typography
-                        sx={{
-                          color: "#d6d6d6",
-                          fontSize: 14,
-                          fontWeight: 500,
-                          lineHeight: 1.5,
-                          wordBreak: "break-word",
-                        }}
-                      >
-                        {(comment as any).content ||
-                          (comment as any).comment ||
-                          ""}
-                      </Typography>
+                      )}
                     </Box>
+
+                    <Typography
+                      sx={{
+                        color: "#d6d6d6",
+                        fontSize: 14,
+                        fontWeight: 500,
+                        lineHeight: 1.55,
+                        wordBreak: "break-word",
+                      }}
+                    >
+                      {(comment as any).content ||
+                        (comment as any).comment ||
+                        ""}
+                    </Typography>
                   </Box>
                 </Box>
               );
@@ -415,13 +801,12 @@ const CommentTrack = (props: IProps) => {
           ) : (
             <Box
               sx={{
-                py: 4,
+                py: 6,
+                px: 2,
                 textAlign: "center",
                 color: "#8f8f8f",
-                border: "1px dashed rgba(255,255,255,0.1)",
-                borderRadius: 2,
                 backgroundColor: "#111314",
-                fontWeight: 700,
+                fontWeight: 800,
               }}
             >
               No comments yet.

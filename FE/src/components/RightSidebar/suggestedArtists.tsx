@@ -9,6 +9,8 @@ import VerifiedRoundedIcon from "@mui/icons-material/VerifiedRounded";
 import PersonRoundedIcon from "@mui/icons-material/PersonRounded";
 import GraphicEqRoundedIcon from "@mui/icons-material/GraphicEqRounded";
 import { getArtistLeaderboard } from "@/utils/api";
+import { getUserHref } from "@/utils/actions/navigation";
+import Link from "next/link";
 
 type ArtistItem = {
   _id?: string;
@@ -168,30 +170,42 @@ const SuggestedArtists = () => {
               gap: 1.2,
             }}
           >
-            <Avatar
-              src={getArtistAvatar(artist)}
-              alt={artist.name}
+            <Box
+              component={Link}
+              href={getUserHref(artist)}
               sx={{
-                width: 44,
-                height: 44,
-                bgcolor: "#111",
-                border: "1px solid rgba(255,255,255,0.08)",
+                textDecoration: "none",
               }}
-            />
+            >
+              <Avatar
+                src={getArtistAvatar(artist)}
+                alt={artist.name}
+                sx={{
+                  width: 44,
+                  height: 44,
+                  cursor: "pointer",
+                }}
+              />
+            </Box>
 
             <Box sx={{ flex: 1, minWidth: 0 }}>
               <Box sx={{ display: "flex", alignItems: "center", gap: 0.4 }}>
                 <Typography
-                  noWrap
+                  component={Link}
+                  href={getUserHref(artist)}
                   sx={{
-                    fontSize: 14,
-                    fontWeight: 900,
                     color: "#ffffff",
+                    fontSize: 13,
+                    fontWeight: 900,
+                    textDecoration: "none",
+                    cursor: "pointer",
+                    "&:hover": {
+                      color: "#ff5500",
+                    },
                   }}
                 >
                   {artist.name}
                 </Typography>
-
                 <VerifiedRoundedIcon sx={{ fontSize: 16, color: "#4da3ff" }} />
               </Box>
 

@@ -65,7 +65,7 @@ export default function RootLayout({
 
       <AppOpenAds />
 
-      <div style={{ marginBottom: "100px" }}></div>
+      
 
       <Script
         type="application/ld+json"

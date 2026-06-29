@@ -193,35 +193,6 @@ const WaveTrack = (props: IProps) => {
   };
 
   useEffect(() => {
-    if (!wavesurfer) return;
-    if (!track) return;
-    if (!autoPlay) return;
-
-    const playTrack = () => {
-      const trackId = getTrackId();
-
-      if (!trackId) return;
-
-      setCurrentTrack({
-        ...track,
-        isPlaying: true,
-        source: "wave",
-        currentTime: 0,
-        duration: wavesurfer.getDuration() ?? 0,
-        seekTime: undefined,
-        seekId: undefined,
-      } as any);
-
-      wavesurfer.play();
-      handleIncreaseView();
-    };
-
-    const timer = setTimeout(playTrack, 500);
-
-    return () => clearTimeout(timer);
-  }, [wavesurfer, autoPlay, (track as any)?._id, (track as any)?.id]);
-
-  useEffect(() => {
     const trackId = getTrackId();
 
     if (!trackId || !track) return;
@@ -233,7 +204,6 @@ const WaveTrack = (props: IProps) => {
     firstViewRef.current = true;
     lastSyncSecondRef.current = -1;
     lastHandledSeekIdRef.current = null;
-
     setCurrentTrack({
       ...track,
       isPlaying: false,
@@ -263,32 +233,71 @@ const WaveTrack = (props: IProps) => {
     const subscriptions = [
       wavesurfer.on("play", () => {
         setIsPlaying(true);
-        syncWaveToFooter(true);
+
+        setCurrentTrack({
+          ...track,
+          isPlaying: true,
+          source: "wave",
+          currentTime: wavesurfer.getCurrentTime() ?? 0,
+          duration: wavesurfer.getDuration() ?? 0,
+          seekTime: undefined,
+          seekId: undefined,
+        } as any);
       }),
 
       wavesurfer.on("pause", () => {
         setIsPlaying(false);
-        syncWaveToFooter(false);
+
+        setCurrentTrack({
+          ...track,
+          isPlaying: false,
+          source: "wave",
+          currentTime: wavesurfer.getCurrentTime() ?? 0,
+          duration: wavesurfer.getDuration() ?? 0,
+          seekTime: undefined,
+          seekId: undefined,
+        } as any);
       }),
 
-      wavesurfer.on("decode", (decodedDuration) => {
+      wavesurfer.on("decode", async (decodedDuration) => {
         setDuration(formatTime(decodedDuration));
 
         const trackId = getTrackId();
 
-        if (trackId && track) {
+        if (!trackId || !track) return;
+
+        setCurrentTrack({
+          ...track,
+          isPlaying: false,
+          source: "wave",
+          currentTime: 0,
+          duration: decodedDuration,
+          seekTime: undefined,
+          seekId: undefined,
+        } as any);
+
+        if (!autoPlay) return;
+
+        try {
+          await wavesurfer.play();
+
+          setIsPlaying(true);
+
           setCurrentTrack({
             ...track,
-            isPlaying: false,
+            isPlaying: true,
             source: "wave",
-            currentTime: 0,
+            currentTime: wavesurfer.getCurrentTime() ?? 0,
             duration: decodedDuration,
             seekTime: undefined,
             seekId: undefined,
           } as any);
+
+          handleIncreaseView();
+        } catch (error) {
+          console.log("Wave autoplay failed:", error);
         }
       }),
-
       wavesurfer.on("timeupdate", (currentTime) => {
         setTime(formatTime(currentTime));
 

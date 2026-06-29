@@ -1,0 +1,264 @@
+ISSUE: WaveTrack play nhưng AppFooter hiển thị sai trạng thái
+
+Dự án: SoundClone / ReactSouldCloud
+
+Khu vực liên quan:
+- src/components/track/wave.track.tsx
+- src/components/footer/app.footer.tsx
+- src/app/track/[slug]/page.tsx
+- src/utils/navigation.ts
+
+Mô tả lỗi
+----------
+Khi vào trang chi tiết track, WaveTrack đã tự phát nhạc và nút trên WaveTrack hiển thị trạng thái đang play.
+Tuy nhiên AppFooter bên dưới lại hiển thị icon Play, giống như đang pause.
+
+Ngoài ra console có lỗi:
+
+AbortError: The play() request was interrupted by a new load request.
+
+Dấu hiệu nhận biết
+------------------
+1. Trên WaveTrack:
+   - Audio đang phát.
+   - Nút chính hiển thị Pause.
+
+2. Trên AppFooter:
+   - Icon footer vẫn là Play thay vì Pause.
+   - Thanh thời gian có thể đứng ở 0:00 hoặc bị lệch.
+
+3. Console:
+   - Có AbortError do gọi wavesurfer.play() khi audio source vẫn đang load hoặc bị load lại.
+
+Nguyên nhân chính
+-----------------
+Trong wave.track.tsx có nhiều useEffect cập nhật currentTrack cùng lúc.
+
+Effect autoplay gọi:
+
+setCurrentTrack({
+  ...track,
+  isPlaying: true,
+  source: "wave",
+});
+
+wavesurfer.play();
+
+Nhưng effect reset track hoặc event decode lại gọi:
+
+setCurrentTrack({
+  ...track,
+  isPlaying: false,
+  source: "wave",
+});
+
+Kết quả:
+- WaveSurfer thật sự đang phát.
+- Nhưng global currentTrack trong TrackContext bị set lại isPlaying=false.
+- AppFooter đọc currentTrack.isPlaying=false nên hiển thị icon Play.
+
+Nguyên nhân phụ
+---------------
+Autoplay được gọi quá sớm bằng setTimeout, ví dụ:
+
+setTimeout(playTrack, 500);
+
+Cách này không chắc chắn vì WaveSurfer có thể chưa decode/load xong audio.
+Khi play() bị gọi trong lúc audio đang load source mới, browser báo:
+
+AbortError: The play() request was interrupted by a new load request.
+
+Cách sửa đúng
+-------------
+1. Không autoplay bằng setTimeout.
+2. Chỉ autoplay sau khi WaveSurfer decode/load xong audio.
+3. Cho event play/pause của WaveSurfer là nguồn đồng bộ chính với AppFooter.
+4. Mỗi khi WaveSurfer play/pause/timeupdate thì cập nhật currentTrack vào TrackContext.
+5. AppFooter chỉ đọc currentTrack để hiển thị trạng thái, không tự đoán trạng thái của WaveTrack.
+
+Các đoạn cần sửa
+----------------
+1. Xóa useEffect autoplay cũ trong wave.track.tsx:
+
+useEffect(() => {
+  if (!wavesurfer) return;
+  if (!track) return;
+  if (!autoPlay) return;
+
+  const playTrack = () => {
+    setCurrentTrack({
+      ...track,
+      isPlaying: true,
+      source: "wave",
+    });
+
+    wavesurfer.play();
+  };
+
+  const timer = setTimeout(playTrack, 500);
+
+  return () => clearTimeout(timer);
+}, [wavesurfer, autoPlay, track]);
+
+Lý do xóa:
+- setTimeout không đảm bảo audio đã load xong.
+- Dễ gây AbortError.
+- Dễ bị effect reset track ghi đè isPlaying=false.
+
+2. Chuyển autoplay vào event decode của WaveSurfer:
+
+wavesurfer.on("decode", async (decodedDuration) => {
+  setDuration(formatTime(decodedDuration));
+
+  if (!track) return;
+
+  setCurrentTrack({
+    ...track,
+    isPlaying: false,
+    source: "wave",
+    currentTime: 0,
+    duration: decodedDuration,
+    seekTime: undefined,
+    seekId: undefined,
+  });
+
+  if (!autoPlay) return;
+
+  try {
+    await wavesurfer.play();
+
+    setCurrentTrack({
+      ...track,
+      isPlaying: true,
+      source: "wave",
+      currentTime: wavesurfer.getCurrentTime() ?? 0,
+      duration: decodedDuration,
+      seekTime: undefined,
+      seekId: undefined,
+    });
+
+    handleIncreaseView();
+  } catch (error) {
+    console.log("Wave autoplay failed:", error);
+  }
+});
+
+3. Sửa event play/pause để đồng bộ AppFooter:
+
+wavesurfer.on("play", () => {
+  setIsPlaying(true);
+
+  setCurrentTrack({
+    ...track,
+    isPlaying: true,
+    source: "wave",
+    currentTime: wavesurfer.getCurrentTime() ?? 0,
+    duration: wavesurfer.getDuration() ?? 0,
+    seekTime: undefined,
+    seekId: undefined,
+  });
+});
+
+wavesurfer.on("pause", () => {
+  setIsPlaying(false);
+
+  setCurrentTrack({
+    ...track,
+    isPlaying: false,
+    source: "wave",
+    currentTime: wavesurfer.getCurrentTime() ?? 0,
+    duration: wavesurfer.getDuration() ?? 0,
+    seekTime: undefined,
+    seekId: undefined,
+  });
+});
+
+4. Trong AppFooter, khi đang ở trang /track, không cho AudioPlayer footer phát song song.
+
+Logic đúng:
+
+const isWaveControlled =
+  isTrackDetailPage &&
+  (footerTrack?.source === "wave" ||
+    footerTrack?.source === "footer-control");
+
+Khi isWaveControlled hoặc isTrackDetailPage:
+- pause audio HTML5 của footer
+- AppFooter chỉ làm remote control cho WaveTrack
+- Không để AudioPlayer phát thêm một audio thứ hai
+
+5. Khi click play/pause ở AppFooter trên trang track detail:
+
+setCurrentTrack({
+  ...currentTrack,
+  isPlaying: !currentTrack.isPlaying,
+  source: "footer-control",
+});
+
+Sau đó WaveTrack nhận currentTrack.source === "footer-control" và gọi:
+- wavesurfer.play()
+- hoặc wavesurfer.pause()
+
+Kết quả mong muốn
+-----------------
+Sau khi sửa:
+
+1. Vào trang track detail:
+   - WaveTrack autoplay sau khi decode xong.
+   - AppFooter hiển thị đúng icon Pause.
+   - Không còn bị WaveTrack play nhưng AppFooter hiện Play.
+
+2. Bấm pause trên WaveTrack:
+   - WaveTrack pause.
+   - AppFooter đổi sang icon Play.
+
+3. Bấm play trên AppFooter:
+   - WaveTrack play.
+   - AppFooter đổi sang icon Pause.
+
+4. Không còn dual audio:
+   - Trang detail chỉ WaveSurfer phát.
+   - AppFooter chỉ điều khiển WaveSurfer.
+
+5. Giảm hoặc hết lỗi:
+   - AbortError: The play() request was interrupted by a new load request.
+
+Ghi chú về autoplay
+-------------------
+Nếu muốn vào detail là tự play luôn, trong src/app/track/[slug]/page.tsx truyền:
+
+<WaveTrack
+  track={{
+    ...res.data,
+    trackUrl: audio || res.data.trackUrl,
+  }}
+  comments={resComments?.data ?? []}
+  autoPlay
+/>
+
+Nếu chỉ muốn autoplay khi URL có param autoplay=1 thì dùng:
+
+const shouldAutoPlay = searchParams?.autoplay === "1";
+
+<WaveTrack
+  track={{
+    ...res.data,
+    trackUrl: audio || res.data.trackUrl,
+  }}
+  comments={resComments?.data ?? []}
+  autoPlay={shouldAutoPlay}
+/>
+
+Khi đó nơi tạo link phải gọi:
+
+getTrackHref(track, true)
+
+để URL có dạng:
+
+/track/slug.html?audio=...&autoplay=1
+
+Tóm tắt ngắn
+------------
+Bug không phải do AppFooter render sai.
+Bug là do WaveTrack vừa play vừa bị một effect khác set currentTrack.isPlaying=false.
+Fix bằng cách bỏ autoplay bằng setTimeout, chuyển autoplay vào event decode, và để event play/pause của WaveSurfer đồng bộ lại TrackContext cho AppFooter.

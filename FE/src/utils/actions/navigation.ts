@@ -49,23 +49,37 @@ export const getSafeTrackId = (track?: any) => {
 export const getAudioUrl = (trackUrl?: string | null) => {
   if (!trackUrl) return "";
 
-  if (trackUrl.startsWith("http")) return trackUrl;
+  const cleanUrl = String(trackUrl).trim();
 
-  if (trackUrl.startsWith("/uploads/audio")) {
-    return `${BACKEND_URL}${trackUrl}`;
+  if (cleanUrl.startsWith("http://") || cleanUrl.startsWith("https://")) {
+    return cleanUrl;
   }
 
-  if (trackUrl.startsWith("/")) {
-    return `${BACKEND_URL}${trackUrl}`;
+  if (cleanUrl.startsWith("/uploads/audio")) {
+    return `${BACKEND_URL}${cleanUrl}`;
   }
 
-  return `${BACKEND_URL}/uploads/audio/${trackUrl}`;
+  if (cleanUrl.startsWith("/")) {
+    return `${BACKEND_URL}${cleanUrl}`;
+  }
+
+  return `${BACKEND_URL}/uploads/audio/${cleanUrl}`;
 };
 
 export const getTrackHref = (track?: any, autoplay = false) => {
-  const trackId = getSafeTrackId(track);
+  const trackId =
+    track?.id ||
+    track?.trackId ||
+    track?.track_id ||
+    track?.track?.id ||
+    track?.track?.trackId ||
+    track?._id ||
+    track?.track?._id ||
+    "";
 
-  if (!trackId) return "#";
+  const cleanTrackId = String(trackId || "").trim();
+
+  if (!cleanTrackId) return "#";
 
   const title = track?.title || track?.track?.title || "track";
 
@@ -91,17 +105,23 @@ export const getTrackHref = (track?: any, autoplay = false) => {
     .replace(/^\/+/, "")
     .replace(/\/+$/, "");
 
+  const shortId =
+    cleanTrackId.length > 6 ? cleanTrackId.slice(0, 6) : cleanTrackId;
+
   const slug = cleanSavedSlug
     ? cleanSavedSlug
-    : `${convertSlugUrl(title)}-${trackId}`;
+    : `${convertSlugUrl(title)}-${shortId}`;
 
-  const href = `/track/${slug}.html?audio=${encodeURIComponent(
-    getAudioUrl(audio)
-  )}`;
+  const audioUrl = getAudioUrl(audio);
 
-  return autoplay ? `${href}&autoplay=1` : href;
+  let href = `/track/${slug}.html?audio=${encodeURIComponent(audioUrl)}`;
+
+  if (autoplay) {
+    href += "&autoplay=1";
+  }
+
+  return href;
 };
-
 export const getUserHref = (user?: any) => {
   const userId = getSafeUserId(user);
 

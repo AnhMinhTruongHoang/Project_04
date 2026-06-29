@@ -99,10 +99,15 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   }
 }
 
-const DetailTrackPage = async ({ params }: Props) => {
+const DetailTrackPage = async ({ params, searchParams }: Props) => {
   const trackKey = getTrackKeyFromSlug(params?.slug);
 
   if (!trackKey) notFound();
+
+  const audio =
+    typeof searchParams?.audio === "string" ? searchParams.audio : "";
+
+  const shouldAutoPlay = searchParams?.autoplay === "1";
 
   const res = await sendRequest<IBackendRes<ITrackTop>>({
     url: `${BACKEND_URL}/api/v1/tracks/${trackKey}`,
@@ -145,7 +150,10 @@ const DetailTrackPage = async ({ params }: Props) => {
         }}
       >
         <WaveTrack
-          track={res.data}
+          track={{
+            ...res.data,
+            trackUrl: audio || res.data.trackUrl,
+          }}
           comments={resComments?.data ?? []}
           autoPlay
         />

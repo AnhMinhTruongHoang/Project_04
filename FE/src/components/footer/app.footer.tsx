@@ -17,10 +17,10 @@ import VolumeUpRoundedIcon from "@mui/icons-material/VolumeUpRounded";
 import VolumeOffRoundedIcon from "@mui/icons-material/VolumeOffRounded";
 import FooterQueuePopover from "./footer.queue.popover";
 import { useSession } from "next-auth/react";
-import { convertSlugUrl, sendRequest } from "@/utils/api";
 import { saveListeningHistory } from "@/utils/actions/history";
-import { getUserHref } from "@/utils/actions/navigation";
+import { getTrackHref, getUserHref } from "@/utils/actions/navigation";
 import Link from "next/link";
+import { sendRequest } from "@/utils/api";
 
 const formatTime = (seconds = 0) => {
   const minutes = Math.floor(seconds / 60);
@@ -100,18 +100,6 @@ const AppFooter = () => {
     const item = track as any;
 
     return Boolean((item._id || item.id) && item.title && item.trackUrl);
-  };
-
-  const getTrackHref = (track: ITrackTop, autoplay = false) => {
-    const trackId = getTrackId(track);
-    const trackSlug =
-      (track as any).slug || `${convertSlugUrl(track.title)}-${trackId}`;
-
-    const href = `/track/${trackSlug}.html?audio=${encodeURIComponent(
-      getAudioUrl(track.trackUrl)
-    )}`;
-
-    return autoplay ? `${href}&autoplay=1` : href;
   };
 
   const loadQueueTracks = async (): Promise<ITrackTop[]> => {
@@ -385,7 +373,7 @@ const AppFooter = () => {
 
   ///
 
-  const footerTrackHref = currentTrack ? getTrackHref(currentTrack) : "#";
+  const footerTrackHref = currentTrack ? getTrackHref(currentTrack, true) : "#";
 
   const footerArtist = (currentTrack as any)?.uploader ||
     (currentTrack as any)?.user ||

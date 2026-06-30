@@ -1,7 +1,6 @@
 {
-  "name": "nextjs-mui-ts-template-by-hoidanit",
-  "author": "Hỏi Dân IT với Eric",
-  "description": "https://www.youtube.com/@hoidanit",
+  "name": "nextjs-mui-ts-template",
+  "author": "SoundClone",
   "version": "1.0.0",
   "private": true,
   "scripts": {
@@ -17,6 +16,7 @@
     "@emotion/styled": "11.11.0",
     "@mui/icons-material": "5.14.18",
     "@mui/material": "5.14.18",
+    "@mui/x-data-grid": "^6.18.7",
     "axios": "1.6.1",
     "dayjs": "1.11.10",
     "next": "14.0.2",

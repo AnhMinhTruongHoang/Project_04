@@ -1,98 +1,165 @@
-import WaveTrack from '@/components/track/wave.track';
-import Container from '@mui/material/Container';
-import { sendRequest } from '@/utils/api';
-import { notFound } from 'next/navigation'
-
-import type { Metadata, ResolvingMetadata } from 'next'
+import type { Metadata } from "next";
+import Container from "@mui/material/Container";
+import Box from "@mui/material/Box";
+import WaveTrack from "@/components/track/wave.track";
+import { sendRequest } from "@/utils/api";
+import { notFound } from "next/navigation";
 
 type Props = {
-    params: { slug: string }
-    searchParams: { [key: string]: string | string[] | undefined }
-}
+  params: {
+    slug: string;
+  };
+  searchParams?: {
+    [key: string]: string | string[] | undefined;
+  };
+};
 
-export async function generateMetadata(
-    { params, searchParams }: Props,
-    parent: ResolvingMetadata
-): Promise<Metadata> {
+const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "";
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
+const DEFAULT_OG_IMAGE = `${SITE_URL}/images/logo/Sc.png`;
 
-    const temp = params?.slug?.split('.html') ?? [];
-    const temp1 = (temp[0]?.split('-') ?? []) as string[];
-    const id = temp1[temp1.length - 1];
+// Giữ nguyên slug, không tách lấy id cuối nữa
+// VD: lofi-midnight-rain-1b0e0f.html => lofi-midnight-rain-1b0e0f
+const getTrackKeyFromSlug = (slug?: string) => {
+  if (!slug) return "";
 
-    const res = await sendRequest<IBackendRes<ITrackTop>>({
-        url: `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/v1/tracks/${id}`,
-        method: "GET"
-    })
+  return decodeURIComponent(slug).replace(".html", "");
+};
+
+const getTrackId = (track?: ITrackTop) => {
+  if (!track) return "";
+
+  return (track as any)._id || (track as any).id || "";
+};
+
+const getOgImage = (imgUrl?: string) => {
+  if (!imgUrl) return DEFAULT_OG_IMAGE;
+
+  if (imgUrl.startsWith("http")) return imgUrl;
+
+  if (imgUrl.startsWith("/uploads/images")) {
+    return `${BACKEND_URL}${imgUrl}`;
+  }
+
+  if (imgUrl.startsWith("/")) {
+    return `${SITE_URL}${imgUrl}`;
+  }
+
+  return `${BACKEND_URL}/uploads/images/${imgUrl}`;
+};
+
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const trackKey = getTrackKeyFromSlug(params?.slug);
+
+  if (!trackKey) {
     return {
-        title: res.data?.title,
-        description: res.data?.description,
+      title: "Track not found",
+      description: "This track could not be found.",
+      openGraph: {
+        title: "Track not found",
+        description: "This track could not be found.",
+        type: "website",
+        images: [DEFAULT_OG_IMAGE],
+      },
+    };
+  }
 
-        openGraph: {
-            title: 'Hỏi Dân IT',
-            description: 'Update Beyond Your Coding Skills',
-            type: 'website',
-            images: [`https://raw.githubusercontent.com/hoidanit/images-hosting/master/eric.png`],
-        },
-
-    }
-}
-
-export async function generateStaticParams() {
-    return [
-        { slug: "nu-hon-bisou-6507bf9cf423204f73c438cc.html" },
-        { slug: "le-luu-ly-6507bf9cf423204f73c438cf.html" },
-        { slug: "sau-con-mua-6507bf9cf423204f73c438d0.html" },
-    ]
-}
-
-
-const DetailTrackPage = async (props: any) => {
-    const { params } = props; //regx
-
-    const temp = params?.slug?.split('.html') ?? [];
-    const temp1 = (temp[0]?.split('-') ?? []) as string[];
-    const id = temp1[temp1.length - 1];
-
-
+  try {
     const res = await sendRequest<IBackendRes<ITrackTop>>({
-        url: `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/v1/tracks/${id}`,
-        method: "GET",
-        nextOption: {
-            // cache: "no-store" 
-            next: { tags: ['track-by-id'] }
-        }
-    })
+      url: `${BACKEND_URL}/api/v1/tracks/${trackKey}`,
+      method: "GET",
+    });
 
-    const res1 = await sendRequest<IBackendRes<IModelPaginate<ITrackComment>>>({
-        url: `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/v1/tracks/comments`,
-        method: "POST",
-        queryParams: {
-            current: 1,
-            pageSize: 100,
-            trackId: id,
-            sort: "-createdAt"
-        },
-        nextOption: {
-            // cache: "no-store" 
-            next: { tags: ['track-comment'] }
-        }
-    })
-    // await new Promise(resolve => setTimeout(resolve, 5000))
+    const track = res?.data;
 
-    if (!res?.data)
+    return {
+      title: track?.title || "Track detail",
+      description: track?.description || "Listen to this track on Sound Clone.",
+      openGraph: {
+        title: track?.title || "Sound Clone",
+        description:
+          track?.description || "Listen to this track on Sound Clone.",
+        type: "website",
+        images: [getOgImage(track?.imgUrl)],
+      },
+    };
+  } catch (error) {
+    console.log("GENERATE TRACK METADATA ERROR:", error);
 
-        notFound()
-
-    return (
-        <Container>
-            <div>
-                <WaveTrack
-                    track={res?.data ?? null}
-                    comments={res1?.data?.result ?? []}
-                />
-            </div>
-        </Container>
-    )
+    return {
+      title: "Track detail",
+      description: "Listen to this track on Sound Clone.",
+      openGraph: {
+        title: "Sound Clone",
+        description: "Listen to this track on Sound Clone.",
+        type: "website",
+        images: [DEFAULT_OG_IMAGE],
+      },
+    };
+  }
 }
+
+const DetailTrackPage = async ({ params, searchParams }: Props) => {
+  const trackKey = getTrackKeyFromSlug(params?.slug);
+
+  if (!trackKey) notFound();
+
+  const audio =
+    typeof searchParams?.audio === "string" ? searchParams.audio : "";
+
+  const shouldAutoPlay = searchParams?.autoplay === "1";
+
+  const res = await sendRequest<IBackendRes<ITrackTop>>({
+    url: `${BACKEND_URL}/api/v1/tracks/${trackKey}`,
+    method: "GET",
+    nextOption: {
+      next: {
+        tags: ["track-by-id"],
+      },
+    },
+  });
+
+  if (!res?.data) notFound();
+
+  const trackId = getTrackId(res.data);
+
+  const resComments = await sendRequest<IBackendRes<ITrackComment[]>>({
+    url: `${BACKEND_URL}/api/v1/tracks/${trackId}/comments`,
+    method: "GET",
+    nextOption: {
+      next: {
+        tags: ["track-comment"],
+      },
+    },
+  });
+
+  return (
+    <Box
+      sx={{
+        minHeight: "100vh",
+        backgroundColor: "#181A1B",
+        color: "#ffffff",
+        pb: 10,
+      }}
+    >
+      <Container
+        maxWidth="lg"
+        sx={{
+          pt: 3,
+          pb: 6,
+        }}
+      >
+        <WaveTrack
+          track={{
+            ...res.data,
+            trackUrl: audio || res.data.trackUrl,
+          }}
+          comments={resComments?.data ?? []}
+          autoPlay
+        />
+      </Container>
+    </Box>
+  );
+};
 
 export default DetailTrackPage;

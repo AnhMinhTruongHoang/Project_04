@@ -1,0 +1,23 @@
+html,
+body {
+  margin: 0;
+  padding: 0;
+  min-height: 100%;
+  background-color: #181a1b !important;
+  color: #ffffff;
+}
+
+body {
+  overflow-x: hidden;
+}
+
+main,
+#__next {
+  background-color: #181a1b !important;
+  min-height: 100vh;
+}
+
+.MuiBox-root,
+.MuiContainer-root {
+  background-color: transparent;
+}

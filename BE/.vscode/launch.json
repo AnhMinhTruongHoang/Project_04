@@ -1,0 +1,24 @@
+{
+  "configurations": [
+    {
+      "type": "java",
+      "name": "Spring Boot-DemoSession2WebApiC2310LApplication<DemoSession2_WebAPI_C2310L>",
+      "request": "launch",
+      "cwd": "${workspaceFolder}",
+      "mainClass": "com.example.demo.DemoSession2WebApiC2310LApplication",
+      "projectName": "DemoSession2_WebAPI_C2310L",
+      "args": "",
+      "envFile": "${workspaceFolder}/.env"
+    },
+    {
+      "type": "java",
+      "name": "Spring Boot-BEApplication<DemoSession2_WebAPI_C2310L>",
+      "request": "launch",
+      "cwd": "${workspaceFolder}",
+      "mainClass": "com.example.demo.BEApplication",
+      "projectName": "DemoSession2_WebAPI_C2310L",
+      "args": "",
+      "envFile": "${workspaceFolder}/.env"
+    }
+  ]
+}

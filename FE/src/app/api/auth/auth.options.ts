@@ -1,140 +1,241 @@
 import GithubProvider from "next-auth/providers/github";
 import GoogleProvider from "next-auth/providers/google";
-import { AuthOptions } from 'next-auth';
+import { AuthOptions } from "next-auth";
 import { JWT } from "next-auth/jwt";
 import CredentialsProvider from "next-auth/providers/credentials";
 import dayjs from "dayjs";
 import { sendRequest } from "@/utils/api";
 
 async function refreshAccessToken(token: JWT) {
+  const res = await sendRequest<IBackendRes<JWT>>({
+    url: `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/v1/auth/refresh`,
+    method: "POST",
+    body: { refresh_token: token?.refresh_token },
+  });
 
-    const res = await sendRequest<IBackendRes<JWT>>({
-        url: `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/v1/auth/refresh`,
-        method: "POST",
-        body: { refresh_token: token?.refresh_token }
-    })
-
-    if (res.data) {
-        return {
-            ...token,
-            access_token: res.data?.access_token ?? "",
-            refresh_token: res.data?.refresh_token ?? "",
-            access_expire: dayjs(new Date()).add(
-                +(process.env.TOKEN_EXPIRE_NUMBER as string), (process.env.TOKEN_EXPIRE_UNIT as any)
-            ).unix(),
-            error: ""
-        }
-    } else {
-        //failed to refresh token => do nothing
-        return {
-            ...token,
-            error: "RefreshAccessTokenError", // This is used in the front-end, and if present, we can force a re-login, or similar
-        }
-    }
-
+  if (res.data) {
+    return {
+      ...token,
+      access_token: res.data?.access_token ?? "",
+      refresh_token: res.data?.refresh_token ?? "",
+      access_expire: dayjs(new Date())
+        .add(
+          +(process.env.TOKEN_EXPIRE_NUMBER as string),
+          process.env.TOKEN_EXPIRE_UNIT as any
+        )
+        .unix(),
+      error: "",
+    };
+  } else {
+    //failed to refresh token => do nothing
+    return {
+      ...token,
+      error: "RefreshAccessTokenError", // This is used in the front-end, and if present, we can force a re-login, or similar
+    };
+  }
 }
 
+const getAccessExpire = () => {
+  return dayjs(new Date())
+    .add(
+      +(process.env.TOKEN_EXPIRE_NUMBER || 1),
+      (process.env.TOKEN_EXPIRE_UNIT || "days") as any
+    )
+    .unix();
+};
 
 export const authOptions: AuthOptions = {
-    secret: process.env.NEXTAUTH_SECRET,
-    // Configure one or more authentication providers
-    providers: [
-        CredentialsProvider({
-            // The name to display on the sign in form (e.g. "Sign in with...")
-            name: "Hỏi Dân IT",
-            // `credentials` is used to generate a form on the sign in page.
-            // You can specify which fields should be submitted, by adding keys to the `credentials` object.
-            // e.g. domain, username, password, 2FA token, etc.
-            // You can pass any HTML attribute to the <input> tag through the object.
-            credentials: {
-                username: { label: "Tên đăng nhập", type: "text", },
-                password: { label: "Mật khẩu", type: "password" }
-            },
-            async authorize(credentials, req) {
-                // Add logic here to look up the user from the credentials supplied
-                const res = await sendRequest<IBackendRes<JWT>>({
-                    url: `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/v1/auth/login`,
-                    method: "POST",
-                    body: {
-                        username: credentials?.username,
-                        password: credentials?.password
-                    },
-                })
+  secret: process.env.NEXTAUTH_SECRET,
+  // Configure one or more authentication providers
+  providers: [
+    CredentialsProvider({
+      name: "username",
 
-                if (res && res.data) {
-                    // Any object returned will be saved in `user` property of the JWT
-                    return res.data as any;
-                } else {
-                    // If you return null then an error will be displayed advising the user to check their details.
-                    // return null
-                    throw new Error(res?.message as string)
+      credentials: {
+        username: { label: "username", type: "text" },
+        password: { label: "password", type: "password" },
+      },
 
-                    // You can also Reject this callback with an Error thus the user will be sent to the error page with the error message as a query parameter
-                }
-            }
-        }),
-        GithubProvider({
-            clientId: process.env.GITHUB_ID!,
-            clientSecret: process.env.GITHUB_SECRET!,
-        }),
-        GoogleProvider({
-            clientId: process.env.GOOGLE_ID!,
-            clientSecret: process.env.GOOGLE_SECRET!,
-        }),
-    ],
-    callbacks: {
-        async jwt({ token, user, account, profile, trigger }) {
-            if (trigger === "signIn" && account?.provider !== "credentials") {
-                const res = await sendRequest<IBackendRes<JWT>>({
-                    url: `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/v1/auth/social-media`,
-                    method: "POST",
-                    body: {
-                        type: account?.provider?.toLocaleUpperCase(),
-                        username: user.email
-                    },
-                })
-                if (res.data) {
-                    token.access_token = res.data?.access_token;
-                    token.refresh_token = res.data.refresh_token;
-                    token.user = res.data.user;
-                    token.access_expire = dayjs(new Date()).add(
-                        +(process.env.TOKEN_EXPIRE_NUMBER as string), (process.env.TOKEN_EXPIRE_UNIT as any)
-                    ).unix();
-                }
-            }
+      async authorize(credentials, req) {
+        const res = await sendRequest<IBackendRes<JWT>>({
+          url: `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/v1/auth/login`,
+          method: "POST",
+          body: {
+            email: credentials?.username,
+            password: credentials?.password,
+          },
+        });
 
-            if (trigger === "signIn" && account?.provider === "credentials") {
-                //@ts-ignore
-                token.access_token = user.access_token;
-                //@ts-ignore
-                token.refresh_token = user.refresh_token;
-                //@ts-ignore
-                token.user = user.user;
-                //@ts-ignore
-                token.access_expire = dayjs(new Date()).add(
-                    +(process.env.TOKEN_EXPIRE_NUMBER as string), (process.env.TOKEN_EXPIRE_UNIT as any)
+        console.log("LOGIN RESPONSE:", res);
 
-                ).unix();
-
-            }
-
-            const isTimeAfter = dayjs(dayjs(new Date())).isAfter(dayjs.unix((token?.access_expire as number ?? 0)));
-
-            if (isTimeAfter) {
-                return refreshAccessToken(token)
-            }
-
-            return token;
-        },
-        session({ session, token, user }) {
-            if (token) {
-                session.access_token = token.access_token;
-                session.refresh_token = token.refresh_token;
-                session.user = token.user;
-                session.access_expire = token.access_expire;
-                session.error = token.error
-            }
-            return session;
+        if (res && res.data) {
+          return res.data as any;
         }
-    }
-}
+
+        throw new Error(res?.message || "Login failed");
+      },
+    }),
+    GithubProvider({
+      clientId: process.env.GITHUB_ID!,
+      clientSecret: process.env.GITHUB_SECRET!,
+    }),
+    GoogleProvider({
+      clientId: process.env.GOOGLE_CLIENT_ID!,
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
+      authorization: {
+        params: {
+          scope: "openid email profile",
+          prompt: "select_account",
+        },
+      },
+      profile(profile: any) {
+        return {
+          id: profile.sub,
+          name: profile.name,
+          email: profile.email,
+          image: profile.picture,
+        };
+      },
+    }),
+  ],
+
+  callbacks: {
+    async jwt({ token, user, account, trigger, profile }) {
+      if (trigger === "signIn" && account?.provider === "credentials") {
+        const credentialUser = user as any;
+        const backendUser = credentialUser?.user || credentialUser || {};
+
+        token.access_token =
+          credentialUser?.access_token || credentialUser?.accessToken;
+
+        token.refresh_token =
+          credentialUser?.refresh_token || credentialUser?.refreshToken;
+
+        token.access_expire = getAccessExpire();
+        token.error = "";
+
+        token.user = {
+          ...backendUser,
+          _id: backendUser?._id || backendUser?.id,
+          id: backendUser?.id || backendUser?._id,
+          email: backendUser?.email,
+          name: backendUser?.name || backendUser?.email,
+          avatarUrl:
+            backendUser?.avatarUrl || backendUser?.avatar || backendUser?.image,
+        };
+
+        return token;
+      }
+      if (account?.provider && account.provider !== "credentials" && user) {
+        const socialUser = user as any;
+        const socialProfile = profile as any;
+
+        const email =
+          socialUser?.email || socialProfile?.email || token?.email || "";
+
+        const name = socialUser?.name || socialProfile?.name || email;
+
+        const avatarUrl = socialUser?.image || socialProfile?.picture || "";
+
+        console.log("SOCIAL LOGIN PAYLOAD:", {
+          provider: account.provider,
+          email,
+          username: email,
+          name,
+          avatarUrl,
+        });
+
+        if (!email) {
+          throw new Error("Google account does not return email");
+        }
+
+        const res = await sendRequest<IBackendRes<any>>({
+          url: `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/v1/auth/social-media`,
+          method: "POST",
+          body: {
+            type: account.provider.toUpperCase(),
+            email,
+            username: email,
+            name,
+            avatarUrl,
+          },
+        });
+
+        console.log("SOCIAL LOGIN RESPONSE:", res);
+
+        if (!res?.data) {
+          throw new Error(res?.message || "Social login failed");
+        }
+
+        const backendData = res.data as any;
+        const backendUser = backendData?.user || backendData || {};
+
+        token.access_token =
+          backendData?.access_token ||
+          backendData?.accessToken ||
+          backendUser?.access_token ||
+          backendUser?.accessToken;
+
+        token.refresh_token =
+          backendData?.refresh_token ||
+          backendData?.refreshToken ||
+          backendUser?.refresh_token ||
+          backendUser?.refreshToken;
+
+        token.access_expire = getAccessExpire();
+        token.error = "";
+
+        token.user = {
+          ...backendUser,
+          _id: backendUser?._id || backendUser?.id,
+          id: backendUser?.id || backendUser?._id,
+          email: backendUser?.email || email,
+          name: backendUser?.name || name || email,
+          avatarUrl:
+            backendUser?.avatarUrl ||
+            backendUser?.avatar ||
+            backendUser?.image ||
+            avatarUrl,
+        };
+
+        return token;
+      }
+
+      if (token.access_expire && dayjs().unix() < Number(token.access_expire)) {
+        return token;
+      }
+
+      if (token.refresh_token) {
+        return await refreshAccessToken(token);
+      }
+
+      return token;
+    },
+
+    async session({ session, token }) {
+      const tokenUser = (token.user || {}) as any;
+      const defaultUser = (session.user || {}) as any;
+
+      (session as any).access_token = token.access_token as string;
+      (session as any).refresh_token = token.refresh_token as string;
+      (session as any).error = token.error;
+
+      session.user = {
+        ...defaultUser,
+        ...tokenUser,
+        _id: tokenUser?._id || tokenUser?.id,
+        id: tokenUser?.id || tokenUser?._id,
+        email: tokenUser?.email || defaultUser?.email,
+        name: tokenUser?.name || defaultUser?.name || tokenUser?.email,
+        avatarUrl:
+          tokenUser?.avatarUrl ||
+          tokenUser?.avatar ||
+          tokenUser?.image ||
+          defaultUser?.avatarUrl ||
+          defaultUser?.image,
+      } as any;
+
+      return session;
+    },
+  },
+};

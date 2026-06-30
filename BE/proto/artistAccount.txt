@@ -1,0 +1,118 @@
+Unknown Brain
+email: unknownbrain@gmail.com
+username: unknownbrain@gmail.com
+password: 123456
+role: USER
+type: ARTIST
+
+DJSM
+email: djsm@gmail.com
+username: djsm@gmail.com
+password: 123456
+role: USER
+type: ARTIST
+
+Nurko
+email: nurko@gmail.com
+username: nurko@gmail.com
+password: 123456
+role: USER
+type: ARTIST
+
+Mblue
+email: mblue@gmail.com
+username: mblue@gmail.com
+password: 123456
+role: USER
+type: ARTIST
+
+Meyo
+email: meyo@gmail.com
+username: meyo@gmail.com
+password: 123456
+role: USER
+type: ARTIST
+
+Crystal Skies
+email: crystalskies@gmail.com
+username: crystalskies@gmail.com
+password: 123456
+role: USER
+type: ARTIST
+
+Nightcore - Try
+email: nightcoretry@gmail.com
+username: nightcoretry@gmail.com
+password: 123456
+role: USER
+type: ARTIST
+
+Dirty Palm
+email: dirtypalm@gmail.com
+username: dirtypalm@gmail.com
+password: 123456
+role: USER
+type: ARTIST
+
+Dexter King
+email: dexterking@gmail.com
+username: dexterking@gmail.com
+password: 123456
+role: USER
+type: ARTIST
+
+Reaktive
+email: reaktive@gmail.com
+username: reaktive@gmail.com
+password: 123456
+role: USER
+type: ARTIST
+
+Madism
+email: madism@gmail.com
+username: madism@gmail.com
+password: 123456
+role: USER
+type: ARTIST
+
+Neovaii
+email: neovaii@gmail.com
+username: neovaii@gmail.com
+password: 123456
+role: USER
+type: ARTIST
+
+ZEXSING
+email: zexsing@gmail.com
+username: zexsing@gmail.com
+password: 123456
+role: USER
+type: ARTIST
+
+BLACKPINK
+email: blackpink@gmail.com
+username: blackpink@gmail.com
+password: 123456
+role: USER
+type: ARTIST
+
+bootleg
+email: bootleg@gmail.com
+username: bootleg@gmail.com
+password: 123456
+role: USER
+type: ARTIST
+
+2AM
+email: 2am@gmail.com
+username: 2am@gmail.com
+password: 123456
+role: USER
+type: ARTIST
+
+Son Tung MTP
+email: sontungmtp@gmail.com
+username: sontungmtp@gmail.com
+password: 123456
+role: USER
+type: ARTIST

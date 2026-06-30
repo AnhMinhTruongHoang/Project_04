@@ -1,5 +1,6 @@
 package com.example.demo.controllers;
 
+import java.security.SecureRandom;
 import java.util.Date;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -12,16 +13,20 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import com.example.demo.dtos.ForgotPasswordDTO;
 import com.example.demo.dtos.LoginDTO;
 import com.example.demo.dtos.LoginResponseDTO;
 import com.example.demo.dtos.RegisterDTO;
+import com.example.demo.dtos.ResetPasswordDTO;
 import com.example.demo.dtos.UserResponseDTO;
+import com.example.demo.dtos.VerifyOtpDTO;
 import com.example.demo.entities.Playlist;
 import com.example.demo.entities.User;
 import com.example.demo.helpers.JwtHelper;
 import com.example.demo.repositories.PlaylistRepository;
 import com.example.demo.repositories.UserRepository;
 import com.example.demo.responses.ApiResponse;
+import com.example.demo.services.EmailService;
 import com.example.demo.services.UserService;
 
 import io.jsonwebtoken.Claims;
@@ -29,6 +34,10 @@ import io.jsonwebtoken.Claims;
 @RestController
 @RequestMapping({ "/api/auth", "/api/v1/auth" })
 public class AuthController {
+
+	private static final SecureRandom SECURE_RANDOM = new SecureRandom();
+	private static final int OTP_EXPIRE_MINUTES = 10;
+	private static final long OTP_EXPIRE_TIME = OTP_EXPIRE_MINUTES * 60L * 1000L;
 
 	@Autowired
 	private UserService userService;
@@ -39,8 +48,42 @@ public class AuthController {
 	@Autowired
 	private PlaylistRepository playlistRepository;
 
+	@Autowired
+	private EmailService emailService;
+
 	private String generateId() {
 		return UUID.randomUUID().toString().replace("-", "").substring(0, 24);
+	}
+
+	private String generateOtp() {
+		return String.valueOf(100000 + SECURE_RANDOM.nextInt(900000));
+	}
+
+	private Date generateOtpExpiredDate() {
+		return new Date(System.currentTimeMillis() + OTP_EXPIRE_TIME);
+	}
+
+	private boolean isOtpExpired(User user) {
+		return user.getCodeExpired() == null || user.getCodeExpired().before(new Date());
+	}
+
+	private boolean isValidOtp(User user, String otp) {
+		return user != null
+				&& otp != null
+				&& user.getCode() != null
+				&& user.getCode().equals(otp.trim())
+				&& !isOtpExpired(user);
+	}
+
+	private void clearOtp(User user) {
+		user.setCode("");
+		user.setCodeExpired(null);
+	}
+
+	private void setNewOtp(User user) {
+		user.setCode(generateOtp());
+		user.setCodeExpired(generateOtpExpiredDate());
+		user.setUpdatedAt(new Date());
 	}
 
 	private String getBearerToken(String authorization) {
@@ -108,6 +151,11 @@ public class AuthController {
 				return new ResponseEntity<>(new ApiResponse<>(400, "Login Failed", null), HttpStatus.BAD_REQUEST);
 			}
 
+			if (!Boolean.TRUE.equals(user.getIsVerify())) {
+				return new ResponseEntity<>(new ApiResponse<>(400, "Account is not verified", null),
+						HttpStatus.BAD_REQUEST);
+			}
+
 			String accessToken = JwtHelper.generateToken(user.getEmail(), user.getRole());
 			String refreshToken = JwtHelper.generateToken(user.getEmail(), user.getRole());
 
@@ -148,19 +196,149 @@ public class AuthController {
 			user.setUsername("");
 			user.setRole("USER");
 			user.setType("SYSTEM");
-			user.setIsVerify(true);
-			user.setCode("");
+			user.setIsVerify(false);
 			user.setRefreshToken("");
 			user.setFollowers(0);
 			user.setFollowing(0);
 			user.setCreatedAt(new Date());
 			user.setUpdatedAt(new Date());
 
+			setNewOtp(user);
+			userService.save(user);
+
+			emailService.sendOtpEmail(
+					user.getEmail(),
+					"Verify your account",
+					user.getCode(),
+					OTP_EXPIRE_MINUTES);
+
+			return new ResponseEntity<>(
+					new ApiResponse<>(201, "User Register Success! Please check your email for OTP.",
+							toUserResponseDTO(user)),
+					HttpStatus.CREATED);
+
+		} catch (Exception e) {
+			e.printStackTrace();
+			return new ResponseEntity<>(new ApiResponse<>(500, e.getMessage(), null), HttpStatus.INTERNAL_SERVER_ERROR);
+		}
+	}
+
+	@PostMapping("verify-register")
+	public ResponseEntity<?> verifyRegister(@RequestBody VerifyOtpDTO dto) {
+		try {
+			User user = userService.findByEmail(dto.getEmail());
+
+			if (user == null) {
+				return new ResponseEntity<>(new ApiResponse<>(404, "User Not Found", null), HttpStatus.NOT_FOUND);
+			}
+
+			if (Boolean.TRUE.equals(user.getIsVerify())) {
+				return new ResponseEntity<>(new ApiResponse<>(200, "Account already verified", toUserResponseDTO(user)),
+						HttpStatus.OK);
+			}
+
+			if (!isValidOtp(user, dto.getOtp())) {
+				return new ResponseEntity<>(new ApiResponse<>(400, "Invalid or expired OTP", null),
+						HttpStatus.BAD_REQUEST);
+			}
+
+			user.setIsVerify(true);
+			clearOtp(user);
+			user.setUpdatedAt(new Date());
+
 			userService.save(user);
 			createDefaultPlaylist(user);
 
-			return new ResponseEntity<>(new ApiResponse<>(201, "User Register Success!", toUserResponseDTO(user)),
-					HttpStatus.CREATED);
+			return new ResponseEntity<>(new ApiResponse<>(200, "Verify account success", toUserResponseDTO(user)),
+					HttpStatus.OK);
+
+		} catch (Exception e) {
+			e.printStackTrace();
+			return new ResponseEntity<>(new ApiResponse<>(500, e.getMessage(), null), HttpStatus.INTERNAL_SERVER_ERROR);
+		}
+	}
+
+	@PostMapping("resend-register-otp")
+	public ResponseEntity<?> resendRegisterOtp(@RequestBody ForgotPasswordDTO dto) {
+		try {
+			User user = userService.findByEmail(dto.getEmail());
+
+			if (user == null) {
+				return new ResponseEntity<>(new ApiResponse<>(404, "User Not Found", null), HttpStatus.NOT_FOUND);
+			}
+
+			if (Boolean.TRUE.equals(user.getIsVerify())) {
+				return new ResponseEntity<>(new ApiResponse<>(400, "Account already verified", null),
+						HttpStatus.BAD_REQUEST);
+			}
+
+			setNewOtp(user);
+			userService.save(user);
+
+			emailService.sendOtpEmail(
+					user.getEmail(),
+					"Verify your account",
+					user.getCode(),
+					OTP_EXPIRE_MINUTES);
+
+			return new ResponseEntity<>(new ApiResponse<>(200, "OTP has been sent to your email", null),
+					HttpStatus.OK);
+
+		} catch (Exception e) {
+			e.printStackTrace();
+			return new ResponseEntity<>(new ApiResponse<>(500, e.getMessage(), null), HttpStatus.INTERNAL_SERVER_ERROR);
+		}
+	}
+
+	@PostMapping("forgot-password")
+	public ResponseEntity<?> forgotPassword(@RequestBody ForgotPasswordDTO dto) {
+		try {
+			User user = userService.findByEmail(dto.getEmail());
+
+			if (user == null) {
+				return new ResponseEntity<>(new ApiResponse<>(404, "User Not Found", null), HttpStatus.NOT_FOUND);
+			}
+
+			setNewOtp(user);
+			userService.save(user);
+
+			emailService.sendOtpEmail(
+					user.getEmail(),
+					"Reset your password",
+					user.getCode(),
+					OTP_EXPIRE_MINUTES);
+
+			return new ResponseEntity<>(new ApiResponse<>(200, "Password reset OTP has been sent to your email", null),
+					HttpStatus.OK);
+
+		} catch (Exception e) {
+			e.printStackTrace();
+			return new ResponseEntity<>(new ApiResponse<>(500, e.getMessage(), null), HttpStatus.INTERNAL_SERVER_ERROR);
+		}
+	}
+
+	@PostMapping("reset-password")
+	public ResponseEntity<?> resetPassword(@RequestBody ResetPasswordDTO dto) {
+		try {
+			User user = userService.findByEmail(dto.getEmail());
+
+			if (user == null) {
+				return new ResponseEntity<>(new ApiResponse<>(404, "User Not Found", null), HttpStatus.NOT_FOUND);
+			}
+
+			if (!isValidOtp(user, dto.getOtp())) {
+				return new ResponseEntity<>(new ApiResponse<>(400, "Invalid or expired OTP", null),
+						HttpStatus.BAD_REQUEST);
+			}
+
+			user.setPassword(BCrypt.hashpw(dto.getNewPassword(), BCrypt.gensalt()));
+			user.setRefreshToken("");
+			clearOtp(user);
+			user.setUpdatedAt(new Date());
+
+			userService.save(user);
+
+			return new ResponseEntity<>(new ApiResponse<>(200, "Reset password success", null), HttpStatus.OK);
 
 		} catch (Exception e) {
 			e.printStackTrace();
@@ -315,6 +493,7 @@ public class AuthController {
 				user.setIsVerify(true);
 				user.setPassword("");
 				user.setCode("");
+				user.setCodeExpired(null);
 				user.setRefreshToken("");
 				user.setAvatarUrl(avatarUrl);
 				user.setFollowers(0);

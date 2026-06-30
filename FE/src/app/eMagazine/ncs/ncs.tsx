@@ -307,7 +307,6 @@ export default function NcsMagazine() {
           </Stack>
         </Container>
       </Box>
-
       {/* META */}
       <ArticleContainer>
         <Box
@@ -343,7 +342,6 @@ export default function NcsMagazine() {
           </Typography>
         </Box>
       </ArticleContainer>
-
       {/* INTRO */}
       <ArticleContainer>
         <Box sx={{ pt: { xs: 5, md: 8 } }}>
@@ -363,7 +361,6 @@ export default function NcsMagazine() {
           </Paragraph>
         </Box>
       </ArticleContainer>
-
       {/* IMAGE 01 */}
       <ArticleContainer>
         <ImageBlock
@@ -373,7 +370,6 @@ export default function NcsMagazine() {
           caption="#CIRCLE_COLORS — the visual language of NCS: simple circles, strong colors, and instant recognition."
         />
       </ArticleContainer>
-
       {/* BODY 01 */}
       <ArticleContainer>
         <Paragraph>
@@ -397,7 +393,6 @@ export default function NcsMagazine() {
           films, and online culture.
         </Paragraph>
       </ArticleContainer>
-
       {/* PLAYLIST SECTION */}
       <Box sx={{ my: { xs: 5, md: 8 } }}>
         <Box
@@ -446,7 +441,6 @@ export default function NcsMagazine() {
           </Container>
         </Box>
       </Box>
-
       {/* BODY 02 */}
       <ArticleContainer>
         <Paragraph>
@@ -462,7 +456,6 @@ export default function NcsMagazine() {
           enough space for footage, voice-over, montage, or gameplay.
         </Paragraph>
       </ArticleContainer>
-
       {/* IMAGE 03 */}
       <ArticleContainer>
         <ImageBlock
@@ -471,9 +464,7 @@ export default function NcsMagazine() {
           height={{ xs: 340, md: 560 }}
           caption="#FOUNDER_VISION — from a copyright problem to a creator-first music ecosystem."
         />
-      </ArticleContainer>
-
-      {/* FOUNDER SECTION */}
+      </ArticleContainer>{" "}
       <ArticleContainer>
         <Paragraph>
           The story of NCS begins with a problem many creators know too well:
@@ -498,7 +489,6 @@ export default function NcsMagazine() {
           livestreaming, games, and short-form video.
         </Paragraph>
       </ArticleContainer>
-
       {/* QUOTE */}
       <ArticleContainer>
         <Box
@@ -537,7 +527,6 @@ export default function NcsMagazine() {
           </Typography>
         </Box>
       </ArticleContainer>
-
       {/* BODY 03 */}
       <ArticleContainer>
         <Paragraph>
@@ -555,7 +544,6 @@ export default function NcsMagazine() {
           atmosphere do the storytelling.
         </Paragraph>
       </ArticleContainer>
-
       {/* DOUBLE IMAGE */}
       <ArticleContainer>
         <Box
@@ -654,7 +642,6 @@ export default function NcsMagazine() {
           can build identity inside the same creator-driven ecosystem.
         </Typography>
       </ArticleContainer>
-
       {/* DIRTY PALM / UNKNOWN BRAIN */}
       <ArticleContainer>
         <Paragraph>
@@ -688,7 +675,6 @@ export default function NcsMagazine() {
           face and the mask, the performer and the project.
         </Paragraph>
       </ArticleContainer>
-
       {/* FINAL */}
       <ArticleContainer>
         <Paragraph>
@@ -705,7 +691,6 @@ export default function NcsMagazine() {
           as a soundtrack system for people building stories online.
         </Paragraph>
       </ArticleContainer>
-
       {/* CREDIT */}
       <ArticleContainer>
         <Box
@@ -740,7 +725,6 @@ export default function NcsMagazine() {
           </Typography>
         </Box>
       </ArticleContainer>
-
       {/* COMMENT MOCK */}
       <ArticleContainer>
         <Box sx={{ py: { xs: 5, md: 7 } }}>

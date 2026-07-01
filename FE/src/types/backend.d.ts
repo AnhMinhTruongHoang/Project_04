@@ -340,4 +340,49 @@ declare global {
     description?: string;
     isDeleted?: boolean;
   }
+
+  /// mail type
+
+  export type RegisterPayload = {
+    name: string;
+    email: string;
+    password: string;
+    age?: number;
+    gender?: string;
+    address?: string;
+    avatarUrl?: string;
+  };
+
+  export type VerifyOtpPayload = {
+    email: string;
+    otp: string;
+  };
+
+  export type ForgotPasswordPayload = {
+    email: string;
+  };
+
+  export type ResetPasswordPayload = {
+    email: string;
+    otp: string;
+    newPassword: string;
+  };
+
+  export type LoginPayload = {
+    email: string;
+    password: string;
+  };
+
+  export type AuthUserResponse = {
+    id?: string;
+    _id?: string;
+    email: string;
+    name: string;
+    role?: string;
+    type?: string;
+    isVerify?: boolean;
+    avatarUrl?: string;
+    access_token?: string;
+    refresh_token?: string;
+  };
 }

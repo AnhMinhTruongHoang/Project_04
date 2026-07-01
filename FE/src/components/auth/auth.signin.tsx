@@ -472,6 +472,21 @@ const AuthSignIn = (props: any) => {
               >
                 Sign up
               </MuiLink>
+              <br />
+              <MuiLink
+                component={NextLink}
+                href="/auth/forgot-password"
+                sx={{
+                  color: "#00FFE0",
+                  fontWeight: 700,
+                  textDecoration: "none",
+                  alignSelf: "flex-end",
+                  fontSize: 14,
+                  "&:hover": { textDecoration: "underline" },
+                }}
+              >
+                Forgot password?
+              </MuiLink>
             </Typography>
           </Box>
         </Card>

@@ -5,23 +5,25 @@ import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.UUID;
-
 import org.mindrot.jbcrypt.BCrypt;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-
+import com.example.demo.dtos.ForgotPasswordDTO;
 import com.example.demo.dtos.LoginDTO;
 import com.example.demo.dtos.LoginResponseDTO;
 import com.example.demo.dtos.RegisterDTO;
+import com.example.demo.dtos.ResetPasswordDTO;
 import com.example.demo.dtos.UserResponseDTO;
+import com.example.demo.dtos.VerifyOtpDTO;
 import com.example.demo.entities.Playlist;
 import com.example.demo.entities.User;
 import com.example.demo.helpers.JwtHelper;
 import com.example.demo.repositories.PlaylistRepository;
 import com.example.demo.repositories.UserRepository;
 import com.example.demo.responses.ApiResponse;
+import com.example.demo.services.EmailService;
 import com.example.demo.services.UserService;
 import io.jsonwebtoken.Claims;
 

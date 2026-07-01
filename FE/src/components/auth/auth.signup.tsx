@@ -188,12 +188,17 @@ const AuthSignUp = () => {
 
       if (res?.statusCode === 201 || res?.statusCode === 200) {
         setSeverity("success");
-        setResMessage(res?.message || "Register success.");
+        setResMessage(
+          res?.message || "Register success. Please check your email for OTP."
+        );
+
         setOpenMessage(true);
 
         setTimeout(() => {
-          router.push("/auth/signin");
-        }, 1000);
+          router.push(
+            `/auth/verify-otp?email=${encodeURIComponent(email.trim())}`
+          );
+        }, 800);
       } else {
         setSeverity("error");
         setResMessage(
@@ -219,7 +224,7 @@ const AuthSignUp = () => {
       <SignUpContainer direction="column" justifyContent="center">
         <Box
           component={NextLink}
-          href="/"
+          href="/auth/signin"
           sx={{
             position: "fixed",
             top: 20,

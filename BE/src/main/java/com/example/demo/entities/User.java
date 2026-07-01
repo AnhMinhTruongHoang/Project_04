@@ -36,6 +36,7 @@ public class User implements java.io.Serializable {
 	private Boolean isVerify;
 	private String type;
 	private String code;
+	private Date codeExpired;
 	private String refreshToken;
 	private String avatarUrl;
 	private Integer followers;
@@ -183,6 +184,15 @@ public class User implements java.io.Serializable {
 
 	public void setCode(String code) {
 		this.code = code;
+	}
+
+	@Column(name = "code_expired")
+	public Date getCodeExpired() {
+		return codeExpired;
+	}
+
+	public void setCodeExpired(Date codeExpired) {
+		this.codeExpired = codeExpired;
 	}
 
 	@Column(name = "refresh_token")

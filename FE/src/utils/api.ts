@@ -3,6 +3,8 @@ import slugify from "slugify";
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "";
 
+const AUTH_URL = `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/v1/auth`;
+
 const buildUrl = (path: string) => {
   if (!path) return "";
 
@@ -217,17 +219,9 @@ export const convertSlugUrl = (str: string) => {
    AUTH APIs
 ========================= */
 
-export const loginApi = (payload: LoginPayload) => {
-  return sendRequest<IBackendRes<any>>({
-    url: buildUrl("/api/v1/auth/login"),
-    method: "POST",
-    body: payload,
-  });
-};
-
-export const registerApi = (payload: RegisterPayload) => {
-  return sendRequest<IBackendRes<any>>({
-    url: buildUrl("/api/v1/auth/register"),
+export const loginAPI = async (payload: LoginPayload) => {
+  return await sendRequest<IBackendRes<AuthUserResponse>>({
+    url: `${AUTH_URL}/login`,
     method: "POST",
     body: payload,
   });
@@ -810,5 +804,55 @@ export const getTracksByCategory = async (categorySlug: string) => {
     queryParams: {
       category: categorySlug,
     },
+  });
+};
+
+/// mail logic
+
+export const registerApi = (payload: RegisterPayload) => {
+  return sendRequest<IBackendRes<any>>({
+    url: buildUrl("/api/v1/auth/register"),
+    method: "POST",
+    body: payload,
+  });
+};
+
+export const registerWithOtpAPI = async (payload: RegisterPayload) => {
+  return await sendRequest<IBackendRes<IUser>>({
+    url: `${AUTH_URL}/register`,
+    method: "POST",
+    body: payload,
+  });
+};
+
+export const verifyRegisterOtpAPI = async (payload: VerifyOtpPayload) => {
+  return await sendRequest<IBackendRes<IUser>>({
+    url: `${AUTH_URL}/verify-otp`,
+    method: "POST",
+    body: payload,
+  });
+};
+
+export const resendRegisterOtpAPI = async (email: string) => {
+  return await sendRequest<IBackendRes<any>>({
+    url: `${AUTH_URL}/resend-otp`,
+    method: "POST",
+    body: { email },
+  });
+};
+
+export const forgotPasswordAPI = async (payload: ForgotPasswordPayload) => {
+  return await sendRequest<IBackendRes<any>>({
+    url: `${AUTH_URL}/forgot-password`,
+    method: "POST",
+    body: payload,
+  });
+};
+
+export const resetPasswordAPI = async (payload: ResetPasswordPayload) => {
+  return await sendRequest<IBackendRes<any>>({
+    url: `${AUTH_URL}/reset-password`,
+    method: "POST",
+    body: payload,
   });
 };

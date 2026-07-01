@@ -23,7 +23,6 @@ import com.example.demo.repositories.PlaylistRepository;
 import com.example.demo.repositories.UserRepository;
 import com.example.demo.responses.ApiResponse;
 import com.example.demo.services.UserService;
-
 import io.jsonwebtoken.Claims;
 
 @RestController
@@ -39,6 +38,9 @@ public class AuthController {
 	@Autowired
 	private PlaylistRepository playlistRepository;
 
+	@Autowired
+	private EmailService emailService;
+
 	private String generateId() {
 		return UUID.randomUUID().toString().replace("-", "").substring(0, 24);
 	}
@@ -49,6 +51,10 @@ public class AuthController {
 		}
 
 		return authorization.replace("Bearer ", "").trim();
+	}
+
+	private String generateOtp() {
+		return String.valueOf((int) (Math.random() * 900000) + 100000);
 	}
 
 	private UserResponseDTO toUserResponseDTO(User user) {
@@ -126,6 +132,7 @@ public class AuthController {
 		}
 	}
 
+	/// register
 	@PostMapping("register")
 	public ResponseEntity<?> register(@RequestBody RegisterDTO dto) {
 		try {
@@ -135,6 +142,8 @@ public class AuthController {
 				return new ResponseEntity<>(new ApiResponse<>(400, "Email already exists", null),
 						HttpStatus.BAD_REQUEST);
 			}
+
+			String otp = generateOtp();
 
 			User user = new User();
 
@@ -148,8 +157,8 @@ public class AuthController {
 			user.setUsername("");
 			user.setRole("USER");
 			user.setType("SYSTEM");
-			user.setIsVerify(true);
-			user.setCode("");
+			user.setIsVerify(false);
+			user.setCode(otp);
 			user.setRefreshToken("");
 			user.setFollowers(0);
 			user.setFollowing(0);
@@ -159,7 +168,15 @@ public class AuthController {
 			userService.save(user);
 			createDefaultPlaylist(user);
 
-			return new ResponseEntity<>(new ApiResponse<>(201, "User Register Success!", toUserResponseDTO(user)),
+			emailService.sendOtpEmail(
+					user.getEmail(),
+					"Verify your SoundClone account",
+					otp,
+					5);
+
+			return new ResponseEntity<>(
+					new ApiResponse<>(201, "Register success. Please check your email for OTP.",
+							toUserResponseDTO(user)),
 					HttpStatus.CREATED);
 
 		} catch (Exception e) {
@@ -167,6 +184,136 @@ public class AuthController {
 			return new ResponseEntity<>(new ApiResponse<>(500, e.getMessage(), null), HttpStatus.INTERNAL_SERVER_ERROR);
 		}
 	}
+
+	/// OTP
+	@PostMapping("verify-otp")
+	public ResponseEntity<?> verifyOtp(@RequestBody VerifyOtpDTO dto) {
+		try {
+			User user = userService.findByEmail(dto.getEmail());
+
+			if (user == null) {
+				return new ResponseEntity<>(new ApiResponse<>(404, "User not found", null), HttpStatus.NOT_FOUND);
+			}
+
+			if (user.getIsVerify() != null && user.getIsVerify()) {
+				return new ResponseEntity<>(new ApiResponse<>(200, "Account already verified", toUserResponseDTO(user)),
+						HttpStatus.OK);
+			}
+
+			if (user.getCode() == null || !user.getCode().equals(dto.getOtp())) {
+				return new ResponseEntity<>(new ApiResponse<>(400, "Invalid OTP", null), HttpStatus.BAD_REQUEST);
+			}
+
+			user.setIsVerify(true);
+			user.setCode("");
+			user.setUpdatedAt(new Date());
+
+			userService.save(user);
+
+			return new ResponseEntity<>(new ApiResponse<>(200, "Verify OTP success", toUserResponseDTO(user)),
+					HttpStatus.OK);
+
+		} catch (Exception e) {
+			e.printStackTrace();
+			return new ResponseEntity<>(new ApiResponse<>(500, e.getMessage(), null), HttpStatus.INTERNAL_SERVER_ERROR);
+		}
+	}
+
+	/// re-send otp
+	@PostMapping("resend-otp")
+	public ResponseEntity<?> resendOtp(@RequestBody ForgotPasswordDTO dto) {
+		try {
+			User user = userService.findByEmail(dto.getEmail());
+
+			if (user == null) {
+				return new ResponseEntity<>(new ApiResponse<>(404, "User not found", null), HttpStatus.NOT_FOUND);
+			}
+
+			if (user.getIsVerify() != null && user.getIsVerify()) {
+				return new ResponseEntity<>(new ApiResponse<>(400, "Account already verified", null),
+						HttpStatus.BAD_REQUEST);
+			}
+
+			String otp = generateOtp();
+
+			user.setCode(otp);
+			user.setUpdatedAt(new Date());
+
+			userService.save(user);
+
+			emailService.sendOtpEmail(
+					user.getEmail(),
+					"Verify your SoundClone account",
+					otp,
+					5);
+
+			return new ResponseEntity<>(new ApiResponse<>(200, "Resend OTP success", null), HttpStatus.OK);
+
+		} catch (Exception e) {
+			e.printStackTrace();
+			return new ResponseEntity<>(new ApiResponse<>(500, e.getMessage(), null), HttpStatus.INTERNAL_SERVER_ERROR);
+		}
+	}
+
+	/// forgot-password
+	@PostMapping("forgot-password")
+	public ResponseEntity<?> forgotPassword(@RequestBody ForgotPasswordDTO dto) {
+		try {
+			User user = userService.findByEmail(dto.getEmail());
+
+			if (user == null) {
+				return new ResponseEntity<>(new ApiResponse<>(404, "User not found", null), HttpStatus.NOT_FOUND);
+			}
+
+			String otp = generateOtp();
+
+			user.setCode(otp);
+			user.setUpdatedAt(new Date());
+
+			userService.save(user);
+
+			emailService.sendOtpEmail(
+					user.getEmail(),
+					"Reset your SoundClone password",
+					otp,
+					5);
+
+			return new ResponseEntity<>(new ApiResponse<>(200, "OTP has been sent to your email", null), HttpStatus.OK);
+
+		} catch (Exception e) {
+			e.printStackTrace();
+			return new ResponseEntity<>(new ApiResponse<>(500, e.getMessage(), null), HttpStatus.INTERNAL_SERVER_ERROR);
+		}
+	}
+
+	/// reset password
+	@PostMapping("reset-password")
+	public ResponseEntity<?> resetPassword(@RequestBody ResetPasswordDTO dto) {
+		try {
+			User user = userService.findByEmail(dto.getEmail());
+
+			if (user == null) {
+				return new ResponseEntity<>(new ApiResponse<>(404, "User not found", null), HttpStatus.NOT_FOUND);
+			}
+
+			if (user.getCode() == null || !user.getCode().equals(dto.getOtp())) {
+				return new ResponseEntity<>(new ApiResponse<>(400, "Invalid OTP", null), HttpStatus.BAD_REQUEST);
+			}
+
+			user.setPassword(BCrypt.hashpw(dto.getNewPassword(), BCrypt.gensalt()));
+			user.setCode("");
+			user.setUpdatedAt(new Date());
+
+			userService.save(user);
+
+			return new ResponseEntity<>(new ApiResponse<>(200, "Reset password success", null), HttpStatus.OK);
+
+		} catch (Exception e) {
+			e.printStackTrace();
+			return new ResponseEntity<>(new ApiResponse<>(500, e.getMessage(), null), HttpStatus.INTERNAL_SERVER_ERROR);
+		}
+	}
+	///
 
 	@GetMapping("account")
 	public ResponseEntity<?> account(@RequestHeader(value = "Authorization", required = false) String authorization) {

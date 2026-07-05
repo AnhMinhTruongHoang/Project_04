@@ -11,6 +11,8 @@ import { authOptions } from "@/app/api/auth/auth.options";
 import { sendRequest } from "@/utils/api";
 import DashboardStatCard from "../../../components/dashboard/components/DashboardStatCard";
 import DashboardPageHeader from "@/components/dashboard/components/DashboardPageHeader";
+import OverviewStats from "../overview/overviewStats";
+import OverviewAnalytics from "../overview/overviewAnalytics";
 
 export const metadata: Metadata = {
   title: "Dashboard",
@@ -128,36 +130,11 @@ const DashboardPage = async () => {
       </Box>
 
       <Box
-        sx={{
-          mt: 3,
-          p: 2.5,
-          borderRadius: 3,
-          backgroundColor: "#111314",
-          border: "1px solid rgba(255,255,255,0.08)",
-        }}
+        sx={{ display: "flex", flexDirection: "column", gap: 3, marginTop: 5 }}
       >
-        <Typography
-          sx={{
-            color: "#ffffff",
-            fontSize: 18,
-            fontWeight: 900,
-            mb: 1,
-          }}
-        >
-          Next steps
-        </Typography>
+        <OverviewStats />
 
-        <Typography
-          sx={{
-            color: "#9a9a9a",
-            fontSize: 14,
-            fontWeight: 700,
-            lineHeight: 1.7,
-          }}
-        >
-          Continue building CRUD pages for tracks, users, playlists, and
-          comments. The dashboard layout is now ready.
-        </Typography>
+        <OverviewAnalytics />
       </Box>
     </Box>
   );

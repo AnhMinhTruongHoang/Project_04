@@ -1,18 +1,13 @@
 import type { Metadata } from "next";
 
 import Box from "@mui/material/Box";
-import Typography from "@mui/material/Typography";
-import LibraryMusicRoundedIcon from "@mui/icons-material/LibraryMusicRounded";
-import PeopleAltRoundedIcon from "@mui/icons-material/PeopleAltRounded";
-import QueueMusicRoundedIcon from "@mui/icons-material/QueueMusicRounded";
-import CommentRoundedIcon from "@mui/icons-material/CommentRounded";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/auth.options";
 import { sendRequest } from "@/utils/api";
-import DashboardStatCard from "../../../components/dashboard/components/DashboardStatCard";
 import DashboardPageHeader from "@/components/dashboard/components/DashboardPageHeader";
 import OverviewStats from "../overview/overviewStats";
 import OverviewAnalytics from "../overview/overviewAnalytics";
+import SubscriptionChart from "../overview/subscriptionChart";
 
 export const metadata: Metadata = {
   title: "Dashboard",
@@ -21,13 +16,42 @@ export const metadata: Metadata = {
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "";
 
+const getResultList = <T,>(data: any): T[] => {
+  if (Array.isArray(data)) return data;
+
+  if (Array.isArray(data?.result)) return data.result;
+
+  if (Array.isArray(data?.data?.result)) return data.data.result;
+
+  return [];
+};
+
+const getTotal = (data: any) => {
+  if (Array.isArray(data)) return data.length;
+
+  return data?.meta?.total ?? data?.total ?? data?.result?.length ?? 0;
+};
+
+const sumTrackNumber = (tracks: any[], keys: string[]) => {
+  return tracks.reduce((total, track) => {
+    const value = keys.reduce((result, key) => {
+      if (result !== null && result !== undefined) return result;
+      return track?.[key];
+    }, null as any);
+
+    return total + Number(value || 0);
+  }, 0);
+};
+
 const DashboardPage = async () => {
   const session = await getServerSession(authOptions);
   const accessToken = (session as any)?.access_token;
 
-  const headers = {
-    Authorization: `Bearer ${accessToken}`,
-  };
+  const headers = accessToken
+    ? {
+        Authorization: `Bearer ${accessToken}`,
+      }
+    : {};
 
   const [tracksRes, usersRes, playlistsRes, commentsRes] = await Promise.all([
     sendRequest<IBackendRes<IModelPaginate<ITrackTop> | ITrackTop[]>>({
@@ -35,7 +59,7 @@ const DashboardPage = async () => {
       method: "GET",
       queryParams: {
         current: 1,
-        pageSize: 5,
+        pageSize: 1000,
       },
       headers,
     }),
@@ -45,7 +69,7 @@ const DashboardPage = async () => {
       method: "GET",
       queryParams: {
         current: 1,
-        pageSize: 5,
+        pageSize: 1000,
       },
       headers,
     }),
@@ -55,7 +79,7 @@ const DashboardPage = async () => {
       method: "GET",
       queryParams: {
         current: 1,
-        pageSize: 5,
+        pageSize: 1000,
       },
       headers,
     }),
@@ -65,22 +89,37 @@ const DashboardPage = async () => {
       method: "GET",
       queryParams: {
         current: 1,
-        pageSize: 5,
+        pageSize: 1000,
       },
       headers,
     }),
   ]);
 
-  const getTotal = (data: any) => {
-    if (Array.isArray(data)) return data.length;
+  const trackList = getResultList<ITrackTop>(tracksRes?.data);
+  const userList = getResultList<IUser>(usersRes?.data);
+  const playlistList = getResultList<IPlaylist>(playlistsRes?.data);
+  const commentList = getResultList<ITrackComment>(commentsRes?.data);
 
-    return data?.meta?.total ?? data?.total ?? data?.result?.length ?? 0;
+  const overviewData = {
+    totalTracks: getTotal(tracksRes?.data),
+    totalUsers: getTotal(usersRes?.data),
+    totalPlaylists: getTotal(playlistsRes?.data),
+    totalComments: getTotal(commentsRes?.data),
+
+    totalPlays: sumTrackNumber(trackList, [
+      "countPlay",
+      "count_play",
+      "plays",
+      "playCount",
+    ]),
+
+    totalLikes: sumTrackNumber(trackList, [
+      "countLike",
+      "count_like",
+      "likes",
+      "likeCount",
+    ]),
   };
-
-  const totalTracks = getTotal(tracksRes?.data);
-  const totalUsers = getTotal(usersRes?.data);
-  const totalPlaylists = getTotal(playlistsRes?.data);
-  const totalComments = getTotal(commentsRes?.data);
 
   return (
     <Box>
@@ -91,50 +130,23 @@ const DashboardPage = async () => {
 
       <Box
         sx={{
-          display: "grid",
-          gridTemplateColumns: {
-            xs: "1fr",
-            sm: "repeat(2, 1fr)",
-            lg: "repeat(4, 1fr)",
-          },
-          gap: 2,
+          display: "flex",
+          flexDirection: "column",
+          gap: 3,
+          marginTop: 3,
         }}
       >
-        <DashboardStatCard
-          title="Total Tracks"
-          value={totalTracks}
-          description="Uploaded tracks"
-          icon={<LibraryMusicRoundedIcon />}
+        <OverviewStats data={overviewData} />
+
+        <OverviewAnalytics
+          data={overviewData}
+          tracks={trackList}
+          users={userList}
+          comments={commentList}
+          playlists={playlistList}
         />
 
-        <DashboardStatCard
-          title="Total Users"
-          value={totalUsers}
-          description="Registered users"
-          icon={<PeopleAltRoundedIcon />}
-        />
-
-        <DashboardStatCard
-          title="Total Playlists"
-          value={totalPlaylists}
-          description="Created playlists"
-          icon={<QueueMusicRoundedIcon />}
-        />
-
-        <DashboardStatCard
-          title="Total Comments"
-          value={totalComments}
-          description="Track comments"
-          icon={<CommentRoundedIcon />}
-        />
-      </Box>
-
-      <Box
-        sx={{ display: "flex", flexDirection: "column", gap: 3, marginTop: 5 }}
-      >
-        <OverviewStats />
-
-        <OverviewAnalytics />
+        <SubscriptionChart />
       </Box>
     </Box>
   );

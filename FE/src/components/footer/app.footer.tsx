@@ -1,4 +1,5 @@
 "use client";
+
 import "react-h5-audio-player/lib/styles.css";
 import { useTrackContext } from "@/lib/track.wrapper";
 import { useHasMounted } from "@/utils/customHook";
@@ -35,21 +36,25 @@ const AppFooter = () => {
   const { data: session } = useSession();
   const hasMounted = useHasMounted();
   const pathname = usePathname();
+
   const playerRef = useRef<any>(null);
   const previousTrackUrlRef = useRef("");
   const previousVolumeRef = useRef(0.5);
   const suppressFooterAudioEventRef = useRef(false);
+
   const [volume, setVolume] = useState(0.5);
-  const { currentTrack, setCurrentTrack } = useTrackContext() as ITrackContext;
-  const footerTrack = currentTrack as any;
-  const isTrackDetailPage = pathname?.startsWith("/track/");
-  const currentTime = Number(footerTrack?.currentTime || 0);
-  const duration = Number(footerTrack?.duration || 0);
   const [queueAnchorEl, setQueueAnchorEl] = useState<HTMLElement | null>(null);
   const [queueLoading, setQueueLoading] = useState(false);
   const [queueTracks, setQueueTracks] = useState<ITrackTop[]>([]);
   const [autoplayStation, setAutoplayStation] = useState(true);
+  const [shuffleMode, setShuffleMode] = useState(false);
+
+  const { currentTrack, setCurrentTrack } = useTrackContext() as ITrackContext;
+
+  const footerTrack = currentTrack as any;
+  const isTrackDetailPage = pathname?.startsWith("/track/");
   const queueOpen = Boolean(queueAnchorEl);
+
   const footerCurrentTime = Number(footerTrack?.currentTime || 0);
   const footerDuration = Number(footerTrack?.duration || 0);
 
@@ -70,29 +75,22 @@ const AppFooter = () => {
     if (!trackUrl) return "";
 
     if (trackUrl.startsWith("http")) return trackUrl;
+
     if (trackUrl.startsWith("/")) {
       return `${process.env.NEXT_PUBLIC_BACKEND_URL}${trackUrl}`;
     }
 
     return `${process.env.NEXT_PUBLIC_BACKEND_URL}/uploads/audio/${trackUrl}`;
   };
-  /// save history
 
-  useEffect(() => {
-    const trackId = getTrackId(currentTrack);
+  const isWaveControlled =
+    isTrackDetailPage &&
+    (footerTrack?.source === "wave" ||
+      footerTrack?.source === "footer-control");
 
-    if (!trackId) return;
-    if (!currentTrack?.isPlaying) return;
-
-    saveListeningHistory(currentTrack as ITrackTop);
-  }, [
-    currentTrack?._id,
-    (currentTrack as any)?.id,
-    currentTrack?.trackUrl,
-    currentTrack?.isPlaying,
-  ]);
-
-  /// footer playlist
+  const getTrackImage = () => {
+    return getImageUrl((currentTrack as any)?.imgUrl);
+  };
 
   const isTrackTopObject = (track: unknown): track is ITrackTop => {
     if (typeof track !== "object" || track === null) return false;
@@ -177,17 +175,53 @@ const AppFooter = () => {
       ...track,
       isPlaying: true,
       source: "footer",
+      currentTime: 0,
+      duration: 0,
+      seekTime: undefined,
+      seekId: undefined,
     } as any);
   };
+
   const getCurrentQueueIndex = (tracks: ITrackTop[]) => {
     const currentId = getTrackId(currentTrack);
 
     return tracks.findIndex((track) => getTrackId(track) === currentId);
   };
 
+  const getRandomQueueIndex = (tracks: ITrackTop[]) => {
+    if (tracks.length <= 1) return 0;
+
+    const currentIndex = getCurrentQueueIndex(tracks);
+
+    let randomIndex = Math.floor(Math.random() * tracks.length);
+
+    while (randomIndex === currentIndex) {
+      randomIndex = Math.floor(Math.random() * tracks.length);
+    }
+
+    return randomIndex;
+  };
+
+  const handleToggleShuffleMode = () => {
+    setShuffleMode((prev) => {
+      const nextValue = !prev;
+
+      localStorage.setItem("soundclone-shuffle-mode", String(nextValue));
+
+      return nextValue;
+    });
+  };
+
   const handlePlayPreviousTrack = async () => {
     const tracks = await loadQueueTracks();
+
     if (!tracks.length) return;
+
+    if (shuffleMode) {
+      const randomIndex = getRandomQueueIndex(tracks);
+      handlePlayQueueTrack(tracks[randomIndex]);
+      return;
+    }
 
     const currentIndex = getCurrentQueueIndex(tracks);
     const previousIndex =
@@ -198,7 +232,14 @@ const AppFooter = () => {
 
   const handlePlayNextTrack = async () => {
     const tracks = await loadQueueTracks();
+
     if (!tracks.length) return;
+
+    if (shuffleMode) {
+      const randomIndex = getRandomQueueIndex(tracks);
+      handlePlayQueueTrack(tracks[randomIndex]);
+      return;
+    }
 
     const currentIndex = getCurrentQueueIndex(tracks);
     const nextIndex =
@@ -232,17 +273,6 @@ const AppFooter = () => {
     } as any);
   };
 
-  ///
-
-  const isWaveControlled =
-    isTrackDetailPage &&
-    (footerTrack?.source === "wave" ||
-      footerTrack?.source === "footer-control");
-
-  const getTrackImage = () => {
-    return getImageUrl((currentTrack as any)?.imgUrl);
-  };
-
   const setAppVolume = (value: number) => {
     const safeVolume = Math.max(0, Math.min(1, value));
 
@@ -272,6 +302,7 @@ const AppFooter = () => {
       volumeId: Date.now(),
     } as any);
   };
+
   const handleChangeVolume = (value: number) => {
     setAppVolume(value);
   };
@@ -282,7 +313,19 @@ const AppFooter = () => {
     setAppVolume(nextVolume);
   };
 
-  /// volume sync
+  useEffect(() => {
+    const trackId = getTrackId(currentTrack);
+
+    if (!trackId) return;
+    if (!currentTrack?.isPlaying) return;
+
+    saveListeningHistory(currentTrack as ITrackTop);
+  }, [
+    currentTrack?._id,
+    (currentTrack as any)?.id,
+    currentTrack?.trackUrl,
+    currentTrack?.isPlaying,
+  ]);
 
   useEffect(() => {
     if (!hasMounted) return;
@@ -324,14 +367,19 @@ const AppFooter = () => {
     setVolume(safeVolume);
   }, [hasMounted]);
 
-  ////
+  useEffect(() => {
+    if (!hasMounted) return;
+
+    const savedShuffleMode = localStorage.getItem("soundclone-shuffle-mode");
+
+    setShuffleMode(savedShuffleMode === "true");
+  }, [hasMounted]);
 
   useEffect(() => {
     const audio = playerRef.current?.audio?.current;
+
     if (!audio) return;
 
-    // Trang detail: WaveSurfer là audio chính.
-    // Chặn AudioPlayer của footer phát song song.
     if (isWaveControlled || isTrackDetailPage) {
       suppressFooterAudioEventRef.current = true;
 
@@ -366,12 +414,9 @@ const AppFooter = () => {
     isTrackDetailPage,
   ]);
 
-  ///
   if (!hasMounted) return <></>;
 
   if (!currentTrack?._id) return <></>;
-
-  ///
 
   const footerTrackHref = currentTrack ? getTrackHref(currentTrack, true) : "#";
 
@@ -388,8 +433,6 @@ const AppFooter = () => {
 
   const canOpenTrack = footerTrackHref !== "#";
   const canOpenArtist = footerArtistHref !== "#";
-
-  ///
 
   return (
     <div>
@@ -484,13 +527,18 @@ const AppFooter = () => {
               }}
             >
               <IconButton
-                disabled
+                onClick={handleToggleShuffleMode}
                 sx={{
                   width: 34,
                   height: 34,
                   p: 0,
-                  color: "#8f8f8f !important",
+                  color: shuffleMode ? "#ff5500" : "#8f8f8f",
                   opacity: "1 !important",
+
+                  "&:hover": {
+                    backgroundColor: "rgba(255,85,0,0.12)",
+                    color: "#ff5500",
+                  },
 
                   "& .MuiSvgIcon-root": {
                     fontSize: 27,
@@ -723,6 +771,29 @@ const AppFooter = () => {
               ref={playerRef}
               layout="horizontal-reverse"
               showSkipControls
+              customAdditionalControls={[
+                <IconButton
+                  key="shuffle"
+                  onClick={handleToggleShuffleMode}
+                  sx={{
+                    width: 34,
+                    height: 34,
+                    p: 0,
+                    color: shuffleMode ? "#ff5500" : "#ffffff",
+
+                    "&:hover": {
+                      backgroundColor: "rgba(255,85,0,0.12)",
+                      color: "#ff5500",
+                    },
+
+                    "& .MuiSvgIcon-root": {
+                      fontSize: 24,
+                    },
+                  }}
+                >
+                  <ShuffleRoundedIcon />
+                </IconButton>,
+              ]}
               onClickPrevious={handlePlayPreviousTrack}
               onClickNext={handlePlayNextTrack}
               onEnded={handleAudioEnded}

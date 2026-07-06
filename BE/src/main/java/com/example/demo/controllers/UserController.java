@@ -1,5 +1,6 @@
 package com.example.demo.controllers;
 
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -19,8 +20,10 @@ import org.springframework.web.bind.annotation.*;
 
 import com.example.demo.dtos.UserDTO;
 import com.example.demo.entities.User;
+import com.example.demo.entities.UserFollow;
 import com.example.demo.helpers.AuthHelper;
 import com.example.demo.helpers.JwtHelper;
+import com.example.demo.repositories.UserFollowRepository;
 import com.example.demo.repositories.UserRepository;
 import com.example.demo.responses.ApiResponse;
 
@@ -35,6 +38,9 @@ public class UserController {
 
 	@Autowired
 	private UserRepository userRepository;
+
+	@Autowired
+	private UserFollowRepository userFollowRepository;
 
 	private boolean isAdminRequest(String authorization) {
 		try {
@@ -367,14 +373,26 @@ public class UserController {
 						HttpStatus.BAD_REQUEST);
 			}
 
-			targetUser.setFollowers(safeNumber(targetUser.getFollowers()) + 1);
-			currentUser.setFollowing(safeNumber(currentUser.getFollowing()) + 1);
+			boolean alreadyFollowed = userFollowRepository.existsByFollower_IdAndFollowing_Id(
+					currentUser.getId(),
+					targetUser.getId());
 
-			targetUser.setUpdatedAt(new Date());
-			currentUser.setUpdatedAt(new Date());
+			if (alreadyFollowed) {
+				refreshFollowCounters(currentUser, targetUser);
 
-			userRepository.save(targetUser);
-			userRepository.save(currentUser);
+				return new ResponseEntity<>(
+						new ApiResponse<>(200, "You already followed this user", toDTO(targetUser)),
+						HttpStatus.OK);
+			}
+
+			UserFollow userFollow = new UserFollow();
+			userFollow.setFollower(currentUser);
+			userFollow.setFollowing(targetUser);
+			userFollow.setCreatedAt(new Date());
+
+			userFollowRepository.save(userFollow);
+
+			refreshFollowCounters(currentUser, targetUser);
 
 			return new ResponseEntity<>(
 					new ApiResponse<>(200, "Follow user success", toDTO(targetUser)),
@@ -386,6 +404,31 @@ public class UserController {
 					HttpStatus.INTERNAL_SERVER_ERROR);
 		}
 	}
+	///
+
+	private void refreshFollowCounters(User follower, User following) {
+		if (follower != null) {
+			follower.setFollowing((int) userFollowRepository.countByFollower_Id(follower.getId()));
+			follower.setUpdatedAt(new Date());
+			userRepository.save(follower);
+		}
+
+		if (following != null) {
+			following.setFollowers((int) userFollowRepository.countByFollowing_Id(following.getId()));
+			following.setUpdatedAt(new Date());
+			userRepository.save(following);
+		}
+	}
+
+	private Map<String, Object> buildUserListResponse(List<User> users) {
+		Map<String, Object> data = new LinkedHashMap<>();
+		data.put("result", toDTOList(users));
+		data.put("total", users.size());
+
+		return data;
+	}
+
+	/// follow
 
 	@PostMapping("/{id}/unfollow")
 	public ResponseEntity<?> unfollowUser(
@@ -415,17 +458,194 @@ public class UserController {
 						HttpStatus.BAD_REQUEST);
 			}
 
-			targetUser.setFollowers(Math.max(0, safeNumber(targetUser.getFollowers()) - 1));
-			currentUser.setFollowing(Math.max(0, safeNumber(currentUser.getFollowing()) - 1));
+			UserFollow userFollow = userFollowRepository.findByFollower_IdAndFollowing_Id(
+					currentUser.getId(),
+					targetUser.getId());
 
-			targetUser.setUpdatedAt(new Date());
-			currentUser.setUpdatedAt(new Date());
+			if (userFollow == null) {
+				refreshFollowCounters(currentUser, targetUser);
 
-			userRepository.save(targetUser);
-			userRepository.save(currentUser);
+				return new ResponseEntity<>(
+						new ApiResponse<>(200, "You are not following this user", toDTO(targetUser)),
+						HttpStatus.OK);
+			}
+
+			userFollowRepository.delete(userFollow);
+
+			refreshFollowCounters(currentUser, targetUser);
 
 			return new ResponseEntity<>(
 					new ApiResponse<>(200, "Unfollow user success", toDTO(targetUser)),
+					HttpStatus.OK);
+
+		} catch (Exception e) {
+			return new ResponseEntity<>(
+					new ApiResponse<>(500, e.getMessage(), null),
+					HttpStatus.INTERNAL_SERVER_ERROR);
+		}
+	}
+
+	@GetMapping("/me/following")
+	public ResponseEntity<?> getMyFollowing(
+			@RequestHeader(value = "Authorization", required = false) String authorization) {
+
+		try {
+			User currentUser = getCurrentUser(authorization);
+
+			if (currentUser == null) {
+				return new ResponseEntity<>(
+						new ApiResponse<>(401, "Unauthorized", null),
+						HttpStatus.UNAUTHORIZED);
+			}
+
+			List<UserFollow> follows = userFollowRepository.findByFollower_IdOrderByCreatedAtDesc(currentUser.getId());
+			List<User> users = new ArrayList<>();
+
+			for (UserFollow follow : follows) {
+				if (follow.getFollowing() != null) {
+					users.add(follow.getFollowing());
+				}
+			}
+
+			return new ResponseEntity<>(
+					new ApiResponse<>(200, "Fetch my following users", buildUserListResponse(users)),
+					HttpStatus.OK);
+
+		} catch (Exception e) {
+			return new ResponseEntity<>(
+					new ApiResponse<>(500, e.getMessage(), null),
+					HttpStatus.INTERNAL_SERVER_ERROR);
+		}
+	}
+
+	@GetMapping("/me/followers")
+	public ResponseEntity<?> getMyFollowers(
+			@RequestHeader(value = "Authorization", required = false) String authorization) {
+
+		try {
+			User currentUser = getCurrentUser(authorization);
+
+			if (currentUser == null) {
+				return new ResponseEntity<>(
+						new ApiResponse<>(401, "Unauthorized", null),
+						HttpStatus.UNAUTHORIZED);
+			}
+
+			List<UserFollow> follows = userFollowRepository.findByFollowing_IdOrderByCreatedAtDesc(currentUser.getId());
+			List<User> users = new ArrayList<>();
+
+			for (UserFollow follow : follows) {
+				if (follow.getFollower() != null) {
+					users.add(follow.getFollower());
+				}
+			}
+
+			return new ResponseEntity<>(
+					new ApiResponse<>(200, "Fetch my followers", buildUserListResponse(users)),
+					HttpStatus.OK);
+
+		} catch (Exception e) {
+			return new ResponseEntity<>(
+					new ApiResponse<>(500, e.getMessage(), null),
+					HttpStatus.INTERNAL_SERVER_ERROR);
+		}
+	}
+
+	@GetMapping("/{id}/following")
+	public ResponseEntity<?> getUserFollowing(@PathVariable String id) {
+
+		try {
+			User user = userRepository.findById(id).orElse(null);
+
+			if (user == null) {
+				return new ResponseEntity<>(
+						new ApiResponse<>(404, "User not found", null),
+						HttpStatus.NOT_FOUND);
+			}
+
+			List<UserFollow> follows = userFollowRepository.findByFollower_IdOrderByCreatedAtDesc(id);
+			List<User> users = new ArrayList<>();
+
+			for (UserFollow follow : follows) {
+				if (follow.getFollowing() != null) {
+					users.add(follow.getFollowing());
+				}
+			}
+
+			return new ResponseEntity<>(
+					new ApiResponse<>(200, "Fetch user following list", buildUserListResponse(users)),
+					HttpStatus.OK);
+
+		} catch (Exception e) {
+			return new ResponseEntity<>(
+					new ApiResponse<>(500, e.getMessage(), null),
+					HttpStatus.INTERNAL_SERVER_ERROR);
+		}
+	}
+
+	@GetMapping("/{id}/followers")
+	public ResponseEntity<?> getUserFollowers(@PathVariable String id) {
+
+		try {
+			User user = userRepository.findById(id).orElse(null);
+
+			if (user == null) {
+				return new ResponseEntity<>(
+						new ApiResponse<>(404, "User not found", null),
+						HttpStatus.NOT_FOUND);
+			}
+
+			List<UserFollow> follows = userFollowRepository.findByFollowing_IdOrderByCreatedAtDesc(id);
+			List<User> users = new ArrayList<>();
+
+			for (UserFollow follow : follows) {
+				if (follow.getFollower() != null) {
+					users.add(follow.getFollower());
+				}
+			}
+
+			return new ResponseEntity<>(
+					new ApiResponse<>(200, "Fetch user followers list", buildUserListResponse(users)),
+					HttpStatus.OK);
+
+		} catch (Exception e) {
+			return new ResponseEntity<>(
+					new ApiResponse<>(500, e.getMessage(), null),
+					HttpStatus.INTERNAL_SERVER_ERROR);
+		}
+	}
+
+	@GetMapping("/{id}/follow-status")
+	public ResponseEntity<?> getFollowStatus(
+			@PathVariable String id,
+			@RequestHeader(value = "Authorization", required = false) String authorization) {
+
+		try {
+			User currentUser = getCurrentUser(authorization);
+
+			if (currentUser == null) {
+				return new ResponseEntity<>(
+						new ApiResponse<>(401, "Unauthorized", null),
+						HttpStatus.UNAUTHORIZED);
+			}
+
+			User targetUser = userRepository.findById(id).orElse(null);
+
+			if (targetUser == null) {
+				return new ResponseEntity<>(
+						new ApiResponse<>(404, "User not found", null),
+						HttpStatus.NOT_FOUND);
+			}
+
+			boolean isFollowing = userFollowRepository.existsByFollower_IdAndFollowing_Id(
+					currentUser.getId(),
+					targetUser.getId());
+
+			Map<String, Object> data = new LinkedHashMap<>();
+			data.put("isFollowing", isFollowing);
+
+			return new ResponseEntity<>(
+					new ApiResponse<>(200, "Fetch follow status", data),
 					HttpStatus.OK);
 
 		} catch (Exception e) {
@@ -512,6 +732,8 @@ public class UserController {
 						new ApiResponse<>(404, "User not found", null),
 						HttpStatus.NOT_FOUND);
 			}
+
+			userFollowRepository.deleteAllByFollower_IdOrFollowing_Id(id, id);
 
 			user.getLikedTracks().clear();
 			userRepository.save(user);

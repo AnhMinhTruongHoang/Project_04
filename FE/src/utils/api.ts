@@ -856,3 +856,59 @@ export const resetPasswordAPI = async (payload: ResetPasswordPayload) => {
     body: payload,
   });
 };
+
+//// follower/ing api
+
+export const followUserApi = (userId: string, accessToken?: string) => {
+  return sendRequest<IBackendRes<IUser>>({
+    url: buildUrl(`/api/v1/users/${userId}/follow`),
+    method: "POST",
+    headers: authHeaders(accessToken),
+  });
+};
+
+export const unfollowUserApi = (userId: string, accessToken?: string) => {
+  return sendRequest<IBackendRes<IUser>>({
+    url: buildUrl(`/api/v1/users/${userId}/unfollow`),
+    method: "POST",
+    headers: authHeaders(accessToken),
+  });
+};
+
+export const getMyFollowingApi = (accessToken?: string) => {
+  return sendRequest<IBackendRes<{ result: IUser[]; total: number }>>({
+    url: buildUrl("/api/v1/users/me/following"),
+    method: "GET",
+    headers: authHeaders(accessToken),
+  });
+};
+
+export const getMyFollowersApi = (accessToken?: string) => {
+  return sendRequest<IBackendRes<{ result: IUser[]; total: number }>>({
+    url: buildUrl("/api/v1/users/me/followers"),
+    method: "GET",
+    headers: authHeaders(accessToken),
+  });
+};
+
+export const getUserFollowingApi = (userId: string) => {
+  return sendRequest<IBackendRes<{ result: IUser[]; total: number }>>({
+    url: buildUrl(`/api/v1/users/${userId}/following`),
+    method: "GET",
+  });
+};
+
+export const getUserFollowersApi = (userId: string) => {
+  return sendRequest<IBackendRes<{ result: IUser[]; total: number }>>({
+    url: buildUrl(`/api/v1/users/${userId}/followers`),
+    method: "GET",
+  });
+};
+
+export const getFollowStatusApi = (userId: string, accessToken?: string) => {
+  return sendRequest<IBackendRes<{ isFollowing: boolean }>>({
+    url: buildUrl(`/api/v1/users/${userId}/follow-status`),
+    method: "GET",
+    headers: authHeaders(accessToken),
+  });
+};

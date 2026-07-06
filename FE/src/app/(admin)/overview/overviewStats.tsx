@@ -9,75 +9,91 @@ import FavoriteRoundedIcon from "@mui/icons-material/FavoriteRounded";
 import ForumRoundedIcon from "@mui/icons-material/ForumRounded";
 import QueueMusicRoundedIcon from "@mui/icons-material/QueueMusicRounded";
 import TrendingUpRoundedIcon from "@mui/icons-material/TrendingUpRounded";
+import type { ReactNode } from "react";
+
+export type OverviewStatsData = {
+  totalUsers: number;
+  totalTracks: number;
+  totalPlays: number;
+  totalLikes: number;
+  totalComments: number;
+  totalPlaylists: number;
+};
 
 type OverviewStatItem = {
   label: string;
   value: number;
   growth: string;
   helper: string;
-  icon: React.ReactNode;
+  icon: ReactNode;
   gradient: string;
 };
 
-const formatNumber = (value: number) => {
-  if (value >= 1000000) return `${(value / 1000000).toFixed(1)}M`;
-  if (value >= 1000) return `${(value / 1000).toFixed(1)}K`;
-
-  return value.toString();
+type Props = {
+  data?: Partial<OverviewStatsData>;
 };
 
-const stats: OverviewStatItem[] = [
-  {
-    label: "Total Users",
-    value: 1245,
-    growth: "+12.5%",
-    helper: "from last month",
-    icon: <PeopleAltRoundedIcon />,
-    gradient: "linear-gradient(135deg, #00B894, #00CEC9)",
-  },
-  {
-    label: "Total Tracks",
-    value: 368,
-    growth: "+8.2%",
-    helper: "new uploads",
-    icon: <AudiotrackRoundedIcon />,
-    gradient: "linear-gradient(135deg, #FF4D00, #FF9F1A)",
-  },
-  {
-    label: "Total Plays",
-    value: 24890,
-    growth: "+18.7%",
-    helper: "listening growth",
-    icon: <PlayCircleRoundedIcon />,
-    gradient: "linear-gradient(135deg, #0984E3, #74B9FF)",
-  },
-  {
-    label: "Total Likes",
-    value: 8420,
-    growth: "+9.4%",
-    helper: "user reactions",
-    icon: <FavoriteRoundedIcon />,
-    gradient: "linear-gradient(135deg, #E84393, #FD79A8)",
-  },
-  {
-    label: "Comments",
-    value: 2130,
-    growth: "+6.8%",
-    helper: "community activity",
-    icon: <ForumRoundedIcon />,
-    gradient: "linear-gradient(135deg, #6C5CE7, #A29BFE)",
-  },
-  {
-    label: "Playlists",
-    value: 742,
-    growth: "+4.1%",
-    helper: "created by users",
-    icon: <QueueMusicRoundedIcon />,
-    gradient: "linear-gradient(135deg, #005B5F, #58D68D)",
-  },
-];
+const formatNumber = (value?: number) => {
+  const number = Number(value || 0);
 
-const OverviewStats = () => {
+  if (number >= 1000000) return `${(number / 1000000).toFixed(1)}M`;
+  if (number >= 1000) return `${(number / 1000).toFixed(1)}K`;
+
+  return number.toString();
+};
+
+const OverviewStats = ({ data }: Props) => {
+  const stats: OverviewStatItem[] = [
+    {
+      label: "Total Users",
+      value: data?.totalUsers || 0,
+      growth: "+12.5%",
+      helper: "registered users",
+      icon: <PeopleAltRoundedIcon />,
+      gradient: "linear-gradient(135deg, #00B894, #00CEC9)",
+    },
+    {
+      label: "Total Tracks",
+      value: data?.totalTracks || 0,
+      growth: "+8.2%",
+      helper: "uploaded tracks",
+      icon: <AudiotrackRoundedIcon />,
+      gradient: "linear-gradient(135deg, #FF4D00, #FF9F1A)",
+    },
+    {
+      label: "Total Plays",
+      value: data?.totalPlays || 0,
+      growth: "+18.7%",
+      helper: "listening growth",
+      icon: <PlayCircleRoundedIcon />,
+      gradient: "linear-gradient(135deg, #0984E3, #74B9FF)",
+    },
+    {
+      label: "Total Likes",
+      value: data?.totalLikes || 0,
+      growth: "+9.4%",
+      helper: "user reactions",
+      icon: <FavoriteRoundedIcon />,
+      gradient: "linear-gradient(135deg, #E84393, #FD79A8)",
+    },
+    {
+      label: "Comments",
+      value: data?.totalComments || 0,
+      growth: "+6.8%",
+      helper: "community activity",
+      icon: <ForumRoundedIcon />,
+      gradient: "linear-gradient(135deg, #6C5CE7, #A29BFE)",
+    },
+    {
+      label: "Playlists",
+      value: data?.totalPlaylists || 0,
+      growth: "+4.1%",
+      helper: "created by users",
+      icon: <QueueMusicRoundedIcon />,
+      gradient: "linear-gradient(135deg, #005B5F, #58D68D)",
+    },
+  ];
+
   return (
     <Box
       sx={{
@@ -97,15 +113,17 @@ const OverviewStats = () => {
             position: "relative",
             overflow: "hidden",
             borderRadius: "22px",
-            background: "#ffffff",
-            border: "1px solid rgba(15,23,42,0.06)",
-            boxShadow: "0 22px 60px rgba(15,23,42,0.06)",
+            background:
+              "linear-gradient(180deg, rgba(24,26,27,0.98), rgba(12,14,15,0.98))",
+            border: "1px solid rgba(255,255,255,0.08)",
+            boxShadow: "0 22px 60px rgba(0,0,0,0.25)",
             p: 2.4,
             minHeight: 168,
             transition: "0.25s ease",
             "&:hover": {
               transform: "translateY(-4px)",
-              boxShadow: "0 28px 80px rgba(15,23,42,0.1)",
+              borderColor: "rgba(0,255,224,0.22)",
+              boxShadow: "0 28px 80px rgba(0,0,0,0.38)",
             },
             "&::before": {
               content: '""',
@@ -116,7 +134,7 @@ const OverviewStats = () => {
               right: -45,
               top: -50,
               background: item.gradient,
-              opacity: 0.11,
+              opacity: 0.16,
             },
           }}
         >
@@ -130,7 +148,7 @@ const OverviewStats = () => {
               alignItems: "center",
               justifyContent: "center",
               color: "#ffffff",
-              boxShadow: "0 14px 28px rgba(15,23,42,0.16)",
+              boxShadow: "0 14px 28px rgba(0,0,0,0.28)",
               mb: 2,
               "& svg": {
                 fontSize: 26,
@@ -142,7 +160,7 @@ const OverviewStats = () => {
 
           <Typography
             sx={{
-              color: "#64748B",
+              color: "#AEB7C2",
               fontSize: 13,
               fontWeight: 800,
               mb: 0.8,
@@ -153,7 +171,7 @@ const OverviewStats = () => {
 
           <Typography
             sx={{
-              color: "#07111f",
+              color: "#ffffff",
               fontSize: {
                 xs: 26,
                 sm: 28,
@@ -179,8 +197,8 @@ const OverviewStats = () => {
                 px: 0.8,
                 py: 0.35,
                 borderRadius: "999px",
-                background: "rgba(0,184,148,0.1)",
-                color: "#00856F",
+                background: "rgba(0,255,224,0.1)",
+                color: "#00FFE0",
                 display: "flex",
                 alignItems: "center",
                 gap: 0.3,
@@ -200,7 +218,7 @@ const OverviewStats = () => {
 
             <Typography
               sx={{
-                color: "#94A3B8",
+                color: "#7C8794",
                 fontSize: 12,
                 fontWeight: 700,
               }}

@@ -269,11 +269,9 @@ const AppHeader = () => {
                 Upgrade now
               </Button>
 
-              {isAdmin && (
-                <Box component={Link} href="/dashboard" sx={rightTextSx}>
-                  Artist Studio
-                </Box>
-              )}
+              <Box component={Link} href="/artist-studio" sx={rightTextSx}>
+                Artist Studio
+              </Box>
 
               <Box component={Link} href="/track/upload" sx={rightTextSx}>
                 Upload

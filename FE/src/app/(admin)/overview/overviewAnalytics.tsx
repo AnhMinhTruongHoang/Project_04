@@ -15,46 +15,147 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
+import { OverviewStatsData } from "./overviewStats";
 
-const donutData = [
-  { name: "Tracks", value: 845, fill: "#005B5F" },
-  { name: "Users", value: 620, fill: "#00856F" },
-  { name: "Playlists", value: 260, fill: "#58D68D" },
-  { name: "Comments", value: 420, fill: "#B8F7D4" },
-];
 
-const monthlyData = [
-  { month: "Jan", plays: 18, likes: 11, comments: 7 },
-  { month: "Feb", plays: 54, likes: 18, comments: 17 },
-  { month: "Mar", plays: 42, likes: 14, comments: 14 },
-  { month: "Apr", plays: 27, likes: 9, comments: 9 },
-  { month: "May", plays: 60, likes: 20, comments: 20 },
-  { month: "Jun", plays: 18, likes: 6, comments: 6 },
-  { month: "Jul", plays: 66, likes: 22, comments: 22 },
-  { month: "Aug", plays: 57, likes: 19, comments: 19 },
-  { month: "Sep", plays: 24, likes: 8, comments: 8 },
-  { month: "Oct", plays: 66, likes: 22, comments: 22 },
-  { month: "Nov", plays: 24, likes: 8, comments: 8 },
-  { month: "Dec", plays: 51, likes: 17, comments: 17 },
-];
+type AnyRecord = Record<string, any>;
 
-const totalContent = donutData.reduce((total, item) => total + item.value, 0);
-
-const formatNumber = (value: number) => {
-  if (value >= 1000000) return `${(value / 1000000).toFixed(1)}M`;
-  if (value >= 1000) return `${(value / 1000).toFixed(2)}k`;
-
-  return value.toString();
+type Props = {
+  data?: Partial<OverviewStatsData>;
+  tracks?: AnyRecord[];
+  users?: AnyRecord[];
+  comments?: AnyRecord[];
+  playlists?: AnyRecord[];
 };
 
-const cardSx = {
+const months = [
+  "Jan",
+  "Feb",
+  "Mar",
+  "Apr",
+  "May",
+  "Jun",
+  "Jul",
+  "Aug",
+  "Sep",
+  "Oct",
+  "Nov",
+  "Dec",
+];
+
+const formatNumber = (value?: number) => {
+  const number = Number(value || 0);
+
+  if (number >= 1000000) return `${(number / 1000000).toFixed(1)}M`;
+  if (number >= 1000) return `${(number / 1000).toFixed(2)}k`;
+
+  return number.toString();
+};
+
+const getDate = (item?: AnyRecord) => {
+  const value =
+    item?.createdAt ||
+    item?.created_at ||
+    item?.updatedAt ||
+    item?.updated_at ||
+    "";
+
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) return null;
+
+  return date;
+};
+
+const buildMonthlyData = ({
+  tracks = [],
+  users = [],
+  comments = [],
+}: {
+  tracks?: AnyRecord[];
+  users?: AnyRecord[];
+  comments?: AnyRecord[];
+}) => {
+  const result = months.map((month) => ({
+    month,
+    users: 0,
+    tracks: 0,
+    comments: 0,
+  }));
+
+  users.forEach((item) => {
+    const date = getDate(item);
+    if (!date) return;
+
+    result[date.getMonth()].users += 1;
+  });
+
+  tracks.forEach((item) => {
+    const date = getDate(item);
+    if (!date) return;
+
+    result[date.getMonth()].tracks += 1;
+  });
+
+  comments.forEach((item) => {
+    const date = getDate(item);
+    if (!date) return;
+
+    result[date.getMonth()].comments += 1;
+  });
+
+  return result;
+};
+
+const chartCardSx = {
   borderRadius: "22px",
-  background: "#ffffff",
-  border: "1px solid rgba(15,23,42,0.06)",
-  boxShadow: "0 22px 60px rgba(15,23,42,0.06)",
+  background:
+    "linear-gradient(180deg, rgba(24,26,27,0.98), rgba(12,14,15,0.98))",
+  border: "1px solid rgba(255,255,255,0.08)",
+  boxShadow: "0 22px 60px rgba(0,0,0,0.25)",
 };
 
-const OverviewAnalytics = () => {
+const OverviewAnalytics = ({
+  data,
+  tracks = [],
+  users = [],
+  comments = [],
+}: Props) => {
+  const donutData = [
+    { name: "Tracks", value: data?.totalTracks || 0, fill: "#005B5F" },
+    { name: "Users", value: data?.totalUsers || 0, fill: "#00856F" },
+    { name: "Playlists", value: data?.totalPlaylists || 0, fill: "#58D68D" },
+    { name: "Comments", value: data?.totalComments || 0, fill: "#B8F7D4" },
+  ].filter((item) => item.value > 0);
+
+  const safeDonutData =
+    donutData.length > 0
+      ? donutData
+      : [{ name: "No Data", value: 1, fill: "rgba(255,255,255,0.12)" }];
+
+  const totalContent = donutData.reduce((total, item) => total + item.value, 0);
+
+  const monthlyData = buildMonthlyData({
+    tracks,
+    users,
+    comments,
+  });
+
+  const totalMonthlyUsers = monthlyData.reduce(
+    (total, item) => total + item.users,
+    0
+  );
+
+  const totalMonthlyTracks = monthlyData.reduce(
+    (total, item) => total + item.tracks,
+    0
+  );
+
+  const totalMonthlyComments = monthlyData.reduce(
+    (total, item) => total + item.comments,
+    0
+  );
+
   return (
     <Box
       sx={{
@@ -68,7 +169,7 @@ const OverviewAnalytics = () => {
     >
       <Box
         sx={{
-          ...cardSx,
+          ...chartCardSx,
           minHeight: 500,
           display: "flex",
           flexDirection: "column",
@@ -78,7 +179,7 @@ const OverviewAnalytics = () => {
         <Box sx={{ p: { xs: 2.5, sm: 3 } }}>
           <Typography
             sx={{
-              color: "#07111f",
+              color: "#ffffff",
               fontSize: 20,
               fontWeight: 900,
               mb: 0.8,
@@ -89,12 +190,12 @@ const OverviewAnalytics = () => {
 
           <Typography
             sx={{
-              color: "#64748B",
+              color: "#8B949E",
               fontSize: 14,
-              fontWeight: 500,
+              fontWeight: 600,
             }}
           >
-            Overview by content type
+            Overview by real content data
           </Typography>
         </Box>
 
@@ -109,7 +210,7 @@ const OverviewAnalytics = () => {
           <ResponsiveContainer width="100%" height="100%">
             <PieChart>
               <Pie
-                data={donutData}
+                data={safeDonutData}
                 dataKey="value"
                 nameKey="name"
                 innerRadius="58%"
@@ -123,10 +224,14 @@ const OverviewAnalytics = () => {
                 formatter={(value: any) => formatNumber(Number(value ?? 0))}
                 contentStyle={{
                   borderRadius: 12,
-                  border: "1px solid rgba(15,23,42,0.08)",
-                  boxShadow: "0 12px 30px rgba(15,23,42,0.12)",
-                  color: "#07111f",
+                  background: "#111315",
+                  border: "1px solid rgba(255,255,255,0.12)",
+                  boxShadow: "0 12px 30px rgba(0,0,0,0.35)",
+                  color: "#ffffff",
                   fontWeight: 700,
+                }}
+                labelStyle={{
+                  color: "#ffffff",
                 }}
               />
             </PieChart>
@@ -145,9 +250,9 @@ const OverviewAnalytics = () => {
           >
             <Typography
               sx={{
-                color: "#64748B",
+                color: "#8B949E",
                 fontSize: 13,
-                fontWeight: 700,
+                fontWeight: 800,
               }}
             >
               Total
@@ -155,7 +260,7 @@ const OverviewAnalytics = () => {
 
             <Typography
               sx={{
-                color: "#07111f",
+                color: "#ffffff",
                 fontSize: 22,
                 fontWeight: 950,
                 mt: 1,
@@ -168,7 +273,7 @@ const OverviewAnalytics = () => {
 
         <Box
           sx={{
-            borderTop: "1px solid rgba(15,23,42,0.08)",
+            borderTop: "1px solid rgba(255,255,255,0.08)",
             p: 2.5,
             display: "flex",
             alignItems: "center",
@@ -177,7 +282,7 @@ const OverviewAnalytics = () => {
             flexWrap: "wrap",
           }}
         >
-          {donutData.map((item) => (
+          {safeDonutData.map((item) => (
             <Box
               key={item.name}
               sx={{
@@ -197,7 +302,7 @@ const OverviewAnalytics = () => {
 
               <Typography
                 sx={{
-                  color: "#07111f",
+                  color: "#E5E7EB",
                   fontSize: 13,
                   fontWeight: 800,
                 }}
@@ -211,7 +316,7 @@ const OverviewAnalytics = () => {
 
       <Box
         sx={{
-          ...cardSx,
+          ...chartCardSx,
           minHeight: 500,
           p: { xs: 2.5, sm: 3 },
         }}
@@ -229,23 +334,23 @@ const OverviewAnalytics = () => {
           <Box>
             <Typography
               sx={{
-                color: "#07111f",
+                color: "#ffffff",
                 fontSize: 20,
                 fontWeight: 900,
                 mb: 0.8,
               }}
             >
-              Monthly Activity
+              Monthly Growth
             </Typography>
 
             <Typography
               sx={{
-                color: "#64748B",
+                color: "#8B949E",
                 fontSize: 14,
-                fontWeight: 500,
+                fontWeight: 600,
               }}
             >
-              (+43%) than last year
+              Based on created data in the system
             </Typography>
           </Box>
 
@@ -257,15 +362,21 @@ const OverviewAnalytics = () => {
               minWidth: 86,
               "& .MuiOutlinedInput-root": {
                 borderRadius: "10px",
-                color: "#07111f",
+                color: "#ffffff",
                 fontWeight: 800,
-                background: "#fff",
+                background: "rgba(255,255,255,0.04)",
                 "& fieldset": {
-                  borderColor: "rgba(15,23,42,0.12)",
+                  borderColor: "rgba(255,255,255,0.12)",
                 },
                 "&:hover fieldset": {
-                  borderColor: "rgba(15,23,42,0.22)",
+                  borderColor: "rgba(0,255,224,0.32)",
                 },
+                "&.Mui-focused fieldset": {
+                  borderColor: "#00FFE0",
+                },
+              },
+              "& .MuiSvgIcon-root": {
+                color: "#8B949E",
               },
             }}
           >
@@ -285,9 +396,21 @@ const OverviewAnalytics = () => {
             mb: 4,
           }}
         >
-          <LegendItem color="#00856F" label="Plays" value="6.79k" />
-          <LegendItem color="#FFAA00" label="Likes" value="1.23k" />
-          <LegendItem color="#16B5D1" label="Comments" value="1.01k" />
+          <LegendItem
+            color="#00856F"
+            label="Users"
+            value={formatNumber(totalMonthlyUsers)}
+          />
+          <LegendItem
+            color="#FFAA00"
+            label="Tracks"
+            value={formatNumber(totalMonthlyTracks)}
+          />
+          <LegendItem
+            color="#16B5D1"
+            label="Comments"
+            value={formatNumber(totalMonthlyComments)}
+          />
         </Box>
 
         <Box sx={{ width: "100%", height: 290 }}>
@@ -296,44 +419,48 @@ const OverviewAnalytics = () => {
               <CartesianGrid
                 vertical={false}
                 strokeDasharray="3 3"
-                stroke="rgba(100,116,139,0.18)"
+                stroke="rgba(255,255,255,0.08)"
               />
 
               <XAxis
                 dataKey="month"
                 axisLine={false}
                 tickLine={false}
-                tick={{ fill: "#8CA0B3", fontSize: 12 }}
+                tick={{ fill: "#8B949E", fontSize: 12 }}
                 dy={10}
               />
 
               <YAxis
                 axisLine={false}
                 tickLine={false}
-                tick={{ fill: "#8CA0B3", fontSize: 12 }}
+                tick={{ fill: "#8B949E", fontSize: 12 }}
               />
 
               <Tooltip
                 formatter={(value: any) => formatNumber(Number(value ?? 0))}
-                cursor={{ fill: "rgba(15,23,42,0.04)" }}
+                cursor={{ fill: "rgba(255,255,255,0.04)" }}
                 contentStyle={{
                   borderRadius: 12,
-                  border: "1px solid rgba(15,23,42,0.08)",
-                  boxShadow: "0 12px 30px rgba(15,23,42,0.12)",
-                  color: "#07111f",
+                  background: "#111315",
+                  border: "1px solid rgba(255,255,255,0.12)",
+                  boxShadow: "0 12px 30px rgba(0,0,0,0.35)",
+                  color: "#ffffff",
                   fontWeight: 700,
+                }}
+                labelStyle={{
+                  color: "#ffffff",
                 }}
               />
 
               <Bar
-                dataKey="plays"
+                dataKey="users"
                 stackId="activity"
                 fill="#00856F"
                 radius={[6, 6, 0, 0]}
               />
 
               <Bar
-                dataKey="likes"
+                dataKey="tracks"
                 stackId="activity"
                 fill="#FFAA00"
                 radius={[6, 6, 0, 0]}
@@ -376,7 +503,7 @@ const LegendItem = ({
 
         <Typography
           sx={{
-            color: "#07111f",
+            color: "#E5E7EB",
             fontSize: 13,
             fontWeight: 800,
           }}
@@ -387,7 +514,7 @@ const LegendItem = ({
 
       <Typography
         sx={{
-          color: "#07111f",
+          color: "#ffffff",
           fontSize: 19,
           fontWeight: 950,
         }}

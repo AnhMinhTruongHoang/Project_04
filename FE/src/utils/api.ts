@@ -1,23 +1,27 @@
 import queryString from "query-string";
 import slugify from "slugify";
 
-const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "";
+const BACKEND_URL = (process.env.NEXT_PUBLIC_BACKEND_URL || "").replace(
+  /\/+$/,
+  ""
+);
 
-const AUTH_URL = `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/v1/auth`;
+const AUTH_URL = `${BACKEND_URL}/api/v1/auth`;
+
+type QueryParams = Record<string, unknown>;
 
 const buildUrl = (path: string) => {
   if (!path) return "";
 
-  if (path.startsWith("http")) {
+  if (/^https?:\/\//i.test(path)) {
     return path;
   }
 
-  // API local của Next.js
+  // API nội bộ của Next.js.
   if (path.startsWith("/api/revalidate")) {
     return path;
   }
 
-  // API backend Spring Boot
   if (path.startsWith("/")) {
     return `${BACKEND_URL}${path}`;
   }
@@ -25,24 +29,120 @@ const buildUrl = (path: string) => {
   return `${BACKEND_URL}/${path}`;
 };
 
-const buildQueryUrl = (url: string, queryParams?: Record<string, any>) => {
-  if (!queryParams || Object.keys(queryParams).length === 0) return url;
+const buildQueryUrl = (url: string, queryParams?: QueryParams) => {
+  const absoluteUrl = buildUrl(url);
+
+  if (!queryParams || Object.keys(queryParams).length === 0) {
+    return absoluteUrl;
+  }
 
   const query = queryString.stringify(queryParams, {
     skipNull: true,
     skipEmptyString: true,
   });
 
-  if (!query) return url;
-
-  return `${url}?${query}`;
+  return query ? `${absoluteUrl}?${query}` : absoluteUrl;
 };
 
-const authHeaders = (accessToken?: string) => {
-  if (!accessToken) return {};
+const authHeaders = (accessToken?: string): Record<string, string> => {
+  if (!accessToken) {
+    return {};
+  }
 
   return {
     Authorization: `Bearer ${accessToken}`,
+  };
+};
+
+const parseResponseBody = async (response: Response) => {
+  const contentType = response.headers.get("content-type") || "";
+
+  if (response.status === 204) {
+    return null;
+  }
+
+  if (contentType.includes("application/json")) {
+    return response.json();
+  }
+
+  const text = await response.text();
+
+  return text ? { message: text } : null;
+};
+
+const createErrorResponse = <T>(response: Response, body: any): T => {
+  return {
+    statusCode: response.status,
+    message:
+      body?.message || body?.error || response.statusText || "Request failed",
+    error: body?.error || response.statusText || "",
+    data: null,
+  } as T;
+};
+
+const toFormData = (payload: Record<string, any> | FormData): FormData => {
+  if (typeof FormData !== "undefined" && payload instanceof FormData) {
+    return payload;
+  }
+
+  const formData = new FormData();
+
+  Object.entries(payload || {}).forEach(([key, value]) => {
+    if (value === undefined || value === null) {
+      return;
+    }
+
+    if (Array.isArray(value)) {
+      value.forEach((item) => {
+        if (item !== undefined && item !== null) {
+          formData.append(key, item instanceof Blob ? item : String(item));
+        }
+      });
+
+      return;
+    }
+
+    if (value instanceof Blob) {
+      formData.append(key, value);
+      return;
+    }
+
+    formData.append(key, String(value));
+  });
+
+  return formData;
+};
+
+const getResponseResult = <T>(response: any): T[] => {
+  const data = response?.data;
+
+  if (Array.isArray(data)) {
+    return data;
+  }
+
+  if (Array.isArray(data?.result)) {
+    return data.result;
+  }
+
+  return [];
+};
+
+const normalizeFollowResponse = (
+  response: any
+): IBackendRes<FollowStatusData> => {
+  const rawData = response?.data || {};
+
+  const following = Boolean(rawData.following ?? rawData.isFollowing ?? false);
+
+  return {
+    ...response,
+    data: {
+      ...rawData,
+      following,
+      isFollowing: following,
+      targetFollowers: Number(rawData.targetFollowers) || 0,
+      currentUserFollowing: Number(rawData.currentUserFollowing) || 0,
+    },
   };
 };
 
@@ -54,10 +154,14 @@ export const getUserId = (user?: any) => {
   return user?._id || user?.id || "";
 };
 
+export const getCategoryId = (category?: ICategory | any) => {
+  return category?._id || category?.id || "";
+};
+
 export const getImageUrl = (imgUrl?: string | null) => {
   if (!imgUrl) return "/images/logo/Sc.png";
 
-  if (imgUrl.startsWith("http")) {
+  if (/^https?:\/\//i.test(imgUrl)) {
     return imgUrl;
   }
 
@@ -75,7 +179,7 @@ export const getImageUrl = (imgUrl?: string | null) => {
 export const getAudioUrl = (trackUrl?: string | null) => {
   if (!trackUrl) return "";
 
-  if (trackUrl.startsWith("http")) {
+  if (/^https?:\/\//i.test(trackUrl)) {
     return trackUrl;
   }
 
@@ -93,7 +197,7 @@ export const getAudioUrl = (trackUrl?: string | null) => {
 export const getAvatarUrl = (avatar?: string | null) => {
   if (!avatar) return "";
 
-  if (avatar.startsWith("http")) {
+  if (/^https?:\/\//i.test(avatar)) {
     return avatar;
   }
 
@@ -122,7 +226,7 @@ export const normalizeTrack = <T extends any>(track?: T | null): T | null => {
   };
 };
 
-export const sendRequest = async <T>(props: IRequest) => {
+export const sendRequest = async <T>(props: IRequest): Promise<T> => {
   let {
     url,
     method,
@@ -135,36 +239,56 @@ export const sendRequest = async <T>(props: IRequest) => {
 
   url = buildQueryUrl(url, queryParams);
 
-  const options: any = {
+  const requestHeaders = new Headers({
+    ...headers,
+  });
+
+  const hasBody =
+    body !== undefined &&
+    body !== null &&
+    method !== "GET" &&
+    method !== "HEAD";
+
+  if (hasBody && !requestHeaders.has("content-type")) {
+    requestHeaders.set("content-type", "application/json");
+  }
+
+  const options: RequestInit & Record<string, any> = {
     method,
-    headers: new Headers({
-      "content-type": "application/json",
-      ...headers,
-    }),
-    body: body ? JSON.stringify(body) : null,
+    headers: requestHeaders,
     ...nextOption,
   };
+
+  if (hasBody) {
+    options.body = JSON.stringify(body);
+  }
 
   if (useCredentials) {
     options.credentials = "include";
   }
 
-  return fetch(url, options).then((res) => {
-    if (res.ok) {
-      return res.json() as T;
+  try {
+    const response = await fetch(url, options);
+    const responseBody = await parseResponseBody(response);
+
+    if (response.ok) {
+      return responseBody as T;
     }
 
-    return res.json().then((json) => {
-      return {
-        statusCode: res.status,
-        message: json?.message ?? "",
-        error: json?.error ?? "",
-      } as T;
-    });
-  });
+    return createErrorResponse<T>(response, responseBody);
+  } catch (error) {
+    return {
+      statusCode: 0,
+      message: error instanceof Error ? error.message : "Network error",
+      error: "NETWORK_ERROR",
+      data: null,
+    } as T;
+  }
 };
 
-export const sendRequestFile = async <T>(props: RequestFileProps) => {
+export const sendRequestFile = async <T>(
+  props: RequestFileProps
+): Promise<T> => {
   let {
     url,
     method,
@@ -177,12 +301,12 @@ export const sendRequestFile = async <T>(props: RequestFileProps) => {
 
   url = buildQueryUrl(url, queryParams);
 
-  const options: any = {
+  const options: RequestInit & Record<string, any> = {
     method,
     headers: new Headers({
       ...headers,
     }),
-    body: body || null,
+    body: body || undefined,
     ...nextOption,
   };
 
@@ -190,19 +314,23 @@ export const sendRequestFile = async <T>(props: RequestFileProps) => {
     options.credentials = "include";
   }
 
-  return fetch(url, options).then((res) => {
-    if (res.ok) {
-      return res.json() as T;
+  try {
+    const response = await fetch(url, options);
+    const responseBody = await parseResponseBody(response);
+
+    if (response.ok) {
+      return responseBody as T;
     }
 
-    return res.json().then((json) => {
-      return {
-        statusCode: res.status,
-        message: json?.message ?? "",
-        error: json?.error ?? "",
-      } as T;
-    });
-  });
+    return createErrorResponse<T>(response, responseBody);
+  } catch (error) {
+    return {
+      statusCode: 0,
+      message: error instanceof Error ? error.message : "Network error",
+      error: "NETWORK_ERROR",
+      data: null,
+    } as T;
+  }
 };
 
 export const convertSlugUrl = (str: string) => {
@@ -219,8 +347,8 @@ export const convertSlugUrl = (str: string) => {
    AUTH APIs
 ========================= */
 
-export const loginAPI = async (payload: LoginPayload) => {
-  return await sendRequest<IBackendRes<AuthUserResponse>>({
+export const loginAPI = (payload: LoginPayload) => {
+  return sendRequest<IBackendRes<AuthUserResponse>>({
     url: `${AUTH_URL}/login`,
     method: "POST",
     body: payload,
@@ -228,26 +356,26 @@ export const loginAPI = async (payload: LoginPayload) => {
 };
 
 export const getAccountApi = (accessToken?: string) => {
-  return sendRequest<IBackendRes<IUser>>({
-    url: buildUrl("/api/v1/auth/account"),
+  return sendRequest<IBackendRes<{ user: IUser }>>({
+    url: `${AUTH_URL}/account`,
     method: "GET",
     headers: authHeaders(accessToken),
   });
 };
 
-export const refreshTokenApi = (refresh_token: string) => {
-  return sendRequest<IBackendRes<any>>({
-    url: buildUrl("/api/v1/auth/refresh"),
+export const refreshTokenApi = (refreshToken: string) => {
+  return sendRequest<IBackendRes<AuthUserResponse>>({
+    url: `${AUTH_URL}/refresh`,
     method: "POST",
     body: {
-      refresh_token,
+      refresh_token: refreshToken,
     },
   });
 };
 
 export const logoutApi = (accessToken?: string) => {
-  return sendRequest<IBackendRes<any>>({
-    url: buildUrl("/api/v1/auth/logout"),
+  return sendRequest<IBackendRes<null>>({
+    url: `${AUTH_URL}/logout`,
     method: "POST",
     headers: authHeaders(accessToken),
   });
@@ -275,14 +403,57 @@ export const socialMediaLoginApi = (
         }
       : {
           ...payload,
+          avatarUrl: payload.avatarUrl || payload.image,
           username: payload.username || payload.email,
           email: payload.email || payload.username,
         };
 
-  return sendRequest<IBackendRes<any>>({
-    url: buildUrl("/api/v1/auth/social-media"),
+  return sendRequest<IBackendRes<AuthUserResponse>>({
+    url: `${AUTH_URL}/social-media`,
     method: "POST",
     body,
+  });
+};
+
+export const registerApi = (payload: RegisterPayload) => {
+  return sendRequest<IBackendRes<IUser>>({
+    url: `${AUTH_URL}/register`,
+    method: "POST",
+    body: payload,
+  });
+};
+
+export const registerWithOtpAPI = registerApi;
+
+export const verifyRegisterOtpAPI = (payload: VerifyOtpPayload) => {
+  return sendRequest<IBackendRes<IUser>>({
+    url: `${AUTH_URL}/verify-otp`,
+    method: "POST",
+    body: payload,
+  });
+};
+
+export const resendRegisterOtpAPI = (email: string) => {
+  return sendRequest<IBackendRes<null>>({
+    url: `${AUTH_URL}/resend-otp`,
+    method: "POST",
+    body: { email },
+  });
+};
+
+export const forgotPasswordAPI = (payload: ForgotPasswordPayload) => {
+  return sendRequest<IBackendRes<null>>({
+    url: `${AUTH_URL}/forgot-password`,
+    method: "POST",
+    body: payload,
+  });
+};
+
+export const resetPasswordAPI = (payload: ResetPasswordPayload) => {
+  return sendRequest<IBackendRes<null>>({
+    url: `${AUTH_URL}/reset-password`,
+    method: "POST",
+    body: payload,
   });
 };
 
@@ -291,8 +462,13 @@ export const socialMediaLoginApi = (
 ========================= */
 
 export const getAllUsersApi = (accessToken?: string) => {
-  return sendRequest<IBackendRes<IUser[]>>({
-    url: buildUrl("/api/v1/users/all"),
+  return sendRequest<
+    IBackendRes<{
+      result: IUser[];
+      total?: number;
+    }>
+  >({
+    url: "/api/v1/users/all",
     method: "GET",
     headers: authHeaders(accessToken),
   });
@@ -303,11 +479,12 @@ export const getUsersApi = (
   params: PaginationParams = {}
 ) => {
   return sendRequest<IBackendRes<IModelPaginate<IUser>>>({
-    url: buildUrl("/api/v1/users"),
+    url: "/api/v1/users",
     method: "GET",
     queryParams: {
       current: params.current ?? 1,
       pageSize: params.pageSize ?? 10,
+      ...((params as any).sort ? { sort: (params as any).sort } : {}),
     },
     headers: authHeaders(accessToken),
   });
@@ -315,7 +492,7 @@ export const getUsersApi = (
 
 export const getUserByIdApi = (id: string, accessToken?: string) => {
   return sendRequest<IBackendRes<IUser>>({
-    url: buildUrl(`/api/v1/users/${id}`),
+    url: `/api/v1/users/${encodeURIComponent(id)}`,
     method: "GET",
     headers: authHeaders(accessToken),
   });
@@ -326,7 +503,7 @@ export const createUserApi = (
   accessToken?: string
 ) => {
   return sendRequest<IBackendRes<IUser>>({
-    url: buildUrl("/api/v1/users"),
+    url: "/api/v1/users",
     method: "POST",
     body: payload,
     headers: authHeaders(accessToken),
@@ -337,8 +514,12 @@ export const updateUserApi = (
   payload: UpdateUserPayload,
   accessToken?: string
 ) => {
+  const id = (payload as any)?._id || (payload as any)?.id;
+
   return sendRequest<IBackendRes<IUser>>({
-    url: buildUrl("/api/v1/users"),
+    url: id
+      ? `/api/v1/users/update/${encodeURIComponent(id)}`
+      : "/api/v1/users",
     method: "PATCH",
     body: payload,
     headers: authHeaders(accessToken),
@@ -346,11 +527,140 @@ export const updateUserApi = (
 };
 
 export const deleteUserApi = (id: string, accessToken?: string) => {
-  return sendRequest<IBackendRes<any>>({
-    url: buildUrl(`/api/v1/users/${id}`),
+  return sendRequest<IBackendRes<null>>({
+    url: `/api/v1/users/${encodeURIComponent(id)}`,
     method: "DELETE",
     headers: authHeaders(accessToken),
   });
+};
+
+export const getArtistLeaderboard = async (
+  limit = 10
+): Promise<ArtistLeaderboardItem[]> => {
+  const response = await sendRequest<ArtistLeaderboardResponse>({
+    url: "/api/v1/users/leaderboard/artists",
+    method: "GET",
+    queryParams: {
+      limit: Math.max(limit, 1),
+    },
+    nextOption: {
+      cache: "no-store",
+    },
+  });
+
+  return Array.isArray((response as any)?.data) ? (response as any).data : [];
+};
+
+/* =========================
+   FOLLOW APIs
+   FollowController là nơi duy nhất xử lý.
+========================= */
+
+export const followUserApi = async (userId: string, accessToken?: string) => {
+  const response = await sendRequest<IBackendRes<FollowStatusData>>({
+    url: `/api/v1/users/${encodeURIComponent(userId)}/follow`,
+    method: "POST",
+    headers: authHeaders(accessToken),
+  });
+
+  return normalizeFollowResponse(response);
+};
+
+export const unfollowUserApi = async (userId: string, accessToken?: string) => {
+  const response = await sendRequest<IBackendRes<FollowStatusData>>({
+    url: `/api/v1/users/${encodeURIComponent(userId)}/follow`,
+    method: "DELETE",
+    headers: authHeaders(accessToken),
+  });
+
+  return normalizeFollowResponse(response);
+};
+
+export const getFollowStatusApi = async (
+  userId: string,
+  accessToken?: string
+) => {
+  const response = await sendRequest<IBackendRes<FollowStatusData>>({
+    url: `/api/v1/users/${encodeURIComponent(userId)}/follow-status`,
+    method: "GET",
+    headers: authHeaders(accessToken),
+  });
+
+  return normalizeFollowResponse(response);
+};
+
+export const getUserFollowingApi = (
+  userId: string,
+  accessToken?: string,
+  params: PaginationParams = {}
+) => {
+  return sendRequest<IBackendRes<FollowListData>>({
+    url: `/api/v1/users/${encodeURIComponent(userId)}/following`,
+    method: "GET",
+    queryParams: {
+      current: params.current ?? 1,
+      pageSize: params.pageSize ?? 20,
+    },
+    headers: authHeaders(accessToken),
+  });
+};
+
+export const getUserFollowersApi = (
+  userId: string,
+  accessToken?: string,
+  params: PaginationParams = {}
+) => {
+  return sendRequest<IBackendRes<FollowListData>>({
+    url: `/api/v1/users/${encodeURIComponent(userId)}/followers`,
+    method: "GET",
+    queryParams: {
+      current: params.current ?? 1,
+      pageSize: params.pageSize ?? 20,
+    },
+    headers: authHeaders(accessToken),
+  });
+};
+
+export const getMyFollowingApi = async (
+  accessToken?: string,
+  params: PaginationParams = {}
+) => {
+  const account = await getAccountApi(accessToken);
+  const user = (account as any)?.data?.user || (account as any)?.data;
+
+  const userId = getUserId(user);
+
+  if (!userId) {
+    return {
+      statusCode: (account as any)?.statusCode || 401,
+      message: (account as any)?.message || "Cannot resolve current user",
+      error: (account as any)?.error || "UNAUTHORIZED",
+      data: null,
+    } as IBackendRes<FollowListData>;
+  }
+
+  return getUserFollowingApi(userId, accessToken, params);
+};
+
+export const getMyFollowersApi = async (
+  accessToken?: string,
+  params: PaginationParams = {}
+) => {
+  const account = await getAccountApi(accessToken);
+  const user = (account as any)?.data?.user || (account as any)?.data;
+
+  const userId = getUserId(user);
+
+  if (!userId) {
+    return {
+      statusCode: (account as any)?.statusCode || 401,
+      message: (account as any)?.message || "Cannot resolve current user",
+      error: (account as any)?.error || "UNAUTHORIZED",
+      data: null,
+    } as IBackendRes<FollowListData>;
+  }
+
+  return getUserFollowersApi(userId, accessToken, params);
 };
 
 /* =========================
@@ -361,8 +671,8 @@ export const getTracksApi = (
   accessToken?: string,
   params: PaginationParams = {}
 ) => {
-  return sendRequest<IBackendRes<IModelPaginate<ITrackTop> | ITrackTop[]>>({
-    url: buildUrl("/api/v1/tracks"),
+  return sendRequest<IBackendRes<IModelPaginate<ITrackTop>>>({
+    url: "/api/v1/tracks",
     method: "GET",
     queryParams: {
       current: params.current ?? 1,
@@ -372,48 +682,55 @@ export const getTracksApi = (
   });
 };
 
+export const getAllTracksApi = () => {
+  return sendRequest<IBackendRes<{ result: ITrackTop[] }>>({
+    url: "/api/v1/tracks/find-all",
+    method: "GET",
+  });
+};
+
 export const getTrackByIdApi = (id: string) => {
   return sendRequest<IBackendRes<ITrackTop>>({
-    url: buildUrl(`/api/v1/tracks/${id}`),
+    url: `/api/v1/tracks/search/${encodeURIComponent(id)}`,
     method: "GET",
   });
 };
 
 export const getTrackBySlugOrIdApi = (slugOrId: string) => {
   return sendRequest<IBackendRes<ITrackTop>>({
-    url: buildUrl(`/api/v1/tracks/${slugOrId}`),
+    url: `/api/v1/tracks/${encodeURIComponent(slugOrId)}`,
     method: "GET",
   });
 };
 
 export const createTrackApi = (
-  payload: CreateTrackPayload,
+  payload: CreateTrackPayload | FormData,
   accessToken?: string
 ) => {
-  return sendRequest<IBackendRes<ITrackTop>>({
-    url: buildUrl("/api/v1/tracks"),
+  return sendRequestFile<IBackendRes<ITrackTop>>({
+    url: "/api/v1/tracks",
     method: "POST",
-    body: payload,
+    body: toFormData(payload as any),
     headers: authHeaders(accessToken),
   });
 };
 
 export const updateTrackApi = (
   id: string,
-  payload: UpdateTrackPayload,
+  payload: UpdateTrackPayload | FormData,
   accessToken?: string
 ) => {
-  return sendRequest<IBackendRes<ITrackTop>>({
-    url: buildUrl(`/api/v1/tracks/${id}`),
+  return sendRequestFile<IBackendRes<ITrackTop>>({
+    url: `/api/v1/tracks/${encodeURIComponent(id)}`,
     method: "PATCH",
-    body: payload,
+    body: toFormData(payload as any),
     headers: authHeaders(accessToken),
   });
 };
 
 export const deleteTrackApi = (id: string, accessToken?: string) => {
-  return sendRequest<IBackendRes<any>>({
-    url: buildUrl(`/api/v1/tracks/${id}`),
+  return sendRequest<IBackendRes<null>>({
+    url: `/api/v1/tracks/${encodeURIComponent(id)}`,
     method: "DELETE",
     headers: authHeaders(accessToken),
   });
@@ -421,10 +738,11 @@ export const deleteTrackApi = (id: string, accessToken?: string) => {
 
 export const getTopTracksApi = (category: string, limit = 10) => {
   return sendRequest<IBackendRes<ITrackTop[]>>({
-    url: buildUrl("/api/v1/tracks/top"),
+    url: "/api/v1/tracks/top",
     method: "GET",
     queryParams: {
       category: category.toLowerCase(),
+      // BE hiện chưa dùng limit nhưng vẫn giữ để tương thích.
       limit,
     },
   });
@@ -432,40 +750,70 @@ export const getTopTracksApi = (category: string, limit = 10) => {
 
 export const getTrackCommentsApi = (trackId: string) => {
   return sendRequest<IBackendRes<ITrackComment[]>>({
-    url: buildUrl(`/api/v1/tracks/${trackId}/comments`),
+    url: `/api/v1/tracks/${encodeURIComponent(trackId)}/comments`,
     method: "GET",
   });
 };
 
-export const getTracksByUserApi = (
-  userId: string,
-  accessToken?: string,
-  params: PaginationParams = {}
-) => {
-  return sendRequest<IBackendRes<IModelPaginate<ITrackTop> | ITrackTop[]>>({
-    url: buildUrl("/api/v1/tracks/users"),
-    method: "POST",
-    queryParams: {
-      current: params.current ?? 1,
-      pageSize: params.pageSize ?? 10,
-    },
-    body: {
-      id: userId,
-    },
+export const getMyTracksApi = (accessToken?: string) => {
+  return sendRequest<IBackendRes<ITrackTop[]>>({
+    url: "/api/v1/tracks/my-tracks",
+    method: "GET",
     headers: authHeaders(accessToken),
   });
 };
 
+/*
+ * Backend hiện chưa có endpoint public:
+ * GET /users/{userId}/tracks.
+ * Hàm này lấy danh sách track APPROVED rồi lọc phía FE để giữ
+ * tương thích với các component profile hiện tại.
+ */
+export const getTracksByUserApi = async (
+  userId: string,
+  _accessToken?: string,
+  params: PaginationParams = {}
+) => {
+  const response = await getAllTracksApi();
+  const allTracks = getResponseResult<ITrackTop>(response);
+
+  const filtered = allTracks.filter((track: any) => {
+    const uploaderId = track?.uploaderId || getUserId(track?.uploader);
+
+    return uploaderId === userId;
+  });
+
+  const current = Math.max(Number(params.current) || 1, 1);
+
+  const pageSize = Math.max(Number(params.pageSize) || 10, 1);
+
+  const start = (current - 1) * pageSize;
+  const result = filtered.slice(start, start + pageSize);
+
+  return {
+    ...response,
+    data: {
+      meta: {
+        current,
+        pageSize,
+        pages: Math.ceil(filtered.length / pageSize),
+        total: filtered.length,
+      },
+      result,
+    },
+  } as IBackendRes<IModelPaginate<ITrackTop>>;
+};
+
 export const increaseTrackViewApi = (trackId: string) => {
-  return sendRequest<IBackendRes<any>>({
-    url: buildUrl(`/api/v1/tracks/${trackId}/play`),
+  return sendRequest<IBackendRes<ITrackTop>>({
+    url: `/api/v1/tracks/${encodeURIComponent(trackId)}/play`,
     method: "POST",
   });
 };
 
 export const searchTracksApi = (keyword: string) => {
   return sendRequest<IBackendRes<ITrackTop[]>>({
-    url: buildUrl("/api/v1/tracks/search"),
+    url: "/api/v1/tracks/search",
     method: "GET",
     queryParams: {
       keyword,
@@ -473,36 +821,83 @@ export const searchTracksApi = (keyword: string) => {
   });
 };
 
+export const createAlbumApi = (
+  payload: {
+    title: string;
+    isPublic?: boolean;
+    trackIds: string[];
+  },
+  accessToken?: string
+) => {
+  return sendRequest<IBackendRes<IPlaylist>>({
+    url: "/api/v1/tracks/create-album",
+    method: "POST",
+    body: payload,
+    headers: authHeaders(accessToken),
+  });
+};
+
+/* =========================
+   ADMIN TRACK APIs
+========================= */
+
+export const getAdminTracksApi = (
+  accessToken?: string,
+  params: PaginationParams = {}
+) => {
+  return sendRequest<IBackendRes<IModelPaginate<ITrackTop>>>({
+    url: "/api/v1/admin/tracks/find-all",
+    method: "GET",
+    queryParams: {
+      current: params.current ?? 1,
+      pageSize: params.pageSize ?? 10,
+    },
+    headers: authHeaders(accessToken),
+  });
+};
+
+export const approveTrackApi = (id: string, accessToken?: string) => {
+  return sendRequest<IBackendRes<ITrackTop>>({
+    url: `/api/v1/admin/tracks/${encodeURIComponent(id)}/approve`,
+    method: "PATCH",
+    headers: authHeaders(accessToken),
+  });
+};
+
+export const rejectTrackApi = (id: string, accessToken?: string) => {
+  return sendRequest<IBackendRes<ITrackTop>>({
+    url: `/api/v1/admin/tracks/${encodeURIComponent(id)}/reject`,
+    method: "PATCH",
+    headers: authHeaders(accessToken),
+  });
+};
+
 /* =========================
    FILE UPLOAD APIs
 ========================= */
 
-export const uploadFileApi = (
-  file: File,
-  targetType: FileTargetType,
-  accessToken?: string
-) => {
+export const uploadImageApi = (file: File, accessToken?: string) => {
   const formData = new FormData();
+  formData.append("file", file);
 
-  formData.append("fileUpload", file);
-
-  return sendRequestFile<IBackendRes<IUploadFileResponse>>({
-    url: buildUrl("/api/v1/files/upload"),
+  return sendRequestFile<IBackendRes<IUploadResponse>>({
+    url: "/api/v1/uploads/image",
     method: "POST",
     body: formData,
-    headers: {
-      ...authHeaders(accessToken),
-      target_type: targetType,
-    },
+    headers: authHeaders(accessToken),
   });
 };
 
-export const uploadImageApi = (file: File, accessToken?: string) => {
-  return uploadFileApi(file, "images", accessToken);
-};
-
 export const uploadTrackFileApi = (file: File, accessToken?: string) => {
-  return uploadFileApi(file, "tracks", accessToken);
+  const formData = new FormData();
+  formData.append("file", file);
+
+  return sendRequestFile<IBackendRes<IUploadResponse>>({
+    url: "/api/v1/uploads/audio",
+    method: "POST",
+    body: formData,
+    headers: authHeaders(accessToken),
+  });
 };
 
 /* =========================
@@ -513,25 +908,20 @@ export const getCommentsApi = (
   accessToken?: string,
   params: PaginationParams = {}
 ) => {
-  return sendRequest<IBackendRes<IModelPaginate<ITrackComment>>>({
-    url: buildUrl("/api/v1/comments"),
+  return sendRequest<
+    IBackendRes<{
+      result: ITrackComment[];
+      current: number;
+      pageSize: number;
+      total: number;
+    }>
+  >({
+    url: "/api/v1/comments",
     method: "GET",
     queryParams: {
       current: params.current ?? 1,
       pageSize: params.pageSize ?? 10,
     },
-    headers: authHeaders(accessToken),
-  });
-};
-
-export const createCommentApi = (
-  payload: CreateCommentPayload,
-  accessToken?: string
-) => {
-  return sendRequest<IBackendRes<ITrackComment>>({
-    url: buildUrl("/api/v1/comments"),
-    method: "POST",
-    body: payload,
     headers: authHeaders(accessToken),
   });
 };
@@ -542,16 +932,38 @@ export const createTrackCommentApi = (
   accessToken?: string
 ) => {
   return sendRequest<IBackendRes<ITrackComment>>({
-    url: buildUrl(`/api/v1/tracks/${trackId}/comments`),
+    url: `/api/v1/tracks/${encodeURIComponent(trackId)}/comments`,
     method: "POST",
     body: payload,
     headers: authHeaders(accessToken),
   });
 };
 
+/*
+ * Alias tương thích code cũ.
+ * payload phải chứa trackId vì BE không có POST /comments.
+ */
+export const createCommentApi = (
+  payload: CreateCommentPayload,
+  accessToken?: string
+) => {
+  const trackId = (payload as any)?.trackId || (payload as any)?.track_id;
+
+  if (!trackId) {
+    return Promise.resolve({
+      statusCode: 400,
+      message: "trackId is required",
+      error: "BAD_REQUEST",
+      data: null,
+    } as IBackendRes<ITrackComment>);
+  }
+
+  return createTrackCommentApi(trackId, payload, accessToken);
+};
+
 export const deleteCommentApi = (id: string, accessToken?: string) => {
-  return sendRequest<IBackendRes<any>>({
-    url: buildUrl(`/api/v1/comments/${id}`),
+  return sendRequest<IBackendRes<boolean>>({
+    url: `/api/v1/comments/${encodeURIComponent(id)}`,
     method: "DELETE",
     headers: authHeaders(accessToken),
   });
@@ -566,9 +978,12 @@ export const createEmptyPlaylistApi = (
   accessToken?: string
 ) => {
   return sendRequest<IBackendRes<IPlaylist>>({
-    url: buildUrl("/api/v1/playlists/empty"),
+    url: buildUrl("/api/v1/playlists"),
     method: "POST",
-    body: payload,
+    body: {
+      title: payload.title,
+      isPublic: payload.isPublic ?? true,
+    },
     headers: authHeaders(accessToken),
   });
 };
@@ -577,8 +992,12 @@ export const updatePlaylistApi = (
   payload: UpdatePlaylistPayload,
   accessToken?: string
 ) => {
+  const id = (payload as any)?._id || (payload as any)?.id;
+
   return sendRequest<IBackendRes<IPlaylist>>({
-    url: buildUrl("/api/v1/playlists"),
+    url: id
+      ? `/api/v1/playlists/${encodeURIComponent(id)}`
+      : "/api/v1/playlists",
     method: "PATCH",
     body: payload,
     headers: authHeaders(accessToken),
@@ -586,8 +1005,8 @@ export const updatePlaylistApi = (
 };
 
 export const deletePlaylistApi = (id: string, accessToken?: string) => {
-  return sendRequest<IBackendRes<any>>({
-    url: buildUrl(`/api/v1/playlists/${id}`),
+  return sendRequest<IBackendRes<null>>({
+    url: `/api/v1/playlists/${encodeURIComponent(id)}`,
     method: "DELETE",
     headers: authHeaders(accessToken),
   });
@@ -595,7 +1014,7 @@ export const deletePlaylistApi = (id: string, accessToken?: string) => {
 
 export const getPlaylistByIdApi = (id: string, accessToken?: string) => {
   return sendRequest<IBackendRes<IPlaylist>>({
-    url: buildUrl(`/api/v1/playlists/${id}`),
+    url: `/api/v1/playlists/${encodeURIComponent(id)}`,
     method: "GET",
     headers: authHeaders(accessToken),
   });
@@ -605,8 +1024,8 @@ export const getPlaylistsApi = (
   accessToken?: string,
   params: PaginationParams = {}
 ) => {
-  return sendRequest<IBackendRes<IModelPaginate<IPlaylist> | IPlaylist[]>>({
-    url: buildUrl("/api/v1/playlists"),
+  return sendRequest<IBackendRes<IModelPaginate<IPlaylist>>>({
+    url: "/api/v1/playlists",
     method: "GET",
     queryParams: {
       current: params.current ?? 1,
@@ -616,19 +1035,56 @@ export const getPlaylistsApi = (
   });
 };
 
-export const getPlaylistsByUserApi = (
-  accessToken?: string,
-  params: PaginationParams = {}
-) => {
-  return sendRequest<IBackendRes<IModelPaginate<IPlaylist> | IPlaylist[]>>({
-    url: buildUrl("/api/v1/playlists/by-user"),
+export const getPlaylistsByUserApi = (accessToken?: string) => {
+  return sendRequest<IBackendRes<IPlaylist[]>>({
+    url: "/api/v1/playlists/my-playlists",
     method: "GET",
-    queryParams: {
-      current: params.current ?? 1,
-      pageSize: params.pageSize ?? 100,
-    },
     headers: authHeaders(accessToken),
   });
+};
+
+/*
+ * Backend chưa có endpoint playlist public theo user.
+ * Tạm lấy danh sách playlist rồi lọc phía FE.
+ */
+export const getUserPlaylistsApi = async (userId: string) => {
+  const response = await getPlaylistsApi(undefined, {
+    current: 1,
+    pageSize: 100,
+  });
+
+  const playlists = getResponseResult<IPlaylist>(response).filter(
+    (playlist: any) => {
+      const ownerId = playlist?.userId || getUserId(playlist?.user);
+
+      return ownerId === userId && !Boolean(playlist?.isAlbum);
+    }
+  );
+
+  return {
+    ...response,
+    data: playlists,
+  } as IBackendRes<IPlaylist[]>;
+};
+
+export const getUserAlbumsApi = async (userId: string) => {
+  const response = await getPlaylistsApi(undefined, {
+    current: 1,
+    pageSize: 100,
+  });
+
+  const albums = getResponseResult<IPlaylist>(response).filter(
+    (playlist: any) => {
+      const ownerId = playlist?.userId || getUserId(playlist?.user);
+
+      return ownerId === userId && Boolean(playlist?.isAlbum);
+    }
+  );
+
+  return {
+    ...response,
+    data: albums,
+  } as IBackendRes<IPlaylist[]>;
 };
 
 /* =========================
@@ -637,7 +1093,7 @@ export const getPlaylistsByUserApi = (
 
 export const likeTrackApi = (trackId: string, accessToken?: string) => {
   return sendRequest<IBackendRes<ITrackTop>>({
-    url: buildUrl(`/api/v1/tracks/${trackId}/like`),
+    url: `/api/v1/tracks/${encodeURIComponent(trackId)}/like`,
     method: "POST",
     headers: authHeaders(accessToken),
   });
@@ -645,7 +1101,7 @@ export const likeTrackApi = (trackId: string, accessToken?: string) => {
 
 export const dislikeTrackApi = (trackId: string, accessToken?: string) => {
   return sendRequest<IBackendRes<ITrackTop>>({
-    url: buildUrl(`/api/v1/tracks/${trackId}/dislike`),
+    url: `/api/v1/tracks/${encodeURIComponent(trackId)}/dislike`,
     method: "POST",
     headers: authHeaders(accessToken),
   });
@@ -653,9 +1109,104 @@ export const dislikeTrackApi = (trackId: string, accessToken?: string) => {
 
 export const getLikedTracksApi = (accessToken?: string) => {
   return sendRequest<IBackendRes<ITrackTop[]>>({
-    url: buildUrl("/api/v1/tracks/liked"),
+    url: "/api/v1/tracks/liked",
     method: "GET",
     headers: authHeaders(accessToken),
+  });
+};
+
+/*
+ * BE chỉ hỗ trợ liked tracks của tài khoản đang đăng nhập.
+ * Giữ userId trong chữ ký để không làm vỡ code FE cũ.
+ */
+export const getUserLikedTracksApi = (
+  _userId: string,
+  accessToken?: string
+) => {
+  return getLikedTracksApi(accessToken);
+};
+
+/* =========================
+   CATEGORY APIs
+========================= */
+
+export const getCategories = (
+  current = 1,
+  pageSize = 100,
+  accessToken?: string
+) => {
+  return sendRequest<IBackendRes<IModelPaginate<ICategory> | ICategory[]>>({
+    url: "/api/v1/categories",
+    method: "GET",
+    queryParams: {
+      current,
+      pageSize,
+    },
+    headers: authHeaders(accessToken),
+    nextOption: {
+      cache: "no-store",
+    },
+  });
+};
+
+export const getAllCategories = () => {
+  return sendRequest<IBackendRes<ICategory[]>>({
+    url: "/api/v1/categories/all",
+    method: "GET",
+  });
+};
+
+export const getCategoryById = (id: string) => {
+  return sendRequest<IBackendRes<ICategory>>({
+    url: `/api/v1/categories/${encodeURIComponent(id)}`,
+    method: "GET",
+  });
+};
+
+export const getCategoryBySlug = (slug: string) => {
+  return sendRequest<IBackendRes<ICategory>>({
+    url: `/api/v1/categories/slug/${encodeURIComponent(slug)}`,
+    method: "GET",
+  });
+};
+
+export const createCategory = (data: ICreateCategory, accessToken?: string) => {
+  return sendRequest<IBackendRes<ICategory>>({
+    url: "/api/v1/categories",
+    method: "POST",
+    headers: authHeaders(accessToken),
+    body: data,
+  });
+};
+
+export const updateCategory = (
+  id: string,
+  data: IUpdateCategory,
+  accessToken?: string
+) => {
+  return sendRequest<IBackendRes<ICategory>>({
+    url: `/api/v1/categories/${encodeURIComponent(id)}`,
+    method: "PUT",
+    headers: authHeaders(accessToken),
+    body: data,
+  });
+};
+
+export const deleteCategoryApi = (id: string, accessToken?: string) => {
+  return sendRequest<IBackendRes<null>>({
+    url: `/api/v1/categories/${encodeURIComponent(id)}`,
+    method: "DELETE",
+    headers: authHeaders(accessToken),
+  });
+};
+
+export const getTracksByCategory = (categorySlug: string) => {
+  return sendRequest<IBackendRes<ITrackTop[]>>({
+    url: "/api/v1/tracks/top",
+    method: "GET",
+    queryParams: {
+      category: categorySlug,
+    },
   });
 };
 
@@ -665,250 +1216,11 @@ export const getLikedTracksApi = (accessToken?: string) => {
 
 export const revalidateApi = (tag: string) => {
   return sendRequest<IBackendRes<any>>({
-    url: buildUrl("/api/revalidate"),
+    url: "/api/revalidate",
     method: "POST",
     queryParams: {
       tag,
       secret: "justArandomString",
     },
-  });
-};
-
-/* =========================
-   LeaderBoard API
-========================= */
-
-export const getArtistLeaderboard = async (
-  limit = 10
-): Promise<ArtistLeaderboardItem[]> => {
-  const res = await fetch(
-    `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/v1/users/leaderboard/artists?limit=${limit}`,
-    {
-      cache: "no-store",
-    }
-  );
-
-  if (!res.ok) {
-    throw new Error("Failed to fetch artist leaderboard");
-  }
-
-  const json = (await res.json()) as ArtistLeaderboardResponse;
-
-  return Array.isArray(json?.data) ? json.data : [];
-};
-
-// ===================== CATEGORY API =====================
-
-export const getCategoryId = (category?: ICategory | any) => {
-  return category?._id || category?.id || "";
-};
-
-// GET /api/v1/categories?current=1&pageSize=100
-export const getCategories = async (
-  current = 1,
-  pageSize = 100,
-  accessToken?: string
-) => {
-  return await sendRequest<
-    IBackendRes<IModelPaginate<ICategory> | ICategory[]>
-  >({
-    url: `${BACKEND_URL}/api/v1/categories`,
-    method: "GET",
-    queryParams: {
-      current,
-      pageSize,
-    },
-    headers: accessToken
-      ? {
-          Authorization: `Bearer ${accessToken}`,
-        }
-      : {},
-    nextOption: {
-      cache: "no-store",
-    },
-  });
-};
-
-// GET /api/v1/categories/all
-export const getAllCategories = async () => {
-  return await sendRequest<IBackendRes<ICategory[]>>({
-    url: `${BACKEND_URL}/api/v1/categories/all`,
-    method: "GET",
-  });
-};
-
-// GET /api/v1/categories/{id}
-export const getCategoryById = async (id: string) => {
-  return await sendRequest<IBackendRes<ICategory>>({
-    url: `${BACKEND_URL}/api/v1/categories/${id}`,
-    method: "GET",
-  });
-};
-
-// GET /api/v1/categories/slug/{slug}
-export const getCategoryBySlug = async (slug: string) => {
-  return await sendRequest<IBackendRes<ICategory>>({
-    url: `${BACKEND_URL}/api/v1/categories/slug/${slug}`,
-    method: "GET",
-  });
-};
-
-// POST /api/v1/categories
-export const createCategory = async (
-  data: ICreateCategory,
-  accessToken?: string
-) => {
-  return await sendRequest<IBackendRes<ICategory>>({
-    url: `${BACKEND_URL}/api/v1/categories`,
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-    },
-    body: data,
-  });
-};
-
-// PUT /api/v1/categories/{id}
-export const updateCategory = async (
-  id: string,
-  data: IUpdateCategory,
-  accessToken?: string
-) => {
-  return await sendRequest<IBackendRes<ICategory>>({
-    url: `${BACKEND_URL}/api/v1/categories/${id}`,
-    method: "PUT",
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-    },
-    body: data,
-  });
-};
-
-// DELETE /api/v1/categories/{id}
-export const deleteCategoryApi = async (id: string, accessToken?: string) => {
-  return await sendRequest<IBackendRes<null>>({
-    url: `${BACKEND_URL}/api/v1/categories/${id}`,
-    method: "DELETE",
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-    },
-  });
-};
-
-// GET tracks theo category slug
-// GET /api/v1/tracks/top?category=ncs
-export const getTracksByCategory = async (categorySlug: string) => {
-  return await sendRequest<IBackendRes<ITrackTop[]>>({
-    url: `${BACKEND_URL}/api/v1/tracks/top`,
-    method: "GET",
-    queryParams: {
-      category: categorySlug,
-    },
-  });
-};
-
-/// mail logic
-
-export const registerApi = (payload: RegisterPayload) => {
-  return sendRequest<IBackendRes<any>>({
-    url: buildUrl("/api/v1/auth/register"),
-    method: "POST",
-    body: payload,
-  });
-};
-
-export const registerWithOtpAPI = async (payload: RegisterPayload) => {
-  return await sendRequest<IBackendRes<IUser>>({
-    url: `${AUTH_URL}/register`,
-    method: "POST",
-    body: payload,
-  });
-};
-
-export const verifyRegisterOtpAPI = async (payload: VerifyOtpPayload) => {
-  return await sendRequest<IBackendRes<IUser>>({
-    url: `${AUTH_URL}/verify-otp`,
-    method: "POST",
-    body: payload,
-  });
-};
-
-export const resendRegisterOtpAPI = async (email: string) => {
-  return await sendRequest<IBackendRes<any>>({
-    url: `${AUTH_URL}/resend-otp`,
-    method: "POST",
-    body: { email },
-  });
-};
-
-export const forgotPasswordAPI = async (payload: ForgotPasswordPayload) => {
-  return await sendRequest<IBackendRes<any>>({
-    url: `${AUTH_URL}/forgot-password`,
-    method: "POST",
-    body: payload,
-  });
-};
-
-export const resetPasswordAPI = async (payload: ResetPasswordPayload) => {
-  return await sendRequest<IBackendRes<any>>({
-    url: `${AUTH_URL}/reset-password`,
-    method: "POST",
-    body: payload,
-  });
-};
-
-//// follower/ing api
-
-export const followUserApi = (userId: string, accessToken?: string) => {
-  return sendRequest<IBackendRes<IUser>>({
-    url: buildUrl(`/api/v1/users/${userId}/follow`),
-    method: "POST",
-    headers: authHeaders(accessToken),
-  });
-};
-
-export const unfollowUserApi = (userId: string, accessToken?: string) => {
-  return sendRequest<IBackendRes<IUser>>({
-    url: buildUrl(`/api/v1/users/${userId}/unfollow`),
-    method: "POST",
-    headers: authHeaders(accessToken),
-  });
-};
-
-export const getMyFollowingApi = (accessToken?: string) => {
-  return sendRequest<IBackendRes<{ result: IUser[]; total: number }>>({
-    url: buildUrl("/api/v1/users/me/following"),
-    method: "GET",
-    headers: authHeaders(accessToken),
-  });
-};
-
-export const getMyFollowersApi = (accessToken?: string) => {
-  return sendRequest<IBackendRes<{ result: IUser[]; total: number }>>({
-    url: buildUrl("/api/v1/users/me/followers"),
-    method: "GET",
-    headers: authHeaders(accessToken),
-  });
-};
-
-export const getUserFollowingApi = (userId: string) => {
-  return sendRequest<IBackendRes<{ result: IUser[]; total: number }>>({
-    url: buildUrl(`/api/v1/users/${userId}/following`),
-    method: "GET",
-  });
-};
-
-export const getUserFollowersApi = (userId: string) => {
-  return sendRequest<IBackendRes<{ result: IUser[]; total: number }>>({
-    url: buildUrl(`/api/v1/users/${userId}/followers`),
-    method: "GET",
-  });
-};
-
-export const getFollowStatusApi = (userId: string, accessToken?: string) => {
-  return sendRequest<IBackendRes<{ isFollowing: boolean }>>({
-    url: buildUrl(`/api/v1/users/${userId}/follow-status`),
-    method: "GET",
-    headers: authHeaders(accessToken),
   });
 };

@@ -10,8 +10,8 @@ import RepeatRoundedIcon from "@mui/icons-material/RepeatRounded";
 import ChatBubbleRoundedIcon from "@mui/icons-material/ChatBubbleRounded";
 import { convertSlugUrl, getTrackId } from "@/utils/api";
 import { getListeningHistory } from "@/utils/actions/history";
-import { getTrackImageUrl } from "@/utils/actions/getAvatar";
 import { useTrackContext } from "@/lib/track.wrapper";
+import { getTrackImageUrl } from "@/utils/actions/getImages";
 
 const formatNumber = (value?: number) => {
   const number = Number(value || 0);

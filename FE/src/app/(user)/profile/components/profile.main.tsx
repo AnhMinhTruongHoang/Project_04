@@ -16,12 +16,17 @@ import ContentCopyRoundedIcon from "@mui/icons-material/ContentCopyRounded";
 import MoreHorizRoundedIcon from "@mui/icons-material/MoreHorizRounded";
 import EventAvailableRoundedIcon from "@mui/icons-material/EventAvailableRounded";
 import LocationOnRoundedIcon from "@mui/icons-material/LocationOnRounded";
-import { convertSlugUrl, sendRequest } from "@/utils/api";
 import { useToast } from "@/utils/toast";
-import { getTrackImageUrl } from "@/utils/actions/getAvatar";
+import { getTrackImageUrl } from "@/utils/actions/getImages";
 import ProfileShareDialog from "./profile-share-dialog";
 import ProfileEditDialog from "./profile-edit-dialog";
 import VerifiedRoundedIcon from "@mui/icons-material/VerifiedRounded";
+import {
+  convertSlugUrl,
+  followUserApi,
+  unfollowUserApi,
+  getFollowStatusApi,
+} from "@/utils/api";
 
 type Props = {
   user: Partial<IUser> | null;
@@ -58,14 +63,40 @@ const ProfileMain = ({ user, tracks }: Props) => {
   useEffect(() => {
     setFollowersCount(user?.followers ?? 0);
 
-    if (!profileUserId) return;
+    const accessToken =
+      (session as any)?.accessToken ||
+      (session as any)?.access_token ||
+      (session as any)?.user?.access_token;
 
-    const followedUsers = JSON.parse(
-      localStorage.getItem("soundclone-followed-users") || "[]"
-    ) as string[];
+    if (!profileUserId || !accessToken || isOwner) {
+      setIsFollowing(false);
+      return;
+    }
 
-    setIsFollowing(followedUsers.includes(profileUserId));
-  }, [profileUserId, user?.followers]);
+    let cancelled = false;
+
+    const fetchFollowStatus = async () => {
+      const response = await getFollowStatusApi(profileUserId, accessToken);
+
+      if (cancelled) return;
+
+      if (response?.data) {
+        setIsFollowing(
+          Boolean(response.data.following ?? response.data.isFollowing)
+        );
+
+        setFollowersCount(
+          response.data.targetFollowers ?? user?.followers ?? 0
+        );
+      }
+    };
+
+    void fetchFollowStatus();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [profileUserId, user?.followers, isOwner, session]);
 
   const getTrackHref = (track: ITrackTop) => {
     const trackId = getItemId(track);
@@ -113,40 +144,36 @@ const ProfileMain = ({ user, tracks }: Props) => {
       return;
     }
 
-    const nextFollowState = !isFollowing;
-
     try {
       setFollowLoading(true);
 
-      const res = await sendRequest<IBackendRes<IUser>>({
-        url: `${
-          process.env.NEXT_PUBLIC_BACKEND_URL
-        }/api/v1/users/${profileUserId}/${
-          nextFollowState ? "follow" : "unfollow"
-        }`,
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-        },
-      });
+      const response = isFollowing
+        ? await unfollowUserApi(profileUserId, accessToken)
+        : await followUserApi(profileUserId, accessToken);
 
-      if (res?.data) {
-        setIsFollowing(nextFollowState);
-        saveFollowState(profileUserId, nextFollowState);
-        setFollowersCount(res.data.followers ?? followersCount);
-
-        toast.success(nextFollowState ? "Followed." : "Unfollowed.");
+      if (!response?.data) {
+        toast.error(response?.message || "Follow failed.");
         return;
       }
 
-      toast.error(res?.message || "Follow failed.");
-    } catch (error) {
+      const nextFollowing = Boolean(
+        response.data.following ?? response.data.isFollowing
+      );
+
+      setIsFollowing(nextFollowing);
+
+      setFollowersCount(
+        response.data.targetFollowers ??
+          (nextFollowing ? followersCount + 1 : Math.max(followersCount - 1, 0))
+      );
+
+      toast.success(nextFollowing ? "Followed." : "Unfollowed.");
+    } catch {
       toast.error("Follow failed.");
     } finally {
       setFollowLoading(false);
     }
   };
-
   const WaveBars = () => {
     return (
       <Box

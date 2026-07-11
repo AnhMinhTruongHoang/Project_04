@@ -21,7 +21,7 @@ import {
   DialogContent,
   DialogTitle,
 } from "@mui/material";
-import { getInitials, getUserAvatarUrl } from "@/utils/actions/getAvatar";
+import { getInitials, getUserAvatarUrl } from "@/utils/actions/getImages";
 
 type Props = {
   comments: ITrackComment[];

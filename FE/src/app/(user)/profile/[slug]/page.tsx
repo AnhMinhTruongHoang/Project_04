@@ -84,6 +84,10 @@ const ProfilePage = async ({ params }: { params: { slug: string } }) => {
     }),
   ]);
 
+  console.log("userId =", userId);
+
+  console.log("userRes =", JSON.stringify(userRes, null, 2));
+
   const responseTracks = tracksRes?.data as any;
 
   const tracks: ITrackTop[] = Array.isArray(responseTracks)

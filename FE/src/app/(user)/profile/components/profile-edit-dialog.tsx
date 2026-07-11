@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import Dialog from "@mui/material/Dialog";
@@ -9,31 +9,32 @@ import Button from "@mui/material/Button";
 import Typography from "@mui/material/Typography";
 import TextField from "@mui/material/TextField";
 import Divider from "@mui/material/Divider";
-import { sendRequest } from "@/utils/api";
+import Grid from "@mui/material/Grid";
+import Avatar from "@mui/material/Avatar";
+import { sendRequest, updateUserApi, uploadImageApi } from "@/utils/api";
 import { useToast } from "@/utils/toast";
-import { Avatar } from "@mui/material";
-import { getInitials, getUserAvatarUrl } from "@/utils/actions/getAvatar";
+import { getInitials, getUserAvatarUrl } from "@/utils/actions/getImages";
 
 type Props = {
   open: boolean;
   onClose: () => void;
-  user: Partial<IUser> | null;
+  user: IUser | null;
 };
 
 const inputSx = {
   "& .MuiInputBase-root": {
-    backgroundColor: "#242729",
+    backgroundColor: "#1e1f20",
     color: "#ffffff",
-    borderRadius: "4px",
+    borderRadius: "6px",
     fontWeight: 700,
   },
 
   "& .MuiOutlinedInput-notchedOutline": {
-    borderColor: "rgba(255,255,255,0.08)",
+    borderColor: "rgba(255,255,255,0.06)",
   },
 
   "&:hover .MuiOutlinedInput-notchedOutline": {
-    borderColor: "rgba(255,255,255,0.24)",
+    borderColor: "rgba(255,255,255,0.18)",
   },
 
   "& .Mui-focused .MuiOutlinedInput-notchedOutline": {
@@ -54,46 +55,63 @@ const inputSx = {
   },
 };
 
-const ProfileEditDialog = ({ open, onClose, user }: Props) => {
+export default function ProfileEditDialog({ open, onClose, user }: Props) {
   const router = useRouter();
   const toast = useToast();
   const { data: session } = useSession();
   const [displayName, setDisplayName] = useState("");
-  const [profileUrl, setProfileUrl] = useState("");
-  const [firstName, setFirstName] = useState("");
-  const [lastName, setLastName] = useState("");
-  const [city, setCity] = useState("");
-  const [country, setCountry] = useState("");
+  const [website, setWebsite] = useState("");
   const [bio, setBio] = useState("");
-  const [avatarError, setAvatarError] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  const getUserId = (user?: Partial<IUser> | null) => {
-    return (user as any)?._id || (user as any)?.id || "";
+  // preview and uploaded urls
+  const [avatarFile, setAvatarFile] = useState<File | null>(null);
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const getUserId = (u?: IUser | null) => u?._id ?? "";
+  const currentAvatarUrl = avatarPreview ?? getUserAvatarUrl(user);
+  const [avatarSrc, setAvatarSrc] = useState(currentAvatarUrl);
+
+  // helper to extract uploaded url from uploadImageApi response
+  const parseUploadResult = (res: any): string | undefined => {
+    return (
+      res?.data?.url ??
+      res?.data?.path ??
+      res?.data?.fileUrl ??
+      res?.data?.file?.url ??
+      res?.data?.filePath ??
+      res?.data?.pathName
+    );
   };
 
-  const avatarUrl = useMemo(() => {
-    return getUserAvatarUrl(user);
-  }, [user]);
+  useEffect(() => {
+    setAvatarSrc(currentAvatarUrl);
+  }, [currentAvatarUrl]);
 
   useEffect(() => {
     if (!open) return;
 
-    const name = user?.name || "";
-    const parts = name.split(" ");
+    setDisplayName(user?.name ?? "");
+    setWebsite(user?.website ?? "");
+    setBio(user?.bio ?? "");
 
-    setDisplayName(name);
-    setProfileUrl(`soundclone.com/${getUserId(user)}`);
-    setFirstName(parts[0] || "");
-    setLastName(parts.slice(1).join(" ") || "");
-    setCity("");
-    setCountry(user?.address || "");
-    setBio("");
-    setAvatarError(false);
+    setAvatarPreview(null);
+    setAvatarFile(null);
   }, [open, user]);
+
+  const handleAvatarSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+
+    if (!file) return;
+
+    setAvatarFile(file);
+
+    setAvatarPreview(URL.createObjectURL(file));
+  };
 
   const handleSave = async () => {
     const userId = getUserId(user);
+
     const accessToken = (session as any)?.access_token;
 
     if (!userId) {
@@ -114,42 +132,57 @@ const ProfileEditDialog = ({ open, onClose, user }: Props) => {
     try {
       setLoading(true);
 
-      const addressValue = [city.trim(), country.trim()]
-        .filter(Boolean)
-        .join(", ");
+      let avatarUrl = user?.avatarUrl;
 
-      const res = await sendRequest<IBackendRes<IUser>>({
-        url: `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/v1/users`,
-        method: "PATCH",
-        body: {
-          id: userId,
-          _id: userId,
-          name: displayName.trim(),
-          address: addressValue || user?.address || "",
-          role: user?.role,
-        },
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-        },
-      });
+      if (avatarFile) {
+        const uploadRes = await uploadImageApi(avatarFile, accessToken);
+
+        avatarUrl = parseUploadResult(uploadRes);
+
+        if (!avatarUrl) {
+          toast.error("Upload avatar failed.");
+          return;
+        }
+      }
+
+      const payload: UpdateUserPayload = {
+        _id: userId,
+        name: displayName.trim(),
+        website: website.trim(),
+        bio: bio.trim(),
+        avatarUrl,
+        subscriptionTier: user?.subscriptionTier,
+      };
+
+      const res = await updateUserApi(payload, accessToken);
 
       if (res?.data) {
         toast.success("Profile updated successfully.");
 
-        await sendRequest<IBackendRes<any>>({
-          url: "/api/revalidate",
-          method: "POST",
-          queryParams: {
-            tag: "profile-user",
-            secret: "justArandomString",
-          },
-        });
+        try {
+          await sendRequest<IBackendRes<any>>({
+            url: "/api/revalidate",
+
+            method: "POST",
+
+            queryParams: {
+              tag: "profile-user",
+
+              secret: "justArandomString",
+            },
+          });
+        } catch {}
 
         onClose();
+
         router.refresh();
       } else {
-        toast.error(res?.message || "Update profile failed.");
+        toast.error(res?.message ?? "Update profile failed.");
       }
+    } catch (err) {
+      console.error(err);
+
+      toast.error("Update profile failed.");
     } finally {
       setLoading(false);
     }
@@ -163,263 +196,201 @@ const ProfileEditDialog = ({ open, onClose, user }: Props) => {
       fullWidth
       PaperProps={{
         sx: {
-          width: 850,
-          maxWidth: "calc(100vw - 48px)",
-          backgroundColor: "#0f1111",
-          color: "#ffffff",
-          borderRadius: "4px",
-          border: "1px solid rgba(255,255,255,0.08)",
-          boxShadow: "0 24px 80px rgba(0,0,0,0.65)",
+          width: 880,
+          maxWidth: "calc(100vw - 32px)",
+          background: "#111",
+          color: "#fff",
+          borderRadius: 2,
           overflow: "hidden",
         },
       }}
     >
-      <Box sx={{ p: { xs: 2.5, md: 3.5 } }}>
+      <Box sx={{ p: 3 }}>
         <Typography
           sx={{
-            fontSize: 25,
-            fontWeight: 900,
-            color: "#ffffff",
+            fontSize: 22,
+            fontWeight: 700,
             mb: 3,
           }}
         >
-          Edit your Profile
+          Edit your profile
         </Typography>
 
-        <Box
-          sx={{
-            display: "grid",
-            gridTemplateColumns: { xs: "1fr", md: "220px 1fr" },
-            gap: 4,
-          }}
-        >
+        <Grid container spacing={4}>
           {/* Avatar */}
-          <Box>
+          <Grid item xs={12} md={4}>
             <Box
               sx={{
-                width: 185,
-                height: 185,
-                borderRadius: "50%",
-                overflow: "hidden",
-                backgroundColor: "#111",
-                position: "relative",
-                mx: { xs: "auto", md: 0 },
-                border: "3px solid rgba(255,255,255,0.12)",
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
               }}
             >
-              <Avatar
-                src={!avatarError ? avatarUrl || undefined : undefined}
-                alt={displayName || user?.email || "User"}
-                imgProps={{
-                  onError: () => setAvatarError(true),
-                }}
+              <Box
                 sx={{
-                  width: "100%",
-                  height: "100%",
-                  bgcolor: "#ff5500",
-                  color: "#ffffff",
-                  fontSize: 52,
-                  fontWeight: 900,
+                  position: "relative",
+                  width: 160,
+                  height: 160,
+                  borderRadius: "50%",
+                  overflow: "hidden",
+                  border: "6px solid rgba(0,0,0,0.6)",
+                  boxShadow: "0 8px 30px rgba(0,0,0,0.6)",
                 }}
               >
-                {(!avatarUrl || avatarError) &&
-                  getInitials(displayName, user?.email)}
-              </Avatar>
-
+                <Avatar
+                  src={avatarSrc || "/images/logo/Sc.png"}
+                  alt={user?.name ?? "User"}
+                  imgProps={{
+                    onError: (e) => {
+                      e.currentTarget.src = "/images/logo/Sc.png";
+                    },
+                  }}
+                  sx={{
+                    width: "100%",
+                    height: "100%",
+                    borderRadius: "50%",
+                    objectFit: "cover",
+                    backgroundColor: "#222",
+                    fontSize: 40,
+                    fontWeight: 900,
+                  }}
+                >
+                  {getInitials(user?.name, user?.email)}
+                </Avatar>
+              </Box>
               <Button
                 component="label"
+                variant="outlined"
                 sx={{
-                  position: "absolute",
-                  left: "50%",
-                  bottom: 18,
-                  transform: "translateX(-50%)",
-                  height: 34,
-                  borderRadius: "4px",
-                  color: "#ffffff",
-                  backgroundColor: "rgba(0,0,0,0.78)",
                   textTransform: "none",
-                  fontWeight: 900,
-                  whiteSpace: "nowrap",
-                  px: 1.8,
-                  "&:hover": {
-                    backgroundColor: "rgba(0,0,0,0.92)",
-                  },
+                  borderColor: "grey",
+                  backgroundColor: "rgba(255,255,255,.04)",
+                  color: "#fff",
+                  marginTop: 2,
                 }}
               >
                 Update image
-                <input hidden type="file" accept="image/*" />
+                <input
+                  hidden
+                  type="file"
+                  accept="image/*"
+                  onChange={handleAvatarSelect}
+                />
               </Button>
             </Box>
-
-            <Box sx={{ mt: 18, display: { xs: "none", md: "block" } }}>
-              <Box sx={{ display: "flex", gap: 1 }}>
-                <Button
-                  sx={{
-                    height: 36,
-                    px: 1.5,
-                    borderRadius: "4px",
-                    color: "#ffffff",
-                    backgroundColor: "#242729",
-                    textTransform: "none",
-                    fontWeight: 900,
-                    "&:hover": { backgroundColor: "#303335" },
-                  }}
-                >
-                  Add link
-                </Button>
-
-                <Button
-                  sx={{
-                    height: 36,
-                    px: 1.5,
-                    borderRadius: "4px",
-                    color: "#ffffff",
-                    backgroundColor: "#242729",
-                    textTransform: "none",
-                    fontWeight: 900,
-                    "&:hover": { backgroundColor: "#303335" },
-                  }}
-                >
-                  Add support link
-                </Button>
-              </Box>
-            </Box>
-          </Box>
+          </Grid>
 
           {/* Form */}
-          <Box>
-            <Box sx={{ display: "flex", flexDirection: "column", gap: 2.2 }}>
+          <Grid item xs={12} md={8}>
+            <Box
+              sx={{
+                display: "flex",
+                flexDirection: "column",
+                gap: 2,
+              }}
+            >
               <TextField
                 label="Display name"
-                required
                 value={displayName}
                 onChange={(e) => setDisplayName(e.target.value)}
                 fullWidth
-                size="small"
                 sx={inputSx}
               />
 
-              <Box
-                sx={{
-                  display: "grid",
-                  gridTemplateColumns: { xs: "1fr", sm: "1fr 1fr" },
-                  gap: 1.5,
-                }}
-              >
-                <TextField
-                  label="First name"
-                  value={firstName}
-                  onChange={(e) => setFirstName(e.target.value)}
-                  fullWidth
-                  size="small"
-                  sx={inputSx}
-                />
-
-                <TextField
-                  label="Last name"
-                  value={lastName}
-                  onChange={(e) => setLastName(e.target.value)}
-                  fullWidth
-                  size="small"
-                  sx={inputSx}
-                />
-              </Box>
-
-              <Box
-                sx={{
-                  display: "grid",
-                  gridTemplateColumns: { xs: "1fr", sm: "1fr 1fr" },
-                  gap: 1.5,
-                }}
-              >
-                <TextField
-                  label="City"
-                  value={city}
-                  onChange={(e) => setCity(e.target.value)}
-                  fullWidth
-                  size="small"
-                  sx={inputSx}
-                />
-
-                <TextField
-                  label="Country"
-                  value={country}
-                  onChange={(e) => setCountry(e.target.value)}
-                  fullWidth
-                  size="small"
-                  sx={inputSx}
-                />
-              </Box>
+              <TextField
+                label="Website"
+                value={website}
+                onChange={(e) => setWebsite(e.target.value)}
+                fullWidth
+                sx={inputSx}
+              />
 
               <TextField
                 label="Bio"
                 value={bio}
                 onChange={(e) => setBio(e.target.value)}
-                placeholder="Tell the world a little bit about yourself. The shorter the better."
-                fullWidth
+                rows={5}
                 multiline
-                rows={3}
+                fullWidth
                 sx={inputSx}
               />
             </Box>
-          </Box>
-        </Box>
-
-        <Divider sx={{ borderColor: "rgba(255,255,255,0.08)", mt: 3 }} />
+          </Grid>
+        </Grid>
+        <Divider sx={{ borderColor: "rgba(255,255,255,.08)", my: 3 }} />
 
         <Box
           sx={{
             display: "flex",
-            justifyContent: "flex-end",
-            gap: 1.2,
-            mt: 2,
+            justifyContent: "space-between",
+            alignItems: "center",
           }}
         >
-          <Button
-            onClick={onClose}
+          <Typography
             sx={{
-              height: 38,
-              px: 2.2,
-              borderRadius: "4px",
-              color: "#ffffff",
-              backgroundColor: "#242729",
-              textTransform: "none",
-              fontWeight: 900,
-              "&:hover": {
-                backgroundColor: "#303335",
-              },
+              fontSize: 13,
+              color: "rgba(255,255,255,.45)",
             }}
           >
-            Cancel
-          </Button>
+            Changes will be saved to your profile.
+          </Typography>
 
-          <Button
-            onClick={handleSave}
-            disabled={loading || !displayName.trim()}
+          <Box
             sx={{
-              height: 38,
-              px: 2.2,
-              borderRadius: "4px",
-              color: "#ffffff",
-              backgroundColor: "#ff5500",
-              textTransform: "none",
-              fontWeight: 900,
-              opacity: loading || !displayName.trim() ? 0.5 : 1,
-              "&:hover": {
-                backgroundColor: "#ff6a00",
-              },
-              "&.Mui-disabled": {
-                color: "#777",
-                backgroundColor: "#181A1B",
-              },
+              display: "flex",
+              alignItems: "center",
+              gap: 1.5,
             }}
           >
-            {loading ? "Saving..." : "Save changes"}
-          </Button>
+            <Button
+              onClick={onClose}
+              disabled={loading}
+              variant="outlined"
+              sx={{
+                minWidth: 95,
+                height: 38,
+                borderRadius: "4px",
+                textTransform: "none",
+                borderColor: "#4a4a4a",
+                color: "#fff",
+                fontWeight: 600,
+                "&:hover": {
+                  borderColor: "#666",
+                  backgroundColor: "rgba(255,255,255,.04)",
+                },
+              }}
+            >
+              Cancel
+            </Button>
+
+            <Button
+              variant="contained"
+              onClick={handleSave}
+              disabled={loading || !displayName.trim()}
+              sx={{
+                minWidth: 130,
+                height: 38,
+                borderRadius: "4px",
+                textTransform: "none",
+                fontWeight: 700,
+                backgroundColor: "#ff5500",
+                color: "#fff",
+
+                "&:hover": {
+                  backgroundColor: "#ff6600",
+                },
+
+                "&.Mui-disabled": {
+                  backgroundColor: "#444",
+                  color: "#999",
+                },
+              }}
+            >
+              {loading ? "Saving..." : "Save changes"}
+            </Button>
+          </Box>
         </Box>
       </Box>
     </Dialog>
   );
-};
-
-export default ProfileEditDialog;
+}

@@ -174,7 +174,7 @@ public class DataSeeder {
                         }
 
                         if (changed) {
-                                category.setUpdatedAt(new Date());
+                                category.setUpdatedAt(LocalDateTime.now());
                                 categoryRepository.save(category);
                         }
 
@@ -188,8 +188,8 @@ public class DataSeeder {
                 category.setSlug(slug);
                 category.setDescription(description);
                 category.setIsDeleted(false);
-                category.setCreatedAt(new Date());
-                category.setUpdatedAt(new Date());
+                category.setCreatedAt(LocalDateTime.now());
+                category.setUpdatedAt(LocalDateTime.now());
 
                 return categoryRepository.save(category);
         }
@@ -219,15 +219,22 @@ public class DataSeeder {
                         artist.setName(artistName);
                         artist.setRole("USER");
                         artist.setType("ARTIST");
-                        artist.setAddress("Artist");
                         artist.setAge(20);
                         artist.setGender("OTHER");
                         artist.setIsVerify(true);
                         artist.setFollowers(0);
                         artist.setFollowing(0);
+                        artist.setAvatarUrl("http://localhost:8000/uploads/images/default.png");
+                        artist.setCoverUrl("http://localhost:8000/uploads/images/default-cover.jpg");
+                        artist.setBio("Bios");
+                        artist.setWebsite("https://soundcloud.com/discover");
+                        artist.setCity("Your City");
+                        artist.setCountry("Your Country");
+                        artist.setVerified(true);
                         artist.setCode("");
                         artist.setRefreshToken("");
                         artist.setAvatarUrl(avatarUrl);
+                        artist.setSubscriptionTier("ARTIST");
                         artist.setCreatedAt(new Date());
                         artist.setUpdatedAt(new Date());
 
@@ -259,6 +266,36 @@ public class DataSeeder {
                                         || artist.getAvatarUrl().trim().isEmpty()
                                         || artist.getAvatarUrl().contains("default.png")) {
                                 artist.setAvatarUrl(avatarUrl);
+                                changed = true;
+                        }
+
+                        if (artist.getCoverUrl() == null || artist.getCoverUrl().isBlank()) {
+                                artist.setCoverUrl("http://localhost:8000/uploads/images/default-cover.jpg");
+                                changed = true;
+                        }
+
+                        if (artist.getBio() == null) {
+                                artist.setBio("Music Producer");
+                                changed = true;
+                        }
+
+                        if (artist.getWebsite() == null) {
+                                artist.setWebsite("");
+                                changed = true;
+                        }
+
+                        if (artist.getCity() == null) {
+                                artist.setCity("");
+                                changed = true;
+                        }
+
+                        if (artist.getCountry() == null) {
+                                artist.setCountry("");
+                                changed = true;
+                        }
+
+                        if (artist.getVerified() == null) {
+                                artist.setVerified(false);
                                 changed = true;
                         }
 
@@ -341,7 +378,6 @@ public class DataSeeder {
                                 admin.setPassword(BCrypt.hashpw("123456", BCrypt.gensalt()));
                                 admin.setName("Admin");
                                 admin.setRole("ADMIN");
-                                admin.setAddress("Local");
                                 admin.setAge(20);
                                 admin.setGender("MALE");
                                 admin.setIsVerify(true);
@@ -351,6 +387,13 @@ public class DataSeeder {
                                 admin.setCode("");
                                 admin.setRefreshToken("");
                                 admin.setAvatarUrl("http://localhost:8000/uploads/images/default.png");
+                                admin.setCoverUrl("http://localhost:8000/uploads/images/default-cover.jpg");
+                                admin.setBio("Bios");
+                                admin.setWebsite("https://soundcloud.com/discover");
+                                admin.setCity("Your City");
+                                admin.setCountry("Your Country");
+                                admin.setVerified(true);
+                                admin.setSubscriptionTier("ARTIST");
                                 admin.setCreatedAt(new Date());
                                 admin.setUpdatedAt(new Date());
 
@@ -368,16 +411,22 @@ public class DataSeeder {
                                 user.setPassword(BCrypt.hashpw("123456", BCrypt.gensalt()));
                                 user.setName("Demo User");
                                 user.setRole("USER");
-                                user.setAddress("Local");
                                 user.setAge(21);
                                 user.setGender("FEMALE");
                                 user.setIsVerify(true);
                                 user.setFollowers(0);
                                 user.setFollowing(0);
+                                user.setCoverUrl("http://localhost:8000/uploads/images/default-cover.jpg");
+                                user.setBio("Bios");
+                                user.setWebsite("https://soundcloud.com/discover");
+                                user.setCity("Your City");
+                                user.setCountry("Your Country");
+                                user.setVerified(false);
                                 user.setType("SYSTEM");
                                 user.setCode("");
                                 user.setRefreshToken("");
                                 user.setAvatarUrl("http://localhost:8000/uploads/images/default.png");
+                                user.setSubscriptionTier("FREE");
                                 user.setCreatedAt(new Date());
                                 user.setUpdatedAt(new Date());
 
@@ -725,8 +774,8 @@ public class DataSeeder {
                                 playlist.setIsAlbum(false);
                                 playlist.setUserId(admin.getId());
                                 playlist.setIsDeleted(false);
-                                playlist.setCreatedAt(new Date());
-                                playlist.setUpdatedAt(new Date());
+                                playlist.setCreatedAt(LocalDateTime.now());
+                                playlist.setUpdatedAt(LocalDateTime.now());
 
                                 Set<Track> tracks = new HashSet<>();
 

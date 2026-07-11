@@ -30,7 +30,6 @@ public class User implements java.io.Serializable {
 	private String password;
 	private String name;
 	private String role;
-	private String address;
 	private Integer age;
 	private String gender;
 	private Boolean isVerify;
@@ -41,13 +40,28 @@ public class User implements java.io.Serializable {
 	private String avatarUrl;
 	private Integer followers;
 	private Integer following;
+	private String coverUrl;
+	private String bio;
+	private String website;
 	private Date createdAt;
 	private Date updatedAt;
-
+	private String city;
+	private String country;
+	private Boolean verified;
+	private String spotlightTrackId;
+	private String subscriptionTier;
 	private Set<Track> uploadedTracks = new HashSet<Track>(0);
 	private Set<Playlist> playlists = new HashSet<Playlist>(0);
 	private Set<Comment> comments = new HashSet<Comment>(0);
 	private Set<Track> likedTracks = new HashSet<Track>(0);
+
+	public String getSubscriptionTier() {
+		return subscriptionTier;
+	}
+
+	public void setSubscriptionTier(String subscriptionTier) {
+		this.subscriptionTier = subscriptionTier;
+	}
 
 	public User() {
 	}
@@ -57,7 +71,7 @@ public class User implements java.io.Serializable {
 		this.email = email;
 	}
 
-	public User(String id, String email, String username, String password, String name, String role, String address,
+	public User(String id, String email, String username, String password, String name, String role,
 			Integer age, String gender, Boolean isVerify, String type, String code, String refreshToken, Date createdAt,
 			Date updatedAt) {
 		this.id = id;
@@ -66,7 +80,6 @@ public class User implements java.io.Serializable {
 		this.password = password;
 		this.name = name;
 		this.role = role;
-		this.address = address;
 		this.age = age;
 		this.gender = gender;
 		this.isVerify = isVerify;
@@ -132,13 +145,60 @@ public class User implements java.io.Serializable {
 		this.role = role;
 	}
 
-	@Column(name = "address", length = 255)
-	public String getAddress() {
-		return this.address;
+	public String getCoverUrl() {
+		return coverUrl;
 	}
 
-	public void setAddress(String address) {
-		this.address = address;
+	public void setCoverUrl(String coverUrl) {
+		this.coverUrl = coverUrl;
+	}
+
+	public String getBio() {
+		return bio;
+	}
+
+	public void setBio(String bio) {
+		this.bio = bio;
+	}
+
+	public String getWebsite() {
+		return website;
+	}
+
+	public void setWebsite(String website) {
+		this.website = website;
+	}
+
+	public String getCity() {
+		return city;
+	}
+
+	public void setCity(String city) {
+		this.city = city;
+	}
+
+	public String getCountry() {
+		return country;
+	}
+
+	public void setCountry(String country) {
+		this.country = country;
+	}
+
+	public Boolean getVerified() {
+		return verified;
+	}
+
+	public void setVerified(Boolean verified) {
+		this.verified = verified;
+	}
+
+	public String getSpotlightTrackId() {
+		return spotlightTrackId;
+	}
+
+	public void setSpotlightTrackId(String spotlightTrackId) {
+		this.spotlightTrackId = spotlightTrackId;
 	}
 
 	@Column(name = "age")

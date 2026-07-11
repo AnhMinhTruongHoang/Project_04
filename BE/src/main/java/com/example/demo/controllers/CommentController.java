@@ -1,5 +1,6 @@
 package com.example.demo.controllers;
 
+import java.time.LocalDateTime;
 import java.util.Date;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -136,15 +137,20 @@ public class CommentController {
                     .stream()
                     .filter(comment -> !Boolean.TRUE.equals(comment.getIsDeleted()))
                     .sorted((a, b) -> {
-                        Date dateA = a.getCreatedAt();
-                        Date dateB = b.getCreatedAt();
+                        LocalDateTime dateA = a.getCreatedAt();
+                        LocalDateTime dateB = b.getCreatedAt();
 
-                        if (dateA == null && dateB == null)
+                        if (dateA == null && dateB == null) {
                             return 0;
-                        if (dateA == null)
+                        }
+
+                        if (dateA == null) {
                             return 1;
-                        if (dateB == null)
+                        }
+
+                        if (dateB == null) {
                             return -1;
+                        }
 
                         return dateB.compareTo(dateA);
                     })
@@ -185,7 +191,7 @@ public class CommentController {
             }
 
             comment.setIsDeleted(true);
-            comment.setUpdatedAt(new Date());
+            comment.setUpdatedAt(LocalDateTime.now());
 
             commentRepository.save(comment);
 

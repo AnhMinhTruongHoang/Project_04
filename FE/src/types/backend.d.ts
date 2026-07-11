@@ -1,35 +1,62 @@
 export {};
 
 declare global {
-  type HttpMethod = "GET" | "POST" | "PATCH" | "PUT" | "DELETE";
+  type HttpMethod = "GET" | "POST" | "PATCH" | "PUT" | "DELETE" | "OPTIONS";
 
   type UserRole = "USER" | "ADMIN" | string;
 
-  type UserType = "SYSTEM" | "GOOGLE" | "GITHUB" | "ARTIST" | string;
+  type UserType =
+    | "SYSTEM"
+    | "GOOGLE"
+    | "GITHUB"
+    | "FACEBOOK"
+    | "ARTIST"
+    | "SOCIAL"
+    | string;
+
+  type SubscriptionTier = "FREE" | "ARTIST" | "ARTIST_PRO" | string;
+
+  type ApprovalStatus = "PENDING" | "APPROVED" | "REJECTED" | string;
 
   type TrackCategory =
+    | "NCS"
+    | "KPOP"
+    | "LOFI"
+    | "POP"
+    | "EDM"
     | "CHILL"
     | "WORKOUT"
     | "PARTY"
+    | "REMIX"
     | "RAP"
     | "HIPHOP"
+    | "ROCK"
+    | "ACOUSTIC"
+    | "INSTRUMENTAL"
+    | "BALLAD"
+    | "INDIE"
+    | "RNB"
     | string;
 
   interface IRequest {
     url: string;
     method: HttpMethod | string;
-    body?: Record<string, any>;
-    queryParams?: Record<string, any>;
+    body?: unknown;
+    queryParams?: Record<string, unknown>;
     useCredentials?: boolean;
-    headers?: Record<string, any>;
-    nextOption?: any;
+    headers?: Record<string, string>;
+    nextOption?: Record<string, any>;
   }
+
+  type RequestFileProps = Omit<IRequest, "body"> & {
+    body?: BodyInit | FormData | null;
+  };
 
   interface IBackendRes<T> {
     error?: string | string[];
     message: string;
     statusCode: number | string;
-    data?: T;
+    data?: T | null;
   }
 
   interface IModelPaginate<T> {
@@ -42,26 +69,65 @@ declare global {
     result: T[];
   }
 
+  /**
+   * Kiểu Page mặc định do Spring Data trả về.
+   * Dùng cho các endpoint backend chưa chuyển sang meta/result.
+   */
+  interface ISpringPage<T> {
+    content: T[];
+    pageable?: unknown;
+    totalPages: number;
+    totalElements: number;
+    last?: boolean;
+    first?: boolean;
+    size: number;
+    number: number;
+    numberOfElements?: number;
+    empty?: boolean;
+    sort?: unknown;
+  }
+
   interface IUser {
-    _id: string;
-    email: string;
-    name: string;
-    role: UserRole;
-    type: UserType;
-    age?: number;
-    gender?: string;
-    address?: string;
+    _id?: string;
+    id?: string;
+
+    email?: string;
+    username?: string;
+    name?: string;
+
+    role?: UserRole;
+    type?: UserType;
+    subscriptionTier?: SubscriptionTier;
+
+    age?: number | null;
+    gender?: string | null;
+    address?: string | null;
+
     isVerify?: boolean;
-    avatarUrl?: string;
+    verified?: boolean;
+
+    avatarUrl?: string | null;
+    avatar?: string | null;
+    image?: string | null;
+    coverUrl?: string | null;
+
+    bio?: string | null;
+    website?: string | null;
+    city?: string | null;
+    country?: string | null;
+    spotlightTrackId?: string | null;
+
     followers?: number;
     following?: number;
+
     isDeleted?: boolean;
+
     createdAt?: string;
     updatedAt?: string;
   }
 
   interface IAuthLoginPayload {
-    username: string;
+    email: string;
     password: string;
   }
 
@@ -69,33 +135,133 @@ declare global {
     name: string;
     email: string;
     password: string;
-    age: number | string;
-    gender: string;
-    address: string;
+    age?: number | string;
+    gender?: string;
+    address?: string;
   }
 
-  interface IAuthAccount extends IUser {
-    access_token?: string;
-    refresh_token?: string;
+  interface IAuthAccount {
+    user: IUser;
+  }
+
+  type AuthUserResponse = {
+    access_token: string;
+    refresh_token: string;
+    user: IUser;
+  };
+
+  type LoginPayload = {
+    email: string;
+    password: string;
+  };
+
+  type RegisterPayload = {
+    name: string;
+    email: string;
+    password: string;
+    age?: number | string;
+    gender?: string;
+    address?: string;
+    avatarUrl?: string;
+  };
+
+  type VerifyOtpPayload = {
+    email: string;
+    otp: string;
+  };
+
+  type ForgotPasswordPayload = {
+    email: string;
+  };
+
+  type ResetPasswordPayload = {
+    email: string;
+    otp: string;
+    newPassword: string;
+  };
+
+  type CreateUserPayload = {
+    name: string;
+    email: string;
+    password: string;
+
+    username?: string;
+    role?: UserRole;
+    type?: UserType;
+    subscriptionTier?: SubscriptionTier;
+
+    age?: number;
+    gender?: string;
+
+    isVerify?: boolean;
+    verified?: boolean;
+
+    avatarUrl?: string;
+    coverUrl?: string;
+    bio?: string;
+    website?: string;
+    city?: string;
+    country?: string;
+    spotlightTrackId?: string;
+  };
+
+  interface UpdateUserPayload {
+    _id?: string;
+    id?: string;
+
+    email?: string;
+    username?: string;
+    password?: string;
+    name?: string;
+
+    role?: UserRole;
+    type?: UserType;
+    subscriptionTier?: SubscriptionTier;
+
+    age?: number;
+    gender?: string;
+
+    isVerify?: boolean;
+    verified?: boolean;
+
+    avatarUrl?: string;
+    coverUrl?: string;
+    website?: string;
+    bio?: string;
+    city?: string;
+    country?: string;
+    spotlightTrackId?: string;
   }
 
   interface ITrackTop {
-    _id: string;
+    _id?: string;
+    id?: string;
+
     title: string;
-    description: string;
-    category: TrackCategory;
-    imgUrl: string;
-    trackUrl: string;
-    countLike: number;
-    countPlay: number;
-    uploader: IUser;
-    isDeleted: boolean;
-    createdAt: string;
-    updatedAt: string;
+    slug?: string;
+    description?: string;
+
+    category?: TrackCategory | null;
+    categoryId?: string | null;
+    categoryName?: string | null;
+
+    imgUrl?: string | null;
+    trackUrl?: string | null;
+
+    countLike?: number;
+    countPlay?: number;
+
+    uploaderId?: string | null;
+    uploader?: IUser | null;
+
+    approvalStatus?: ApprovalStatus;
+    isDeleted?: boolean;
+
+    createdAt?: string;
+    updatedAt?: string;
 
     /**
-     * Các field optional này để tránh lỗi khi fallback media
-     * hoặc khi API/backend trả tên field khác.
+     * Alias/fallback media được một số component cũ sử dụng.
      */
     image?: string;
     thumbnail?: string;
@@ -103,93 +269,150 @@ declare global {
     audioUrl?: string;
   }
 
-  interface ICreateTrackPayload {
+  type CreateTrackPayload = {
     title: string;
     description: string;
-    trackUrl: string;
-    imgUrl: string;
-    category: TrackCategory;
-  }
+    category: string;
 
-  interface IUpdateTrackPayload {
-    title?: string;
-    description?: string;
-    category?: TrackCategory;
-    trackUrl?: string;
+    /**
+     * TrackController nhận multipart/form-data.
+     */
+    image: File;
+    audio: File;
+
+    /**
+     * Giữ tương thích với form/component cũ.
+     */
     imgUrl?: string;
-  }
+    trackUrl?: string;
+  };
+
+  type ICreateTrackPayload = CreateTrackPayload;
+
+  type UpdateTrackPayload = {
+    /**
+     * Backend hiện yêu cầu ba trường này khi update multipart.
+     */
+    title: string;
+    description: string;
+    category: string;
+
+    image?: File;
+    audio?: File;
+
+    imgUrl?: string;
+    trackUrl?: string;
+  };
+
+  type IUpdateTrackPayload = UpdateTrackPayload;
 
   interface IShareTrack extends ITrackTop {
     isPlaying: boolean;
   }
 
   interface ITrackContext {
-    currentTrack: IShareTrack;
-    setCurrentTrack: (v: IShareTrack) => void;
+    currentTrack: IShareTrack | null;
+    setCurrentTrack: (value: IShareTrack | null) => void;
   }
 
   interface ITrackComment {
-    _id: string;
+    _id?: string;
+    id?: string;
+
     content: string;
-    moment: number;
-    user: IUser;
-    track: string | ITrackTop;
-    isDeleted: boolean;
-    createdAt: string;
-    updatedAt: string;
+    moment?: number | null;
+
+    userId?: string;
+    user?: IUser;
+
+    trackId?: string;
+    track?: string | ITrackTop;
+
+    isDeleted?: boolean;
+
+    createdAt?: string;
+    updatedAt?: string;
   }
 
-  interface ICreateCommentPayload {
+  type CreateCommentPayload = {
     content: string;
-    moment: number;
-    track: string;
-  }
+    moment?: number;
+
+    /**
+     * Các alias này giữ tương thích với component và createCommentApi.
+     */
+    trackId?: string;
+    track_id?: string;
+    track?: string;
+  };
+
+  type ICreateCommentPayload = CreateCommentPayload;
 
   interface ITrackLike {
-    _id: string;
+    _id?: string;
+    id?: string;
     title: string;
-    description: string;
-    category: TrackCategory;
-    imgUrl: string;
-    trackUrl: string;
-    countLike: number;
-    countPlay: number;
-    createdAt: string;
-    updatedAt: string;
+    description?: string;
+    category?: TrackCategory;
+    imgUrl?: string;
+    trackUrl?: string;
+    countLike?: number;
+    countPlay?: number;
+    createdAt?: string;
+    updatedAt?: string;
   }
 
-  interface ILikePayload {
+  type LikePayload = {
     track: string;
     quantity: 1 | -1;
-  }
+  };
+
+  type ILikePayload = LikePayload;
 
   interface IPlaylist {
-    _id: string;
+    _id?: string;
+    id?: string;
+
     title: string;
-    isPublic: boolean;
-    user: string | IUser;
-    tracks: IShareTrack[] | ITrackTop[] | string[];
-    isDeleted: boolean;
-    createdAt: string;
-    updatedAt: string;
+    isPublic?: boolean;
+    isAlbum?: boolean;
+
+    userId?: string;
+    user?: string | IUser | null;
+
+    tracks?: Array<IShareTrack | ITrackTop | string>;
+
+    isDeleted?: boolean;
+
+    createdAt?: string;
+    updatedAt?: string;
   }
 
-  interface ICreatePlaylistPayload {
+  type CreatePlaylistPayload = {
     title: string;
-    isPublic: boolean;
-  }
+    isPublic?: boolean;
+    trackIds?: string[];
+    tracks?: string[];
+  };
 
-  interface IUpdatePlaylistPayload {
-    id: string;
-    title: string;
-    isPublic: boolean;
-    tracks: string[];
-  }
+  type ICreatePlaylistPayload = CreatePlaylistPayload;
 
-  interface IUploadFileResponse {
+  type UpdatePlaylistPayload = {
+    _id?: string;
+    id?: string;
+
+    title?: string;
+    isPublic?: boolean;
+
+    trackIds?: string[];
+    tracks?: Array<string | ITrackTop>;
+  };
+
+  type IUpdatePlaylistPayload = UpdatePlaylistPayload;
+
+  interface IUploadResponse {
     fileName: string;
-    path?: string;
-    mimetype?: string;
+    url: string;
   }
 
   interface ISearchTrackPayload {
@@ -214,86 +437,12 @@ declare global {
   type PaginationParams = {
     current?: number;
     pageSize?: number;
+    sort?: string;
   };
 
   type FileTargetType = "images" | "tracks";
 
-  type LoginPayload = {
-    username: string;
-    password: string;
-  };
-
-  type RegisterPayload = {
-    name: string;
-    email: string;
-    password: string;
-    age: number | string;
-    gender: string;
-    address: string;
-  };
-
-  type CreateUserPayload = {
-    name: string;
-    email: string;
-    password: string;
-    age: number | string;
-    gender: string;
-    address: string;
-    role: string;
-  };
-
-  type UpdateUserPayload = {
-    _id: string;
-    name?: string;
-    email?: string;
-    age?: number | string;
-    gender?: string;
-    address?: string;
-    role?: string;
-  };
-
-  type CreateTrackPayload = {
-    title: string;
-    description: string;
-    trackUrl: string;
-    category: string;
-    imgUrl: string;
-  };
-
-  type UpdateTrackPayload = {
-    title?: string;
-    description?: string;
-    category?: string;
-  };
-
-  type CreateCommentPayload = {
-    content: string;
-    moment: number;
-    track: string;
-  };
-
-  type CreatePlaylistPayload = {
-    title: string;
-    isPublic: boolean;
-  };
-
-  type UpdatePlaylistPayload = {
-    id: string;
-    title: string;
-    isPublic: boolean;
-    tracks: string[];
-  };
-
-  type LikePayload = {
-    track: string;
-    quantity: 1 | -1;
-  };
-
-  type RequestFileProps = Omit<IRequest, "body"> & {
-    body?: BodyInit | FormData | null;
-  };
-
-  export type ArtistLeaderboardItem = {
+  type ArtistLeaderboardItem = {
     _id?: string;
     id?: string;
     name: string;
@@ -301,8 +450,8 @@ declare global {
     username?: string;
     avatarUrl?: string;
     avatar?: string;
-    role?: string;
-    type?: string;
+    role?: UserRole;
+    type?: UserType;
     followers?: number | null;
     following?: number | null;
     tracks?: number | null;
@@ -311,78 +460,55 @@ declare global {
   };
 
   type ArtistLeaderboardResponse = {
-    statusCode?: number;
+    statusCode?: number | string;
     message?: string;
-    data?: ArtistLeaderboardItem[];
+    error?: string | string[];
+    data?: ArtistLeaderboardItem[] | null;
   };
 
-  export interface ICategory {
+  interface FollowStatusData {
+    following: boolean;
+    isFollowing: boolean;
+    targetFollowers: number;
+    currentUserFollowing: number;
+    user?: IUser;
+  }
+
+  interface FollowListData {
+    meta: {
+      current: number;
+      pageSize: number;
+      pages: number;
+      total: number;
+    };
+    result: IUser[];
+  }
+
+  interface ICategory {
     _id?: string;
     id?: string;
+
     name: string;
     slug: string;
     description?: string;
+
     isDeleted?: boolean;
     trackCount?: number;
+
     createdAt?: string;
     updatedAt?: string;
   }
 
-  export interface ICreateCategory {
+  interface ICreateCategory {
     name: string;
     slug?: string;
     description?: string;
   }
 
-  export interface IUpdateCategory {
+  interface IUpdateCategory {
     name?: string;
     slug?: string;
     description?: string;
     isDeleted?: boolean;
   }
-
-  /// mail type
-
-  export type RegisterPayload = {
-    name: string;
-    email: string;
-    password: string;
-    age?: number;
-    gender?: string;
-    address?: string;
-    avatarUrl?: string;
-  };
-
-  export type VerifyOtpPayload = {
-    email: string;
-    otp: string;
-  };
-
-  export type ForgotPasswordPayload = {
-    email: string;
-  };
-
-  export type ResetPasswordPayload = {
-    email: string;
-    otp: string;
-    newPassword: string;
-  };
-
-  export type LoginPayload = {
-    email: string;
-    password: string;
-  };
-
-  export type AuthUserResponse = {
-    id?: string;
-    _id?: string;
-    email: string;
-    name: string;
-    role?: string;
-    type?: string;
-    isVerify?: boolean;
-    avatarUrl?: string;
-    access_token?: string;
-    refresh_token?: string;
-  };
 }

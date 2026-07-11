@@ -50,7 +50,7 @@ const NewPlaylist = () => {
     }
 
     const res = await sendRequest<IBackendRes<any>>({
-      url: `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/v1/playlists/empty`,
+      url: `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/v1/playlists`,
       method: "POST",
       body: {
         title: title.trim(),

@@ -1,5 +1,6 @@
 package com.example.demo.controllers;
 
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashSet;
@@ -356,8 +357,8 @@ public class PlaylistController {
 			playlist.setUserId(user.getId());
 			playlist.setIsAlbum(false);
 			playlist.setIsDeleted(false);
-			playlist.setCreatedAt(new Date());
-			playlist.setUpdatedAt(new Date());
+			playlist.setCreatedAt(LocalDateTime.now());
+			playlist.setUpdatedAt(LocalDateTime.now());
 
 			Set<Track> tracks = getTracksFromBody(body);
 
@@ -421,7 +422,7 @@ public class PlaylistController {
 				playlist.setTracks(tracks);
 			}
 
-			playlist.setUpdatedAt(new Date());
+			playlist.setUpdatedAt(LocalDateTime.now());
 
 			playlistRepository.save(playlist);
 
@@ -452,7 +453,7 @@ public class PlaylistController {
 			}
 
 			playlist.setIsDeleted(true);
-			playlist.setUpdatedAt(new Date());
+			playlist.setUpdatedAt(LocalDateTime.now());
 
 			playlistRepository.save(playlist);
 

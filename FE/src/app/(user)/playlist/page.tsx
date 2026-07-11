@@ -15,6 +15,7 @@ import { authOptions } from "@/app/api/auth/auth.options";
 import NewPlaylist from "./components/new.playlist";
 import AddPlaylistTrack from "./components/add.playlist.track";
 import CurrentTrack from "./components/current.track";
+import DeletePlaylistButton from "./components/delete.playlist.button";
 
 export const metadata: Metadata = {
   title: "Playlists",
@@ -50,7 +51,7 @@ const PlaylistPage = async () => {
   const session = await getServerSession(authOptions);
   const accessToken = (session as any)?.access_token;
 
-  const headers = accessToken
+  const headers: Record<string, string> = accessToken
     ? {
         Authorization: `Bearer ${accessToken}`,
       }
@@ -59,7 +60,7 @@ const PlaylistPage = async () => {
   const res = await sendRequest<
     IBackendRes<IModelPaginate<IPlaylist> | IPlaylist[]>
   >({
-    url: `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/v1/playlists/by-user`,
+    url: `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/v1/playlists/my-playlists`,
     method: "GET",
     queryParams: { current: 1, pageSize: 100 },
     headers,
@@ -275,16 +276,30 @@ const PlaylistPage = async () => {
                       </Typography>
                     </Box>
 
-                    <Chip
-                      size="small"
-                      label={`${playlistTracks.length} tracks`}
+                    <Box
                       sx={{
-                        color: "#ff5500",
-                        backgroundColor: "rgba(255,85,0,0.1)",
-                        border: "1px solid rgba(255,85,0,0.28)",
-                        fontWeight: 800,
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 1,
+                        flexShrink: 0,
                       }}
-                    />
+                    >
+                      <Chip
+                        size="small"
+                        label={`${playlistTracks.length} tracks`}
+                        sx={{
+                          color: "#ff5500",
+                          backgroundColor: "rgba(255,85,0,0.1)",
+                          border: "1px solid rgba(255,85,0,0.28)",
+                          fontWeight: 800,
+                        }}
+                      />
+
+                      <DeletePlaylistButton
+                        playlistId={getItemId(playlist)}
+                        playlistTitle={playlist.title}
+                      />
+                    </Box>
                   </AccordionSummary>
 
                   <AccordionDetails

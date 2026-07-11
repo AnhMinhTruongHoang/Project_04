@@ -1,21 +1,58 @@
+"use client";
+
+import { useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
+
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import Typography from "@mui/material/Typography";
 import CameraAltRoundedIcon from "@mui/icons-material/CameraAltRounded";
 import VerifiedRoundedIcon from "@mui/icons-material/VerifiedRounded";
 import { Avatar } from "@mui/material";
-import { getUserAvatarUrl } from "@/utils/actions/getAvatar";
+import { getUserAvatarUrl, getUserCoverUrl } from "@/utils/actions/getImages";
+import { updateUserApi, uploadImageApi } from "@/utils/api";
+import { useToast } from "@/utils/toast";
 
 type Props = {
   user: Partial<IUser> | null;
   trackCount: number;
 };
 
+const getItemId = (item?: any) => {
+  return item?._id || item?.id || "";
+};
+
 const ProfileHero = ({ user }: Props) => {
+  const router = useRouter();
+  const toast = useToast();
+  const { data: session } = useSession();
+
+  const accessToken =
+    (session as any)?.access_token ||
+    (session as any)?.accessToken ||
+    (session as any)?.user?.access_token;
+
+  const profileUserId = getItemId(user);
+  const currentUserId = getItemId((session as any)?.user);
+
+  const isOwner = Boolean(
+    profileUserId && currentUserId && profileUserId === currentUserId
+  );
+
   const displayName = user?.name || user?.email || "User";
-  const subName = user?.email || user?.address || "Sound Clone user";
+
+  const subName = user?.email || user?.type || "Sound Clone user";
 
   const showArtistBadge = String(user?.type || "").toUpperCase() === "ARTIST";
+
+  const [coverSrc, setCoverSrc] = useState(getUserCoverUrl(user));
+
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+  useEffect(() => {
+    setCoverSrc(getUserCoverUrl(user));
+  }, [user]);
 
   const getInitials = (name?: string, email?: string) => {
     const value = name?.trim() || email?.trim() || "User";
@@ -29,39 +66,137 @@ const ProfileHero = ({ user }: Props) => {
     return value.slice(0, 2).toUpperCase();
   };
 
+  const handleCoverChange = async (
+    event: React.ChangeEvent<HTMLInputElement>
+  ) => {
+    const file = event.target.files?.[0];
+
+    if (!file) return;
+
+    if (!isOwner) {
+      toast.error("You cannot edit this profile.");
+      event.target.value = "";
+      return;
+    }
+
+    if (!accessToken) {
+      toast.error("Please login first.");
+      event.target.value = "";
+      return;
+    }
+
+    if (!profileUserId) {
+      toast.error("User not found.");
+      event.target.value = "";
+      return;
+    }
+
+    try {
+      const uploadResponse = await uploadImageApi(file, accessToken);
+
+      const coverUrl = uploadResponse?.data?.url;
+
+      if (!coverUrl) {
+        toast.error(uploadResponse?.message || "Upload cover failed.");
+        return;
+      }
+
+      const updateResponse = await updateUserApi(
+        {
+          _id: profileUserId,
+          coverUrl,
+        },
+        accessToken
+      );
+
+      if (!updateResponse?.data) {
+        toast.error(updateResponse?.message || "Update cover failed.");
+        return;
+      }
+
+      setCoverSrc(coverUrl);
+      toast.success("Cover updated.");
+      router.refresh();
+    } catch (error) {
+      console.error(error);
+      toast.error("Upload cover failed.");
+    } finally {
+      event.target.value = "";
+    }
+  };
+
   return (
     <Box
       sx={{
         height: { xs: 260, md: 300 },
         position: "relative",
         overflow: "hidden",
-        background:
-          "linear-gradient(135deg, #3b4a47 0%, #55523d 45%, #6b5d3f 100%)",
         borderBottom: "1px solid rgba(255,255,255,0.08)",
       }}
     >
-      <Button
-        startIcon={<CameraAltRoundedIcon />}
+      {/* Cover Image */}
+      <Box
+        component="img"
+        src={coverSrc}
+        alt="Cover"
+        onError={(e) => {
+          (e.currentTarget as HTMLImageElement).src =
+            "/images/user/default-cover.jpg";
+        }}
         sx={{
           position: "absolute",
-          top: 24,
-          right: 32,
-          height: 38,
-          px: 2.2,
-          borderRadius: "4px",
-          color: "#ffffff",
-          backgroundColor: "#050505",
-          fontWeight: 900,
-          fontSize: 13,
-          textTransform: "none",
-          "&:hover": {
-            backgroundColor: "#111111",
-          },
+          inset: 0,
+          width: "100%",
+          height: "100%",
+          objectFit: "cover",
         }}
-      >
-        Upload header image
-      </Button>
+      />
 
+      {/* Dark Overlay */}
+      <Box
+        sx={{
+          position: "absolute",
+          inset: 0,
+          background: "linear-gradient(rgba(0,0,0,.18), rgba(0,0,0,.35))",
+        }}
+      />
+
+      {/* Upload Cover */}
+      {isOwner && (
+        <Button
+          component="label"
+          startIcon={<CameraAltRoundedIcon />}
+          sx={{
+            position: "absolute",
+            top: 24,
+            right: 32,
+            height: 38,
+            px: 2.2,
+            borderRadius: "4px",
+            color: "#ffffff",
+            backgroundColor: "#050505",
+            fontWeight: 900,
+            fontSize: 13,
+            textTransform: "none",
+            zIndex: 2,
+
+            "&:hover": {
+              backgroundColor: "#111111",
+            },
+          }}
+        >
+          Upload header image
+          <input
+            hidden
+            ref={fileInputRef}
+            accept="image/*"
+            type="file"
+            onChange={handleCoverChange}
+          />
+        </Button>
+      )}
+
+      {/* Avatar + Info */}
       <Box
         sx={{
           position: "absolute",
@@ -70,11 +205,17 @@ const ProfileHero = ({ user }: Props) => {
           display: "flex",
           alignItems: "center",
           gap: 3,
+          zIndex: 2,
         }}
       >
         <Avatar
-          src={getUserAvatarUrl(user) || undefined}
+          src={getUserAvatarUrl(user) || "/images/logo/Sc.png"}
           alt={displayName}
+          imgProps={{
+            onError: (e) => {
+              e.currentTarget.src = "/images/logo/Sc.png";
+            },
+          }}
           sx={{
             width: { xs: 140, md: 190 },
             height: { xs: 140, md: 190 },

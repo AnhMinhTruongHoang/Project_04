@@ -1,6 +1,7 @@
 package com.example.demo.controllers;
 
 import java.text.Normalizer;
+import java.time.LocalDateTime;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
@@ -235,14 +236,14 @@ public class CategoryController {
 
             if (category.getId() == null || category.getId().trim().isEmpty()) {
                 category.setId(generateId());
-                category.setCreatedAt(new Date());
+                category.setCreatedAt(LocalDateTime.now());
             }
 
             category.setName(name.trim().toUpperCase());
             category.setSlug(slug);
             category.setDescription(description);
             category.setIsDeleted(false);
-            category.setUpdatedAt(new Date());
+            category.setUpdatedAt(LocalDateTime.now());
 
             categoryRepository.save(category);
 
@@ -297,8 +298,7 @@ public class CategoryController {
             }
 
             category.setDescription(description);
-            category.setUpdatedAt(new Date());
-
+            category.setUpdatedAt(LocalDateTime.now());
             categoryRepository.save(category);
 
             return ResponseEntity.ok(
@@ -331,7 +331,7 @@ public class CategoryController {
             }
 
             category.setIsDeleted(true);
-            category.setUpdatedAt(new Date());
+            category.setUpdatedAt(LocalDateTime.now());
 
             categoryRepository.save(category);
 

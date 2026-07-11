@@ -4,17 +4,6 @@ export const getTrackId = (track?: any) => {
   return track?._id || track?.id || "";
 };
 
-export const getTrackImageUrl = (imgUrl?: string | null) => {
-  const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "";
-
-  if (!imgUrl) return "/audio/SC.png";
-  if (imgUrl.startsWith("http")) return imgUrl;
-  if (imgUrl.startsWith("/uploads/images")) return `${BACKEND_URL}${imgUrl}`;
-  if (imgUrl.startsWith("/")) return imgUrl;
-
-  return `${BACKEND_URL}/uploads/images/${imgUrl}`;
-};
-
 export const getListeningHistory = (): ITrackTop[] => {
   if (typeof window === "undefined") return [];
 

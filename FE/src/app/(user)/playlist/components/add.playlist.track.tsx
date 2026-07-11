@@ -118,10 +118,9 @@ const AddPlaylistTrack = (props: IProps) => {
     const mergedTracks = Array.from(new Set([...oldTracks, ...selectedTracks]));
 
     const res = await sendRequest<IBackendRes<any>>({
-      url: `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/v1/playlists`,
+      url: `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/v1/playlists/${playlistId}`,
       method: "PATCH",
       body: {
-        id: playlistId,
         title: chosenPlaylist.title,
         isPublic: chosenPlaylist.isPublic,
         tracks: mergedTracks,

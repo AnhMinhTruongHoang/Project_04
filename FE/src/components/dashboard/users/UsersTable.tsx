@@ -22,7 +22,7 @@ import { DataGrid, GridColDef } from "@mui/x-data-grid";
 import { sendRequest } from "@/utils/api";
 import DashboardTableToolbar from "@/components/dashboard/components/DashboardTableToolbar";
 import { useToast } from "@/utils/toast";
-import { getInitials, getUserAvatarUrl } from "@/utils/actions/getAvatar";
+import { getInitials, getUserAvatarUrl } from "@/utils/actions/getImages";
 
 type Props = {
   users: IUser[];

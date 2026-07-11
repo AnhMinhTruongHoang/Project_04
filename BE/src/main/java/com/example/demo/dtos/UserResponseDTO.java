@@ -19,8 +19,71 @@ public class UserResponseDTO {
 	private String avatarUrl;
 	private Integer followers;
 	private Integer following;
+	private String coverUrl;
+	private String bio;
+	private String website;
+	private String city;
+	private String country;
+	private Boolean verified;
+	private String spotlightTrackId;
 	private Date createdAt;
 	private Date updatedAt;
+
+	public String getCoverUrl() {
+		return coverUrl;
+	}
+
+	public void setCoverUrl(String coverUrl) {
+		this.coverUrl = coverUrl;
+	}
+
+	public String getBio() {
+		return bio;
+	}
+
+	public void setBio(String bio) {
+		this.bio = bio;
+	}
+
+	public String getWebsite() {
+		return website;
+	}
+
+	public void setWebsite(String website) {
+		this.website = website;
+	}
+
+	public String getCity() {
+		return city;
+	}
+
+	public void setCity(String city) {
+		this.city = city;
+	}
+
+	public String getCountry() {
+		return country;
+	}
+
+	public void setCountry(String country) {
+		this.country = country;
+	}
+
+	public Boolean getVerified() {
+		return verified;
+	}
+
+	public void setVerified(Boolean verified) {
+		this.verified = verified;
+	}
+
+	public String getSpotlightTrackId() {
+		return spotlightTrackId;
+	}
+
+	public void setSpotlightTrackId(String spotlightTrackId) {
+		this.spotlightTrackId = spotlightTrackId;
+	}
 
 	public UserResponseDTO() {
 	}

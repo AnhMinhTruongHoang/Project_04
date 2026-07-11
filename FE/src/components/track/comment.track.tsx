@@ -27,7 +27,7 @@ import WaveSurfer from "wavesurfer.js";
 
 import { sendRequest } from "@/utils/api";
 import { useHasMounted } from "@/utils/customHook";
-import { getInitials, getUserAvatarUrl } from "@/utils/actions/getAvatar";
+import { getInitials, getUserAvatarUrl } from "@/utils/actions/getImages";
 import { getUserHref } from "@/utils/actions/navigation";
 
 dayjs.extend(relativeTime);

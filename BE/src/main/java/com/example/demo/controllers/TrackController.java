@@ -251,7 +251,6 @@ public class TrackController {
 		dto.setUsername(user.getUsername());
 		dto.setName(user.getName());
 		dto.setRole(user.getRole());
-		dto.setAddress(user.getAddress());
 		dto.setAge(user.getAge());
 		dto.setGender(user.getGender());
 		dto.setIsVerify(user.getIsVerify());
@@ -583,8 +582,8 @@ public class TrackController {
 			playlist.setUserId(user.getId());
 			playlist.setIsAlbum(true);
 			playlist.setIsDeleted(false);
-			playlist.setCreatedAt(new Date());
-			playlist.setUpdatedAt(new Date());
+			playlist.setCreatedAt(LocalDateTime.now());
+			playlist.setUpdatedAt(LocalDateTime.now());
 
 			Set<Track> tracks = new HashSet<>();
 
@@ -651,9 +650,8 @@ public class TrackController {
 			comment.setUserId(user.getId());
 			comment.setTrackId(trackId);
 			comment.setIsDeleted(false);
-			comment.setCreatedAt(new Date());
-			comment.setUpdatedAt(new Date());
-
+			comment.setCreatedAt(LocalDateTime.now());
+			comment.setUpdatedAt(LocalDateTime.now());
 			commentRepository.save(comment);
 
 			return ResponseEntity.ok(new ApiResponse<>(200, "Create comment success", comment));

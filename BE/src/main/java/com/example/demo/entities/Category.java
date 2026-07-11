@@ -1,6 +1,6 @@
 package com.example.demo.entities;
 
-import java.util.Date;
+import java.time.LocalDateTime;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -13,8 +13,6 @@ import jakarta.persistence.FetchType;
 import jakarta.persistence.Id;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
-import jakarta.persistence.Temporal;
-import jakarta.persistence.TemporalType;
 
 @Entity
 @Table(name = "categories")
@@ -26,10 +24,10 @@ public class Category implements java.io.Serializable {
     private String slug;
     private String description;
     private Boolean isDeleted;
-    private Date createdAt;
-    private Date updatedAt;
+    private LocalDateTime createdAt;
+    private LocalDateTime updatedAt;
 
-    private Set<Track> tracks = new HashSet<Track>(0);
+    private Set<Track> tracks = new HashSet<>(0);
 
     public Category() {
     }
@@ -86,23 +84,21 @@ public class Category implements java.io.Serializable {
         this.isDeleted = isDeleted;
     }
 
-    @Temporal(TemporalType.TIMESTAMP)
-    @Column(name = "createdAt", length = 19)
-    public Date getCreatedAt() {
+    @Column(name = "createdAt")
+    public LocalDateTime getCreatedAt() {
         return createdAt;
     }
 
-    public void setCreatedAt(Date createdAt) {
+    public void setCreatedAt(LocalDateTime createdAt) {
         this.createdAt = createdAt;
     }
 
-    @Temporal(TemporalType.TIMESTAMP)
-    @Column(name = "updatedAt", length = 19)
-    public Date getUpdatedAt() {
+    @Column(name = "updatedAt")
+    public LocalDateTime getUpdatedAt() {
         return updatedAt;
     }
 
-    public void setUpdatedAt(Date updatedAt) {
+    public void setUpdatedAt(LocalDateTime updatedAt) {
         this.updatedAt = updatedAt;
     }
 

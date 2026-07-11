@@ -1,5 +1,6 @@
 package com.example.demo.controllers;
 
+import java.time.LocalDateTime;
 import java.util.Date;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -65,7 +66,6 @@ public class AuthController {
 		dto.setId(user.getId());
 		dto.setUsername(user.getUsername());
 		dto.setEmail(user.getEmail());
-		dto.setAddress(user.getAddress());
 		dto.setIsVerify(user.getIsVerify());
 		dto.setType(user.getType());
 		dto.setName(user.getName());
@@ -101,9 +101,8 @@ public class AuthController {
 		playlist.setIsAlbum(false);
 		playlist.setIsDeleted(false);
 		playlist.setTracks(new HashSet<>());
-		playlist.setCreatedAt(new Date());
-		playlist.setUpdatedAt(new Date());
-
+		playlist.setCreatedAt(LocalDateTime.now());
+		playlist.setUpdatedAt(LocalDateTime.now());
 		playlistRepository.save(playlist);
 	}
 
@@ -155,7 +154,6 @@ public class AuthController {
 			user.setName(dto.getName());
 			user.setAge(dto.getAge());
 			user.setGender(dto.getGender());
-			user.setAddress(dto.getAddress());
 			user.setUsername("");
 			user.setRole("USER");
 			user.setType("SYSTEM");

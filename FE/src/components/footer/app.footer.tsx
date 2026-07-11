@@ -1,46 +1,58 @@
 "use client";
 
 import "react-h5-audio-player/lib/styles.css";
-import { useTrackContext } from "@/lib/track.wrapper";
-import { useHasMounted } from "@/utils/customHook";
-import { Box, Container, IconButton, Slider, Typography } from "@mui/material";
+
+import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
+import { usePathname, useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
+import AudioPlayer from "react-h5-audio-player";
+
 import AppBar from "@mui/material/AppBar";
+import { Box, Container, IconButton, Slider, Typography } from "@mui/material";
+
 import PauseIcon from "@mui/icons-material/Pause";
 import PlayArrowIcon from "@mui/icons-material/PlayArrow";
-import { usePathname, useRouter } from "next/navigation";
-import { useRef, useEffect, useState } from "react";
-import AudioPlayer from "react-h5-audio-player";
 import QueueMusicRoundedIcon from "@mui/icons-material/QueueMusicRounded";
 import ShuffleRoundedIcon from "@mui/icons-material/ShuffleRounded";
 import Replay10RoundedIcon from "@mui/icons-material/Replay10Rounded";
 import Forward10RoundedIcon from "@mui/icons-material/Forward10Rounded";
 import VolumeUpRoundedIcon from "@mui/icons-material/VolumeUpRounded";
 import VolumeOffRoundedIcon from "@mui/icons-material/VolumeOffRounded";
-import FooterQueuePopover from "./footer.queue.popover";
-import { useSession } from "next-auth/react";
+
+import { useTrackContext } from "@/lib/track.wrapper";
+import { useHasMounted } from "@/utils/customHook";
+import { sendRequest } from "@/utils/api";
 import { saveListeningHistory } from "@/utils/actions/history";
 import { getTrackHref, getUserHref } from "@/utils/actions/navigation";
-import Link from "next/link";
-import { sendRequest } from "@/utils/api";
+
+import FooterQueuePopover from "./footer.queue.popover";
 
 const formatTime = (seconds = 0) => {
-  const minutes = Math.floor(seconds / 60);
-  const secondsRemainder = Math.round(seconds) % 60;
-  const paddedSeconds = `0${secondsRemainder}`.slice(-2);
+  const safeSeconds = Number.isFinite(seconds) ? Math.max(seconds, 0) : 0;
 
-  return `${minutes}:${paddedSeconds}`;
+  const minutes = Math.floor(safeSeconds / 60);
+  const secondsRemainder = Math.round(safeSeconds) % 60;
+
+  return `${minutes}:${String(secondsRemainder).padStart(2, "0")}`;
 };
 
 const AppFooter = () => {
   const router = useRouter();
+  const pathname = usePathname();
   const { data: session } = useSession();
   const hasMounted = useHasMounted();
-  const pathname = usePathname();
 
   const playerRef = useRef<any>(null);
   const previousTrackUrlRef = useRef("");
   const previousVolumeRef = useRef(0.5);
   const suppressFooterAudioEventRef = useRef(false);
+
+  /*
+   * Mỗi track detail chỉ tự bỏ mute một lần.
+   * Nhờ vậy user vẫn có thể mute lại ngay trong trang.
+   */
+  const detailVolumeResetRef = useRef<string>("");
 
   const [volume, setVolume] = useState(0.5);
   const [queueAnchorEl, setQueueAnchorEl] = useState<HTMLElement | null>(null);
@@ -52,29 +64,44 @@ const AppFooter = () => {
   const { currentTrack, setCurrentTrack } = useTrackContext() as ITrackContext;
 
   const footerTrack = currentTrack as any;
-  const isTrackDetailPage = pathname?.startsWith("/track/");
+
+  const isTrackDetailPage = Boolean(pathname?.startsWith("/track/"));
+
+  const isWaveControlled =
+    isTrackDetailPage &&
+    (footerTrack?.source === "wave" ||
+      footerTrack?.source === "footer-control");
+
   const queueOpen = Boolean(queueAnchorEl);
 
   const footerCurrentTime = Number(footerTrack?.currentTime || 0);
+
   const footerDuration = Number(footerTrack?.duration || 0);
 
   const getTrackId = (track?: any) => {
     return track?._id || track?.id || "";
   };
 
-  const getImageUrl = (imgUrl?: string) => {
+  const getImageUrl = (imgUrl?: string | null) => {
     if (!imgUrl) return "/audio/SC.png";
 
-    if (imgUrl.startsWith("http")) return imgUrl;
-    if (imgUrl.startsWith("/")) return imgUrl;
+    if (imgUrl.startsWith("http")) {
+      return imgUrl;
+    }
+
+    if (imgUrl.startsWith("/")) {
+      return imgUrl;
+    }
 
     return `${process.env.NEXT_PUBLIC_BACKEND_URL}/uploads/images/${imgUrl}`;
   };
 
-  const getAudioUrl = (trackUrl?: string) => {
+  const getAudioUrl = (trackUrl?: string | null) => {
     if (!trackUrl) return "";
 
-    if (trackUrl.startsWith("http")) return trackUrl;
+    if (trackUrl.startsWith("http")) {
+      return trackUrl;
+    }
 
     if (trackUrl.startsWith("/")) {
       return `${process.env.NEXT_PUBLIC_BACKEND_URL}${trackUrl}`;
@@ -83,17 +110,14 @@ const AppFooter = () => {
     return `${process.env.NEXT_PUBLIC_BACKEND_URL}/uploads/audio/${trackUrl}`;
   };
 
-  const isWaveControlled =
-    isTrackDetailPage &&
-    (footerTrack?.source === "wave" ||
-      footerTrack?.source === "footer-control");
-
   const getTrackImage = () => {
     return getImageUrl((currentTrack as any)?.imgUrl);
   };
 
   const isTrackTopObject = (track: unknown): track is ITrackTop => {
-    if (typeof track !== "object" || track === null) return false;
+    if (typeof track !== "object" || track === null) {
+      return false;
+    }
 
     const item = track as any;
 
@@ -101,18 +125,21 @@ const AppFooter = () => {
   };
 
   const loadQueueTracks = async (): Promise<ITrackTop[]> => {
-    if (queueTracks.length) return queueTracks;
-    if (queueLoading) return queueTracks;
+    if (queueTracks.length) {
+      return queueTracks;
+    }
+
+    if (queueLoading) {
+      return queueTracks;
+    }
 
     setQueueLoading(true);
 
     try {
       const accessToken = (session as any)?.access_token;
 
-      const res = await sendRequest<
-        IBackendRes<IPlaylist[] | IModelPaginate<IPlaylist>>
-      >({
-        url: `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/v1/playlists/by-user`,
+      const response = await sendRequest<IBackendRes<IPlaylist[]>>({
+        url: `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/v1/playlists/my-playlists`,
         method: "GET",
         headers: accessToken
           ? {
@@ -121,7 +148,7 @@ const AppFooter = () => {
           : {},
       });
 
-      const responseData = res?.data as any;
+      const responseData = response?.data as any;
 
       const playlists: IPlaylist[] = Array.isArray(responseData)
         ? responseData
@@ -135,11 +162,15 @@ const AppFooter = () => {
 
       const uniqueTracks = Array.from(
         new Map(tracks.map((track) => [getTrackId(track), track])).values()
-      );
+      ).filter((track) => Boolean(getTrackId(track)));
 
       setQueueTracks(uniqueTracks);
 
       return uniqueTracks;
+    } catch (error) {
+      console.error("Cannot load footer queue:", error);
+
+      return [];
     } finally {
       setQueueLoading(false);
     }
@@ -164,7 +195,10 @@ const AppFooter = () => {
         source: "wave",
         currentTime: 0,
         duration: 0,
+        volume,
+        muted: volume === 0,
         seekTime: undefined,
+        seekId: undefined,
       } as any);
 
       router.push(getTrackHref(track, true));
@@ -177,6 +211,8 @@ const AppFooter = () => {
       source: "footer",
       currentTime: 0,
       duration: 0,
+      volume,
+      muted: volume === 0,
       seekTime: undefined,
       seekId: undefined,
     } as any);
@@ -189,7 +225,9 @@ const AppFooter = () => {
   };
 
   const getRandomQueueIndex = (tracks: ITrackTop[]) => {
-    if (tracks.length <= 1) return 0;
+    if (tracks.length <= 1) {
+      return 0;
+    }
 
     const currentIndex = getCurrentQueueIndex(tracks);
 
@@ -203,12 +241,12 @@ const AppFooter = () => {
   };
 
   const handleToggleShuffleMode = () => {
-    setShuffleMode((prev) => {
-      const nextValue = !prev;
+    setShuffleMode((previous) => {
+      const next = !previous;
 
-      localStorage.setItem("soundclone-shuffle-mode", String(nextValue));
+      localStorage.setItem("soundclone-shuffle-mode", String(next));
 
-      return nextValue;
+      return next;
     });
   };
 
@@ -218,12 +256,12 @@ const AppFooter = () => {
     if (!tracks.length) return;
 
     if (shuffleMode) {
-      const randomIndex = getRandomQueueIndex(tracks);
-      handlePlayQueueTrack(tracks[randomIndex]);
+      handlePlayQueueTrack(tracks[getRandomQueueIndex(tracks)]);
       return;
     }
 
     const currentIndex = getCurrentQueueIndex(tracks);
+
     const previousIndex =
       currentIndex <= 0 ? tracks.length - 1 : currentIndex - 1;
 
@@ -236,12 +274,12 @@ const AppFooter = () => {
     if (!tracks.length) return;
 
     if (shuffleMode) {
-      const randomIndex = getRandomQueueIndex(tracks);
-      handlePlayQueueTrack(tracks[randomIndex]);
+      handlePlayQueueTrack(tracks[getRandomQueueIndex(tracks)]);
       return;
     }
 
     const currentIndex = getCurrentQueueIndex(tracks);
+
     const nextIndex =
       currentIndex < 0 || currentIndex >= tracks.length - 1
         ? 0
@@ -257,7 +295,9 @@ const AppFooter = () => {
   };
 
   const handleSeekBy = (seconds: number) => {
-    if (!footerDuration) return;
+    if (!currentTrack || !footerDuration) {
+      return;
+    }
 
     const nextTime = Math.min(
       Math.max(footerCurrentTime + seconds, 0),
@@ -280,6 +320,7 @@ const AppFooter = () => {
 
     if (safeVolume > 0) {
       previousVolumeRef.current = safeVolume;
+
       localStorage.setItem("soundclone-previous-volume", String(safeVolume));
     }
 
@@ -291,6 +332,8 @@ const AppFooter = () => {
       audio.volume = safeVolume;
       audio.muted = safeVolume === 0;
     }
+
+    if (!currentTrack) return;
 
     setCurrentTrack({
       ...currentTrack,
@@ -313,6 +356,9 @@ const AppFooter = () => {
     setAppVolume(nextVolume);
   };
 
+  /*
+   * Lưu lịch sử nghe.
+   */
   useEffect(() => {
     const trackId = getTrackId(currentTrack);
 
@@ -327,45 +373,140 @@ const AppFooter = () => {
     currentTrack?.isPlaying,
   ]);
 
+  /*
+   * Đọc volume đã lưu trước đó.
+   */
   useEffect(() => {
     if (!hasMounted) return;
 
-    const audio = playerRef.current?.audio?.current;
-
-    if (audio) {
-      audio.volume = volume;
-    }
-  }, [hasMounted, volume]);
-
-  useEffect(() => {
-    if (!hasMounted) return;
-
-    const savedVolume = localStorage.getItem("soundclone-volume");
     const savedPreviousVolume = localStorage.getItem(
       "soundclone-previous-volume"
     );
 
     if (savedPreviousVolume) {
-      const nextPreviousVolume = Number(savedPreviousVolume);
+      const parsedPreviousVolume = Number(savedPreviousVolume);
 
-      if (!Number.isNaN(nextPreviousVolume) && nextPreviousVolume > 0) {
+      if (Number.isFinite(parsedPreviousVolume) && parsedPreviousVolume > 0) {
         previousVolumeRef.current = Math.max(
           0,
-          Math.min(1, nextPreviousVolume)
+          Math.min(1, parsedPreviousVolume)
         );
       }
     }
 
-    if (!savedVolume) return;
+    const savedVolume = localStorage.getItem("soundclone-volume");
 
-    const nextVolume = Number(savedVolume);
+    if (savedVolume === null) return;
 
-    if (Number.isNaN(nextVolume)) return;
+    const parsedVolume = Number(savedVolume);
 
-    const safeVolume = Math.max(0, Math.min(1, nextVolume));
+    if (!Number.isFinite(parsedVolume)) {
+      return;
+    }
 
-    setVolume(safeVolume);
+    setVolume(Math.max(0, Math.min(1, parsedVolume)));
   }, [hasMounted]);
+
+  /*
+   * Khi vừa đi từ trang khác vào /track/{slug},
+   * nếu app đang mute thì tự khôi phục âm lượng trước đó.
+   *
+   * Kết quả:
+   * - WaveSurfer phát có tiếng.
+   * - Icon footer đổi sang VolumeUp.
+   * - Nếu user mute lại ngay trong trang track,
+   *   effect không tự bật tiếng lần thứ hai.
+   */
+  useEffect(() => {
+    if (!hasMounted) return;
+
+    if (!isTrackDetailPage) {
+      detailVolumeResetRef.current = "";
+      return;
+    }
+
+    const trackId = getTrackId(currentTrack);
+
+    if (!trackId || !currentTrack) {
+      return;
+    }
+
+    const resetKey = `${pathname}:${trackId}`;
+
+    if (detailVolumeResetRef.current === resetKey) {
+      return;
+    }
+
+    detailVolumeResetRef.current = resetKey;
+
+    const savedVolumeRaw = localStorage.getItem("soundclone-volume");
+
+    const savedVolume =
+      savedVolumeRaw === null ? volume : Number(savedVolumeRaw);
+
+    const shouldUnmute =
+      savedVolume === 0 || volume === 0 || footerTrack?.muted === true;
+
+    if (!shouldUnmute) {
+      return;
+    }
+
+    const savedPreviousRaw = localStorage.getItem("soundclone-previous-volume");
+
+    const savedPrevious = Number(savedPreviousRaw);
+
+    const restoredVolume =
+      Number.isFinite(savedPrevious) && savedPrevious > 0
+        ? Math.min(savedPrevious, 1)
+        : previousVolumeRef.current > 0
+        ? previousVolumeRef.current
+        : 0.5;
+
+    previousVolumeRef.current = restoredVolume;
+
+    setVolume(restoredVolume);
+
+    localStorage.setItem("soundclone-volume", String(restoredVolume));
+
+    localStorage.setItem("soundclone-previous-volume", String(restoredVolume));
+
+    const audio = playerRef.current?.audio?.current;
+
+    if (audio) {
+      audio.volume = restoredVolume;
+      audio.muted = false;
+    }
+
+    setCurrentTrack({
+      ...currentTrack,
+      volume: restoredVolume,
+      muted: false,
+      volumeId: Date.now(),
+      source: "footer-control",
+      seekTime: undefined,
+      seekId: undefined,
+    } as any);
+  }, [
+    hasMounted,
+    isTrackDetailPage,
+    pathname,
+    currentTrack?._id,
+    (currentTrack as any)?.id,
+  ]);
+
+  /*
+   * Đồng bộ volume state với audio element footer.
+   */
+  useEffect(() => {
+    if (!hasMounted) return;
+
+    const audio = playerRef.current?.audio?.current;
+
+    if (!audio) return;
+
+    audio.volume = volume;
+    audio.muted = volume === 0;
+  }, [hasMounted, volume]);
 
   useEffect(() => {
     if (!hasMounted) return;
@@ -375,6 +516,10 @@ const AppFooter = () => {
     setShuffleMode(savedShuffleMode === "true");
   }, [hasMounted]);
 
+  /*
+   * Ngoài trang detail: AudioPlayer footer phát nhạc.
+   * Trong trang detail: dừng audio footer để WaveSurfer làm nguồn phát duy nhất.
+   */
   useEffect(() => {
     const audio = playerRef.current?.audio?.current;
 
@@ -395,6 +540,7 @@ const AppFooter = () => {
 
     if (previousTrackUrlRef.current !== currentTrack?.trackUrl) {
       audio.currentTime = 0;
+
       previousTrackUrlRef.current = currentTrack?.trackUrl || "";
     }
 
@@ -404,21 +550,37 @@ const AppFooter = () => {
     }
 
     if (currentTrack?.isPlaying === true) {
-      audio.play();
+      void audio.play().catch((error: unknown) => {
+        console.warn("Footer audio play was blocked:", error);
+      });
     }
   }, [
     currentTrack?._id,
+    (currentTrack as any)?.id,
     currentTrack?.trackUrl,
     currentTrack?.isPlaying,
     isWaveControlled,
     isTrackDetailPage,
   ]);
 
-  if (!hasMounted) return <></>;
+  /*
+   * Mọi hook phải nằm trước các return có điều kiện.
+   */
+  if (!hasMounted) {
+    return <></>;
+  }
 
-  if (!currentTrack?._id) return <></>;
+  if (!currentTrack) {
+    return <></>;
+  }
 
-  const footerTrackHref = currentTrack ? getTrackHref(currentTrack, true) : "#";
+  const currentTrackId = getTrackId(currentTrack);
+
+  if (!currentTrackId) {
+    return <></>;
+  }
+
+  const footerTrackHref = getTrackHref(currentTrack, true);
 
   const footerArtist = (currentTrack as any)?.uploader ||
     (currentTrack as any)?.user ||
@@ -432,6 +594,7 @@ const AppFooter = () => {
   const footerArtistHref = getUserHref(footerArtist);
 
   const canOpenTrack = footerTrackHref !== "#";
+
   const canOpenArtist = footerArtistHref !== "#";
 
   return (
@@ -572,7 +735,7 @@ const AppFooter = () => {
                 onClick={() => {
                   setCurrentTrack({
                     ...currentTrack,
-                    isPlaying: !currentTrack.isPlaying,
+                    isPlaying: !Boolean(currentTrack.isPlaying),
                     source: "footer-control",
                   } as any);
                 }}
@@ -707,7 +870,11 @@ const AppFooter = () => {
               </Typography>
 
               <Slider
-                value={footerDuration ? footerCurrentTime : 0}
+                value={
+                  footerDuration
+                    ? Math.min(footerCurrentTime, footerDuration)
+                    : 0
+                }
                 min={0}
                 max={footerDuration || 1}
                 onChangeCommitted={(_, value) => {
@@ -797,13 +964,15 @@ const AppFooter = () => {
               onClickPrevious={handlePlayPreviousTrack}
               onClickNext={handlePlayNextTrack}
               onEnded={handleAudioEnded}
-              src={getAudioUrl((currentTrack as any)?.trackUrl)}
+              src={getAudioUrl(currentTrack.trackUrl)}
               volume={volume}
               muted={volume === 0}
-              onVolumeChange={(e: any) => {
-                const nextVolume = Number(e?.target?.volume ?? volume);
+              onVolumeChange={(event: any) => {
+                const nextVolume = Number(event?.target?.volume ?? volume);
 
-                if (Number.isNaN(nextVolume)) return;
+                if (!Number.isFinite(nextVolume)) {
+                  return;
+                }
 
                 setAppVolume(nextVolume);
               }}
@@ -812,8 +981,13 @@ const AppFooter = () => {
                 background: "#181A1B",
               }}
               onPlay={() => {
-                if (suppressFooterAudioEventRef.current) return;
-                if (isTrackDetailPage) return;
+                if (suppressFooterAudioEventRef.current) {
+                  return;
+                }
+
+                if (isTrackDetailPage) {
+                  return;
+                }
 
                 setCurrentTrack({
                   ...currentTrack,
@@ -822,8 +996,13 @@ const AppFooter = () => {
                 } as any);
               }}
               onPause={() => {
-                if (suppressFooterAudioEventRef.current) return;
-                if (isTrackDetailPage) return;
+                if (suppressFooterAudioEventRef.current) {
+                  return;
+                }
+
+                if (isTrackDetailPage) {
+                  return;
+                }
 
                 setCurrentTrack({
                   ...currentTrack,
@@ -849,7 +1028,9 @@ const AppFooter = () => {
               component={Link}
               href={footerTrackHref}
               onClick={(event) => {
-                if (!canOpenTrack) event.preventDefault();
+                if (!canOpenTrack) {
+                  event.preventDefault();
+                }
               }}
               sx={{
                 width: 38,
@@ -872,9 +1053,9 @@ const AppFooter = () => {
               <Box
                 component="img"
                 src={getTrackImage()}
-                alt={currentTrack?.title || "track image"}
-                onError={(e: any) => {
-                  e.currentTarget.src = "/audio/SC.png";
+                alt={currentTrack.title || "track image"}
+                onError={(event: any) => {
+                  event.currentTarget.src = "/audio/SC.png";
                 }}
                 sx={{
                   width: "100%",
@@ -901,9 +1082,11 @@ const AppFooter = () => {
                 component={Link}
                 href={footerArtistHref}
                 onClick={(event) => {
-                  if (!canOpenArtist) event.preventDefault();
+                  if (!canOpenArtist) {
+                    event.preventDefault();
+                  }
                 }}
-                title={currentTrack?.description || "Unknown artist"}
+                title={currentTrack.description || "Unknown artist"}
                 sx={{
                   width: "100%",
                   color: "#a8a8a8",
@@ -923,7 +1106,7 @@ const AppFooter = () => {
                 }}
               >
                 {footerArtist?.name ||
-                  currentTrack?.description ||
+                  currentTrack.description ||
                   "Unknown artist"}
               </Typography>
 
@@ -931,9 +1114,11 @@ const AppFooter = () => {
                 component={Link}
                 href={footerTrackHref}
                 onClick={(event) => {
-                  if (!canOpenTrack) event.preventDefault();
+                  if (!canOpenTrack) {
+                    event.preventDefault();
+                  }
                 }}
-                title={currentTrack?.title || "Unknown track"}
+                title={currentTrack.title || "Unknown track"}
                 sx={{
                   width: "100%",
                   color: "#ffffff",
@@ -952,7 +1137,7 @@ const AppFooter = () => {
                     : {},
                 }}
               >
-                {currentTrack?.title || "Unknown track"}
+                {currentTrack.title || "Unknown track"}
               </Typography>
             </Box>
 

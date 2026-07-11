@@ -340,8 +340,15 @@ const WaveTrack = (props: IProps) => {
 
       wavesurfer.setVolume(safeVolume);
 
-      if (typeof (wavesurfer as any).setMuted === "function") {
-        (wavesurfer as any).setMuted(safeVolume === 0);
+      const media = (wavesurfer as any)?.media;
+
+      if (media) {
+        media.volume = safeVolume;
+        media.muted = safeVolume === 0;
+      }
+
+      if (safeVolume === 0) {
+        wavesurfer.setVolume(0);
       }
     }
 
@@ -398,10 +405,10 @@ const WaveTrack = (props: IProps) => {
     const trackId = getTrackId();
 
     const isAnotherTrackPlaying =
-      currentTrackId &&
-      trackId &&
+      Boolean(currentTrackId) &&
+      Boolean(trackId) &&
       currentTrackId !== trackId &&
-      currentTrack.isPlaying;
+      currentTrack?.isPlaying === true;
 
     if (isAnotherTrackPlaying) {
       wavesurfer.pause();

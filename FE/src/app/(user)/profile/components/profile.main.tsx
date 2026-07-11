@@ -1,32 +1,119 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { useParams } from "next/navigation";
 import { useSession } from "next-auth/react";
+
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
-import Typography from "@mui/material/Typography";
+import CircularProgress from "@mui/material/CircularProgress";
 import Divider from "@mui/material/Divider";
 import Stack from "@mui/material/Stack";
+import Typography from "@mui/material/Typography";
+
 import PlayArrowRoundedIcon from "@mui/icons-material/PlayArrowRounded";
-import FavoriteRoundedIcon from "@mui/icons-material/FavoriteRounded";
 import ShareRoundedIcon from "@mui/icons-material/ShareRounded";
 import EditRoundedIcon from "@mui/icons-material/EditRounded";
-import ContentCopyRoundedIcon from "@mui/icons-material/ContentCopyRounded";
-import MoreHorizRoundedIcon from "@mui/icons-material/MoreHorizRounded";
-import EventAvailableRoundedIcon from "@mui/icons-material/EventAvailableRounded";
-import LocationOnRoundedIcon from "@mui/icons-material/LocationOnRounded";
-import { convertSlugUrl, sendRequest } from "@/utils/api";
-import { useToast } from "@/utils/toast";
-import { getTrackImageUrl } from "@/utils/actions/getAvatar";
-import ProfileShareDialog from "./profile-share-dialog";
-import ProfileEditDialog from "./profile-edit-dialog";
 import VerifiedRoundedIcon from "@mui/icons-material/VerifiedRounded";
 
+import { convertSlugUrl } from "@/utils/api";
+import { getTrackImageUrl } from "@/utils/actions/getAvatar";
+import { useToast } from "@/utils/toast";
+
+import ProfileShareDialog from "./profile-share-dialog";
+import ProfileEditDialog from "./profile-edit-dialog";
+
+/* ======================================================
+   CONFIG
+====================================================== */
+
+const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "";
+const DEFAULT_AUDIO = "/audio/DemoS.mp3";
+
+/* ======================================================
+   TYPES
+====================================================== */
+
 type Props = {
-  user: Partial<IUser> | null;
-  tracks: ITrackTop[];
+  /**
+   * Cách mới: truyền thẳng userId vào.
+   */
+  userId?: string;
+
+  /**
+   * Cách mới nếu component cha đã fetch user sẵn.
+   */
+  initialUser?: Partial<IUser> | null;
+
+  /**
+   * Cách mới nếu component cha đã fetch tracks sẵn.
+   */
+  initialTracks?: ITrackTop[];
+
+  /**
+   * Backward compatible với code cũ:
+   * <ProfileMain user={user} tracks={tracks} />
+   */
+  user?: Partial<IUser> | null;
+  tracks?: ITrackTop[];
 };
+
+type TabKey =
+  | "all"
+  | "popular"
+  | "tracks"
+  | "albums"
+  | "playlists"
+  | "reposts";
+
+type TabItem = {
+  label: string;
+  value: TabKey;
+};
+
+type ApiRequestOptions = {
+  url: string;
+  method: "GET" | "POST" | "PATCH" | "DELETE" | "PUT";
+  headers?: Record<string, string>;
+  body?: BodyInit | null;
+  label: string;
+};
+
+/* ======================================================
+   TABS
+====================================================== */
+
+const tabs: TabItem[] = [
+  {
+    label: "All",
+    value: "all",
+  },
+  {
+    label: "Popular tracks",
+    value: "popular",
+  },
+  {
+    label: "Tracks",
+    value: "tracks",
+  },
+  {
+    label: "Albums",
+    value: "albums",
+  },
+  {
+    label: "Playlists",
+    value: "playlists",
+  },
+  {
+    label: "Reposts",
+    value: "reposts",
+  },
+];
+
+/* ======================================================
+   HELPERS
+====================================================== */
 
 const getItemId = (item?: any) => {
   return item?._id || item?.id || "";
@@ -36,73 +123,570 @@ const isArtist = (user?: any) => {
   return String(user?.type || "").toUpperCase() === "ARTIST";
 };
 
-const ProfileMain = ({ user, tracks }: Props) => {
-  const DEFAULT_AUDIO = "/audio/DemoS.mp3";
+const normalizeRouteParam = (value: unknown) => {
+  if (Array.isArray(value)) {
+    return String(value[0] || "");
+  }
 
+  if (typeof value === "string") {
+    return value;
+  }
+
+  return "";
+};
+
+const extractList = <T,>(response: any): T[] => {
+  if (Array.isArray(response)) {
+    return response;
+  }
+
+  if (Array.isArray(response?.data)) {
+    return response.data;
+  }
+
+  if (Array.isArray(response?.data?.result)) {
+    return response.data.result;
+  }
+
+  if (Array.isArray(response?.result)) {
+    return response.result;
+  }
+
+  return [];
+};
+
+const extractObject = <T,>(response: any): T | null => {
+  if (response?.data && !Array.isArray(response.data)) {
+    return response.data as T;
+  }
+
+  if (response && typeof response === "object" && !Array.isArray(response)) {
+    return response as T;
+  }
+
+  return null;
+};
+
+const maskHeadersForLog = (headers: Record<string, string> = {}) => {
+  return {
+    ...headers,
+    Authorization: headers.Authorization ? "Bearer ***" : undefined,
+  };
+};
+
+const apiFetch = async ({
+  url,
+  method,
+  headers = {},
+  body = null,
+  label,
+}: ApiRequestOptions) => {
+  console.group(`🚀 ${label}`);
+  console.log("URL:", url);
+  console.log("Method:", method);
+  console.log("Headers:", maskHeadersForLog(headers));
+  console.log("Body:", body);
+  console.groupEnd();
+
+  const response = await fetch(url, {
+    method,
+    headers,
+    body,
+    cache: "no-store",
+  });
+
+  const text = await response.text();
+
+  let data: any = null;
+
+  try {
+    data = text ? JSON.parse(text) : null;
+  } catch {
+    data = text;
+  }
+
+  console.group(`📥 ${label} RESPONSE`);
+  console.log("Status:", response.status);
+  console.log("OK:", response.ok);
+  console.log("Data:", data);
+  console.groupEnd();
+
+  if (!response.ok) {
+    const message =
+      typeof data === "string"
+        ? data
+        : data?.message || data?.error || `HTTP ${response.status}`;
+
+    throw new Error(message);
+  }
+
+  return data;
+};
+
+/* ======================================================
+   COMPONENT
+====================================================== */
+
+const ProfileMain = ({
+  userId,
+  initialUser = null,
+  initialTracks = [],
+  user: legacyUser = null,
+  tracks: legacyTracks = [],
+}: Props) => {
   const toast = useToast();
-  const { data: session } = useSession();
 
-  const displayName = user?.name || user?.email || "User";
-  const mainTrack = tracks[0];
+  const params = useParams() as Record<string, string | string[] | undefined>;
 
-  const profileUserId = getItemId(user);
+  const { data: session, status: sessionStatus } = useSession();
+
+  const accessToken =
+    (session as any)?.accessToken ||
+    (session as any)?.access_token ||
+    (session as any)?.user?.access_token ||
+    "";
+
   const currentUserId = getItemId((session as any)?.user);
-  const isOwner = Boolean(profileUserId && currentUserId === profileUserId);
-  const showArtistBadge = isArtist(user);
+
+  const routeUserId =
+    normalizeRouteParam(params?.id) ||
+    normalizeRouteParam(params?.userId) ||
+    normalizeRouteParam(params?.profileId) ||
+    normalizeRouteParam(params?.slug);
+
+  const initialProfileUser = initialUser || legacyUser || null;
+
+  const initialProfileTracks =
+    initialTracks.length > 0 ? initialTracks : legacyTracks || [];
+
+  const resolvedUserId =
+    userId || getItemId(initialProfileUser) || routeUserId || "";
+
+  const isOwner = Boolean(
+    resolvedUserId && currentUserId && resolvedUserId === currentUserId
+  );
+
+  /* ======================================================
+     STATE
+  ====================================================== */
+
+  const [activeTab, setActiveTab] = useState<TabKey>("all");
+
+  const [profileUser, setProfileUser] = useState<Partial<IUser> | null>(
+    initialProfileUser
+  );
+
+  const [tracks, setTracks] = useState<ITrackTop[]>(initialProfileTracks);
+
+  const [playlists, setPlaylists] = useState<IPlaylist[]>([]);
+
+  const [loading, setLoading] = useState(true);
+
+  const [playlistsLoading, setPlaylistsLoading] = useState(false);
+
+  const [error, setError] = useState("");
+
   const [openEdit, setOpenEdit] = useState(false);
+
   const [openShare, setOpenShare] = useState(false);
-  const [followersCount, setFollowersCount] = useState(user?.followers ?? 0);
+
+  const [followersCount, setFollowersCount] = useState(
+    initialProfileUser?.followers ?? 0
+  );
+
   const [isFollowing, setIsFollowing] = useState(false);
+
   const [followLoading, setFollowLoading] = useState(false);
 
+  /* ======================================================
+     DEBUG INPUT
+  ====================================================== */
+
   useEffect(() => {
-    setFollowersCount(user?.followers ?? 0);
+    console.group("🧩 PROFILE MAIN INPUT");
+    console.log("prop userId:", userId);
+    console.log("route params:", params);
+    console.log("routeUserId:", routeUserId);
+    console.log("initialUser:", initialUser);
+    console.log("legacyUser:", legacyUser);
+    console.log("resolvedUserId:", resolvedUserId);
+    console.log("currentUserId:", currentUserId);
+    console.log("isOwner:", isOwner);
+    console.groupEnd();
+  }, [
+    userId,
+    routeUserId,
+    resolvedUserId,
+    currentUserId,
+    isOwner,
+    initialUser,
+    legacyUser,
+    params,
+  ]);
 
-    if (!profileUserId) return;
+  /* ======================================================
+     SYNC INITIAL USER/TRACKS
+  ====================================================== */
 
-    const followedUsers = JSON.parse(
-      localStorage.getItem("soundclone-followed-users") || "[]"
-    ) as string[];
+  useEffect(() => {
+    if (initialProfileUser) {
+      setProfileUser(initialProfileUser);
+      setFollowersCount(initialProfileUser.followers ?? 0);
+    }
+  }, [initialProfileUser]);
 
-    setIsFollowing(followedUsers.includes(profileUserId));
-  }, [profileUserId, user?.followers]);
+  useEffect(() => {
+    if (initialProfileTracks.length > 0) {
+      setTracks(initialProfileTracks);
+    }
+  }, [initialProfileTracks]);
+
+  /* ======================================================
+     FETCH USER
+  ====================================================== */
+
+  const fetchProfileUser = async () => {
+    const url = `${BACKEND_URL}/api/v1/users/${resolvedUserId}`;
+
+    const headers: Record<string, string> = {};
+
+    if (accessToken) {
+      headers.Authorization = `Bearer ${accessToken}`;
+    }
+
+    const json = await apiFetch({
+      label: "GET PROFILE USER",
+      url,
+      method: "GET",
+      headers,
+    });
+
+    const userData = extractObject<IUser>(json);
+
+    console.log("✅ PROFILE USER EXTRACTED:", userData);
+
+    if (userData) {
+      setProfileUser(userData);
+      setFollowersCount(userData.followers ?? 0);
+    }
+
+    return userData;
+  };
+
+  /* ======================================================
+     FETCH TRACKS BY USER
+  ====================================================== */
+
+  const fetchProfileTracksForm = async () => {
+    const url = `${BACKEND_URL}/api/v1/tracks/users?current=1&pageSize=100`;
+
+    const body = new URLSearchParams();
+    body.append("id", resolvedUserId);
+
+    const headers: Record<string, string> = {
+      "Content-Type": "application/x-www-form-urlencoded",
+    };
+
+    if (accessToken) {
+      headers.Authorization = `Bearer ${accessToken}`;
+    }
+
+    const json = await apiFetch({
+      label: "GET PROFILE TRACKS FORM",
+      url,
+      method: "POST",
+      headers,
+      body: body.toString(),
+    });
+
+    const list = extractList<ITrackTop>(json);
+
+    console.log("✅ TRACKS FORM EXTRACTED:", list);
+
+    return list;
+  };
+
+  const fetchProfileTracksJson = async () => {
+    const url = `${BACKEND_URL}/api/v1/tracks/users?current=1&pageSize=100`;
+
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json",
+    };
+
+    if (accessToken) {
+      headers.Authorization = `Bearer ${accessToken}`;
+    }
+
+    const json = await apiFetch({
+      label: "GET PROFILE TRACKS JSON FALLBACK",
+      url,
+      method: "POST",
+      headers,
+      body: JSON.stringify({
+        id: resolvedUserId,
+      }),
+    });
+
+    const list = extractList<ITrackTop>(json);
+
+    console.log("✅ TRACKS JSON EXTRACTED:", list);
+
+    return list;
+  };
+
+  const fetchProfileTracks = async () => {
+    let list = await fetchProfileTracksForm();
+
+    if (!list.length) {
+      console.warn(
+        "⚠️ Form-urlencoded returned empty tracks. Trying JSON fallback..."
+      );
+
+      try {
+        const jsonList = await fetchProfileTracksJson();
+
+        if (jsonList.length > 0) {
+          list = jsonList;
+        }
+      } catch (error) {
+        console.warn("JSON fallback failed:", error);
+      }
+    }
+
+    console.table(
+      list.map((track, index) => ({
+        index: index + 1,
+        id: getItemId(track),
+        title: track.title,
+        countPlay: track.countPlay ?? 0,
+        imgUrl: track.imgUrl,
+        trackUrl: track.trackUrl,
+      }))
+    );
+
+    setTracks(list);
+
+    return list;
+  };
+
+  /* ======================================================
+     LOAD PROFILE DATA
+  ====================================================== */
+
+  useEffect(() => {
+    if (!resolvedUserId) {
+      console.error("❌ ProfileMain missing user id:", {
+        userId,
+        initialUser,
+        legacyUser,
+        routeUserId,
+        params,
+      });
+
+      setError("User ID is missing.");
+      setLoading(false);
+      return;
+    }
+
+    let cancelled = false;
+
+    const loadProfile = async () => {
+      try {
+        setLoading(true);
+        setError("");
+
+        const results = await Promise.allSettled([
+          fetchProfileUser(),
+          fetchProfileTracks(),
+        ]);
+
+        if (cancelled) {
+          return;
+        }
+
+        const userResult = results[0];
+        const tracksResult = results[1];
+
+        if (userResult.status === "rejected") {
+          console.error("❌ User API failed:", userResult.reason);
+
+          if (!initialProfileUser) {
+            throw userResult.reason;
+          }
+        }
+
+        if (tracksResult.status === "rejected") {
+          console.error("❌ Tracks API failed:", tracksResult.reason);
+
+          if (!initialProfileTracks.length) {
+            setTracks([]);
+          }
+        }
+      } catch (err) {
+        console.error("❌ PROFILE LOAD ERROR:", err);
+
+        if (!cancelled) {
+          setError(
+            err instanceof Error ? err.message : "Failed to load profile."
+          );
+        }
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+        }
+      }
+    };
+
+    loadProfile();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [resolvedUserId, accessToken]);
+
+  /* ======================================================
+     FOLLOW STATUS
+  ====================================================== */
+
+  useEffect(() => {
+    if (sessionStatus === "loading") {
+      return;
+    }
+
+    if (!resolvedUserId || !accessToken || isOwner) {
+      setIsFollowing(false);
+      return;
+    }
+
+    let cancelled = false;
+
+    const fetchFollowStatus = async () => {
+      try {
+        const url = `${BACKEND_URL}/api/v1/users/${resolvedUserId}/follow-status`;
+
+        const json = await apiFetch({
+          label: "GET FOLLOW STATUS",
+          url,
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+          },
+        });
+
+        if (cancelled) {
+          return;
+        }
+
+        const followState =
+          json?.data?.isFollowing ?? json?.isFollowing ?? false;
+
+        setIsFollowing(Boolean(followState));
+      } catch (error) {
+        console.error("❌ FOLLOW STATUS ERROR:", error);
+      }
+    };
+
+    fetchFollowStatus();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [resolvedUserId, accessToken, isOwner, sessionStatus]);
+
+  /* ======================================================
+     PLAYLISTS
+  ====================================================== */
+
+  useEffect(() => {
+    if (activeTab !== "playlists" && activeTab !== "all") {
+      return;
+    }
+
+    /**
+     * Endpoint hiện tại:
+     * GET /api/v1/playlists/by-user
+     *
+     * Endpoint này không nhận userId, nên chỉ gọi đúng cho profile chính chủ.
+     */
+    if (!isOwner || !accessToken) {
+      setPlaylists([]);
+      return;
+    }
+
+    let cancelled = false;
+
+    const fetchPlaylists = async () => {
+      try {
+        setPlaylistsLoading(true);
+
+        const url = `${BACKEND_URL}/api/v1/playlists/by-user?current=1&pageSize=100`;
+
+        const json = await apiFetch({
+          label: "GET MY PLAYLISTS",
+          url,
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+          },
+        });
+
+        if (cancelled) {
+          return;
+        }
+
+        const list = extractList<IPlaylist>(json);
+
+        console.log("✅ PLAYLISTS EXTRACTED:", list);
+
+        setPlaylists(list);
+      } catch (error) {
+        console.error("❌ PLAYLIST ERROR:", error);
+
+        if (!cancelled) {
+          setPlaylists([]);
+        }
+      } finally {
+        if (!cancelled) {
+          setPlaylistsLoading(false);
+        }
+      }
+    };
+
+    fetchPlaylists();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [activeTab, isOwner, accessToken]);
+
+  /* ======================================================
+     DERIVED DATA
+  ====================================================== */
+
+  const popularTracks = useMemo(() => {
+    return [...tracks]
+      .sort((a, b) => (b.countPlay ?? 0) - (a.countPlay ?? 0))
+      .slice(0, 10);
+  }, [tracks]);
+
+  const displayName = profileUser?.name || profileUser?.email || "User";
+
+  const showArtistBadge = isArtist(profileUser);
 
   const getTrackHref = (track: ITrackTop) => {
     const trackId = getItemId(track);
+    const title = track.title || "untitled";
 
-    return `/track/${convertSlugUrl(
-      track.title
-    )}-${trackId}.html?audio=${encodeURIComponent(
+    return `/track/${convertSlugUrl(title)}-${trackId}.html?audio=${encodeURIComponent(
       track.trackUrl || DEFAULT_AUDIO
     )}`;
   };
 
-  const saveFollowState = (userId: string, followed: boolean) => {
-    const followedUsers = JSON.parse(
-      localStorage.getItem("soundclone-followed-users") || "[]"
-    ) as string[];
-
-    const nextUsers = followed
-      ? Array.from(new Set([...followedUsers, userId]))
-      : followedUsers.filter((id) => id !== userId);
-
-    localStorage.setItem(
-      "soundclone-followed-users",
-      JSON.stringify(nextUsers)
-    );
-  };
+  /* ======================================================
+     FOLLOW / UNFOLLOW
+  ====================================================== */
 
   const handleToggleFollow = async () => {
-    const accessToken =
-      (session as any)?.accessToken ||
-      (session as any)?.access_token ||
-      (session as any)?.user?.access_token;
-
-    if (!profileUserId) {
-      toast.error("User not found.");
-      return;
-    }
-
     if (!accessToken) {
       toast.error("Please login first.");
       return;
@@ -113,91 +697,390 @@ const ProfileMain = ({ user, tracks }: Props) => {
       return;
     }
 
-    const nextFollowState = !isFollowing;
+    const nextState = !isFollowing;
+    const action = nextState ? "follow" : "unfollow";
 
     try {
       setFollowLoading(true);
 
-      const res = await sendRequest<IBackendRes<IUser>>({
-        url: `${
-          process.env.NEXT_PUBLIC_BACKEND_URL
-        }/api/v1/users/${profileUserId}/${
-          nextFollowState ? "follow" : "unfollow"
-        }`,
+      const url = `${BACKEND_URL}/api/v1/users/${resolvedUserId}/${action}`;
+
+      const json = await apiFetch({
+        label: `POST ${action.toUpperCase()}`,
+        url,
         method: "POST",
         headers: {
           Authorization: `Bearer ${accessToken}`,
         },
       });
 
-      if (res?.data) {
-        setIsFollowing(nextFollowState);
-        saveFollowState(profileUserId, nextFollowState);
-        setFollowersCount(res.data.followers ?? followersCount);
+      setIsFollowing(nextState);
 
-        toast.success(nextFollowState ? "Followed." : "Unfollowed.");
-        return;
+      const newFollowers = json?.data?.followers;
+
+      if (typeof newFollowers === "number") {
+        setFollowersCount(newFollowers);
+      } else {
+        setFollowersCount((current) =>
+          Math.max(0, current + (nextState ? 1 : -1))
+        );
       }
 
-      toast.error(res?.message || "Follow failed.");
+      toast.success(nextState ? "Followed." : "Unfollowed.");
     } catch (error) {
+      console.error("❌ FOLLOW ERROR:", error);
       toast.error("Follow failed.");
     } finally {
       setFollowLoading(false);
     }
   };
 
-  const WaveBars = () => {
+  /* ======================================================
+     RENDER HELPERS
+  ====================================================== */
+
+  const renderEmpty = (text: string) => {
     return (
       <Box
         sx={{
-          height: 58,
+          minHeight: 260,
+          border: "1px dashed rgba(255,255,255,0.14)",
+          borderRadius: 3,
+          backgroundColor: "#111314",
           display: "flex",
           alignItems: "center",
-          gap: "2px",
-          overflow: "hidden",
+          justifyContent: "center",
+          textAlign: "center",
+          color: "#9a9a9a",
+          fontWeight: 800,
+          p: 3,
         }}
       >
-        {Array.from({ length: 90 }).map((_, index) => {
-          const height = 14 + ((index * 13) % 42);
-
-          return (
-            <Box
-              key={index}
-              sx={{
-                width: 3,
-                height,
-                backgroundColor: "#b8b8b8",
-                opacity: index > 72 ? 0.25 : 0.9,
-                borderRadius: "2px",
-              }}
-            />
-          );
-        })}
+        {text}
       </Box>
     );
   };
 
-  const tabs = [
-    "All",
-    "Popular tracks",
-    "Tracks",
-    "Albums",
-    "Playlists",
-    "Reposts",
-  ];
+  const renderTracks = (list: ITrackTop[], emptyText = "No tracks found.") => {
+    if (!list.length) {
+      return renderEmpty(emptyText);
+    }
+
+    return (
+      <Stack spacing={2}>
+        {list.map((track, index) => (
+          <Box
+            key={getItemId(track) || index}
+            sx={{
+              display: "grid",
+              gridTemplateColumns: {
+                xs: "64px 1fr",
+                md: "80px 1fr auto",
+              },
+              gap: 2,
+              alignItems: "center",
+              p: 1.5,
+              backgroundColor: "#111314",
+              border: "1px solid rgba(255,255,255,0.08)",
+              borderRadius: 2,
+            }}
+          >
+            <Box
+              component="img"
+              src={getTrackImageUrl(track.imgUrl)}
+              alt={track.title || "Track image"}
+              sx={{
+                width: {
+                  xs: 64,
+                  md: 80,
+                },
+                height: {
+                  xs: 64,
+                  md: 80,
+                },
+                objectFit: "cover",
+                borderRadius: 1,
+                backgroundColor: "#222",
+              }}
+            />
+
+            <Box sx={{ minWidth: 0 }}>
+              <Box
+                sx={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 0.5,
+                  mb: 0.4,
+                }}
+              >
+                <Typography
+                  sx={{
+                    color: "#999",
+                    fontSize: 13,
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  {displayName}
+                </Typography>
+
+                {showArtistBadge && (
+                  <VerifiedRoundedIcon
+                    sx={{
+                      fontSize: 15,
+                      color: "#4da3ff",
+                      flexShrink: 0,
+                    }}
+                  />
+                )}
+              </Box>
+
+              <Typography
+                component={Link}
+                href={getTrackHref(track)}
+                sx={{
+                  display: "block",
+                  color: "#fff",
+                  textDecoration: "none",
+                  fontWeight: 900,
+                  fontSize: 16,
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                  whiteSpace: "nowrap",
+                  "&:hover": {
+                    color: "#ff5500",
+                  },
+                }}
+              >
+                {track.title || "Untitled track"}
+              </Typography>
+
+              <Typography
+                sx={{
+                  color: "#777",
+                  fontSize: 12,
+                  mt: 0.5,
+                }}
+              >
+                Plays: {track.countPlay ?? 0}
+              </Typography>
+            </Box>
+
+            <Box
+              component={Link}
+              href={getTrackHref(track)}
+              sx={{
+                display: {
+                  xs: "none",
+                  md: "flex",
+                },
+                width: 42,
+                height: 42,
+                borderRadius: "50%",
+                backgroundColor: "#ff5500",
+                alignItems: "center",
+                justifyContent: "center",
+                color: "#fff",
+                textDecoration: "none",
+                "&:hover": {
+                  backgroundColor: "#ff6a00",
+                },
+              }}
+            >
+              <PlayArrowRoundedIcon />
+            </Box>
+          </Box>
+        ))}
+      </Stack>
+    );
+  };
+
+  const renderPlaylists = () => {
+    if (playlistsLoading) {
+      return (
+        <Box
+          sx={{
+            py: 8,
+            display: "flex",
+            justifyContent: "center",
+          }}
+        >
+          <CircularProgress />
+        </Box>
+      );
+    }
+
+    if (!isOwner) {
+      return renderEmpty(
+        "Backend hiện tại chưa hỗ trợ lấy playlist theo userId của profile khác."
+      );
+    }
+
+    if (!playlists.length) {
+      return renderEmpty("No playlists found.");
+    }
+
+    return (
+      <Stack spacing={2}>
+        {playlists.map((playlist, index) => {
+          const playlistAny = playlist as any;
+
+          return (
+            <Box
+              key={getItemId(playlist) || index}
+              sx={{
+                p: 2,
+                border: "1px solid rgba(255,255,255,0.08)",
+                backgroundColor: "#111314",
+                borderRadius: 2,
+              }}
+            >
+              <Typography
+                sx={{
+                  color: "#fff",
+                  fontSize: 16,
+                  fontWeight: 900,
+                }}
+              >
+                {playlistAny.title || "Untitled playlist"}
+              </Typography>
+
+              <Typography
+                sx={{
+                  mt: 0.5,
+                  color: "#888",
+                  fontSize: 13,
+                }}
+              >
+                {Array.isArray(playlistAny.tracks)
+                  ? playlistAny.tracks.length
+                  : 0}{" "}
+                tracks
+              </Typography>
+            </Box>
+          );
+        })}
+      </Stack>
+    );
+  };
+
+  const renderTabContent = () => {
+    switch (activeTab) {
+      case "all":
+        return (
+          <Box>
+            <Typography
+              sx={{
+                color: "#fff",
+                fontSize: 18,
+                fontWeight: 900,
+                mb: 2,
+              }}
+            >
+              Tracks
+            </Typography>
+
+            {renderTracks(tracks)}
+
+            {isOwner && (
+              <Box sx={{ mt: 4 }}>
+                <Typography
+                  sx={{
+                    color: "#fff",
+                    fontSize: 18,
+                    fontWeight: 900,
+                    mb: 2,
+                  }}
+                >
+                  Playlists
+                </Typography>
+
+                {renderPlaylists()}
+              </Box>
+            )}
+          </Box>
+        );
+
+      case "popular":
+        return renderTracks(popularTracks, "No popular tracks found.");
+
+      case "tracks":
+        return renderTracks(tracks);
+
+      case "albums":
+        return renderEmpty("Albums API is not available.");
+
+      case "playlists":
+        return renderPlaylists();
+
+      case "reposts":
+        return renderEmpty("Reposts API is not available.");
+
+      default:
+        return null;
+    }
+  };
+
+  /* ======================================================
+     LOADING / ERROR
+  ====================================================== */
+
+  if (loading) {
+    return (
+      <Box
+        sx={{
+          minHeight: 400,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+        }}
+      >
+        <CircularProgress />
+      </Box>
+    );
+  }
+
+  if (error) {
+    return (
+      <Box
+        sx={{
+          minHeight: 300,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          color: "#ff5555",
+          fontWeight: 900,
+        }}
+      >
+        {error}
+      </Box>
+    );
+  }
+
+  /* ======================================================
+     JSX
+  ====================================================== */
 
   return (
     <Box
       sx={{
         display: "grid",
-        gridTemplateColumns: { xs: "1fr", lg: "1fr 330px" },
+        gridTemplateColumns: {
+          xs: "1fr",
+          lg: "1fr 330px",
+        },
         gap: 4,
-        px: { xs: 2, md: 0 },
+        px: {
+          xs: 2,
+          md: 0,
+        },
         py: 3,
       }}
     >
+      {/* LEFT */}
       <Box sx={{ minWidth: 0 }}>
+        {/* TABS + ACTIONS */}
         <Box
           sx={{
             display: "flex",
@@ -208,41 +1091,57 @@ const ProfileMain = ({ user, tracks }: Props) => {
             flexWrap: "wrap",
           }}
         >
-          <Stack direction="row" spacing={2.5} sx={{ overflowX: "auto" }}>
-            {tabs.map((tab) => (
-              <Typography
-                key={tab}
-                sx={{
-                  color: tab === "Playlists" ? "#ffffff" : "#b8b8b8",
-                  fontSize: 14,
-                  fontWeight: 900,
-                  whiteSpace: "nowrap",
-                  pb: 1.2,
-                  borderBottom:
-                    tab === "Playlists"
-                      ? "2px solid rgba(255,255,255,0.35)"
+          <Stack
+            direction="row"
+            spacing={2.5}
+            role="tablist"
+            sx={{
+              overflowX: "auto",
+            }}
+          >
+            {tabs.map((tab) => {
+              const active = activeTab === tab.value;
+
+              return (
+                <Typography
+                  key={tab.value}
+                  role="tab"
+                  aria-selected={active}
+                  onClick={() => {
+                    console.log("TAB CLICK:", tab.value);
+                    setActiveTab(tab.value);
+                  }}
+                  sx={{
+                    color: active ? "#fff" : "#aaa",
+                    fontSize: 14,
+                    fontWeight: 900,
+                    whiteSpace: "nowrap",
+                    pb: 1.2,
+                    cursor: "pointer",
+                    borderBottom: active
+                      ? "2px solid rgba(255,255,255,0.5)"
                       : "2px solid transparent",
-                  cursor: "pointer",
-                  "&:hover": {
-                    color: "#ffffff",
-                  },
-                }}
-              >
-                {tab}
-              </Typography>
-            ))}
+                    "&:hover": {
+                      color: "#fff",
+                    },
+                  }}
+                >
+                  {tab.label}
+                </Typography>
+              );
+            })}
           </Stack>
 
           <Stack direction="row" spacing={1}>
             {!isOwner && (
               <Button
-                onClick={handleToggleFollow}
                 disabled={followLoading}
+                onClick={handleToggleFollow}
                 sx={{
                   height: 36,
                   px: 1.8,
                   borderRadius: "5px",
-                  color: "#ffffff",
+                  color: "#fff",
                   backgroundColor: isFollowing ? "#ff5500" : "#242729",
                   textTransform: "none",
                   fontWeight: 900,
@@ -266,7 +1165,7 @@ const ProfileMain = ({ user, tracks }: Props) => {
                 height: 36,
                 px: 1.8,
                 borderRadius: "5px",
-                color: "#ffffff",
+                color: "#fff",
                 backgroundColor: "#242729",
                 textTransform: "none",
                 fontWeight: 900,
@@ -277,6 +1176,7 @@ const ProfileMain = ({ user, tracks }: Props) => {
             >
               Share
             </Button>
+
             {isOwner && (
               <Button
                 startIcon={<EditRoundedIcon />}
@@ -285,7 +1185,7 @@ const ProfileMain = ({ user, tracks }: Props) => {
                   height: 36,
                   px: 1.8,
                   borderRadius: "5px",
-                  color: "#ffffff",
+                  color: "#fff",
                   backgroundColor: "#242729",
                   textTransform: "none",
                   fontWeight: 900,
@@ -300,274 +1200,17 @@ const ProfileMain = ({ user, tracks }: Props) => {
           </Stack>
         </Box>
 
-        {!tracks.length && (
-          <Box
-            sx={{
-              minHeight: 260,
-              border: "1px dashed rgba(255,255,255,0.14)",
-              borderRadius: 3,
-              backgroundColor: "#111314",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              textAlign: "center",
-              color: "#9a9a9a",
-              fontWeight: 800,
-            }}
-          >
-            No tracks found.
-          </Box>
-        )}
-
-        {mainTrack && (
-          <Box
-            sx={{
-              display: "grid",
-              gridTemplateColumns: { xs: "1fr", md: "180px 1fr" },
-              gap: 3,
-              mb: 3,
-            }}
-          >
-            <Box
-              component={Link}
-              href={getTrackHref(mainTrack)}
-              sx={{
-                position: "relative",
-                width: { xs: 180, md: 180 },
-                height: 180,
-                borderRadius: "4px",
-                overflow: "hidden",
-                backgroundColor: "#111",
-                border: "1px solid rgba(255,255,255,0.08)",
-                textDecoration: "none",
-                color: "inherit",
-              }}
-            >
-              <Box
-                component="img"
-                src={getTrackImageUrl(mainTrack.imgUrl)}
-                alt={mainTrack.title}
-                sx={{
-                  width: "100%",
-                  height: "100%",
-                  objectFit: "cover",
-                }}
-              />
-
-              <Box
-                sx={{
-                  position: "absolute",
-                  inset: 0,
-                  background:
-                    "linear-gradient(180deg, transparent, rgba(0,0,0,0.35))",
-                }}
-              />
-            </Box>
-
-            <Box sx={{ minWidth: 0 }}>
-              <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
-                <Box
-                  component={Link}
-                  href={getTrackHref(mainTrack)}
-                  sx={{
-                    width: 42,
-                    height: 42,
-                    borderRadius: "50%",
-                    backgroundColor: "#ff5500",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    color: "#ffffff",
-                    textDecoration: "none",
-                    flexShrink: 0,
-                  }}
-                >
-                  <PlayArrowRoundedIcon sx={{ fontSize: 34, ml: "2px" }} />
-                </Box>
-
-                <Box sx={{ minWidth: 0 }}>
-                  <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
-                    <Typography
-                      sx={{
-                        color: "#b8b8b8",
-                        fontSize: 13,
-                        fontWeight: 800,
-                        overflow: "hidden",
-                        textOverflow: "ellipsis",
-                        whiteSpace: "nowrap",
-                      }}
-                    >
-                      {displayName}
-                    </Typography>
-
-                    {showArtistBadge && (
-                      <VerifiedRoundedIcon
-                        sx={{
-                          fontSize: 16,
-                          color: "#4da3ff",
-                          flexShrink: 0,
-                        }}
-                      />
-                    )}
-                  </Box>
-
-                  <Typography
-                    component={Link}
-                    href={getTrackHref(mainTrack)}
-                    sx={{
-                      display: "block",
-                      color: "#ffffff",
-                      fontSize: 16,
-                      fontWeight: 900,
-                      textDecoration: "none",
-                      overflow: "hidden",
-                      textOverflow: "ellipsis",
-                      whiteSpace: "nowrap",
-                      "&:hover": {
-                        color: "#ff5500",
-                      },
-                    }}
-                  >
-                    {mainTrack.title}
-                  </Typography>
-                </Box>
-
-                <Typography
-                  sx={{
-                    ml: "auto",
-                    color: "#9a9a9a",
-                    fontSize: 12,
-                    whiteSpace: "nowrap",
-                  }}
-                >
-                  20 hours ago
-                </Typography>
-              </Box>
-
-              <Box sx={{ mt: 2 }}>
-                <WaveBars />
-              </Box>
-
-              <Box sx={{ mt: 2 }}>
-                {tracks.slice(0, 5).map((track, index) => (
-                  <Box
-                    key={getItemId(track) || index}
-                    sx={{
-                      display: "grid",
-                      gridTemplateColumns: "32px 1fr auto",
-                      alignItems: "center",
-                      gap: 1.2,
-                      py: 0.8,
-                      color: index >= 4 ? "#777" : "#ffffff",
-                    }}
-                  >
-                    <Typography
-                      sx={{
-                        color: "#b8b8b8",
-                        fontSize: 15,
-                        fontWeight: 900,
-                        textAlign: "right",
-                      }}
-                    >
-                      {index + 1}
-                    </Typography>
-
-                    <Typography
-                      component={Link}
-                      href={getTrackHref(track)}
-                      sx={{
-                        color: "inherit",
-                        fontSize: 14,
-                        fontWeight: 900,
-                        textDecoration: "none",
-                        overflow: "hidden",
-                        textOverflow: "ellipsis",
-                        whiteSpace: "nowrap",
-                        "&:hover": {
-                          color: "#ff5500",
-                        },
-                      }}
-                    >
-                      {track.title}
-                    </Typography>
-
-                    <Box
-                      sx={{
-                        display: "flex",
-                        alignItems: "center",
-                        gap: 0.4,
-                        color: "#9a9a9a",
-                        fontSize: 12,
-                        fontWeight: 800,
-                      }}
-                    >
-                      {index === 4 ? (
-                        <>
-                          <LocationOnRoundedIcon sx={{ fontSize: 14 }} />
-                          Not available in Viet Nam
-                        </>
-                      ) : (
-                        <>
-                          <PlayArrowRoundedIcon sx={{ fontSize: 15 }} />
-                          {track.countPlay ?? 0}
-                        </>
-                      )}
-                    </Box>
-                  </Box>
-                ))}
-              </Box>
-
-              {tracks.length > 5 && (
-                <Typography
-                  sx={{
-                    mt: 1.2,
-                    color: "#ffffff",
-                    fontSize: 14,
-                    fontWeight: 900,
-                    cursor: "pointer",
-                    "&:hover": {
-                      color: "#ff5500",
-                    },
-                  }}
-                >
-                  View {tracks.length} tracks
-                </Typography>
-              )}
-
-              <Stack direction="row" spacing={1} sx={{ mt: 2.5 }}>
-                {[
-                  ShareRoundedIcon,
-                  ContentCopyRoundedIcon,
-                  EditRoundedIcon,
-                  FavoriteRoundedIcon,
-                  MoreHorizRoundedIcon,
-                ].map((Icon, index) => (
-                  <Button
-                    key={index}
-                    sx={{
-                      minWidth: 42,
-                      width: 42,
-                      height: 38,
-                      borderRadius: "5px",
-                      color: "#ffffff",
-                      backgroundColor: "#242729",
-                      "&:hover": {
-                        backgroundColor: "#303335",
-                      },
-                    }}
-                  >
-                    <Icon sx={{ fontSize: 18 }} />
-                  </Button>
-                ))}
-              </Stack>
-            </Box>
-          </Box>
-        )}
+        {/* TAB CONTENT */}
+        {renderTabContent()}
       </Box>
 
+      {/* RIGHT SIDEBAR */}
       <Box
         sx={{
-          display: { xs: "none", lg: "block" },
+          display: {
+            xs: "none",
+            lg: "block",
+          },
           borderLeft: "1px solid rgba(255,255,255,0.08)",
           pl: 3,
         }}
@@ -582,16 +1225,16 @@ const ProfileMain = ({ user, tracks }: Props) => {
         >
           {[
             ["Followers", followersCount],
-            ["Following", user?.following ?? 0],
+            ["Following", profileUser?.following ?? 0],
             ["Tracks", tracks.length],
           ].map(([label, value]) => (
-            <Box key={label}>
+            <Box key={String(label)}>
               <Typography
                 sx={{
-                  color: "#9a9a9a",
-                  fontSize: 14,
+                  color: "#999",
+                  fontSize: 13,
                   fontWeight: 900,
-                  mb: 0.6,
+                  mb: 0.5,
                 }}
               >
                 {label}
@@ -599,8 +1242,8 @@ const ProfileMain = ({ user, tracks }: Props) => {
 
               <Typography
                 sx={{
-                  color: "#ffffff",
-                  fontSize: 34,
+                  color: "#fff",
+                  fontSize: 30,
                   fontWeight: 900,
                   lineHeight: 1,
                 }}
@@ -611,67 +1254,16 @@ const ProfileMain = ({ user, tracks }: Props) => {
           ))}
         </Box>
 
-        <Box
+        <Divider
           sx={{
-            backgroundColor: "#0f1111",
-            border: "1px solid rgba(255,255,255,0.08)",
-            p: 2,
-            mb: 3,
+            borderColor: "rgba(255,255,255,0.08)",
+            mb: 2,
           }}
-        >
-          <Box sx={{ display: "flex", alignItems: "center", gap: 0.8, mb: 2 }}>
-            <EventAvailableRoundedIcon
-              sx={{ color: "#b8b8b8", fontSize: 18 }}
-            />
-
-            <Typography
-              sx={{
-                color: "#ffffff",
-                fontSize: 14,
-                fontWeight: 900,
-                textTransform: "uppercase",
-              }}
-            >
-              On tour
-            </Typography>
-          </Box>
-
-          <Typography
-            sx={{
-              color: "#ffffff",
-              fontSize: 12,
-              fontWeight: 700,
-              lineHeight: 1.5,
-              mb: 2,
-            }}
-          >
-            With an Artist Pro account, you can create ticketed live events on
-            Sound Clone and list existing events.
-          </Typography>
-
-          <Button
-            fullWidth
-            sx={{
-              height: 42,
-              borderRadius: "999px",
-              color: "#ffffff",
-              backgroundColor: "#181A1B",
-              textTransform: "none",
-              fontWeight: 900,
-              "&:hover": {
-                backgroundColor: "#242729",
-              },
-            }}
-          >
-            Upgrade to Artist Pro
-          </Button>
-        </Box>
-
-        <Divider sx={{ borderColor: "rgba(255,255,255,0.08)", mb: 2 }} />
+        />
 
         <Typography
           sx={{
-            color: "#9a9a9a",
+            color: "#888",
             fontSize: 13,
             lineHeight: 1.7,
           }}
@@ -679,31 +1271,19 @@ const ProfileMain = ({ user, tracks }: Props) => {
           Legal · Privacy · Cookie Policy · Cookie Manager · Imprint · Artist
           Resources · Newsroom · Topics · Charts · Transparency Reports
         </Typography>
-
-        <Typography
-          sx={{
-            color: "#d8d8d8",
-            fontSize: 13,
-            mt: 2,
-          }}
-        >
-          Language:{" "}
-          <Box component="span" sx={{ color: "#4da3ff" }}>
-            English (US)
-          </Box>
-        </Typography>
       </Box>
 
+      {/* DIALOGS */}
       <ProfileShareDialog
         open={openShare}
         onClose={() => setOpenShare(false)}
-        user={user}
+        user={profileUser}
       />
 
       <ProfileEditDialog
-        open={isOwner && openEdit}
+        open={Boolean(isOwner && openEdit)}
         onClose={() => setOpenEdit(false)}
-        user={user}
+        user={profileUser}
       />
     </Box>
   );

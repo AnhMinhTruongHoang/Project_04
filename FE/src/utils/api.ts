@@ -621,27 +621,21 @@ export const getUserFollowersApi = (
   });
 };
 
-export const getMyFollowingApi = async (
-  accessToken?: string,
-  params: PaginationParams = {}
-) => {
-  const account = await getAccountApi(accessToken);
-  const user = (account as any)?.data?.user || (account as any)?.data;
-
-  const userId = getUserId(user);
-
-  if (!userId) {
-    return {
-      statusCode: (account as any)?.statusCode || 401,
-      message: (account as any)?.message || "Cannot resolve current user",
-      error: (account as any)?.error || "UNAUTHORIZED",
-      data: null,
-    } as IBackendRes<FollowListData>;
-  }
-
-  return getUserFollowingApi(userId, accessToken, params);
+export const getMyFollowingApi = (accessToken?: string) => {
+  return sendRequest<
+    IBackendRes<{
+      result: IUser[];
+      total: number;
+    }>
+  >({
+    url: "/api/v1/users/me/following",
+    method: "GET",
+    headers: authHeaders(accessToken),
+    nextOption: {
+      cache: "no-store",
+    },
+  });
 };
-
 export const getMyFollowersApi = async (
   accessToken?: string,
   params: PaginationParams = {}

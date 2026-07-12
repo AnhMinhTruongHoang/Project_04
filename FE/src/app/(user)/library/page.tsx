@@ -30,10 +30,9 @@ const LibraryPage = async () => {
 
   const [likedTracksRes, playlistsRes, followingRes] = await Promise.all([
     getLikedTracksApi(accessToken),
-    getPlaylistsByUserApi(accessToken, {
-      current: 1,
-      pageSize: 100,
-    }),
+
+    getPlaylistsByUserApi(accessToken),
+
     getMyFollowingApi(accessToken),
   ]);
 

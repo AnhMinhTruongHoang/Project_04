@@ -111,16 +111,6 @@ const LibraryView = ({
       );
     }
 
-    if (activeTab === "stations") {
-      return (
-        <LibrarySection
-          title="Liked stations"
-          rightSlot="Browse trending playlists"
-          emptyText="No station data yet."
-        />
-      );
-    }
-
     if (activeTab === "following") {
       return (
         <LibrarySection
@@ -242,12 +232,6 @@ const LibraryView = ({
               />
             ))}
           </LibrarySection>
-
-          <LibrarySection
-            title="Liked stations"
-            rightSlot="Browse trending playlists"
-            emptyText="No station data yet."
-          />
 
           <LibrarySection
             title="Following"

@@ -6,7 +6,6 @@ import Avatar from "@mui/material/Avatar";
 import Box from "@mui/material/Box";
 import Container from "@mui/material/Container";
 import IconButton from "@mui/material/IconButton";
-import InputBase from "@mui/material/InputBase";
 import Menu from "@mui/material/Menu";
 import MenuItem from "@mui/material/MenuItem";
 import Toolbar from "@mui/material/Toolbar";
@@ -32,7 +31,6 @@ import { usePathname, useRouter } from "next/navigation";
 import { signOut, useSession } from "next-auth/react";
 import { PlaylistPlaySharp } from "@mui/icons-material";
 import SearchDropdown from "@/app/search/components/search.dropdown";
-import { convertSlugUrl } from "@/utils/api";
 
 const AppHeader = () => {
   const router = useRouter();
@@ -458,16 +456,6 @@ const AppHeader = () => {
         >
           <PlaylistPlaySharp fontSize="small" />
           Playlists
-        </MenuItem>
-
-        <MenuItem
-          onClick={() => {
-            setAnchorEl(null);
-            router.push("/stations");
-          }}
-        >
-          <GraphicEqRoundedIcon fontSize="small" />
-          Stations
         </MenuItem>
 
         <MenuItem

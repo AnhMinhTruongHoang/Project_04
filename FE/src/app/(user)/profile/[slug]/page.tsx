@@ -44,49 +44,31 @@ const normalizeUser = (user?: any, fallbackId = ""): IUser => {
 const ProfilePage = async ({ params }: { params: { slug: string } }) => {
   const userId = getUserIdFromSlug(params.slug);
   const session = await getServerSession(authOptions);
-
   const accessToken = (session as any)?.access_token;
+  const headers: Record<string, string> = {};
 
-  const headers = accessToken
-    ? {
-        Authorization: `Bearer ${accessToken}`,
-      }
-    : {};
-
+  if (accessToken) {
+    headers.Authorization = `Bearer ${accessToken}`;
+  }
   const [tracksRes, userRes] = await Promise.all([
-    sendRequest<IBackendRes<IModelPaginate<ITrackTop> | ITrackTop[]>>({
-      url: `${BACKEND_URL}/api/v1/tracks/users`,
-      method: "POST",
-      queryParams: {
-        current: 1,
-        pageSize: 100,
-      },
-      body: {
-        id: userId,
-      },
+    sendRequest<IBackendRes<ITrackTop[]>>({
+      url: `${BACKEND_URL}/api/v1/tracks/users/${encodeURIComponent(userId)}`,
+      method: "GET",
       headers,
       nextOption: {
-        next: {
-          tags: ["track-by-profile"],
-        },
+        cache: "no-store",
       },
     }),
 
     sendRequest<IBackendRes<IUser>>({
-      url: `${BACKEND_URL}/api/v1/users/${userId}`,
+      url: `${BACKEND_URL}/api/v1/users/${encodeURIComponent(userId)}`,
       method: "GET",
       headers,
       nextOption: {
-        next: {
-          tags: ["profile-user"],
-        },
+        cache: "no-store",
       },
     }),
   ]);
-
-  console.log("userId =", userId);
-
-  console.log("userRes =", JSON.stringify(userRes, null, 2));
 
   const responseTracks = tracksRes?.data as any;
 

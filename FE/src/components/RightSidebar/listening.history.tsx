@@ -34,10 +34,12 @@ const getArtistName = (track?: any) => {
   );
 };
 
-const getAudioUrl = (trackUrl?: string) => {
+const getAudioUrl = (trackUrl?: string | null) => {
   if (!trackUrl) return "";
 
-  if (trackUrl.startsWith("http")) return trackUrl;
+  if (trackUrl.startsWith("http")) {
+    return trackUrl;
+  }
 
   if (trackUrl.startsWith("/")) {
     return `${process.env.NEXT_PUBLIC_BACKEND_URL}${trackUrl}`;
@@ -185,7 +187,7 @@ const ListeningHistory = () => {
       >
         <Box
           component="img"
-          src={getTrackImageUrl(latestTrack.imgUrl)}
+          src={getTrackImageUrl(latestTrack.imgUrl ?? "")}
           alt={latestTrack.title}
           onError={(e) => {
             e.currentTarget.src = "/audio/SC.png";

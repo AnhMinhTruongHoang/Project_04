@@ -837,4 +837,44 @@ public class TrackController {
 			return ResponseEntity.status(500).body(new ApiResponse<>(500, e.getMessage(), null));
 		}
 	}
+
+	/// get track by artist
+	@GetMapping("/users/{userId}")
+	public ResponseEntity<?> getTracksByUser(
+			@PathVariable String userId) {
+
+		try {
+			User user = userRepository
+					.findById(userId)
+					.orElse(null);
+
+			if (user == null) {
+				return ResponseEntity.status(404)
+						.body(new ApiResponse<>(
+								404,
+								"User not found",
+								null));
+			}
+
+			List<Track> tracks = trackRepository
+					.findByUploaderIdAndIsDeletedFalse(userId)
+					.stream()
+					.filter(this::isApproved)
+					.collect(Collectors.toList());
+
+			return ResponseEntity.ok(
+					new ApiResponse<>(
+							200,
+							"Fetch tracks by user success",
+							toTrackDTOList(tracks)));
+		} catch (Exception e) {
+			e.printStackTrace();
+
+			return ResponseEntity.status(500)
+					.body(new ApiResponse<>(
+							500,
+							e.getMessage(),
+							null));
+		}
+	}
 }

@@ -449,6 +449,32 @@ const CommentsTable = ({ comments, accessToken }: Props) => {
           border: "1px solid rgba(255,255,255,0.08)",
           boxShadow: "0 24px 80px rgba(0,0,0,0.28)",
 
+          "& .MuiDataGrid-sortIcon": {
+            color: "#ffffff",
+            opacity: 1,
+          },
+
+          "& .MuiDataGrid-menuIconButton": {
+            color: "#cfcfcf",
+          },
+
+          "& .MuiDataGrid-menuIconButton:hover": {
+            color: "#ffffff",
+            backgroundColor: "rgba(255,255,255,0.08)",
+          },
+
+          "& .MuiDataGrid-iconSeparator": {
+            color: "rgba(255,255,255,0.35)",
+          },
+
+          "& .MuiDataGrid-columnHeader .MuiIconButton-root": {
+            color: "#cfcfcf",
+          },
+
+          "& .MuiDataGrid-columnHeader--sorted .MuiDataGrid-sortIcon": {
+            color: "#63e6a6",
+          },
+
           "& .MuiDataGrid-root": {
             border: "none",
             color: "#ffffff",
@@ -495,14 +521,6 @@ const CommentsTable = ({ comments, accessToken }: Props) => {
           },
 
           "& .MuiTablePagination-selectIcon": {
-            color: "#ffffff",
-          },
-
-          "& .MuiDataGrid-sortIcon": {
-            color: "#ffffff",
-          },
-
-          "& .MuiDataGrid-menuIconButton": {
             color: "#ffffff",
           },
 

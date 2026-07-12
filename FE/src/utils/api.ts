@@ -147,7 +147,7 @@ const normalizeFollowResponse = (
 };
 
 export const getTrackId = (track?: any) => {
-  return track?._id || track?.id || "";
+  return track?.id || track?._id || "";
 };
 
 export const getUserId = (user?: any) => {
@@ -215,7 +215,7 @@ export const getAvatarUrl = (avatar?: string | null) => {
 export const normalizeTrack = <T extends any>(track?: T | null): T | null => {
   if (!track) return null;
 
-  const id = getTrackId(track);
+  const id = String((track as any).id || (track as any)._id || "").trim();
 
   return {
     ...track,
@@ -736,8 +736,10 @@ export const getTopTracksApi = (category: string, limit = 10) => {
     method: "GET",
     queryParams: {
       category: category.toLowerCase(),
-      // BE hiện chưa dùng limit nhưng vẫn giữ để tương thích.
       limit,
+    },
+    nextOption: {
+      cache: "no-store",
     },
   });
 };
@@ -858,10 +860,17 @@ export const approveTrackApi = (id: string, accessToken?: string) => {
   });
 };
 
-export const rejectTrackApi = (id: string, accessToken?: string) => {
+export const rejectTrackApi = (
+  id: string,
+  reason: string,
+  accessToken?: string
+) => {
   return sendRequest<IBackendRes<ITrackTop>>({
     url: `/api/v1/admin/tracks/${encodeURIComponent(id)}/reject`,
     method: "PATCH",
+    body: {
+      reason: reason.trim(),
+    },
     headers: authHeaders(accessToken),
   });
 };

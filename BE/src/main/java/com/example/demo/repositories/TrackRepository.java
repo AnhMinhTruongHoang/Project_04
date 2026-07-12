@@ -50,4 +50,10 @@ public interface TrackRepository extends JpaRepository<Track, String> {
 
 	//// count songs in category
 	long countByCategoryIdAndIsDeletedFalse(String categoryId);
+
+	boolean existsByAudioHashAndIsDeletedFalse(
+			String audioHash);
+
+	Track findFirstByAudioHashAndIsDeletedFalse(
+			String audioHash);
 }

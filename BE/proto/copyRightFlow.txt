@@ -1,0 +1,39 @@
+FE Step1 chọn audio
+        ↓
+Lưu File trong state
+        ↓
+FE Step2 nhập title/category/image
+        ↓
+Tạo FormData
+        ↓
+POST /api/v1/tracks
+        ↓
+BE kiểm tra token và input
+        ↓
+Tính SHA-256 audio
+        ↓
+Tìm audioHash trong database
+        ↓
+Có hash trùng?
+   ├─ Có → trả 409
+   └─ Không
+        ↓
+Upload image + audio
+        ↓
+Lưu Track:
+PROCESSING / PENDING / PENDING
+        ↓
+Admin table tải track
+        ↓
+Admin Approve hoặc Reject
+   ├─ Approve
+   │   → COMPLETED
+   │   → MANUAL_APPROVED
+   │   → APPROVED
+   │   → public track
+   │
+   └─ Reject
+       → COMPLETED
+       → MANUAL_REJECTED
+       → REJECTED
+       → không public

@@ -23,7 +23,9 @@ const DEFAULT_OG_IMAGE = `${SITE_URL}/images/logo/Sc.png`;
 const getTrackKeyFromSlug = (slug?: string) => {
   if (!slug) return "";
 
-  return decodeURIComponent(slug).replace(".html", "");
+  return decodeURIComponent(slug)
+    .trim()
+    .replace(/\.html$/i, "");
 };
 
 const getTrackId = (track?: ITrackTop) => {
@@ -68,8 +70,11 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
   try {
     const res = await sendRequest<IBackendRes<ITrackTop>>({
-      url: `${BACKEND_URL}/api/v1/tracks/${trackKey}`,
+      url: `${BACKEND_URL}/api/v1/tracks/${encodeURIComponent(trackKey)}`,
       method: "GET",
+      nextOption: {
+        cache: "no-store",
+      },
     });
 
     const track = res?.data;
@@ -104,7 +109,9 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 const DetailTrackPage = async ({ params, searchParams }: Props) => {
   const trackKey = getTrackKeyFromSlug(params?.slug);
 
-  if (!trackKey) notFound();
+  if (!trackKey) {
+    notFound();
+  }
 
   const audio =
     typeof searchParams?.audio === "string" ? searchParams.audio : "";
@@ -112,26 +119,28 @@ const DetailTrackPage = async ({ params, searchParams }: Props) => {
   const shouldAutoPlay = searchParams?.autoplay === "1";
 
   const res = await sendRequest<IBackendRes<ITrackTop>>({
-    url: `${BACKEND_URL}/api/v1/tracks/${trackKey}`,
+    url: `${BACKEND_URL}/api/v1/tracks/${encodeURIComponent(trackKey)}`,
     method: "GET",
     nextOption: {
-      next: {
-        tags: ["track-by-id"],
-      },
+      cache: "no-store",
     },
   });
 
-  if (!res?.data) notFound();
+  if (res?.statusCode !== 200 || !res?.data) {
+    notFound();
+  }
 
   const trackId = getTrackId(res.data);
 
+  if (!trackId) {
+    notFound();
+  }
+
   const resComments = await sendRequest<IBackendRes<ITrackComment[]>>({
-    url: `${BACKEND_URL}/api/v1/tracks/${trackId}/comments`,
+    url: `${BACKEND_URL}/api/v1/tracks/${encodeURIComponent(trackId)}/comments`,
     method: "GET",
     nextOption: {
-      next: {
-        tags: ["track-comment"],
-      },
+      cache: "no-store",
     },
   });
 
@@ -157,11 +166,10 @@ const DetailTrackPage = async ({ params, searchParams }: Props) => {
             trackUrl: audio || res.data.trackUrl,
           }}
           comments={resComments?.data ?? []}
-          autoPlay
+          autoPlay={shouldAutoPlay}
         />
       </Container>
     </Box>
   );
 };
-
 export default DetailTrackPage;

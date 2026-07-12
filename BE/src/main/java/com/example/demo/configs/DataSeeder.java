@@ -335,6 +335,11 @@ public class DataSeeder {
                 track.setUploaderId(uploader.getId());
                 track.setIsDeleted(false);
                 track.setApprovalStatus("APPROVED");
+                track.setProcessingStatus("COMPLETED");
+                track.setCopyrightStatus("CLEAN");
+                track.setCopyrightMessage("Seed track");
+                track.setCopyrightScore(0.0);
+                track.setScannedAt(LocalDateTime.now());
                 track.setCreatedAt(LocalDateTime.now());
                 track.setUpdatedAt(LocalDateTime.now());
 
@@ -435,7 +440,7 @@ public class DataSeeder {
 
                         // ===== TRACK SEED =====
                         String defaultImage = "default.png";
-                        String defaultAudio = "default.wav";
+                        String defaultAudio = "default.mp3";
 
                         // Mỗi dòng: title, description, category, image file, audio file
                         String[][] seedTracks = {

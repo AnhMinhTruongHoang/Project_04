@@ -36,10 +36,11 @@ function CustomTabPanel(props: TabPanelProps) {
 const UploadTabs = () => {
   const [value, setValue] = React.useState(0);
 
-  const [trackUpload, setTrackUpload] = React.useState({
+  const [trackUpload, setTrackUpload] = React.useState<TrackUploadState>({
     fileName: "",
     percent: 0,
     uploadedTrackName: "",
+    audioFile: null,
   });
 
   return (
@@ -112,7 +113,11 @@ const UploadTabs = () => {
             py: 4,
           }}
         >
-          <Step2 trackUpload={trackUpload} setValue={setValue} />
+          <Step2
+            trackUpload={trackUpload}
+            setTrackUpload={setTrackUpload}
+            setValue={setValue}
+          />
         </Box>
       </CustomTabPanel>
     </Box>

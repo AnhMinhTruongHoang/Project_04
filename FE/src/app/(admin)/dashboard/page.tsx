@@ -46,12 +46,11 @@ const sumTrackNumber = (tracks: any[], keys: string[]) => {
 const DashboardPage = async () => {
   const session = await getServerSession(authOptions);
   const accessToken = (session as any)?.access_token;
+  const headers: Record<string, string> = {};
 
-  const headers = accessToken
-    ? {
-        Authorization: `Bearer ${accessToken}`,
-      }
-    : {};
+  if (accessToken) {
+    headers.Authorization = `Bearer ${accessToken}`;
+  }
 
   const [tracksRes, usersRes, playlistsRes, commentsRes] = await Promise.all([
     sendRequest<IBackendRes<IModelPaginate<ITrackTop> | ITrackTop[]>>({

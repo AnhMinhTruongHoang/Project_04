@@ -255,8 +255,18 @@ declare global {
     uploader?: IUser | null;
 
     approvalStatus?: ApprovalStatus;
-    isDeleted?: boolean;
 
+    rejectionReason?: string | null;
+
+    audioHash?: string | null;
+    audioSize?: number | null;
+    processingStatus?: string | null;
+    copyrightStatus?: string | null;
+    copyrightMessage?: string | null;
+    copyrightScore?: number | null;
+
+    scannedAt?: string | null;
+    isDeleted?: boolean;
     createdAt?: string;
     updatedAt?: string;
 
@@ -465,6 +475,25 @@ declare global {
     error?: string | string[];
     data?: ArtistLeaderboardItem[] | null;
   };
+
+  /// upload
+
+  export type TrackUploadState = {
+    fileName: string;
+    percent: number;
+    uploadedTrackName: string;
+    audioFile: File | null;
+  };
+
+  interface INewTrack {
+    title: string;
+    description: string;
+    category: string;
+    imageFile: File | null;
+    imagePreview: string;
+  }
+
+  ///
 
   interface FollowStatusData {
     following: boolean;

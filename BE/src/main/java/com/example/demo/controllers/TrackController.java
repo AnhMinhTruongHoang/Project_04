@@ -1,8 +1,9 @@
 package com.example.demo.controllers;
 
+import java.io.IOException;
+import java.io.InputStream;
 import java.text.Normalizer;
 import java.time.LocalDateTime;
-import java.util.Date;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -41,6 +42,9 @@ import com.example.demo.repositories.CategoryRepository;
 import com.example.demo.repositories.CommentRepository;
 import com.example.demo.repositories.TrackRepository;
 import com.example.demo.repositories.UserRepository;
+
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 
 import com.example.demo.responses.ApiResponse;
 import com.example.demo.services.PlaylistService;
@@ -295,8 +299,20 @@ public class TrackController {
 		dto.setUploaderId(track.getUploaderId());
 		dto.setIsDeleted(track.getIsDeleted());
 		dto.setApprovalStatus(track.getApprovalStatus());
+		dto.setApprovalStatus(
+				track.getApprovalStatus());
+
+		dto.setRejectionReason(
+				track.getRejectionReason());
 		dto.setCreatedAt(track.getCreatedAt());
 		dto.setUpdatedAt(track.getUpdatedAt());
+		dto.setAudioHash(track.getAudioHash());
+		dto.setAudioSize(track.getAudioSize());
+		dto.setProcessingStatus(track.getProcessingStatus());
+		dto.setCopyrightStatus(track.getCopyrightStatus());
+		dto.setCopyrightMessage(track.getCopyrightMessage());
+		dto.setCopyrightScore(track.getCopyrightScore());
+		dto.setScannedAt(track.getScannedAt());
 
 		User uploader = null;
 
@@ -329,66 +345,209 @@ public class TrackController {
 		user.getLikedTracks().removeIf(track -> trackId.equals(track.getId()));
 	}
 
+	/// create
 	@PostMapping(value = { "", "create" }, consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
 	public ResponseEntity<?> create(
 			@RequestParam("title") String title,
+
 			@RequestParam("description") String description,
+
 			@RequestParam("category") String category,
+
 			@RequestParam("image") MultipartFile image,
+
 			@RequestParam("audio") MultipartFile audio,
+
 			HttpServletRequest request) {
 
 		try {
 			User user = getCurrentUser(request);
 
 			if (user == null) {
-				return ResponseEntity.status(401).body(new ApiResponse<>(401, "Unauthorized", null));
+				return ResponseEntity
+						.status(401)
+						.body(new ApiResponse<>(
+								401,
+								"Unauthorized",
+								null));
 			}
 
-			if (image == null || image.isEmpty()) {
-				return ResponseEntity.badRequest().body(new ApiResponse<>(400, "Image is required", null));
+			if (title == null
+					|| title.trim().isEmpty()) {
+
+				return ResponseEntity
+						.badRequest()
+						.body(new ApiResponse<>(
+								400,
+								"Title is required",
+								null));
 			}
 
-			if (audio == null || audio.isEmpty()) {
-				return ResponseEntity.badRequest().body(new ApiResponse<>(400, "Audio is required", null));
+			if (category == null
+					|| category.trim().isEmpty()) {
+
+				return ResponseEntity
+						.badRequest()
+						.body(new ApiResponse<>(
+								400,
+								"Category is required",
+								null));
+			}
+
+			if (image == null
+					|| image.isEmpty()) {
+
+				return ResponseEntity
+						.badRequest()
+						.body(new ApiResponse<>(
+								400,
+								"Image is required",
+								null));
+			}
+
+			if (audio == null
+					|| audio.isEmpty()) {
+
+				return ResponseEntity
+						.badRequest()
+						.body(new ApiResponse<>(
+								400,
+								"Audio is required",
+								null));
+			}
+
+			String audioHash = calculateSha256(audio);
+
+			Track duplicatedTrack = trackRepository
+					.findFirstByAudioHashAndIsDeletedFalse(
+							audioHash);
+
+			if (duplicatedTrack != null) {
+				Map<String, Object> duplicateData = new LinkedHashMap<>();
+
+				duplicateData.put(
+						"trackId",
+						duplicatedTrack.getId());
+
+				duplicateData.put(
+						"title",
+						duplicatedTrack.getTitle());
+
+				duplicateData.put(
+						"audioHash",
+						audioHash);
+
+				return ResponseEntity
+						.status(409)
+						.body(new ApiResponse<>(
+								409,
+								"Audio file already exists",
+								duplicateData));
 			}
 
 			String id = generateId();
 
 			String cleanTitle = title.trim();
-			String cleanDescription = description.trim();
-			Category categoryEntity = findOrCreateCategory(category);
 
-			String imageName = FileHelper.upload(image, "uploads/images");
-			String audioName = FileHelper.upload(audio, "uploads/audio");
+			String cleanDescription = description == null
+					? ""
+					: description.trim();
+
+			Category categoryEntity = findOrCreateCategory(
+					category);
+
+			String imageName = FileHelper.upload(
+					image,
+					"uploads/images");
+
+			String audioName = FileHelper.upload(
+					audio,
+					"uploads/audio");
+
+			LocalDateTime now = LocalDateTime.now();
 
 			Track track = new Track();
 
 			track.setId(id);
 			track.setTitle(cleanTitle);
-			track.setSlug(createSlug(cleanTitle, id));
-			track.setDescription(cleanDescription);
-			track.setCategoryId(categoryEntity.getId());
+
+			track.setSlug(
+					createSlug(
+							cleanTitle,
+							id));
+
+			track.setDescription(
+					cleanDescription);
+
+			track.setCategoryId(
+					categoryEntity.getId());
+
 			track.setImgUrl(imageName);
 			track.setTrackUrl(audioName);
+
+			track.setAudioHash(
+					audioHash);
+
+			track.setAudioSize(
+					audio.getSize());
+
+			track.setProcessingStatus(
+					"PROCESSING");
+
+			track.setCopyrightStatus(
+					"PENDING");
+
+			track.setApprovalStatus(
+					TRACK_PENDING);
+
+			track.setRejectionReason(null);
+
+			track.setCopyrightMessage(
+					"Waiting for copyright scan");
+
+			track.setCopyrightScore(null);
+			track.setScannedAt(null);
+
 			track.setCountLike(0);
 			track.setCountPlay(0);
-			track.setUploaderId(user.getId());
+
+			track.setUploaderId(
+					user.getId());
+
 			track.setIsDeleted(false);
-			track.setApprovalStatus(isAdmin(user) ? TRACK_APPROVED : TRACK_PENDING);
-			track.setCreatedAt(LocalDateTime.now());
-			track.setUpdatedAt(LocalDateTime.now());
 
-			trackRepository.save(track);
+			/*
+			 * Admin cũng phải chờ kiểm tra,
+			 * không tự động public.
+			 */
+			track.setApprovalStatus(
+					TRACK_PENDING);
 
-			return ResponseEntity.ok(new ApiResponse<>(200, "Create track success", toTrackDTO(track)));
+			track.setCreatedAt(now);
+			track.setUpdatedAt(now);
+
+			Track savedTrack = trackRepository.save(
+					track);
+
+			return ResponseEntity.ok(
+					new ApiResponse<>(
+							200,
+							"Track uploaded and waiting for processing",
+							toTrackDTO(savedTrack)));
 
 		} catch (Exception e) {
 			e.printStackTrace();
-			return ResponseEntity.internalServerError().body(new ApiResponse<>(500, e.getMessage(), null));
+
+			return ResponseEntity
+					.internalServerError()
+					.body(new ApiResponse<>(
+							500,
+							e.getMessage(),
+							null));
 		}
 	}
 
+	///
 	@GetMapping({ "find-all", "all" })
 	public ResponseEntity<?> findAll() {
 		try {
@@ -509,7 +668,10 @@ public class TrackController {
 			track.setCategoryId(categoryEntity.getId());
 
 			if (!isAdmin(user)) {
-				track.setApprovalStatus(TRACK_PENDING);
+				track.setApprovalStatus(
+						TRACK_PENDING);
+
+				track.setRejectionReason(null);
 			}
 
 			if (image != null && !image.isEmpty()) {
@@ -952,4 +1114,47 @@ public class TrackController {
 
 		return result;
 	}
+
+	/// copy right
+	private String calculateSha256(
+			MultipartFile file) {
+
+		try (
+				InputStream inputStream = file.getInputStream()) {
+			MessageDigest digest = MessageDigest.getInstance(
+					"SHA-256");
+
+			byte[] buffer = new byte[8192];
+
+			int bytesRead;
+
+			while ((bytesRead = inputStream.read(buffer)) != -1) {
+
+				digest.update(
+						buffer,
+						0,
+						bytesRead);
+			}
+
+			byte[] hashBytes = digest.digest();
+
+			StringBuilder result = new StringBuilder();
+
+			for (byte hashByte : hashBytes) {
+				result.append(
+						String.format(
+								"%02x",
+								hashByte));
+			}
+
+			return result.toString();
+
+		} catch (
+				IOException | NoSuchAlgorithmException e) {
+			throw new IllegalStateException(
+					"Cannot calculate audio SHA-256",
+					e);
+		}
+	}
+	///
 }

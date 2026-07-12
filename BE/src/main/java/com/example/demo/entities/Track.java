@@ -40,9 +40,36 @@ public class Track implements java.io.Serializable {
 	private Integer countPlay;
 	private String uploaderId;
 	private String approvalStatus;
+	private String rejectionReason;
+
+	public void setRejectionReason(String rejectionReason) {
+		this.rejectionReason = rejectionReason;
+	}
+
+	public String getRejectionReason() {
+		return rejectionReason;
+	}
+
 	private Boolean isDeleted;
 	private LocalDateTime createdAt;
 	private LocalDateTime updatedAt;
+
+	/// upload
+	private String audioHash;
+
+	private Long audioSize;
+
+	private String processingStatus;
+
+	private String copyrightStatus;
+
+	private String copyrightMessage;
+
+	private Double copyrightScore;
+
+	private LocalDateTime scannedAt;
+
+	///
 
 	private User uploader;
 	private Set<Comment> comments = new HashSet<Comment>(0);
@@ -272,5 +299,66 @@ public class Track implements java.io.Serializable {
 
 	public void setPlaylists(Set<Playlist> playlists) {
 		this.playlists = playlists;
+	}
+
+	public String getAudioHash() {
+		return audioHash;
+	}
+
+	public void setAudioHash(String audioHash) {
+		this.audioHash = audioHash;
+	}
+
+	public Long getAudioSize() {
+		return audioSize;
+	}
+
+	public void setAudioSize(Long audioSize) {
+		this.audioSize = audioSize;
+	}
+
+	public String getProcessingStatus() {
+		return processingStatus;
+	}
+
+	public void setProcessingStatus(
+			String processingStatus) {
+		this.processingStatus = processingStatus;
+	}
+
+	public String getCopyrightStatus() {
+		return copyrightStatus;
+	}
+
+	public void setCopyrightStatus(
+			String copyrightStatus) {
+		this.copyrightStatus = copyrightStatus;
+	}
+
+	public String getCopyrightMessage() {
+		return copyrightMessage;
+	}
+
+	public void setCopyrightMessage(
+			String copyrightMessage) {
+		this.copyrightMessage = copyrightMessage;
+	}
+
+	public Double getCopyrightScore() {
+		return copyrightScore;
+	}
+
+	public void setCopyrightScore(
+			Double copyrightScore) {
+		this.copyrightScore = copyrightScore;
+	}
+
+	public LocalDateTime getScannedAt() {
+		return scannedAt;
+	}
+
+	public void setScannedAt(
+			LocalDateTime scannedAt) {
+		this.scannedAt = scannedAt;
 	}
 }

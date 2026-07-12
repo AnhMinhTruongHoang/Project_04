@@ -407,6 +407,32 @@ const PlaylistsTable = ({ playlists, accessToken }: Props) => {
           backgroundColor: "#111314",
           border: "1px solid rgba(255,255,255,0.08)",
 
+          "& .MuiDataGrid-sortIcon": {
+            color: "#ffffff",
+            opacity: 1,
+          },
+
+          "& .MuiDataGrid-menuIconButton": {
+            color: "#cfcfcf",
+          },
+
+          "& .MuiDataGrid-menuIconButton:hover": {
+            color: "#ffffff",
+            backgroundColor: "rgba(255,255,255,0.08)",
+          },
+
+          "& .MuiDataGrid-iconSeparator": {
+            color: "rgba(255,255,255,0.35)",
+          },
+
+          "& .MuiDataGrid-columnHeader .MuiIconButton-root": {
+            color: "#cfcfcf",
+          },
+
+          "& .MuiDataGrid-columnHeader--sorted .MuiDataGrid-sortIcon": {
+            color: "#63e6a6",
+          },
+
           "& .MuiDataGrid-root": {
             border: "none",
             color: "#ffffff",

@@ -4,15 +4,16 @@ import "slick-carousel/slick/slick.css";
 import "slick-carousel/slick/slick-theme.css";
 
 import Slider from "react-slick";
-import { Settings } from "react-slick";
-import { Box } from "@mui/material";
-import Button from "@mui/material/Button/Button";
+import type { Settings } from "react-slick";
+
+import { Box, Button, Divider } from "@mui/material";
+
 import ChevronLeftIcon from "@mui/icons-material/ChevronLeft";
 import ChevronRightIcon from "@mui/icons-material/ChevronRight";
-import Divider from "@mui/material/Divider";
+
 import Link from "next/link";
 import Image from "next/image";
-import { convertSlugUrl } from "@/utils/api";
+
 import { getUserHref } from "@/utils/actions/navigation";
 
 interface IProps {
@@ -20,53 +21,87 @@ interface IProps {
   title: string;
 }
 
-const MainSlider = (props: IProps) => {
-  const { data = [], title } = props;
-
+const MainSlider = ({ data = [], title }: IProps) => {
   const totalItems = data.length;
   const shouldUseSlider = totalItems > 5;
 
-  const getTrackId = (track: ITrackTop) => {
-    return (track as any)._id || (track as any).id;
+  const getTrackRouteKey = (track: ITrackTop) => {
+    const slug = String(track.slug || "").trim();
+
+    if (slug) {
+      return slug;
+    }
+
+    const id = String(track.id || "").trim();
+
+    if (id) {
+      return id;
+    }
+
+    return String(track._id || "").trim();
   };
 
-  const getImageUrl = (imgUrl?: string) => {
-    if (!imgUrl) return "/default.png";
+  const getTrackId = (track: ITrackTop) => {
+    return String(track.id || track._id || track.slug || "").trim();
+  };
 
-    if (imgUrl.startsWith("http")) {
+  const getImageUrl = (imgUrl?: string | null) => {
+    if (!imgUrl) {
+      return "/default.png";
+    }
+
+    if (imgUrl.startsWith("http://") || imgUrl.startsWith("https://")) {
+      return imgUrl;
+    }
+
+    if (imgUrl.startsWith("/uploads/images/")) {
+      return `${process.env.NEXT_PUBLIC_BACKEND_URL}${imgUrl}`;
+    }
+
+    if (imgUrl.startsWith("/")) {
       return imgUrl;
     }
 
     return `${process.env.NEXT_PUBLIC_BACKEND_URL}/uploads/images/${imgUrl}`;
   };
 
-  const getAudioUrl = (trackUrl?: string) => {
-    if (!trackUrl) return "";
+  const getAudioUrl = (trackUrl?: string | null) => {
+    if (!trackUrl) {
+      return "";
+    }
 
-    if (trackUrl.startsWith("http")) {
+    if (trackUrl.startsWith("http://") || trackUrl.startsWith("https://")) {
       return trackUrl;
+    }
+
+    if (trackUrl.startsWith("/uploads/audio/")) {
+      return `${process.env.NEXT_PUBLIC_BACKEND_URL}${trackUrl}`;
     }
 
     return `${process.env.NEXT_PUBLIC_BACKEND_URL}/uploads/audio/${trackUrl}`;
   };
 
-  const NextArrow = (props: any) => {
+  const NextArrow = (arrowProps: any) => {
     return (
       <Button
         color="inherit"
         variant="contained"
-        onClick={props.onClick}
+        aria-label="Next tracks"
+        onClick={arrowProps.onClick}
         sx={{
           position: "absolute",
           right: 25,
           top: "25%",
           zIndex: 2,
-          minWidth: 30,
+          minWidth: 35,
           width: 35,
-          borderRadius: 5,
-          backgroundColor: "black",
+          height: 35,
+          borderRadius: "50%",
+          color: "#ffffff",
+          backgroundColor: "#111111",
+
           "&:hover": {
-            backgroundColor: "#222",
+            backgroundColor: "#292929",
           },
         }}
       >
@@ -75,23 +110,27 @@ const MainSlider = (props: IProps) => {
     );
   };
 
-  const PrevArrow = (props: any) => {
+  const PrevArrow = (arrowProps: any) => {
     return (
       <Button
         color="inherit"
         variant="contained"
-        onClick={props.onClick}
+        aria-label="Previous tracks"
+        onClick={arrowProps.onClick}
         sx={{
           position: "absolute",
           left: 0,
           top: "25%",
           zIndex: 2,
-          minWidth: 30,
+          minWidth: 35,
           width: 35,
-          borderRadius: 5,
-          backgroundColor: "black",
+          height: 35,
+          borderRadius: "50%",
+          color: "#ffffff",
+          backgroundColor: "#111111",
+
           "&:hover": {
-            backgroundColor: "#222",
+            backgroundColor: "#292929",
           },
         }}
       >
@@ -101,19 +140,20 @@ const MainSlider = (props: IProps) => {
   };
 
   const settings: Settings = {
-    infinite: true,
+    infinite: totalItems > 5,
     speed: 500,
     slidesToShow: 5,
     slidesToScroll: 1,
     nextArrow: <NextArrow />,
     prevArrow: <PrevArrow />,
+
     responsive: [
       {
         breakpoint: 1024,
         settings: {
           slidesToShow: 3,
           slidesToScroll: 1,
-          infinite: true,
+          infinite: totalItems > 3,
           dots: false,
         },
       },
@@ -122,7 +162,7 @@ const MainSlider = (props: IProps) => {
         settings: {
           slidesToShow: 2,
           slidesToScroll: 1,
-          infinite: true,
+          infinite: totalItems > 2,
         },
       },
       {
@@ -130,7 +170,7 @@ const MainSlider = (props: IProps) => {
         settings: {
           slidesToShow: 1,
           slidesToScroll: 1,
-          infinite: true,
+          infinite: totalItems > 1,
         },
       },
     ],
@@ -138,65 +178,84 @@ const MainSlider = (props: IProps) => {
 
   const renderTrackItem = (track: ITrackTop) => {
     const trackId = getTrackId(track);
+    const trackRouteKey = getTrackRouteKey(track);
+
+    if (!trackRouteKey) {
+      return null;
+    }
+
     const audioUrl = getAudioUrl(track.trackUrl);
 
-    const trackSlug =
-      (track as any).slug || `${convertSlugUrl(track.title)}-${trackId}`;
+    const queryParams = new URLSearchParams();
 
-    if (!trackSlug) return null;
+    if (audioUrl) {
+      queryParams.set("audio", audioUrl);
+    }
 
-    const trackHref = `/track/${trackSlug}.html?audio=${encodeURIComponent(
-      audioUrl
-    )}`;
+    queryParams.set("autoplay", "1");
 
-    const profileHref = getUserHref((track as any).uploader);
+    const trackHref = `/track/${encodeURIComponent(
+      trackRouteKey
+    )}.html?${queryParams.toString()}`;
+
+    const profileHref = getUserHref(track.uploader);
+
     const canOpenProfile = profileHref !== "#";
 
     return (
-      <div className="track" key={trackId || trackSlug}>
+      <Box className="track" key={trackId || trackRouteKey}>
         <Link
           href={trackHref}
           style={{
             position: "relative",
             display: "block",
-            height: "150px",
             width: "150px",
+            height: "150px",
+            color: "inherit",
             textDecoration: "none",
-            color: "unset",
           }}
         >
           <Image
-            alt={track.title || "track image"}
+            alt={track.title || "Track image"}
             src={getImageUrl(track.imgUrl)}
             fill
+            sizes="150px"
             style={{
               objectFit: "cover",
-              borderRadius: 4,
+              borderRadius: 6,
             }}
           />
         </Link>
 
         <Link
-          style={{
-            textDecoration: "none",
-            color: "unset",
-            fontSize: "14px",
-          }}
           href={trackHref}
+          style={{
+            color: "inherit",
+            fontSize: "14px",
+            textDecoration: "none",
+          }}
         >
-          <div
-            style={{
-              margin: "12px 0 10px 0",
-              fontWeight: 600,
+          <Box
+            component="div"
+            title={track.title}
+            sx={{
               width: 150,
+              mt: 1.5,
+              mb: 1,
+              color: "#ffffff",
+              fontSize: 14,
+              fontWeight: 700,
               whiteSpace: "nowrap",
               overflow: "hidden",
               textOverflow: "ellipsis",
+
+              "&:hover": {
+                color: "#ff7a2f",
+              },
             }}
-            title={track.title}
           >
             {track.title}
-          </div>
+          </Box>
         </Link>
 
         <Link
@@ -208,32 +267,32 @@ const MainSlider = (props: IProps) => {
           }}
           style={{
             display: "block",
+            width: "150px",
             marginBottom: "7px",
-            color: "#ccc",
+            color: "#a9a9a9",
             fontSize: "13px",
-            width: 150,
             whiteSpace: "nowrap",
             overflow: "hidden",
             textOverflow: "ellipsis",
             textDecoration: "none",
             cursor: canOpenProfile ? "pointer" : "default",
           }}
-          title={track.description}
+          title={track.uploader?.name || track.description || ""}
         >
-          {track.description}
+          {track.uploader?.name || track.description || "Unknown uploader"}
         </Link>
-      </div>
+      </Box>
     );
   };
 
   return (
     <Box
       sx={{
-        margin: "0 50px 28px 50px",
+        margin: "0 50px 28px",
 
         ".track": {
-          padding: "0 10px",
           width: 170,
+          padding: "0 10px",
         },
 
         ".slick-track": {
@@ -243,15 +302,30 @@ const MainSlider = (props: IProps) => {
         ".slick-slide": {
           width: "170px !important",
         },
+
+        ".slick-disabled": {
+          opacity: 0.35,
+          pointerEvents: "none",
+        },
       }}
     >
-      <h2>{title}</h2>
+      <Box
+        component="h2"
+        sx={{
+          color: "#ffffff",
+          fontSize: 22,
+          fontWeight: 900,
+          mb: 2,
+        }}
+      >
+        {title}
+      </Box>
 
       {totalItems === 0 ? (
         <Box
           sx={{
-            color: "#aaa",
             py: 2,
+            color: "#aaaaaa",
             fontSize: 14,
           }}
         >
@@ -265,16 +339,21 @@ const MainSlider = (props: IProps) => {
         <Box
           sx={{
             display: "flex",
-            gap: "38px",
             flexWrap: "wrap",
             alignItems: "flex-start",
+            gap: "38px",
           }}
         >
           {data.map((track) => renderTrackItem(track))}
         </Box>
       )}
 
-      <Divider sx={{ mt: 3, borderColor: "#222" }} />
+      <Divider
+        sx={{
+          mt: 3,
+          borderColor: "rgba(255,255,255,0.1)",
+        }}
+      />
     </Box>
   );
 };

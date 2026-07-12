@@ -1,86 +1,315 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import dayjs from "dayjs";
 
-import Box from "@mui/material/Box";
-import Chip from "@mui/material/Chip";
-import IconButton from "@mui/material/IconButton";
-import Tooltip from "@mui/material/Tooltip";
-import Typography from "@mui/material/Typography";
-import DeleteRoundedIcon from "@mui/icons-material/DeleteRounded";
-import OpenInNewRoundedIcon from "@mui/icons-material/OpenInNewRounded";
-import MusicNoteRoundedIcon from "@mui/icons-material/MusicNoteRounded";
-import { DataGrid, GridColDef } from "@mui/x-data-grid";
-import { convertSlugUrl, getAudioUrl, sendRequest } from "@/utils/api";
-import DashboardTableToolbar from "@/components/dashboard/components/DashboardTableToolbar";
-import { useToast } from "@/utils/toast";
 import {
+  Box,
   Button,
+  Chip,
   Dialog,
   DialogActions,
   DialogContent,
   DialogTitle,
+  IconButton,
+  TextField,
+  Tooltip,
+  Typography,
 } from "@mui/material";
+import {
+  approveTrackApi,
+  getAdminTracksApi,
+  getAudioUrl,
+  getImageUrl,
+  rejectTrackApi,
+  sendRequest,
+} from "@/utils/api";
+
+import DeleteRoundedIcon from "@mui/icons-material/DeleteRounded";
+import OpenInNewRoundedIcon from "@mui/icons-material/OpenInNewRounded";
+import CheckCircleRoundedIcon from "@mui/icons-material/CheckCircleRounded";
+import CancelRoundedIcon from "@mui/icons-material/CancelRounded";
+import PlayArrowRoundedIcon from "@mui/icons-material/PlayArrowRounded";
+import PauseRoundedIcon from "@mui/icons-material/PauseRounded";
+import { DataGrid, GridColDef } from "@mui/x-data-grid";
+import DashboardTableToolbar from "@/components/dashboard/components/DashboardTableToolbar";
+import { useToast } from "@/utils/toast";
 
 type Props = {
   tracks: ITrackTop[];
   accessToken?: string;
 };
 
-const getItemId = (item?: any) => {
-  return item?._id || item?.id || "";
+const getItemId = (item?: Partial<ITrackTop> | null) => {
+  return (item as any)?.id || (item as any)?._id || "";
+};
+
+const getStatusStyle = (value?: string | null) => {
+  const status = String(value || "UNKNOWN").toUpperCase();
+
+  if (
+    status === "APPROVED" ||
+    status === "COMPLETED" ||
+    status === "CLEAN" ||
+    status === "MANUAL_APPROVED"
+  ) {
+    return {
+      color: "#63e6a6",
+      backgroundColor: "rgba(99,230,166,0.1)",
+      border: "1px solid rgba(99,230,166,0.25)",
+    };
+  }
+
+  if (
+    status === "REJECTED" ||
+    status === "FAILED" ||
+    status === "MANUAL_REJECTED"
+  ) {
+    return {
+      color: "#ff7b7b",
+      backgroundColor: "rgba(255,123,123,0.12)",
+      border: "1px solid rgba(255,123,123,0.32)",
+    };
+  }
+
+  return {
+    color: "#ffbd69",
+    backgroundColor: "rgba(255,189,105,0.12)",
+    border: "1px solid rgba(255,189,105,0.32)",
+  };
+};
+
+const StatusChip = ({ value }: { value?: string | null }) => {
+  const label = String(value || "UNKNOWN").replaceAll("_", " ");
+
+  return (
+    <Chip
+      size="small"
+      label={label}
+      sx={{
+        ...getStatusStyle(value),
+        height: 24,
+        fontSize: 10,
+        fontWeight: 900,
+
+        "& .MuiChip-label": {
+          color: "inherit",
+          px: 1,
+        },
+      }}
+    />
+  );
 };
 
 const TracksTable = ({ tracks, accessToken }: Props) => {
-  const router = useRouter();
-  const [searchValue, setSearchValue] = useState("");
-  const [deletingId, setDeletingId] = useState("");
   const toast = useToast();
+
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+
+  const [rows, setRows] = useState<ITrackTop[]>(tracks);
+
+  const [searchValue, setSearchValue] = useState("");
+
+  const [deletingId, setDeletingId] = useState("");
+
+  const [moderatingId, setModeratingId] = useState("");
+
   const [confirmTrack, setConfirmTrack] = useState<ITrackTop | null>(null);
+
+  const [rejectingTrack, setRejectingTrack] = useState<ITrackTop | null>(null);
+
+  const [rejectReason, setRejectReason] = useState("");
+
+  const [previewTrackId, setPreviewTrackId] = useState("");
+
+  const [isPreviewPlaying, setIsPreviewPlaying] = useState(false);
+
+  useEffect(() => {
+    setRows(tracks);
+  }, [tracks]);
+
+  const reloadTracks = useCallback(async () => {
+    if (!accessToken) return;
+
+    if (
+      typeof document !== "undefined" &&
+      document.visibilityState !== "visible"
+    ) {
+      return;
+    }
+
+    try {
+      const response = await getAdminTracksApi(accessToken, {
+        current: 1,
+        pageSize: 100,
+      });
+
+      const responseData = response?.data as any;
+
+      const nextTracks: ITrackTop[] = Array.isArray(responseData?.result)
+        ? responseData.result
+        : Array.isArray(responseData?.content)
+        ? responseData.content
+        : Array.isArray(responseData)
+        ? responseData
+        : [];
+
+      setRows(nextTracks);
+    } catch (error) {
+      console.error("Cannot refresh admin tracks:", error);
+    }
+  }, [accessToken]);
+
+  useEffect(() => {
+    void reloadTracks();
+
+    const intervalId = window.setInterval(() => {
+      void reloadTracks();
+    }, 5000);
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        void reloadTracks();
+      }
+    };
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
+    return () => {
+      window.clearInterval(intervalId);
+
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
+  }, [reloadTracks]);
+
+  useEffect(() => {
+    return () => {
+      const audio = audioRef.current;
+
+      if (audio) {
+        audio.pause();
+        audio.removeAttribute("src");
+      }
+    };
+  }, []);
 
   const filteredTracks = useMemo(() => {
     const keyword = searchValue.trim().toLowerCase();
 
-    if (!keyword) return tracks;
+    if (!keyword) {
+      return rows;
+    }
 
-    return tracks.filter((track) => {
+    return rows.filter((track) => {
       return [
         track.title,
         track.description,
         track.category,
+        (track as any).categoryName,
         track.uploader?.name,
         track.uploader?.email,
       ]
         .filter(Boolean)
         .some((item) => String(item).toLowerCase().includes(keyword));
     });
-  }, [tracks, searchValue]);
+  }, [rows, searchValue]);
+
+  const handlePreviewTrack = async (track: ITrackTop) => {
+    const trackId = getItemId(track);
+    const audio = audioRef.current;
+
+    if (!trackId) {
+      toast.error("Track not found.");
+      return;
+    }
+
+    if (!audio) {
+      toast.error("Audio player is unavailable.");
+      return;
+    }
+
+    const audioUrl = getAudioUrl(track.trackUrl);
+
+    if (!audioUrl) {
+      toast.error("Audio file not found.");
+      return;
+    }
+
+    if (previewTrackId === trackId && !audio.paused) {
+      audio.pause();
+      return;
+    }
+
+    try {
+      if (previewTrackId !== trackId) {
+        audio.pause();
+
+        audio.src = audioUrl;
+        audio.currentTime = 0;
+
+        setPreviewTrackId(trackId);
+      }
+
+      await audio.play();
+    } catch (error) {
+      console.error("Cannot preview track:", error);
+
+      setIsPreviewPlaying(false);
+
+      toast.error("Cannot play this audio file.");
+    }
+  };
 
   const deleteTrack = async (track: ITrackTop) => {
     const trackId = getItemId(track);
 
-    setDeletingId(trackId);
-
-    const res = await sendRequest<IBackendRes<any>>({
-      url: `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/v1/tracks/${trackId}`,
-      method: "DELETE",
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-      },
-    });
-
-    setDeletingId("");
-
-    if (res?.data || res?.statusCode === 200) {
-      toast.success("Delete track successfully.");
-      router.refresh();
+    if (!trackId) {
+      toast.error("Track not found.");
       return;
     }
 
-    toast.error(res?.message || "Delete track failed.");
+    if (!accessToken) {
+      toast.error("Please login first.");
+      return;
+    }
+
+    setDeletingId(trackId);
+
+    try {
+      const response = await sendRequest<IBackendRes<any>>({
+        url: `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/v1/tracks/${trackId}`,
+        method: "DELETE",
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      });
+
+      if (response?.statusCode !== 200) {
+        toast.error(response?.message || "Delete track failed.");
+        return;
+      }
+
+      if (previewTrackId === trackId && audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current.removeAttribute("src");
+
+        setPreviewTrackId("");
+        setIsPreviewPlaying(false);
+      }
+
+      setRows((currentRows) =>
+        currentRows.filter((item) => getItemId(item) !== trackId)
+      );
+
+      toast.success("Delete track successfully.");
+    } catch (error) {
+      console.error("Delete track failed:", error);
+
+      toast.error("Delete track failed.");
+    } finally {
+      setDeletingId("");
+    }
   };
 
   const handleDeleteTrack = (track: ITrackTop) => {
@@ -99,35 +328,184 @@ const TracksTable = ({ tracks, accessToken }: Props) => {
     setConfirmTrack(track);
   };
 
+  const handleModeration = async (
+    track: ITrackTop,
+    action: "approve" | "reject",
+    reason = ""
+  ) => {
+    const trackId = getItemId(track);
+
+    if (!trackId) {
+      toast.error("Track not found.");
+      return;
+    }
+
+    if (!accessToken) {
+      toast.error("Please login first.");
+      return;
+    }
+
+    if (action === "reject" && !reason.trim()) {
+      toast.error("Rejection reason is required.");
+      return;
+    }
+
+    setModeratingId(trackId);
+
+    try {
+      const response =
+        action === "approve"
+          ? await approveTrackApi(trackId, accessToken)
+          : await rejectTrackApi(trackId, reason, accessToken);
+
+      if (response?.statusCode !== 200 || !response?.data) {
+        toast.error(response?.message || `Cannot ${action} track.`);
+        return;
+      }
+
+      const updatedTrack = response.data as ITrackTop;
+
+      setRows((currentRows) =>
+        currentRows.map((item) =>
+          getItemId(item) === trackId
+            ? {
+                ...item,
+                ...updatedTrack,
+              }
+            : item
+        )
+      );
+
+      setRejectingTrack(null);
+      setRejectReason("");
+
+      toast.success(
+        action === "approve" ? "Track approved." : "Track rejected."
+      );
+    } catch (error) {
+      console.error(`Cannot ${action} track:`, error);
+
+      toast.error(`Cannot ${action} track.`);
+    } finally {
+      setModeratingId("");
+    }
+  };
+
   const columns: GridColDef<ITrackTop>[] = [
     {
       field: "title",
       headerName: "Track",
       flex: 1.4,
-      minWidth: 260,
+      minWidth: 300,
       sortable: true,
+
       renderCell: (params) => {
         const track = params.row;
+        const trackId = getItemId(track);
+
+        const isThisTrackPlaying =
+          previewTrackId === trackId && isPreviewPlaying;
 
         return (
-          <Box sx={{ display: "flex", alignItems: "center", gap: 1.4 }}>
+          <Box
+            sx={{
+              display: "flex",
+              alignItems: "center",
+              gap: 1.4,
+              width: "100%",
+              minWidth: 0,
+            }}
+          >
+            <Tooltip
+              title={isThisTrackPlaying ? "Pause preview" : "Play preview"}
+              arrow
+            >
+              <span>
+                <IconButton
+                  aria-label={
+                    isThisTrackPlaying
+                      ? `Pause ${track.title}`
+                      : `Preview ${track.title}`
+                  }
+                  disabled={!track.trackUrl}
+                  onClick={(event) => {
+                    event.stopPropagation();
+
+                    void handlePreviewTrack(track);
+                  }}
+                  sx={{
+                    position: "relative",
+                    width: 48,
+                    height: 48,
+                    flexShrink: 0,
+                    p: 0,
+                    overflow: "hidden",
+                    borderRadius: 1.5,
+                    border: isThisTrackPlaying
+                      ? "2px solid #ff7a2f"
+                      : "1px solid rgba(255,255,255,0.12)",
+                    backgroundColor: "#202223",
+
+                    "&:hover": {
+                      borderColor: "#ff7a2f",
+                    },
+
+                    "&:hover .track-preview-overlay": {
+                      opacity: 1,
+                    },
+
+                    "&.Mui-disabled": {
+                      opacity: 0.45,
+                    },
+                  }}
+                >
+                  <Box
+                    component="img"
+                    src={getImageUrl(track.imgUrl)}
+                    alt={track.title}
+                    onError={(event) => {
+                      event.currentTarget.onerror = null;
+
+                      event.currentTarget.src = "/images/logo/Sc.png";
+                    }}
+                    sx={{
+                      width: "100%",
+                      height: "100%",
+                      display: "block",
+                      objectFit: "cover",
+                    }}
+                  />
+
+                  <Box
+                    className="track-preview-overlay"
+                    sx={{
+                      position: "absolute",
+                      inset: 0,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      color: "#ffffff",
+                      backgroundColor: "rgba(0,0,0,0.55)",
+                      opacity: isThisTrackPlaying ? 1 : 0,
+                      transition: "opacity 150ms ease",
+                    }}
+                  >
+                    {isThisTrackPlaying ? (
+                      <PauseRoundedIcon fontSize="small" />
+                    ) : (
+                      <PlayArrowRoundedIcon fontSize="small" />
+                    )}
+                  </Box>
+                </IconButton>
+              </span>
+            </Tooltip>
+
             <Box
               sx={{
-                width: 42,
-                height: 42,
-                borderRadius: 2,
-                backgroundColor: "rgba(255,85,0,0.14)",
-                color: "#ff5500",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                flexShrink: 0,
+                minWidth: 0,
+                flex: 1,
               }}
             >
-              <MusicNoteRoundedIcon />
-            </Box>
-
-            <Box sx={{ minWidth: 0 }}>
               <Typography
                 title={track.title}
                 sx={{
@@ -143,7 +521,7 @@ const TracksTable = ({ tracks, accessToken }: Props) => {
               </Typography>
 
               <Typography
-                title={track.description}
+                title={track.description || "No description"}
                 sx={{
                   color: "#8f8f8f",
                   fontSize: 12,
@@ -160,13 +538,17 @@ const TracksTable = ({ tracks, accessToken }: Props) => {
         );
       },
     },
+
     {
       field: "category",
       headerName: "Category",
       width: 150,
+
       renderCell: (params) => (
         <Chip
-          label={params.row.category || "Unknown"}
+          label={
+            (params.row as any).categoryName || params.row.category || "Unknown"
+          }
           size="small"
           sx={{
             color: "#ffffff",
@@ -176,12 +558,15 @@ const TracksTable = ({ tracks, accessToken }: Props) => {
         />
       ),
     },
+
     {
       field: "uploader",
       headerName: "Uploader",
       width: 220,
+
       valueGetter: (params) =>
         params.row.uploader?.name || params.row.uploader?.email || "Unknown",
+
       renderCell: (params) => (
         <Box sx={{ minWidth: 0 }}>
           <Typography
@@ -212,6 +597,7 @@ const TracksTable = ({ tracks, accessToken }: Props) => {
         </Box>
       ),
     },
+
     {
       field: "countPlay",
       headerName: "Plays",
@@ -219,6 +605,7 @@ const TracksTable = ({ tracks, accessToken }: Props) => {
       align: "center",
       headerAlign: "center",
     },
+
     {
       field: "countLike",
       headerName: "Likes",
@@ -226,66 +613,246 @@ const TracksTable = ({ tracks, accessToken }: Props) => {
       align: "center",
       headerAlign: "center",
     },
+
+    {
+      field: "processingStatus",
+      headerName: "Processing",
+      width: 145,
+      sortable: true,
+
+      renderCell: (params) => (
+        <StatusChip value={params.row.processingStatus} />
+      ),
+    },
+
+    {
+      field: "copyrightStatus",
+      headerName: "Copyright",
+      width: 165,
+      sortable: true,
+
+      renderCell: (params) => (
+        <Tooltip
+          title={params.row.copyrightMessage || "No copyright message"}
+          arrow
+        >
+          <Box
+            component="span"
+            sx={{
+              display: "inline-flex",
+              alignItems: "center",
+            }}
+          >
+            <StatusChip value={params.row.copyrightStatus} />
+          </Box>
+        </Tooltip>
+      ),
+    },
+
+    {
+      field: "copyrightScore",
+      headerName: "Score",
+      width: 90,
+      align: "center",
+      headerAlign: "center",
+
+      valueGetter: (params) => params.row.copyrightScore ?? null,
+
+      renderCell: (params) => {
+        const score = params.row.copyrightScore;
+
+        return (
+          <Typography
+            sx={{
+              color: "#ffffff",
+              fontSize: 13,
+              fontWeight: 800,
+            }}
+          >
+            {typeof score === "number"
+              ? `${Math.round(score <= 1 ? score * 100 : score)}%`
+              : "—"}
+          </Typography>
+        );
+      },
+    },
+
+    {
+      field: "approvalStatus",
+      headerName: "Approval",
+      width: 130,
+      sortable: true,
+
+      renderCell: (params) => <StatusChip value={params.row.approvalStatus} />,
+    },
+
     {
       field: "createdAt",
       headerName: "Created",
       width: 150,
+
       valueFormatter: (params) =>
         params.value ? dayjs(params.value).format("DD/MM/YYYY") : "",
     },
+
     {
       field: "actions",
       headerName: "Actions",
-      width: 120,
+      width: 190,
       align: "center",
       headerAlign: "center",
       sortable: false,
       filterable: false,
+
       renderCell: (params) => {
         const track = params.row;
         const trackId = getItemId(track);
 
-        const trackSlug =
-          (track as any).slug || `${convertSlugUrl(track.title)}-${trackId}`;
+        const approvalStatus = String(track.approvalStatus || "").toUpperCase();
 
-        const href = `/track/${trackSlug}.html?audio=${encodeURIComponent(
-          getAudioUrl(track.trackUrl)
-        )}&autoplay=1`;
+        const isUpdating = moderatingId === trackId;
 
+        const trackRouteKey = trackId;
+
+        const href =
+          `/track/${encodeURIComponent(trackRouteKey)}.html` +
+          `?audio=${encodeURIComponent(
+            getAudioUrl(track.trackUrl)
+          )}&autoplay=1`;
         return (
-          <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
-            <Tooltip title="Open track">
-              <IconButton
-                component={Link}
-                href={href}
-                target="_blank"
-                size="small"
-                sx={{
-                  color: "#9a9a9a",
-                  "&:hover": {
-                    color: "#ffffff",
-                    backgroundColor: "rgba(255,255,255,0.08)",
-                  },
-                }}
-              >
-                <OpenInNewRoundedIcon fontSize="small" />
-              </IconButton>
+          <Box
+            sx={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 0.5,
+            }}
+          >
+            <Tooltip
+              title={
+                approvalStatus === "APPROVED"
+                  ? "Track already approved"
+                  : "Approve track"
+              }
+            >
+              <span>
+                <IconButton
+                  size="small"
+                  disabled={isUpdating || approvalStatus === "APPROVED"}
+                  onClick={() => void handleModeration(track, "approve")}
+                  sx={{
+                    color: "#63e6a6",
+
+                    "&:hover": {
+                      backgroundColor: "rgba(99,230,166,0.14)",
+                    },
+
+                    "&.Mui-disabled": {
+                      color: "#63e6a6",
+                      opacity: 0.4,
+                    },
+                  }}
+                >
+                  <CheckCircleRoundedIcon fontSize="small" />
+                </IconButton>
+              </span>
             </Tooltip>
 
+            <Tooltip
+              title={
+                approvalStatus === "REJECTED"
+                  ? "Review rejection reason"
+                  : "Reject track"
+              }
+            >
+              <span>
+                <IconButton
+                  size="small"
+                  disabled={isUpdating}
+                  onClick={() => {
+                    setRejectingTrack(track);
+
+                    setRejectReason(track.rejectionReason || "");
+                  }}
+                  sx={{
+                    color: "#ff5f67",
+
+                    "&:hover": {
+                      backgroundColor: "rgba(255,95,103,0.14)",
+                    },
+
+                    "&.Mui-disabled": {
+                      color: "#ff5f67",
+                      opacity: 0.4,
+                    },
+                  }}
+                >
+                  <CancelRoundedIcon fontSize="small" />
+                </IconButton>
+              </span>
+            </Tooltip>
+
+            {approvalStatus === "APPROVED" ? (
+              <Tooltip title="Open track">
+                <IconButton
+                  component={Link}
+                  href={href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  size="small"
+                  sx={{
+                    color: "#aeb4bb",
+
+                    "&:hover": {
+                      color: "#ffffff",
+                      backgroundColor: "rgba(255,255,255,0.1)",
+                    },
+                  }}
+                >
+                  <OpenInNewRoundedIcon fontSize="small" />
+                </IconButton>
+              </Tooltip>
+            ) : (
+              <Tooltip title="Track must be approved first">
+                <span>
+                  <IconButton
+                    disabled
+                    size="small"
+                    sx={{
+                      "&.Mui-disabled": {
+                        color: "#6f757b",
+                        opacity: 0.55,
+                      },
+                    }}
+                  >
+                    <OpenInNewRoundedIcon fontSize="small" />
+                  </IconButton>
+                </span>
+              </Tooltip>
+            )}
+
             <Tooltip title="Delete track">
-              <IconButton
-                onClick={() => handleDeleteTrack(track)}
-                disabled={deletingId === getItemId(track)}
-                size="small"
-                sx={{
-                  color: "#ff5a5a",
-                  "&:hover": {
-                    backgroundColor: "rgba(255,90,90,0.12)",
-                  },
-                }}
-              >
-                <DeleteRoundedIcon fontSize="small" />
-              </IconButton>
+              <span>
+                <IconButton
+                  size="small"
+                  disabled={deletingId === trackId || isUpdating}
+                  onClick={() => handleDeleteTrack(track)}
+                  sx={{
+                    color: "#ff5f67",
+
+                    "&:hover": {
+                      backgroundColor: "rgba(255,95,103,0.14)",
+                    },
+
+                    "&.Mui-disabled": {
+                      color: "#ff5f67",
+                      opacity: 0.35,
+                    },
+                  }}
+                >
+                  <DeleteRoundedIcon fontSize="small" />
+                </IconButton>
+              </span>
             </Tooltip>
           </Box>
         );
@@ -295,6 +862,22 @@ const TracksTable = ({ tracks, accessToken }: Props) => {
 
   return (
     <Box>
+      <audio
+        ref={audioRef}
+        preload="none"
+        onPlay={() => setIsPreviewPlaying(true)}
+        onPause={() => setIsPreviewPlaying(false)}
+        onEnded={() => {
+          setIsPreviewPlaying(false);
+          setPreviewTrackId("");
+        }}
+        onError={() => {
+          setIsPreviewPlaying(false);
+
+          toast.error("Unable to load audio preview.");
+        }}
+      />
+
       <DashboardTableToolbar
         searchValue={searchValue}
         onSearchChange={setSearchValue}
@@ -315,18 +898,45 @@ const TracksTable = ({ tracks, accessToken }: Props) => {
           },
 
           "& .MuiDataGrid-columnHeaders": {
-            backgroundColor: "#181A1B",
             color: "#ffffff",
+            backgroundColor: "#181A1B",
             borderBottom: "1px solid rgba(255,255,255,0.08)",
           },
 
           "& .MuiDataGrid-columnHeaderTitle": {
+            color: "#ffffff",
             fontWeight: 900,
           },
 
-          "& .MuiDataGrid-cell": {
-            borderBottom: "1px solid rgba(255,255,255,0.06)",
+          "& .MuiDataGrid-sortIcon": {
             color: "#ffffff",
+            opacity: 1,
+          },
+
+          "& .MuiDataGrid-menuIconButton": {
+            color: "#cfcfcf",
+          },
+
+          "& .MuiDataGrid-menuIconButton:hover": {
+            color: "#ffffff",
+            backgroundColor: "rgba(255,255,255,0.08)",
+          },
+
+          "& .MuiDataGrid-iconSeparator": {
+            color: "rgba(255,255,255,0.35)",
+          },
+
+          "& .MuiDataGrid-columnHeader .MuiIconButton-root": {
+            color: "#cfcfcf",
+          },
+
+          "& .MuiDataGrid-columnHeader--sorted .MuiDataGrid-sortIcon": {
+            color: "#63e6a6",
+          },
+
+          "& .MuiDataGrid-cell": {
+            color: "#ffffff",
+            borderBottom: "1px solid rgba(255,255,255,0.06)",
           },
 
           "& .MuiDataGrid-row:hover": {
@@ -334,22 +944,22 @@ const TracksTable = ({ tracks, accessToken }: Props) => {
           },
 
           "& .MuiDataGrid-footerContainer": {
+            color: "#ffffff",
             backgroundColor: "#181A1B",
             borderTop: "1px solid rgba(255,255,255,0.08)",
-            color: "#ffffff",
           },
 
           "& .MuiTablePagination-root": {
             color: "#ffffff",
           },
 
-          "& .MuiSvgIcon-root": {
-            color: "inherit",
+          "& .MuiTablePagination-actions .MuiIconButton-root": {
+            color: "#ffffff",
           },
 
           "& .MuiDataGrid-overlay": {
-            backgroundColor: "#111314",
             color: "#9a9a9a",
+            backgroundColor: "#111314",
             fontWeight: 800,
           },
         }}
@@ -358,6 +968,7 @@ const TracksTable = ({ tracks, accessToken }: Props) => {
           rows={filteredTracks}
           columns={columns}
           getRowId={(row) => getItemId(row)}
+          rowHeight={64}
           autoHeight
           disableRowSelectionOnClick
           pageSizeOptions={[5, 10, 20, 50]}
@@ -371,33 +982,63 @@ const TracksTable = ({ tracks, accessToken }: Props) => {
           }}
         />
       </Box>
+
+      {/* DELETE DIALOG */}
       <Dialog
-        open={!!confirmTrack}
-        onClose={() => setConfirmTrack(null)}
+        open={Boolean(confirmTrack)}
+        onClose={() => {
+          if (deletingId) return;
+
+          setConfirmTrack(null);
+        }}
         PaperProps={{
           sx: {
-            backgroundColor: "#181A1B",
+            minWidth: 380,
             color: "#ffffff",
+            backgroundColor: "#181A1B",
             borderRadius: 3,
             border: "1px solid rgba(255,255,255,0.12)",
-            minWidth: 380,
           },
         }}
       >
-        <DialogTitle sx={{ fontWeight: 900 }}>Delete track?</DialogTitle>
+        <DialogTitle
+          sx={{
+            color: "#ffffff",
+            fontWeight: 900,
+          }}
+        >
+          Delete track?
+        </DialogTitle>
 
         <DialogContent>
-          <Typography sx={{ color: "#bdbdbd", fontSize: 14 }}>
+          <Typography
+            sx={{
+              color: "#bdbdbd",
+              fontSize: 14,
+            }}
+          >
             Are you sure you want to delete{" "}
-            <Box component="span" sx={{ color: "#ffffff", fontWeight: 900 }}>
+            <Box
+              component="span"
+              sx={{
+                color: "#ffffff",
+                fontWeight: 900,
+              }}
+            >
               {confirmTrack?.title}
             </Box>
             ?
           </Typography>
         </DialogContent>
 
-        <DialogActions sx={{ px: 3, pb: 2 }}>
+        <DialogActions
+          sx={{
+            px: 3,
+            pb: 2,
+          }}
+        >
           <Button
+            disabled={Boolean(deletingId)}
             onClick={() => setConfirmTrack(null)}
             sx={{
               color: "#cfcfcf",
@@ -409,25 +1050,185 @@ const TracksTable = ({ tracks, accessToken }: Props) => {
 
           <Button
             variant="contained"
-            onClick={async () => {
+            disabled={Boolean(deletingId)}
+            onClick={() => {
               const selectedTrack = confirmTrack;
+
+              if (!selectedTrack) return;
+
               setConfirmTrack(null);
 
-              if (selectedTrack) {
-                await deleteTrack(selectedTrack);
-              }
+              void deleteTrack(selectedTrack);
             }}
             sx={{
-              backgroundColor: "#ff4d4f",
               color: "#ffffff",
               fontWeight: 900,
+              backgroundColor: "#ff4d4f",
 
               "&:hover": {
                 backgroundColor: "#ff2f32",
               },
+
+              "&.Mui-disabled": {
+                color: "rgba(255,255,255,0.35)",
+                backgroundColor: "rgba(255,77,79,0.2)",
+              },
             }}
           >
             Delete
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* REJECT DIALOG */}
+      <Dialog
+        open={Boolean(rejectingTrack)}
+        onClose={() => {
+          if (moderatingId) return;
+
+          setRejectingTrack(null);
+          setRejectReason("");
+        }}
+        PaperProps={{
+          sx: {
+            width: "100%",
+            maxWidth: 520,
+            color: "#ffffff",
+            backgroundColor: "#181A1B",
+            borderRadius: 3,
+            border: "1px solid rgba(255,255,255,0.12)",
+          },
+        }}
+      >
+        <DialogTitle
+          sx={{
+            color: "#ffffff",
+            fontWeight: 900,
+            textAlign: "center",
+          }}
+        >
+          Reject track
+        </DialogTitle>
+
+        <DialogContent>
+          <Typography
+            sx={{
+              color: "#bdbdbd",
+              fontSize: 14,
+              mb: 2,
+              textAlign: "center",
+            }}
+          >
+            Enter a clear reason for{" "}
+            <Box
+              component="span"
+              sx={{
+                color: "#ff5f67",
+                fontWeight: 900,
+              }}
+            >
+              rejecting
+            </Box>{" "}
+            <Box
+              component="span"
+              sx={{
+                color: "#ffffff",
+                fontWeight: 900,
+              }}
+            >
+              {rejectingTrack?.title}
+            </Box>
+            .
+          </Typography>
+
+          <TextField
+            autoFocus
+            fullWidth
+            multiline
+            minRows={4}
+            value={rejectReason}
+            onChange={(event) => setRejectReason(event.target.value)}
+            placeholder="Example: Audio quality is too low..."
+            inputProps={{
+              maxLength: 500,
+            }}
+            helperText={`${rejectReason.length}/500`}
+            sx={{
+              "& .MuiInputBase-root": {
+                color: "#ffffff",
+                backgroundColor: "#111314",
+              },
+
+              "& .MuiOutlinedInput-notchedOutline": {
+                borderColor: "rgba(255,255,255,0.16)",
+              },
+
+              "&:hover .MuiOutlinedInput-notchedOutline": {
+                borderColor: "rgba(255,255,255,0.3)",
+              },
+
+              "& .MuiOutlinedInput-root.Mui-focused .MuiOutlinedInput-notchedOutline":
+                {
+                  borderColor: "#ff5f67",
+                },
+
+              "& .MuiFormHelperText-root": {
+                color: "#8f8f8f",
+                textAlign: "right",
+              },
+
+              "& textarea::placeholder": {
+                color: "#777777",
+                opacity: 1,
+              },
+            }}
+          />
+        </DialogContent>
+
+        <DialogActions
+          sx={{
+            px: 3,
+            pb: 2,
+          }}
+        >
+          <Button
+            disabled={Boolean(moderatingId)}
+            onClick={() => {
+              setRejectingTrack(null);
+              setRejectReason("");
+            }}
+            sx={{
+              color: "#cfcfcf",
+              fontWeight: 800,
+            }}
+          >
+            Cancel
+          </Button>
+
+          <Button
+            variant="contained"
+            disabled={Boolean(moderatingId) || !rejectReason.trim()}
+            onClick={() => {
+              if (!rejectingTrack) return;
+
+              void handleModeration(rejectingTrack, "reject", rejectReason);
+            }}
+            sx={{
+              color: "#ffffff",
+              fontWeight: 900,
+              backgroundColor: "#ff4d4f",
+
+              "&:hover": {
+                backgroundColor: "#ff2f32",
+              },
+
+              "&.Mui-disabled": {
+                color: "rgba(255,255,255,0.35)",
+                backgroundColor: "rgba(255,77,79,0.2)",
+              },
+            }}
+          >
+            Reject track
           </Button>
         </DialogActions>
       </Dialog>

@@ -23,8 +23,26 @@ public class TrackDTO {
 	private UserDTO uploader;
 	private Boolean isDeleted;
 	private String approvalStatus;
+	private String rejectionReason;
 	private LocalDateTime createdAt;
 	private LocalDateTime updatedAt;
+
+	/// copyright
+	private String audioHash;
+
+	private Long audioSize;
+
+	private String processingStatus;
+
+	private String copyrightStatus;
+
+	private String copyrightMessage;
+
+	private Double copyrightScore;
+
+	private LocalDateTime scannedAt;
+
+	///
 
 	public TrackDTO() {
 	}
@@ -155,6 +173,15 @@ public class TrackDTO {
 		this.approvalStatus = approvalStatus;
 	}
 
+	public String getRejectionReason() {
+		return rejectionReason;
+	}
+
+	public void setRejectionReason(
+			String rejectionReason) {
+		this.rejectionReason = rejectionReason;
+	}
+
 	public LocalDateTime getCreatedAt() {
 		return createdAt;
 	}
@@ -169,5 +196,68 @@ public class TrackDTO {
 
 	public void setUpdatedAt(LocalDateTime updatedAt) {
 		this.updatedAt = updatedAt;
+	}
+
+	public String getAudioHash() {
+		return audioHash;
+	}
+
+	public void setAudioHash(
+			String audioHash) {
+		this.audioHash = audioHash;
+	}
+
+	public Long getAudioSize() {
+		return audioSize;
+	}
+
+	public void setAudioSize(
+			Long audioSize) {
+		this.audioSize = audioSize;
+	}
+
+	public String getProcessingStatus() {
+		return processingStatus;
+	}
+
+	public void setProcessingStatus(
+			String processingStatus) {
+		this.processingStatus = processingStatus;
+	}
+
+	public String getCopyrightStatus() {
+		return copyrightStatus;
+	}
+
+	public void setCopyrightStatus(
+			String copyrightStatus) {
+		this.copyrightStatus = copyrightStatus;
+	}
+
+	public String getCopyrightMessage() {
+		return copyrightMessage;
+	}
+
+	public void setCopyrightMessage(
+			String copyrightMessage) {
+		this.copyrightMessage = copyrightMessage;
+	}
+
+	public Double getCopyrightScore() {
+		return copyrightScore;
+	}
+
+	public void setCopyrightScore(
+			Double copyrightScore) {
+		this.copyrightScore = copyrightScore;
+	}
+
+	public LocalDateTime getScannedAt() {
+		return scannedAt;
+	}
+
+	public void setScannedAt(
+			LocalDateTime scannedAt) {
+		this.scannedAt = scannedAt;
 	}
 }

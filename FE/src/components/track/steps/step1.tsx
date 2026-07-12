@@ -2,85 +2,44 @@
 
 import { useCallback } from "react";
 import { useDropzone, FileWithPath } from "react-dropzone";
-import { useSession } from "next-auth/react";
-import axios from "axios";
-
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import Typography from "@mui/material/Typography";
 import LinearProgress from "@mui/material/LinearProgress";
-
 import CloudUploadRoundedIcon from "@mui/icons-material/CloudUploadRounded";
 import MicRoundedIcon from "@mui/icons-material/MicRounded";
 import KeyboardArrowDownRoundedIcon from "@mui/icons-material/KeyboardArrowDownRounded";
 
 interface IProps {
-  setValue: (v: number) => void;
-  setTrackUpload: any;
-  trackUpload: any;
+  setValue: React.Dispatch<React.SetStateAction<number>>;
+
+  setTrackUpload: React.Dispatch<React.SetStateAction<TrackUploadState>>;
+
+  trackUpload: TrackUploadState;
 }
 
 const Step1 = (props: IProps) => {
   const { trackUpload } = props;
-  const { data: session } = useSession();
-  const accessToken = (session as any)?.access_token;
 
   const onDrop = useCallback(
-    async (acceptedFiles: FileWithPath[]) => {
-      if (!accessToken) {
-        alert("Please login first.");
+    (acceptedFiles: FileWithPath[]) => {
+      const audio = acceptedFiles?.[0];
+
+      if (!audio) {
         return;
       }
 
-      if (!acceptedFiles || !acceptedFiles[0]) return;
-
-      const audio = acceptedFiles[0];
-      const formData = new FormData();
-      formData.append("fileUpload", audio);
-
-      props.setTrackUpload((prevState: any) => ({
-        ...prevState,
+      props.setTrackUpload((previous) => ({
+        ...previous,
         fileName: audio.name,
+        uploadedTrackName: audio.name.replace(/\.[^/.]+$/, ""),
+        audioFile: audio,
         percent: 0,
       }));
 
-      try {
-        const res = await axios.post(
-          `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/v1/files/upload`,
-          formData,
-          {
-            headers: {
-              Authorization: `Bearer ${accessToken}`,
-              target_type: "tracks",
-            },
-            onUploadProgress: (progressEvent) => {
-              const total = progressEvent.total || 1;
-              const percentCompleted = Math.floor(
-                (progressEvent.loaded * 100) / total
-              );
-
-              props.setTrackUpload((prevState: any) => ({
-                ...prevState,
-                fileName: audio.name,
-                percent: percentCompleted,
-              }));
-            },
-          }
-        );
-
-        props.setTrackUpload((prevState: any) => ({
-          ...prevState,
-          uploadedTrackName: res.data.data.fileName,
-          percent: 100,
-        }));
-
-        props.setValue(1);
-      } catch (error) {
-        //@ts-ignore
-        alert(error?.response?.data?.message || "Upload failed");
-      }
+      props.setValue(1);
     },
-    [accessToken, props]
+    [props.setTrackUpload, props.setValue]
   );
 
   const { getRootProps, getInputProps, isDragActive, open } = useDropzone({

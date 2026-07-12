@@ -6,7 +6,7 @@ import { useWavesurfer } from "@/utils/customHook";
 import { WaveSurferOptions } from "wavesurfer.js";
 import PlayArrowIcon from "@mui/icons-material/PlayArrow";
 import PauseIcon from "@mui/icons-material/Pause";
-import "../../styles/wave.scss";
+import "../../styles/wave.css";
 import { useTrackContext } from "@/lib/track.wrapper";
 import { sendRequest } from "@/utils/api";
 import { useRouter } from "next/navigation";
@@ -41,6 +41,35 @@ const WaveTrack = (props: IProps) => {
   const [isPlaying, setIsPlaying] = useState<boolean>(false);
 
   const { currentTrack, setCurrentTrack } = useTrackContext() as ITrackContext;
+
+  const getSyncedVolumeState = () => {
+    const savedVolumeRaw =
+      typeof window !== "undefined"
+        ? localStorage.getItem("soundclone-volume")
+        : null;
+
+    const savedVolume = Number(savedVolumeRaw);
+
+    const contextVolume = Number((currentTrack as any)?.volume);
+
+    const volume = Math.max(
+      0,
+      Math.min(
+        1,
+        Number.isFinite(savedVolume)
+          ? savedVolume
+          : Number.isFinite(contextVolume)
+          ? contextVolume
+          : 0.5
+      )
+    );
+
+    return {
+      volume,
+      muted: volume === 0,
+      volumeId: (currentTrack as any)?.volumeId,
+    };
+  };
 
   const getTrackId = () => {
     return (track as any)?._id || (track as any)?.id || "";
@@ -240,6 +269,11 @@ const WaveTrack = (props: IProps) => {
           source: "wave",
           currentTime: wavesurfer.getCurrentTime() ?? 0,
           duration: wavesurfer.getDuration() ?? 0,
+
+          volume: (currentTrack as any)?.volume,
+          muted: (currentTrack as any)?.muted,
+          volumeId: (currentTrack as any)?.volumeId,
+
           seekTime: undefined,
           seekId: undefined,
         } as any);
@@ -248,12 +282,19 @@ const WaveTrack = (props: IProps) => {
       wavesurfer.on("pause", () => {
         setIsPlaying(false);
 
+        const volumeState = getSyncedVolumeState();
+
         setCurrentTrack({
           ...track,
           isPlaying: false,
           source: "wave",
           currentTime: wavesurfer.getCurrentTime() ?? 0,
           duration: wavesurfer.getDuration() ?? 0,
+
+          volume: volumeState.volume,
+          muted: volumeState.muted,
+          volumeId: volumeState.volumeId,
+
           seekTime: undefined,
           seekId: undefined,
         } as any);
@@ -264,7 +305,30 @@ const WaveTrack = (props: IProps) => {
 
         const trackId = getTrackId();
 
-        if (!trackId || !track) return;
+        if (!trackId || !track) {
+          return;
+        }
+
+        const volumeState = getSyncedVolumeState();
+
+        const actualVolume = volumeState.muted ? 0 : volumeState.volume;
+
+        /*
+         * Áp dụng volume trực tiếp ngay khi
+         * WaveSurfer decode xong.
+         */
+        wavesurfer.setVolume(actualVolume);
+
+        const media =
+          typeof (wavesurfer as any).getMediaElement === "function"
+            ? (wavesurfer as any).getMediaElement()
+            : (wavesurfer as any)?.media;
+
+        if (media) {
+          media.volume = volumeState.volume;
+
+          media.muted = volumeState.muted;
+        }
 
         setCurrentTrack({
           ...track,
@@ -272,11 +336,18 @@ const WaveTrack = (props: IProps) => {
           source: "wave",
           currentTime: 0,
           duration: decodedDuration,
+
+          volume: volumeState.volume,
+          muted: volumeState.muted,
+          volumeId: volumeState.volumeId,
+
           seekTime: undefined,
           seekId: undefined,
         } as any);
 
-        if (!autoPlay) return;
+        if (!autoPlay) {
+          return;
+        }
 
         try {
           await wavesurfer.play();
@@ -289,21 +360,29 @@ const WaveTrack = (props: IProps) => {
             source: "wave",
             currentTime: wavesurfer.getCurrentTime() ?? 0,
             duration: decodedDuration,
+
+            volume: volumeState.volume,
+            muted: volumeState.muted,
+            volumeId: volumeState.volumeId,
+
             seekTime: undefined,
             seekId: undefined,
           } as any);
 
-          handleIncreaseView();
+          void handleIncreaseView();
         } catch (error) {
           console.log("Wave autoplay failed:", error);
         }
       }),
+
       wavesurfer.on("timeupdate", (currentTime) => {
         setTime(formatTime(currentTime));
 
         const currentSecond = Math.floor(currentTime);
 
-        if (currentSecond === lastSyncSecondRef.current) return;
+        if (currentSecond === lastSyncSecondRef.current) {
+          return;
+        }
 
         lastSyncSecondRef.current = currentSecond;
 
@@ -321,41 +400,74 @@ const WaveTrack = (props: IProps) => {
     };
   }, [wavesurfer, (track as any)?._id, (track as any)?.id]);
 
+  ///audio sync
   useEffect(() => {
-    if (!wavesurfer) return;
-    if (!track) return;
+    if (!wavesurfer || !track) return;
 
     const trackId = getTrackId();
     const currentTrackId = getCurrentTrackId();
 
     if (!trackId) return;
-    if (currentTrackId !== trackId) return;
+
+    if (currentTrackId && currentTrackId !== trackId) {
+      return;
+    }
 
     const footerTrack = currentTrack as any;
 
-    if (footerTrack?.source !== "footer-control") return;
+    /*
+     * Luôn đồng bộ volume, kể cả source đang là "wave".
+     * Không đặt đoạn này sau điều kiện footer-control.
+     */
+    const contextVolume = Number(footerTrack?.volume);
 
-    if (typeof footerTrack.volume === "number") {
-      const safeVolume = Math.max(0, Math.min(1, footerTrack.volume));
+    const savedVolume =
+      typeof window !== "undefined"
+        ? Number(localStorage.getItem("soundclone-volume"))
+        : Number.NaN;
 
-      wavesurfer.setVolume(safeVolume);
+    const safeVolume = Math.max(
+      0,
+      Math.min(
+        1,
+        Number.isFinite(contextVolume)
+          ? contextVolume
+          : Number.isFinite(savedVolume)
+          ? savedVolume
+          : 0.5
+      )
+    );
 
-      const media = (wavesurfer as any)?.media;
+    const isMuted = footerTrack?.muted === true || safeVolume === 0;
 
-      if (media) {
-        media.volume = safeVolume;
-        media.muted = safeVolume === 0;
-      }
+    const actualVolume = isMuted ? 0 : safeVolume;
 
-      if (safeVolume === 0) {
-        wavesurfer.setVolume(0);
-      }
+    wavesurfer.setVolume(actualVolume);
+
+    const media =
+      typeof (wavesurfer as any).getMediaElement === "function"
+        ? (wavesurfer as any).getMediaElement()
+        : (wavesurfer as any)?.media;
+
+    if (media) {
+      media.volume = safeVolume;
+      media.muted = isMuted;
+    }
+
+    /*
+     * Seek và play/pause chỉ nhận lệnh
+     * khi thao tác từ footer.
+     */
+    if (footerTrack?.source !== "footer-control") {
+      return;
     }
 
     if (typeof footerTrack.seekTime === "number") {
       const seekId = footerTrack.seekId ?? footerTrack.seekTime;
 
-      if (lastHandledSeekIdRef.current === seekId) return;
+      if (lastHandledSeekIdRef.current === seekId) {
+        return;
+      }
 
       lastHandledSeekIdRef.current = seekId;
 
@@ -369,6 +481,7 @@ const WaveTrack = (props: IProps) => {
 
         wavesurfer.setTime(nextTime);
         setTime(formatTime(nextTime));
+
         lastSyncSecondRef.current = Math.floor(nextTime);
       }
 
@@ -376,7 +489,7 @@ const WaveTrack = (props: IProps) => {
     }
 
     if (footerTrack.isPlaying === true && !wavesurfer.isPlaying()) {
-      wavesurfer.play();
+      void wavesurfer.play();
       return;
     }
 

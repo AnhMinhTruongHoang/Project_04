@@ -5,7 +5,7 @@ import NProgressWrapper from "@/lib/nprogress.wrapper";
 import { TrackContextProvider } from "@/lib/track.wrapper";
 import { ToastProvider } from "@/utils/toast";
 import AppFooter from "@/components/footer/app.footer";
-import "../app/globals.scss";
+import "../app/globals.css";
 
 export const metadata: Metadata = {
   metadataBase: new URL(

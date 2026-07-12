@@ -6,7 +6,7 @@ import { useWavesurfer } from "@/utils/customHook";
 import { WaveSurferOptions } from "wavesurfer.js";
 import PlayArrowIcon from "@mui/icons-material/PlayArrow";
 import PauseIcon from "@mui/icons-material/Pause";
-import "../../styles/wave.scss";
+import "../../styles/wave.css";
 import { Avatar, Tooltip } from "@mui/material";
 import { useTrackContext } from "@/lib/track.wrapper";
 import { sendRequest } from "@/utils/api";

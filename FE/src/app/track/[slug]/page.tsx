@@ -31,11 +31,14 @@ const getTrackId = (track?: ITrackTop) => {
 
   return (track as any)._id || (track as any).id || "";
 };
+const getOgImage = (imgUrl?: string | null) => {
+  if (!imgUrl) {
+    return DEFAULT_OG_IMAGE;
+  }
 
-const getOgImage = (imgUrl?: string) => {
-  if (!imgUrl) return DEFAULT_OG_IMAGE;
-
-  if (imgUrl.startsWith("http")) return imgUrl;
+  if (imgUrl.startsWith("http")) {
+    return imgUrl;
+  }
 
   if (imgUrl.startsWith("/uploads/images")) {
     return `${BACKEND_URL}${imgUrl}`;
@@ -47,7 +50,6 @@ const getOgImage = (imgUrl?: string) => {
 
   return `${BACKEND_URL}/uploads/images/${imgUrl}`;
 };
-
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const trackKey = getTrackKeyFromSlug(params?.slug);
 

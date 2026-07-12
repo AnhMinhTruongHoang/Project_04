@@ -9,31 +9,15 @@ export const TrackContextProvider = ({
 }: {
   children: React.ReactNode;
 }) => {
-  const initValue = {
-    _id: "",
-    title: "",
-    description: "",
-    category: "",
-    imgUrl: "",
-    trackUrl: "",
-    countLike: 0,
-    countPlay: 0,
-    uploader: {
-      _id: "",
-      email: "",
-      name: "",
-      role: "",
-      type: "",
-    },
-    isDeleted: false,
-    createdAt: "",
-    updatedAt: "",
-    isPlaying: false,
-  };
-  const [currentTrack, setCurrentTrack] = useState<IShareTrack>(initValue);
+  const [currentTrack, setCurrentTrack] = useState<IShareTrack | null>(null);
 
   return (
-    <TrackContext.Provider value={{ currentTrack, setCurrentTrack }}>
+    <TrackContext.Provider
+      value={{
+        currentTrack,
+        setCurrentTrack,
+      }}
+    >
       {children}
     </TrackContext.Provider>
   );

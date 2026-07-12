@@ -150,7 +150,6 @@ export default function ProfileEditDialog({ open, onClose, user }: Props) {
         name: displayName.trim(),
         website: website.trim(),
         bio: bio.trim(),
-        avatarUrl,
         subscriptionTier: user?.subscriptionTier,
       };
 

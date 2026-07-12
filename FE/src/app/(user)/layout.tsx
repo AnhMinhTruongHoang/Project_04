@@ -65,8 +65,6 @@ export default function RootLayout({
 
       <AppOpenAds />
 
-      
-
       <Script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(test) }}

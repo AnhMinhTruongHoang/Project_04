@@ -607,20 +607,43 @@ public class TrackController {
 	}
 
 	@GetMapping("/{trackId}/comments")
-	public ResponseEntity<?> getCommentsByTrack(@PathVariable String trackId) {
-		try {
-			Track track = trackRepository.findById(trackId).orElse(null);
+	public ResponseEntity<?> getCommentsByTrack(
+			@PathVariable String trackId) {
 
-			if (track == null || Boolean.TRUE.equals(track.getIsDeleted()) || !isApproved(track)) {
-				return ResponseEntity.status(404).body(new ApiResponse<>(404, "Track not found", null));
+		try {
+			Track track = trackRepository
+					.findById(trackId)
+					.orElse(null);
+
+			if (track == null
+					|| Boolean.TRUE.equals(track.getIsDeleted())
+					|| !isApproved(track)) {
+
+				return ResponseEntity.status(404)
+						.body(new ApiResponse<>(
+								404,
+								"Track not found",
+								null));
 			}
 
-			List<Comment> comments = commentRepository.findByTrackIdAndIsDeletedFalse(trackId);
+			List<Map<String, Object>> comments = commentRepository
+					.findByTrackIdAndIsDeletedFalse(trackId)
+					.stream()
+					.map(this::toCommentResponse)
+					.collect(Collectors.toList());
 
-			return ResponseEntity.ok(new ApiResponse<>(200, "Fetch comments success", comments));
+			return ResponseEntity.ok(
+					new ApiResponse<>(
+							200,
+							"Fetch comments success",
+							comments));
 
 		} catch (Exception e) {
-			return ResponseEntity.status(500).body(new ApiResponse<>(500, e.getMessage(), null));
+			return ResponseEntity.status(500)
+					.body(new ApiResponse<>(
+							500,
+							e.getMessage(),
+							null));
 		}
 	}
 
@@ -652,9 +675,13 @@ public class TrackController {
 			comment.setIsDeleted(false);
 			comment.setCreatedAt(LocalDateTime.now());
 			comment.setUpdatedAt(LocalDateTime.now());
-			commentRepository.save(comment);
+			Comment savedComment = commentRepository.save(comment);
 
-			return ResponseEntity.ok(new ApiResponse<>(200, "Create comment success", comment));
+			return ResponseEntity.ok(
+					new ApiResponse<>(
+							200,
+							"Create comment success",
+							toCommentResponse(savedComment)));
 
 		} catch (Exception e) {
 			return ResponseEntity.status(500).body(new ApiResponse<>(500, e.getMessage(), null));
@@ -876,5 +903,53 @@ public class TrackController {
 							e.getMessage(),
 							null));
 		}
+	}
+
+	/// comment user name
+	private Map<String, Object> toCommentResponse(
+			Comment comment) {
+
+		User author = userRepository
+				.findById(comment.getUserId())
+				.orElse(null);
+
+		Map<String, Object> userData = new LinkedHashMap<>();
+
+		if (author != null) {
+			userData.put("id", author.getId());
+			userData.put("_id", author.getId());
+			userData.put("name", author.getName());
+			userData.put(
+					"username",
+					author.getUsername());
+			userData.put("email", author.getEmail());
+			userData.put(
+					"avatarUrl",
+					author.getAvatarUrl());
+			userData.put(
+					"verified",
+					author.getVerified());
+		}
+
+		Map<String, Object> result = new LinkedHashMap<>();
+
+		result.put("id", comment.getId());
+		result.put("_id", comment.getId());
+		result.put("content", comment.getContent());
+		result.put("moment", comment.getMoment());
+		result.put("userId", comment.getUserId());
+		result.put("trackId", comment.getTrackId());
+		result.put(
+				"isDeleted",
+				comment.getIsDeleted());
+		result.put(
+				"createdAt",
+				comment.getCreatedAt());
+		result.put(
+				"updatedAt",
+				comment.getUpdatedAt());
+		result.put("user", userData);
+
+		return result;
 	}
 }

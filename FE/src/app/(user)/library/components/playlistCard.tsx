@@ -65,7 +65,7 @@ const PlaylistCard = ({ playlist }: Props) => {
               color: "#ffffff",
             }}
           >
-            <QueueMusicRoundedIcon sx={{ fontSize: 42 }} />
+            <QueueMusicRoundedIcon sx={{ fontSize: 42, color: "white" }} />
           </Box>
         )}
 

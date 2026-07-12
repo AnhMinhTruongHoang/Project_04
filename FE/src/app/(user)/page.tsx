@@ -6,7 +6,7 @@ import RightSidebar from "@/components/RightSidebar/right.sidebar";
 
 export const metadata: Metadata = {
   title: "Sound Clone",
-  description: "miêu tả",
+  description: "description",
 };
 
 export default async function HomePage() {

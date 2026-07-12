@@ -1,1 +1,9 @@
-{"version":3,"sources":["app.scss","app.css"],"names":[],"mappings":"AAAA;;EAEI,SAAA;EACA,UAAA;ACCJ","file":"app.css"}
+{
+  "version": 3,
+  "sources": [
+    "app.css"
+  ],
+  "names": [],
+  "mappings": "AAAA;;EAEI,SAAA;EACA,UAAA;ACCJ",
+  "file": "app.css"
+}

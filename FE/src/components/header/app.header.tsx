@@ -35,9 +35,11 @@ import SearchDropdown from "@/app/search/components/search.dropdown";
 const AppHeader = () => {
   const router = useRouter();
   const pathname = usePathname();
-  const { data: session } = useSession();
+  const { data: session, status } = useSession();
   const user = session?.user as any;
-  const isAdmin = user?.role === "ADMIN";
+  const isSessionLoading = status === "loading";
+  const isAuthenticated = status === "authenticated" && Boolean(session);
+  const isAdmin = isAuthenticated && user?.role === "ADMIN";
   const [keyword, setKeyword] = React.useState("");
   const [anchorEl, setAnchorEl] = React.useState<null | HTMLElement>(null);
   const open = Boolean(anchorEl);
@@ -275,10 +277,58 @@ const AppHeader = () => {
                 Upload
               </Box>
 
-              {session ? (
+              {isSessionLoading ? (
+                <Box
+                  sx={{
+                    width: 142,
+                    height: 32,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "flex-end",
+                    gap: 1.2,
+                  }}
+                >
+                  <Box
+                    sx={{
+                      width: 28,
+                      height: 28,
+                      borderRadius: "50%",
+                      backgroundColor: "rgba(255,255,255,0.1)",
+                      animation: "headerPulse 1.2s ease-in-out infinite",
+
+                      "@keyframes headerPulse": {
+                        "0%, 100%": {
+                          opacity: 0.45,
+                        },
+                        "50%": {
+                          opacity: 0.9,
+                        },
+                      },
+                    }}
+                  />
+
+                  <Box
+                    sx={{
+                      width: 20,
+                      height: 20,
+                      borderRadius: "50%",
+                      backgroundColor: "rgba(255,255,255,0.08)",
+                    }}
+                  />
+
+                  <Box
+                    sx={{
+                      width: 20,
+                      height: 20,
+                      borderRadius: "50%",
+                      backgroundColor: "rgba(255,255,255,0.08)",
+                    }}
+                  />
+                </Box>
+              ) : isAuthenticated ? (
                 <>
                   <Box
-                    onClick={(e) => setAnchorEl(e.currentTarget)}
+                    onClick={(event) => setAnchorEl(event.currentTarget)}
                     sx={{
                       display: "flex",
                       alignItems: "center",
@@ -287,7 +337,7 @@ const AppHeader = () => {
                     }}
                   >
                     <Avatar
-                      src={user?.avatar || ""}
+                      src={user?.avatarUrl || user?.avatar || ""}
                       alt={user?.name || "User"}
                       sx={{
                         width: 28,
@@ -314,7 +364,9 @@ const AppHeader = () => {
                     sx={{
                       color: "#b8b8b8",
                       p: 0.5,
-                      "&:hover": { color: "#ffffff" },
+                      "&:hover": {
+                        color: "#ffffff",
+                      },
                     }}
                   >
                     <NotificationsNoneRoundedIcon fontSize="small" />
@@ -326,7 +378,11 @@ const AppHeader = () => {
                       color: "#b8b8b8",
                       p: 0.5,
                       position: "relative",
-                      "&:hover": { color: "#ffffff" },
+
+                      "&:hover": {
+                        color: "#ffffff",
+                      },
+
                       "&::after": {
                         content: '""',
                         position: "absolute",
@@ -347,7 +403,10 @@ const AppHeader = () => {
                     sx={{
                       color: "#b8b8b8",
                       p: 0.5,
-                      "&:hover": { color: "#ffffff" },
+
+                      "&:hover": {
+                        color: "#ffffff",
+                      },
                     }}
                   >
                     <MoreHorizRoundedIcon fontSize="small" />
@@ -366,6 +425,7 @@ const AppHeader = () => {
                     textTransform: "none",
                     fontSize: 13,
                     fontWeight: 900,
+
                     "&:hover": {
                       backgroundColor: "#ff6a00",
                     },

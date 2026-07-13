@@ -9,6 +9,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 import org.mindrot.jbcrypt.BCrypt;
 import org.modelmapper.ModelMapper;
@@ -953,4 +954,81 @@ public class UserController {
 					HttpStatus.INTERNAL_SERVER_ERROR);
 		}
 	}
+
+	//// who to follow
+	@GetMapping("/who-to-follow")
+	public ResponseEntity<?> getWhoToFollow(
+			@RequestParam(defaultValue = "12") int limit) {
+		try {
+			int safeLimit = Math.min(
+					Math.max(limit, 1),
+					24);
+
+			List<User> users = userRepository.findWhoToFollow(
+					PageRequest.of(0, safeLimit));
+
+			List<Map<String, Object>> result = users
+					.stream()
+					.map(user -> {
+						Map<String, Object> item = new LinkedHashMap<>();
+
+						item.put("id", user.getId());
+						item.put("_id", user.getId());
+
+						item.put("name", user.getName());
+						item.put("username", user.getUsername());
+						item.put("email", user.getEmail());
+
+						item.put(
+								"avatarUrl",
+								user.getAvatarUrl());
+
+						item.put(
+								"followers",
+								user.getFollowers() == null
+										? 0
+										: user.getFollowers());
+
+						item.put(
+								"following",
+								user.getFollowing() == null
+										? 0
+										: user.getFollowing());
+
+						item.put(
+								"verified",
+								Boolean.TRUE.equals(
+										user.getVerified()));
+
+						item.put(
+								"isVerify",
+								Boolean.TRUE.equals(
+										user.getIsVerify()));
+
+						item.put("type", user.getType());
+						item.put("role", user.getRole());
+
+						return item;
+					})
+					.collect(Collectors.toList());
+
+			return ResponseEntity.ok(
+					new ApiResponse<>(
+							200,
+							"Fetch who to follow success",
+							result));
+
+		} catch (Exception e) {
+			e.printStackTrace();
+
+			return ResponseEntity
+					.status(500)
+					.body(
+							new ApiResponse<>(
+									500,
+									e.getMessage(),
+									null));
+		}
+	}
+	///
 }

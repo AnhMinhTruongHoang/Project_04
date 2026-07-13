@@ -13,3 +13,1015 @@ Trang chủ gọi history/home
 Hiện Continue Listening / Recently Played
     ↓
 because-you-listened dùng lịch sử để đề xuất
+
+
+////
+# [Feature/Fix] Hoàn thiện Track Routing, Moderation, Listening History và Homepage Discovery
+
+## Tổng quan
+
+Trong buổi làm việc hôm nay, hệ thống Sound Clone đã được sửa lỗi và mở rộng ở các nhóm chức năng chính:
+
+- Sửa lỗi mở trang chi tiết track bị `404`.
+- Chuẩn hóa `id`, `_id` và `slug` giữa Frontend và Backend.
+- Loại bỏ dữ liệu track cũ do Next.js cache.
+- Hoàn thiện giao diện quản lý và kiểm duyệt track phía Admin.
+- Bổ sung trạng thái xử lý audio và kiểm tra bản quyền.
+- Sửa trang quản lý Comments.
+- Thiết kế và triển khai Backend cho Listening History.
+- Thêm API cho:
+  - Continue Listening
+  - Recently Played
+  - Because You Listened To
+  - Hidden Gems
+- Chuẩn bị và triển khai phần Frontend gọi API lịch sử nghe.
+- Cập nhật Homepage để hiển thị các slider khám phá mới.
+- Đồng bộ tiến trình nghe từ AppFooter và WaveTrack.
+
+---
+
+# 1. Sửa lỗi Track Detail trả về 404
+
+## Hiện tượng
+
+Frontend tạo URL dạng:
+
+```text
+/track/507b637b54e74eea84ecd712.html
+
+Trong khi track thực tế trong MySQL có:
+
+id   = cae6613f56054e4b9fed57a8
+slug = domino-cae661
+
+Backend không tìm thấy ID cũ nên trả:
+
+{
+  "statusCode": 404,
+  "message": "Track not found",
+  "data": null
+}
+Nguyên nhân
+Một số helper Frontend ưu tiên _id trước id.
+_id cũ tiếp tục được sử dụng khi tạo URL.
+normalizeTrack() có thể lấy _id cũ rồi gán lại cho cả id và _id.
+Trang chủ giữ response cũ do Next.js cache.
+Một số component tự tạo URL theo title và ID cũ.
+Dữ liệu Frontend không còn đồng bộ với bản ghi hiện tại trong MySQL.
+Cách sửa
+
+Chuẩn hóa toàn bộ helper ID theo thứ tự:
+
+track.id || track._id || ""
+
+Thay cho:
+
+track._id || track.id || ""
+
+Các component cần áp dụng thống nhất:
+
+MainSlider
+TracksTable
+AppFooter
+WaveTrack
+CurrentTrack
+ProfileAllTab
+ProfilePopularTracksTab
+ListeningHistory
+NcsTrackSlider
+SonTungTrackSlider
+TrackCard
+2. Chuẩn hóa Track Route
+Route ưu tiên
+
+Route track được chọn theo thứ tự:
+
+slug → id → _id
+
+Helper đề xuất:
+
+const getTrackRouteKey = (track: ITrackTop) => {
+  const slug = String(track.slug || "").trim();
+
+  if (slug) {
+    return slug;
+  }
+
+  const id = String(track.id || "").trim();
+
+  if (id) {
+    return id;
+  }
+
+  return String(track._id || "").trim();
+};
+URL đúng
+
+Theo slug:
+
+/track/domino-cae661.html
+
+Hoặc theo ID:
+
+/track/cae6613f56054e4b9fed57a8.html
+
+Có thể kèm query:
+
+?audio=...&autoplay=1
+
+Query audio không phải nguyên nhân gây lỗi 404. Phần gây lỗi là route key cũ trong pathname.
+
+3. MainSlider
+
+MainSlider đã được render lại với các thay đổi:
+
+Ưu tiên slug, sau đó id, cuối cùng _id.
+Không render track nếu không có route key.
+Hỗ trợ URL ảnh tuyệt đối và tương đối.
+Hỗ trợ URL audio tuyệt đối và tương đối.
+Tự thêm:
+audio
+autoplay=1
+Dark mode.
+Responsive:
+Desktop: 5 track.
+Tablet: 3 track.
+Mobile: 1–2 track.
+Nếu có tối đa 5 bài thì dùng flex layout thay vì slider.
+Link ảnh và link title cùng trỏ đến track detail.
+Link uploader trỏ đến profile.
+Có fallback ảnh mặc định.
+Có hover state cho title.
+Tự ẩn arrow khi slider không cần thiết.
+
+Route được tạo theo dạng:
+
+const trackHref =
+  `/track/${encodeURIComponent(trackRouteKey)}.html` +
+  `?${queryParams.toString()}`;
+4. Chuẩn hóa helper trong src/utils/api.ts
+Sửa getTrackId
+export const getTrackId = (track?: any) => {
+  return track?.id || track?._id || "";
+};
+Sửa normalizeTrack
+export const normalizeTrack = <T extends any>(
+  track?: T | null
+): T | null => {
+  if (!track) return null;
+
+  const id = String(
+    (track as any).id ||
+      (track as any)._id ||
+      ""
+  ).trim();
+
+  return {
+    ...track,
+    id,
+    _id: id,
+    imgUrl: (track as any).imgUrl,
+    trackUrl: (track as any).trackUrl,
+  };
+};
+
+Điều này tránh trường hợp _id cũ ghi đè lên id mới.
+
+5. Backend Track DTO
+
+Backend hiện trả cả hai field:
+
+{
+  "id": "cae6613f56054e4b9fed57a8",
+  "_id": "cae6613f56054e4b9fed57a8"
+}
+
+_id chỉ là alias của id:
+
+@JsonProperty("_id")
+public String get_id() {
+    return id;
+}
+
+Backend DTO trả thêm:
+
+slug
+title
+description
+category
+categoryId
+categoryName
+imgUrl
+trackUrl
+countLike
+countPlay
+uploaderId
+uploader
+approvalStatus
+rejectionReason
+audioHash
+audioSize
+processingStatus
+copyrightStatus
+copyrightMessage
+copyrightScore
+scannedAt
+createdAt
+updatedAt
+isDeleted
+6. Backend Track Routing
+
+Backend đã hỗ trợ:
+
+GET /api/v1/tracks/{slugOrId}
+GET /api/v1/tracks/search/{id}
+GET /api/v1/tracks/slug/{slug}
+
+Logic tìm track:
+
+1. Tìm theo slug.
+2. Nếu không có, tìm theo ID đầy đủ.
+3. Nếu không có, lấy 6 ký tự ID từ cuối slug.
+4. Tìm track có ID bắt đầu bằng prefix đó.
+5. Chỉ trả track APPROVED và chưa bị xóa.
+
+Điều kiện public track:
+
+approvalStatus = APPROVED
+isDeleted = false
+7. Slug Track
+
+Slug được tạo theo công thức:
+
+slugify(title) + "-" + 6 ký tự đầu của ID
+
+Ví dụ:
+
+Title: Domino
+ID: cae6613f56054e4b9fed57a8
+Slug: domino-cae661
+
+Backend helper:
+
+private String createSlug(String title, String id) {
+    String suffix =
+        id.length() >= 6
+            ? id.substring(0, 6)
+            : id;
+
+    return slugify(title) + "-" + suffix;
+}
+8. Loại bỏ Next.js Cache cho Homepage
+Vấn đề
+
+Trang chủ tiếp tục dùng danh sách track cũ dù database đã thay đổi.
+
+Cách sửa
+
+Thêm vào page:
+
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
+Các request dùng:
+
+nextOption: {
+  cache: "no-store",
+}
+
+Áp dụng cho:
+
+GET /api/v1/tracks/top?category=ncs
+GET /api/v1/tracks/top?category=kpop
+GET /api/v1/tracks/top?category=pop
+GET /api/v1/tracks/top?category=lofi
+GET /api/v1/tracks/hidden-gems
+GET /api/v1/tracks/history/home
+GET /api/v1/tracks/because-you-listened
+
+Sau khi sửa cần xóa cache:
+
+Remove-Item -Recurse -Force .next
+npm run dev
+
+Sau đó hard refresh:
+
+Ctrl + Shift + R
+9. Trang Dashboard Comments
+Lỗi phát hiện
+
+API lấy NCS bị chèn nhầm vào trang Comments:
+
+const ncs = await sendRequest(...)
+Đã sửa
+Xóa request NCS khỏi trang Comments.
+Dùng:
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+Lấy token từ NextAuth:
+const accessToken =
+  (session as any)?.access_token ||
+  (session as any)?.accessToken ||
+  "";
+Request:
+GET /api/v1/comments
+Dùng:
+cache: "no-store"
+Hỗ trợ nhiều dạng response:
+Array
+data.result
+data.data
+data.content
+data.items
+data.comments
+Truyền đúng dữ liệu:
+<CommentsTable
+  comments={comments}
+  accessToken={accessToken}
+/>
+10. Admin Track Moderation
+Chức năng đã triển khai
+Hiển thị danh sách track trong DataGrid.
+Tìm kiếm theo:
+Title.
+Description.
+Category.
+Uploader name.
+Uploader email.
+Preview audio trong Admin.
+Approve track.
+Reject track.
+Bắt buộc nhập rejection reason.
+Xóa track.
+Mở track detail sau khi được approve.
+Refresh danh sách tự động mỗi 5 giây.
+Refresh khi tab browser trở lại trạng thái visible.
+Update row ngay sau khi approve/reject.
+Không cần reload toàn trang.
+Status hiển thị
+APPROVED
+REJECTED
+PENDING
+COMPLETED
+FAILED
+CLEAN
+MANUAL_APPROVED
+MANUAL_REJECTED
+
+Màu trạng thái:
+
+Success: #63e6a6
+Danger:  #ff7b7b
+Pending: #ffbd69
+Reject reason
+
+Backend lưu:
+
+private String rejectionReason;
+
+DTO trả:
+
+dto.setRejectionReason(track.getRejectionReason());
+
+Frontend hiển thị lại reason khi mở dialog reject lần sau.
+
+11. Audio Copyright Scan
+
+Track đã được bổ sung các field:
+
+private String audioHash;
+private Long audioSize;
+private String processingStatus;
+private String copyrightStatus;
+private String copyrightMessage;
+private Double copyrightScore;
+private LocalDateTime scannedAt;
+Duplicate detection
+
+Upload audio được tính SHA-256:
+
+SHA-256 audio file
+
+Backend tìm duplicate:
+
+findFirstByAudioHashAndIsDeletedFalse(audioHash)
+
+Nếu trùng trả:
+
+409 Audio file already exists
+
+Đây là exact duplicate scan, chưa phải perceptual audio fingerprint.
+
+Trạng thái upload ban đầu
+processingStatus = PROCESSING
+copyrightStatus = PENDING
+approvalStatus = PENDING
+copyrightMessage = Waiting for copyright scan
+
+Admin phải approve thủ công trước khi public.
+
+12. Homepage Slider Strategy
+
+Các slider hiện có:
+
+Top NCS
+Top KPOP
+Top POP
+Top LOFI
+
+Các slider mới được chọn để triển khai:
+
+Continue Listening / Recently Played
+Because You Listened To...
+Hidden Gems
+
+Không triển khai New Uploads trong giai đoạn hiện tại.
+
+Thứ tự Homepage đề xuất
+
+Khi user đã đăng nhập và có lịch sử:
+
+1. Continue Listening
+   hoặc Recently Played
+
+2. Because You Listened to {Track Title}
+
+3. Hidden Gems
+
+4. Top NCS
+5. Top KPOP
+6. Top POP
+7. Top LOFI
+
+Khi chưa đăng nhập:
+
+1. Hidden Gems
+2. Top NCS
+3. Top KPOP
+4. Top POP
+5. Top LOFI
+
+Slider không có dữ liệu sẽ không render.
+
+13. Listening History Backend
+Entity mới
+ListeningHistory
+
+Các field:
+
+id
+userId
+trackId
+lastPosition
+duration
+completed
+lastPlayedAt
+createdAt
+updatedAt
+
+Một user chỉ có một record cho mỗi track:
+
+UNIQUE(userId, trackId)
+
+Mỗi lần nghe tiếp sẽ update record cũ thay vì insert record mới.
+
+Bảng SQL
+CREATE TABLE listening_histories (
+    id BIGINT NOT NULL AUTO_INCREMENT,
+
+    userId VARCHAR(255) NOT NULL,
+    trackId VARCHAR(255) NOT NULL,
+
+    lastPosition DOUBLE NOT NULL DEFAULT 0,
+    duration DOUBLE NOT NULL DEFAULT 0,
+    completed BOOLEAN NOT NULL DEFAULT FALSE,
+
+    lastPlayedAt DATETIME(6) NOT NULL,
+    createdAt DATETIME(6) NOT NULL,
+    updatedAt DATETIME(6) NOT NULL,
+
+    PRIMARY KEY (id),
+
+    UNIQUE KEY uk_history_user_track (
+        userId,
+        trackId
+    ),
+
+    INDEX idx_history_user_played (
+        userId,
+        lastPlayedAt
+    )
+);
+14. Listening History Repository
+
+Repository hỗ trợ:
+
+findByUserIdAndTrackId(
+    String userId,
+    String trackId
+);
+findByUserIdOrderByLastPlayedAtDesc(
+    String userId,
+    Pageable pageable
+);
+findByUserIdAndCompletedFalseOrderByLastPlayedAtDesc(
+    String userId,
+    Pageable pageable
+);
+15. API lưu tiến trình nghe
+
+Endpoint:
+
+POST /api/v1/tracks/{trackId}/history
+
+Body:
+
+{
+  "position": 42,
+  "duration": 180,
+  "completed": false
+}
+
+Backend:
+
+Yêu cầu đăng nhập.
+Kiểm tra track tồn tại.
+Kiểm tra track APPROVED.
+Clamp position:
+Không nhỏ hơn 0.
+Không lớn hơn duration.
+Nếu progress >= 95% thì tự đánh dấu completed.
+Insert nếu chưa có history.
+Update nếu đã tồn tại.
+
+Response chứa:
+
+{
+  "track": {},
+  "lastPosition": 42,
+  "duration": 180,
+  "progress": 0.2333,
+  "completed": false,
+  "lastPlayedAt": "..."
+}
+16. API Continue Listening / Recently Played
+
+Endpoint:
+
+GET /api/v1/tracks/history/home?limit=10
+
+Yêu cầu Bearer Token.
+
+Response:
+
+{
+  "continueListening": [],
+  "recentlyPlayed": []
+}
+Continue Listening
+
+Chỉ lấy track:
+
+position >= 5 giây
+duration > 0
+progress < 95%
+completed = false
+Recently Played
+
+Lấy các track nghe gần nhất theo:
+
+lastPlayedAt DESC
+
+Frontend:
+
+Nếu continueListening có dữ liệu:
+→ hiện Continue Listening
+
+Nếu không:
+→ hiện Recently Played
+17. API Because You Listened To
+
+Endpoint:
+
+GET /api/v1/tracks/because-you-listened?limit=10
+
+Yêu cầu Bearer Token.
+
+Logic hiện tại:
+
+1. Lấy listening history gần nhất.
+2. Chọn track gần nhất có category hợp lệ.
+3. Lấy track cùng category.
+4. Loại các track user đã nghe.
+5. Ưu tiên:
+   - countLike cao.
+   - countPlay cao.
+   - createdAt mới.
+
+Response:
+
+{
+  "basedOn": {},
+  "result": []
+}
+
+Frontend title:
+
+Because You Listened to Domino
+
+Nếu không đủ lịch sử:
+
+{
+  "basedOn": null,
+  "result": []
+}
+
+Slider không render.
+
+18. API Hidden Gems
+
+Endpoint:
+
+GET /api/v1/tracks/hidden-gems?limit=10&maxPlays=1000
+
+Public endpoint, không cần đăng nhập.
+
+Logic:
+
+approvalStatus = APPROVED
+isDeleted = false
+countPlay <= maxPlays
+
+Ưu tiên:
+
+countLike DESC
+countPlay ASC
+createdAt DESC
+
+Mục tiêu:
+
+Đưa track ít lượt nghe nhưng có tín hiệu tốt lên Homepage.
+Tránh Top Track chỉ bị chiếm bởi các bài cũ có nhiều lượt play.
+19. Frontend API cho Listening History
+
+Các API được thêm trong src/utils/api.ts:
+
+saveListeningProgressApi(...)
+getHomeListeningHistoryApi(...)
+getBecauseYouListenedApi(...)
+getHiddenGemsApi(...)
+
+Các request GET dùng:
+
+nextOption: {
+  cache: "no-store",
+}
+20. TypeScript Types mới
+
+Thêm vào global.d.ts:
+
+interface IListeningHistoryItem {
+  track: ITrackTop;
+  lastPosition: number;
+  duration: number;
+  progress: number;
+  completed: boolean;
+  lastPlayedAt?: string;
+}
+interface IHomeListeningHistoryData {
+  continueListening: IListeningHistoryItem[];
+  recentlyPlayed: IListeningHistoryItem[];
+}
+interface IBecauseYouListenedData {
+  basedOn: ITrackTop | null;
+  result: ITrackTop[];
+}
+type ListeningProgressPayload = {
+  position: number;
+  duration: number;
+  completed?: boolean;
+};
+21. Homepage Frontend
+
+Homepage đã được thiết kế để gọi song song:
+
+Hidden Gems
+Top NCS
+Top KPOP
+Top POP
+Top LOFI
+
+Nếu đăng nhập, gọi thêm:
+
+Listening History
+Because You Listened To
+
+Dùng:
+
+Promise.all(...)
+
+Để giảm tổng thời gian request.
+
+Các slider chỉ render nếu có dữ liệu:
+
+{historyTracks.length > 0 && (
+  <MainSlider
+    title={historyTitle}
+    data={historyTracks}
+  />
+)}
+{becauseTracks.length > 0 && (
+  <MainSlider
+    title={becauseTitle}
+    data={becauseTracks}
+  />
+)}
+{hiddenGems.length > 0 && (
+  <MainSlider
+    title="Hidden Gems"
+    data={hiddenGems}
+  />
+)}
+22. AppFooter Listening Progress
+
+AppFooter là nơi phát audio toàn cục ngoài trang track detail.
+
+Đã xác định AppFooter cần thực hiện:
+
+- Cập nhật currentTime.
+- Cập nhật duration.
+- Lưu mỗi 15 giây khi đang phát.
+- Lưu khi pause.
+- Lưu khi đổi track.
+- Lưu khi audio ended.
+- Lưu khi component unmount.
+Access Token
+
+Lấy từ session:
+
+const accessToken =
+  (session as any)?.access_token ||
+  (session as any)?.accessToken ||
+  (session as any)?.user?.access_token ||
+  (session as any)?.user?.accessToken ||
+  "";
+Cập nhật thời gian AudioPlayer
+
+Thêm:
+
+listenInterval={1000}
+onListen={(event) => {
+  const audio =
+    event?.currentTarget ||
+    playerRef.current?.audio?.current;
+
+  setCurrentTrack({
+    ...currentTrack,
+    currentTime: Number(audio?.currentTime) || 0,
+    duration: Number(audio?.duration) || 0,
+    isPlaying: !audio?.paused,
+    source: "footer",
+  });
+}}
+Lưu mỗi 15 giây
+
+Dùng interval:
+
+15000 ms
+
+Không gửi API trong mỗi timeupdate, vì sẽ ghi database quá nhiều.
+
+23. AppFooter Audio Ended
+
+Khi bài hát kết thúc:
+
+currentTime = duration
+completed = true
+isPlaying = false
+
+Sau đó gửi:
+
+POST /api/v1/tracks/{trackId}/history
+
+Rồi mới chuyển sang track tiếp theo nếu autoplay station đang bật.
+
+24. WaveTrack Listening Progress
+
+WaveTrack là player dùng tại trang chi tiết track.
+
+WaveTrack hiện đã đồng bộ vào context:
+
+currentTime
+duration
+isPlaying
+volume
+muted
+
+Trong timeupdate, WaveTrack cập nhật context mỗi giây.
+
+Đã xác định cần thêm event:
+
+wavesurfer.on("finish", ...)
+
+Khi kết thúc:
+
+currentTime = duration
+completed = true
+isPlaying = false
+source = wave
+
+AppFooter đọc context và lưu tiến trình lên Backend.
+
+Không cần tạo một cơ chế lưu độc lập hoàn toàn trong WaveTrack.
+
+25. LocalStorage Listening History
+
+Hệ thống cũ vẫn dùng:
+
+saveListeningHistory(...)
+
+Phần này được giữ lại làm fallback.
+
+Kết quả:
+
+User chưa đăng nhập:
+→ lưu localStorage.
+
+User đã đăng nhập:
+→ lưu localStorage và MySQL.
+
+Homepage slider:
+→ dùng dữ liệu MySQL theo account.
+
+Điều này giữ tương thích với:
+
+ProfileAllTab
+ListeningHistory sidebar
+News MainContent
+Các component cũ đang dùng getListeningHistory()
+26. Player Architecture
+
+Luồng player hiện tại:
+
+Ngoài trang detail:
+AppFooter AudioPlayer là nguồn phát chính.
+
+Trong trang detail:
+WaveTrack/WaveSurfer là nguồn phát chính.
+
+AppFooter chỉ hiển thị và điều khiển:
+- Play/Pause
+- Seek
+- Volume
+- Queue
+
+Hai player đồng bộ qua:
+
+TrackContext
+
+Các field dùng:
+
+currentTrack
+isPlaying
+currentTime
+duration
+seekTime
+seekId
+volume
+muted
+volumeId
+source
+27. Những file chính đã xử lý hoặc cần cập nhật
+Frontend
+src/utils/api.ts
+global.d.ts
+app/page.tsx
+components/main/main.slider.tsx
+components/layout/AppFooter.tsx
+components/track/wave.track.tsx
+components/dashboard/tracks/TracksTable.tsx
+app/dashboard/comments/page.tsx
+components/dashboard/comments/CommentsTable.tsx
+utils/actions/history.ts
+utils/actions/navigation.ts
+Backend
+TrackController.java
+TrackRepository.java
+TrackDTO.java
+TrackResponseDTO.java
+ListeningHistory.java
+ListeningHistoryRepository.java
+ListeningProgressDTO.java
+AdminTrackController.java
+RejectTrackDTO.java
+
+Không có TrackService.java, nên logic hiện tiếp tục được đặt trực tiếp trong Controller theo kiến trúc hiện tại.
+
+28. Kiểm tra Backend
+Kiểm tra Track API
+GET http://localhost:8000/api/v1/tracks/top?category=ncs
+
+Track đúng phải trả:
+
+{
+  "id": "cae6613f56054e4b9fed57a8",
+  "_id": "cae6613f56054e4b9fed57a8",
+  "slug": "domino-cae661"
+}
+Kiểm tra Listening History
+
+Sau khi nghe khoảng 20 giây:
+
+SELECT
+    userId,
+    trackId,
+    lastPosition,
+    duration,
+    completed,
+    lastPlayedAt
+FROM listening_histories
+ORDER BY lastPlayedAt DESC;
+
+Kết quả mong đợi:
+
+lastPosition > 15
+duration > 0
+completed = 0
+
+Khi nghe gần hết:
+
+completed = 1
+29. Acceptance Criteria
+Track Routing
+ Track mở bằng slug đúng.
+ Track mở bằng ID đúng.
+ Không còn URL dùng ID cũ 507b637....
+ id và _id trong response giống nhau.
+ MainSlider không tạo route sai.
+ Audio query hoạt động.
+ Autoplay hoạt động khi có autoplay=1.
+Admin Moderation
+ Admin approve track thành công.
+ Admin reject track thành công.
+ Reject bắt buộc có reason.
+ Reason được lưu và hiển thị lại.
+ Row update ngay không cần reload.
+ Track approve mở được detail.
+ Track pending/rejected không public.
+ Preview audio hoạt động.
+Listening History
+ User đăng nhập nghe track sẽ tạo history.
+ Nghe tiếp sẽ update record cũ.
+ Pause sẽ lưu tiến trình.
+ Mỗi 15 giây sẽ lưu tiến trình.
+ Đổi bài sẽ lưu track trước đó.
+ Kết thúc bài sẽ lưu completed = true.
+ Continue Listening chỉ hiện track chưa nghe xong.
+ Recently Played sắp xếp theo thời gian gần nhất.
+ Because You Listened To loại bài đã nghe.
+ Hidden Gems chỉ trả track APPROVED.
+ User chưa đăng nhập vẫn có localStorage history.
+Homepage
+ Continue Listening hoặc Recently Played hiện khi có dữ liệu.
+ Because You Listened To hiện title động.
+ Hidden Gems hiện cho cả guest.
+ Top NCS/KPOP/POP/LOFI vẫn hoạt động.
+ Slider không dữ liệu sẽ không render.
+ Request không dùng cache cũ.
+30. Kết quả cuối cùng mong muốn
+
+Luồng hoàn chỉnh:
+
+User chọn một track
+        ↓
+Route dùng slug hoặc ID mới
+        ↓
+Track detail mở thành công
+        ↓
+AppFooter hoặc WaveTrack phát audio
+        ↓
+TrackContext cập nhật currentTime và duration
+        ↓
+Frontend lưu tiến trình mỗi 15 giây
+        ↓
+Backend insert/update listening_histories
+        ↓
+Homepage tải dữ liệu theo tài khoản
+        ↓
+Hiển thị:
+- Continue Listening
+- Recently Played
+- Because You Listened To
+- Hidden Gems
+- Top category sliders
+31. Ghi chú kỹ thuật
+Tất cả helper track ID cần ưu tiên id trước _id.
+Không dùng updatedAt để xác định track mới vì lượt phát hoặc thao tác admin có thể cập nhật field này.
+Không gửi progress API mỗi giây.
+Không dùng Admin preview audio làm listening history.
+Track phải APPROVED và isDeleted = false mới xuất hiện public.
+Next.js Server Component request cần cache: "no-store".
+Khi dữ liệu route có vẻ cũ, phải xóa .next.
+Backend hiện chưa dùng service layer riêng cho Track.
+
+

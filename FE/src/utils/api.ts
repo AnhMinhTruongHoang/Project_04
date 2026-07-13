@@ -1294,5 +1294,39 @@ export const getHiddenGemsApi = (limit = 10, maxPlays = 1000) => {
 };
 
 /* =========================
-   NEXT API
+   who to follow API
+========================= */
+export const getWhoToFollowApi = (limit = 12) => {
+  return sendRequest<IBackendRes<IUser[]>>({
+    url:
+      `${process.env.NEXT_PUBLIC_BACKEND_URL}` + `/api/v1/users/who-to-follow`,
+    method: "GET",
+    queryParams: {
+      limit: Math.min(Math.max(limit, 1), 24),
+    },
+    nextOption: {
+      cache: "no-store",
+    },
+  });
+};
+
+/* =========================
+   copyright strike API
+========================= */
+
+export const getMyStudioTracksApi = (accessToken: string) => {
+  return sendRequest<IBackendRes<ITrackTop[]>>({
+    url: `${process.env.NEXT_PUBLIC_BACKEND_URL}` + "/api/v1/tracks/my-tracks",
+    method: "GET",
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+    },
+    nextOption: {
+      cache: "no-store",
+    },
+  });
+};
+
+/* =========================
+
 ========================= */

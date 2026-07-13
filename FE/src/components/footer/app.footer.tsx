@@ -2,7 +2,7 @@
 
 import "react-h5-audio-player/lib/styles.css";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
@@ -22,7 +22,7 @@ import VolumeOffRoundedIcon from "@mui/icons-material/VolumeOffRounded";
 
 import { useTrackContext } from "@/lib/track.wrapper";
 import { useHasMounted } from "@/utils/customHook";
-import { sendRequest } from "@/utils/api";
+import { saveListeningProgressApi, sendRequest } from "@/utils/api";
 import { saveListeningHistory } from "@/utils/actions/history";
 import { getTrackHref, getUserHref } from "@/utils/actions/navigation";
 
@@ -47,6 +47,17 @@ const AppFooter = () => {
   const previousTrackUrlRef = useRef("");
   const previousVolumeRef = useRef(0.5);
   const suppressFooterAudioEventRef = useRef(false);
+  const currentTrackRef = useRef<any>(null);
+
+  const lastProgressSaveRef = useRef<{
+    trackId: string;
+    second: number;
+    completed: boolean;
+  }>({
+    trackId: "",
+    second: -1,
+    completed: false,
+  });
 
   /*
    * Mỗi track detail chỉ tự bỏ mute một lần.
@@ -65,6 +76,13 @@ const AppFooter = () => {
 
   const footerTrack = currentTrack as any;
 
+  const accessToken =
+    (session as any)?.access_token ||
+    (session as any)?.accessToken ||
+    (session as any)?.user?.access_token ||
+    (session as any)?.user?.accessToken ||
+    "";
+
   const isTrackDetailPage = Boolean(pathname?.startsWith("/track/"));
 
   const isWaveControlled =
@@ -79,7 +97,7 @@ const AppFooter = () => {
   const footerDuration = Number(footerTrack?.duration || 0);
 
   const getTrackId = (track?: any) => {
-    return track?._id || track?.id || "";
+    return track?.id || track?._id || "";
   };
 
   const getImageUrl = (imgUrl?: string | null) => {
@@ -175,6 +193,63 @@ const AppFooter = () => {
       setQueueLoading(false);
     }
   };
+
+  const persistListeningProgress = useCallback(
+    async (trackSnapshot?: any, completedOverride?: boolean) => {
+      if (!accessToken || !trackSnapshot) {
+        return;
+      }
+
+      const trackId = trackSnapshot?.id || trackSnapshot?._id || "";
+
+      if (!trackId) {
+        return;
+      }
+
+      const position = Math.max(Number(trackSnapshot.currentTime) || 0, 0);
+
+      const duration = Math.max(Number(trackSnapshot.duration) || 0, 0);
+
+      if (duration <= 0) {
+        return;
+      }
+
+      const completed = completedOverride ?? position / duration >= 0.95;
+
+      const second = Math.floor(position);
+
+      const previous = lastProgressSaveRef.current;
+
+      if (
+        previous.trackId === trackId &&
+        previous.second === second &&
+        previous.completed === completed
+      ) {
+        return;
+      }
+
+      lastProgressSaveRef.current = {
+        trackId,
+        second,
+        completed,
+      };
+
+      try {
+        await saveListeningProgressApi(
+          trackId,
+          {
+            position,
+            duration,
+            completed,
+          },
+          accessToken
+        );
+      } catch (error) {
+        console.error("Cannot save listening progress:", error);
+      }
+    },
+    [accessToken]
+  );
 
   const handleOpenQueue = async (event: React.MouseEvent<HTMLElement>) => {
     setQueueAnchorEl(event.currentTarget);
@@ -289,7 +364,28 @@ const AppFooter = () => {
   };
 
   const handleAudioEnded = async () => {
-    if (!autoplayStation) return;
+    const audio = playerRef.current?.audio?.current;
+
+    const duration = Math.max(
+      Number(audio?.duration) || Number(footerDuration) || 0,
+      0
+    );
+
+    const completedTrack = {
+      ...currentTrack,
+      currentTime: duration,
+      duration,
+      isPlaying: false,
+      source: "footer",
+    };
+
+    setCurrentTrack(completedTrack as any);
+
+    await persistListeningProgress(completedTrack, true);
+
+    if (!autoplayStation) {
+      return;
+    }
 
     await handlePlayNextTrack();
   };
@@ -355,6 +451,90 @@ const AppFooter = () => {
 
     setAppVolume(nextVolume);
   };
+
+  /*
+   * Luôn giữ snapshot mới nhất của track.
+   */
+  useEffect(() => {
+    currentTrackRef.current = currentTrack;
+  }, [currentTrack]);
+
+  /*
+   * Cứ mỗi 15 giây khi đang phát sẽ lưu lên backend.
+   *
+   * Hoạt động cho cả:
+   * - AudioPlayer ở footer
+   * - WaveSurfer ở trang track detail
+   */
+  useEffect(() => {
+    if (!accessToken) {
+      return;
+    }
+
+    const intervalId = window.setInterval(() => {
+      const trackSnapshot = currentTrackRef.current;
+
+      if (!trackSnapshot?.isPlaying) {
+        return;
+      }
+
+      void persistListeningProgress(trackSnapshot);
+    }, 15_000);
+
+    return () => {
+      window.clearInterval(intervalId);
+    };
+  }, [accessToken, persistListeningProgress]);
+
+  /*
+   * Lưu ngay khi pause hoặc bài kết thúc.
+   */
+  useEffect(() => {
+    if (!currentTrack) {
+      return;
+    }
+
+    if (currentTrack.isPlaying !== false) {
+      return;
+    }
+
+    const position = Number((currentTrack as any).currentTime || 0);
+
+    const duration = Number((currentTrack as any).duration || 0);
+
+    if (position <= 0 || duration <= 0) {
+      return;
+    }
+
+    void persistListeningProgress(currentTrack);
+  }, [
+    currentTrack?.isPlaying,
+    (currentTrack as any)?.currentTime,
+    (currentTrack as any)?.duration,
+    (currentTrack as any)?.id,
+    (currentTrack as any)?._id,
+    persistListeningProgress,
+  ]);
+
+  /*
+   * Lưu track cũ khi user đổi sang track khác
+   * hoặc AppFooter bị unmount.
+   */
+  useEffect(() => {
+    return () => {
+      const trackSnapshot = currentTrackRef.current;
+
+      if (!trackSnapshot) {
+        return;
+      }
+
+      void persistListeningProgress(trackSnapshot);
+    };
+  }, [
+    (currentTrack as any)?.id,
+    (currentTrack as any)?._id,
+    persistListeningProgress,
+  ]);
 
   /*
    * Lưu lịch sử nghe.
@@ -938,6 +1118,31 @@ const AppFooter = () => {
               ref={playerRef}
               layout="horizontal-reverse"
               showSkipControls
+              /// listening history props
+              listenInterval={1000}
+              onListen={(event: any) => {
+                const audio =
+                  event?.currentTarget || playerRef.current?.audio?.current;
+
+                if (!audio || !currentTrack) {
+                  return;
+                }
+
+                const currentTime = Math.max(Number(audio.currentTime) || 0, 0);
+
+                const duration = Math.max(Number(audio.duration) || 0, 0);
+
+                setCurrentTrack({
+                  ...currentTrack,
+                  currentTime,
+                  duration,
+                  isPlaying: !audio.paused,
+                  source: "footer",
+                  seekTime: undefined,
+                  seekId: undefined,
+                } as any);
+              }}
+              ///
               customAdditionalControls={[
                 <IconButton
                   key="shuffle"
@@ -995,7 +1200,7 @@ const AppFooter = () => {
                   source: "footer",
                 } as any);
               }}
-              onPause={() => {
+              onPause={(event: any) => {
                 if (suppressFooterAudioEventRef.current) {
                   return;
                 }
@@ -1004,11 +1209,20 @@ const AppFooter = () => {
                   return;
                 }
 
-                setCurrentTrack({
+                const audio =
+                  event?.currentTarget || playerRef.current?.audio?.current;
+
+                const nextTrack = {
                   ...currentTrack,
                   isPlaying: false,
+                  currentTime: Number(audio?.currentTime) || 0,
+                  duration: Number(audio?.duration) || 0,
                   source: "footer",
-                } as any);
+                };
+
+                setCurrentTrack(nextTrack as any);
+
+                void persistListeningProgress(nextTrack);
               }}
             />
           )}

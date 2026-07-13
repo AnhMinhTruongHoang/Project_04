@@ -521,7 +521,7 @@ const AppHeader = () => {
         <MenuItem
           onClick={() => {
             setAnchorEl(null);
-            router.push("/following");
+            router.push("/people");
           }}
         >
           <GroupsRoundedIcon fontSize="small" />

@@ -29,6 +29,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import com.example.demo.dtos.CreateAlbumDTO;
 import com.example.demo.dtos.CreateCommentDTO;
+import com.example.demo.dtos.ListeningProgressDTO;
 import com.example.demo.dtos.TrackDTO;
 import com.example.demo.dtos.UserDTO;
 import com.example.demo.entities.Category;
@@ -1496,5 +1497,104 @@ public class TrackController {
 									null));
 		}
 	}
+
+	/// api listening history
+
+	@PostMapping("/{trackId}/history")
+	public ResponseEntity<?> saveListeningHistory(
+			@PathVariable String trackId,
+			@RequestBody(required = false) ListeningProgressDTO dto,
+			HttpServletRequest request) {
+
+		try {
+			User user = getCurrentUser(request);
+
+			if (user == null) {
+				return ResponseEntity
+						.status(401)
+						.body(new ApiResponse<>(
+								401,
+								"Unauthorized",
+								null));
+			}
+
+			Track track = trackRepository
+					.findById(trackId)
+					.orElse(null);
+
+			if (track == null
+					|| Boolean.TRUE.equals(track.getIsDeleted())
+					|| !isApproved(track)) {
+				return ResponseEntity
+						.status(404)
+						.body(new ApiResponse<>(
+								404,
+								"Track not found",
+								null));
+			}
+
+			double position = dto == null || dto.getPosition() == null
+					? 0
+					: Math.max(dto.getPosition(), 0);
+
+			double duration = dto == null || dto.getDuration() == null
+					? 0
+					: Math.max(dto.getDuration(), 0);
+
+			if (duration > 0) {
+				position = Math.min(position, duration);
+			}
+
+			boolean completed = dto != null
+					&& Boolean.TRUE.equals(dto.getCompleted());
+
+			if (!completed
+					&& duration > 0
+					&& position / duration >= 0.95) {
+				completed = true;
+			}
+
+			LocalDateTime now = LocalDateTime.now();
+
+			ListeningHistory history = listeningHistoryRepository
+					.findByUserIdAndTrackId(
+							user.getId(),
+							trackId)
+					.orElse(null);
+
+			if (history == null) {
+				history = new ListeningHistory();
+
+				history.setUserId(user.getId());
+				history.setTrackId(trackId);
+				history.setCreatedAt(now);
+			}
+
+			history.setLastPosition(position);
+			history.setDuration(duration);
+			history.setCompleted(completed);
+			history.setLastPlayedAt(now);
+			history.setUpdatedAt(now);
+
+			ListeningHistory saved = listeningHistoryRepository.save(history);
+
+			return ResponseEntity.ok(
+					new ApiResponse<>(
+							200,
+							"Listening history saved",
+							toListeningHistoryResponse(saved)));
+
+		} catch (Exception e) {
+			e.printStackTrace();
+
+			return ResponseEntity
+					.status(500)
+					.body(new ApiResponse<>(
+							500,
+							e.getMessage(),
+							null));
+		}
+	}
+	///
 
 }

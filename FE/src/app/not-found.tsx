@@ -170,8 +170,9 @@ export default function NotFound() {
             lineHeight: 1.7,
           }}
         >
-          Trang bạn đang tìm kiếm không tồn tại hoặc đã bị thay đổi đường dẫn.
-          Hãy quay về trang chủ để tiếp tục nghe nhạc.
+          The page you are looking for does not exist or has had its link
+          changed. Please return to the home page to continue listening to
+          music.
         </Typography>
 
         <Button

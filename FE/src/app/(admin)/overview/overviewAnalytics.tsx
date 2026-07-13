@@ -17,7 +17,6 @@ import {
 } from "recharts";
 import { OverviewStatsData } from "./overviewStats";
 
-
 type AnyRecord = Record<string, any>;
 
 type Props = {

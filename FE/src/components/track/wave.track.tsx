@@ -72,11 +72,11 @@ const WaveTrack = (props: IProps) => {
   };
 
   const getTrackId = () => {
-    return (track as any)?._id || (track as any)?.id || "";
+    return (track as any)?.id || (track as any)?._id || "";
   };
 
   const getCurrentTrackId = () => {
-    return (currentTrack as any)?._id || (currentTrack as any)?.id || "";
+    return (currentTrack as any)?.id || (currentTrack as any)?._id || "";
   };
 
   const getImageUrl = (imgUrl?: string | null) => {
@@ -290,6 +290,31 @@ const WaveTrack = (props: IProps) => {
           source: "wave",
           currentTime: wavesurfer.getCurrentTime() ?? 0,
           duration: wavesurfer.getDuration() ?? 0,
+
+          volume: volumeState.volume,
+          muted: volumeState.muted,
+          volumeId: volumeState.volumeId,
+
+          seekTime: undefined,
+          seekId: undefined,
+        } as any);
+      }),
+
+      wavesurfer.on("finish", () => {
+        const finishedDuration = wavesurfer.getDuration() || 0;
+
+        setIsPlaying(false);
+        setTime(formatTime(finishedDuration));
+
+        const volumeState = getSyncedVolumeState();
+
+        setCurrentTrack({
+          ...track,
+          isPlaying: false,
+          source: "wave",
+          currentTime: finishedDuration,
+          duration: finishedDuration,
+          completed: true,
 
           volume: volumeState.volume,
           muted: volumeState.muted,

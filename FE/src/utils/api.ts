@@ -1227,3 +1227,72 @@ export const revalidateApi = (tag: string) => {
     },
   });
 };
+
+/* =========================
+   MAIN SLIDERS API
+========================= */
+export const saveListeningProgressApi = (
+  trackId: string,
+  payload: ListeningProgressPayload,
+  accessToken?: string
+) => {
+  return sendRequest<IBackendRes<IListeningHistoryItem>>({
+    url: `/api/v1/tracks/${encodeURIComponent(trackId)}/history`,
+    method: "POST",
+    body: {
+      position: Math.max(Number(payload.position) || 0, 0),
+      duration: Math.max(Number(payload.duration) || 0, 0),
+      completed: Boolean(payload.completed),
+    },
+    headers: authHeaders(accessToken),
+  });
+};
+
+export const getHomeListeningHistoryApi = (
+  accessToken?: string,
+  limit = 10
+) => {
+  return sendRequest<IBackendRes<IHomeListeningHistoryData>>({
+    url: "/api/v1/tracks/history/home",
+    method: "GET",
+    queryParams: {
+      limit: Math.min(Math.max(limit, 1), 20),
+    },
+    headers: authHeaders(accessToken),
+    nextOption: {
+      cache: "no-store",
+    },
+  });
+};
+
+export const getBecauseYouListenedApi = (accessToken?: string, limit = 10) => {
+  return sendRequest<IBackendRes<IBecauseYouListenedData>>({
+    url: "/api/v1/tracks/because-you-listened",
+    method: "GET",
+    queryParams: {
+      limit: Math.min(Math.max(limit, 1), 20),
+    },
+    headers: authHeaders(accessToken),
+    nextOption: {
+      cache: "no-store",
+    },
+  });
+};
+
+export const getHiddenGemsApi = (limit = 10, maxPlays = 1000) => {
+  return sendRequest<IBackendRes<ITrackTop[]>>({
+    url: "/api/v1/tracks/hidden-gems",
+    method: "GET",
+    queryParams: {
+      limit: Math.min(Math.max(limit, 1), 20),
+      maxPlays: Math.max(maxPlays, 0),
+    },
+    nextOption: {
+      cache: "no-store",
+    },
+  });
+};
+
+/* =========================
+   NEXT API
+========================= */

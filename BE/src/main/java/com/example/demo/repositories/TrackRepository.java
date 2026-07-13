@@ -5,6 +5,8 @@ import java.util.List;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 import com.example.demo.entities.Track;
 
@@ -56,4 +58,40 @@ public interface TrackRepository extends JpaRepository<Track, String> {
 
 	Track findFirstByAudioHashAndIsDeletedFalse(
 			String audioHash);
+
+	//// slider playlist (Hidden Gems sẽ ưu tiên bài ít lượt nghe nhưng có lượt
+	//// thích tốt, sau đó ưu tiên bài mới hơn.)
+	@Query("SELECT t FROM Track t " +
+			"WHERE t.categoryId = :categoryId " +
+			"AND t.isDeleted = false " +
+			"AND t.approvalStatus = :approvalStatus " +
+			"AND t.id NOT IN :excludedIds " +
+			"ORDER BY " +
+			"COALESCE(t.countLike, 0) DESC, " +
+			"COALESCE(t.countPlay, 0) DESC, " +
+			"t.createdAt DESC")
+	List<Track> findRecommendedByCategory(
+			@Param("categoryId") String categoryId,
+
+			@Param("approvalStatus") String approvalStatus,
+
+			@Param("excludedIds") List<String> excludedIds,
+
+			Pageable pageable);
+
+	@Query("SELECT t FROM Track t " +
+			"WHERE t.isDeleted = false " +
+			"AND t.approvalStatus = :approvalStatus " +
+			"AND COALESCE(t.countPlay, 0) <= :maxPlays " +
+			"ORDER BY " +
+			"COALESCE(t.countLike, 0) DESC, " +
+			"COALESCE(t.countPlay, 0) ASC, " +
+			"t.createdAt DESC")
+	List<Track> findHiddenGems(
+			@Param("approvalStatus") String approvalStatus,
+
+			@Param("maxPlays") Integer maxPlays,
+
+			Pageable pageable);
+	///
 }

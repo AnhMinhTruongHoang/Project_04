@@ -1,0 +1,15 @@
+User bấm phát
+    ↓
+AppFooter hoặc WaveTrack phát audio
+    ↓
+currentTrack cập nhật currentTime + duration
+    ↓
+15 giây gửi một lần lên backend
+    ↓
+listening_histories được insert/update
+    ↓
+Trang chủ gọi history/home
+    ↓
+Hiện Continue Listening / Recently Played
+    ↓
+because-you-listened dùng lịch sử để đề xuất

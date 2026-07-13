@@ -279,6 +279,33 @@ declare global {
     audioUrl?: string;
   }
 
+  interface IListeningHistoryItem {
+    track: ITrackTop;
+
+    lastPosition: number;
+    duration: number;
+    progress: number;
+    completed: boolean;
+
+    lastPlayedAt?: string;
+  }
+
+  interface IHomeListeningHistoryData {
+    continueListening: IListeningHistoryItem[];
+    recentlyPlayed: IListeningHistoryItem[];
+  }
+
+  interface IBecauseYouListenedData {
+    basedOn: ITrackTop | null;
+    result: ITrackTop[];
+  }
+
+  type ListeningProgressPayload = {
+    position: number;
+    duration: number;
+    completed?: boolean;
+  };
+
   type CreateTrackPayload = {
     title: string;
     description: string;

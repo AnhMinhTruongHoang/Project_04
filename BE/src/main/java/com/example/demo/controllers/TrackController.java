@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.text.Normalizer;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -32,6 +33,7 @@ import com.example.demo.dtos.TrackDTO;
 import com.example.demo.dtos.UserDTO;
 import com.example.demo.entities.Category;
 import com.example.demo.entities.Comment;
+import com.example.demo.entities.ListeningHistory;
 import com.example.demo.entities.Playlist;
 import com.example.demo.entities.Track;
 import com.example.demo.entities.User;
@@ -40,6 +42,7 @@ import com.example.demo.helpers.FileHelper;
 import com.example.demo.helpers.JwtHelper;
 import com.example.demo.repositories.CategoryRepository;
 import com.example.demo.repositories.CommentRepository;
+import com.example.demo.repositories.ListeningHistoryRepository;
 import com.example.demo.repositories.TrackRepository;
 import com.example.demo.repositories.UserRepository;
 
@@ -71,6 +74,9 @@ public class TrackController {
 
 	@Autowired
 	private CategoryRepository categoryRepository;
+
+	@Autowired
+	private ListeningHistoryRepository listeningHistoryRepository;
 
 	@Value("${images_url}")
 	private String imagesUrl;
@@ -1156,5 +1162,339 @@ public class TrackController {
 					e);
 		}
 	}
-	///
+
+	/// history helper
+	private Map<String, Object> toListeningHistoryResponse(
+			ListeningHistory history) {
+
+		if (history == null) {
+			return null;
+		}
+
+		Track track = trackRepository
+				.findById(history.getTrackId())
+				.orElse(null);
+
+		if (track == null
+				|| Boolean.TRUE.equals(
+						track.getIsDeleted())
+				|| !isApproved(track)) {
+
+			return null;
+		}
+
+		double position = history.getLastPosition() == null
+				? 0
+				: history.getLastPosition();
+
+		double duration = history.getDuration() == null
+				? 0
+				: history.getDuration();
+
+		double progress = duration > 0
+				? Math.min(
+						position / duration,
+						1)
+				: 0;
+
+		Map<String, Object> result = new LinkedHashMap<>();
+
+		result.put(
+				"track",
+				toTrackDTO(track));
+
+		result.put(
+				"lastPosition",
+				position);
+
+		result.put(
+				"duration",
+				duration);
+
+		result.put(
+				"progress",
+				progress);
+
+		result.put(
+				"completed",
+				Boolean.TRUE.equals(
+						history.getCompleted()));
+
+		result.put(
+				"lastPlayedAt",
+				history.getLastPlayedAt());
+
+		return result;
+	}
+
+	/// API Continue Listening và Recently Played
+	@GetMapping("/history/home")
+	public ResponseEntity<?> getHomeListeningHistory(
+			@RequestParam(defaultValue = "10") int limit,
+			HttpServletRequest request) {
+
+		try {
+			User user = getCurrentUser(request);
+
+			if (user == null) {
+				return ResponseEntity
+						.status(401)
+						.body(
+								new ApiResponse<>(
+										401,
+										"Unauthorized",
+										null));
+			}
+
+			int safeLimit = Math.min(
+					Math.max(limit, 1),
+					20);
+
+			List<ListeningHistory> continueRows = listeningHistoryRepository
+					.findByUserIdAndCompletedFalseOrderByLastPlayedAtDesc(
+							user.getId(),
+							PageRequest.of(
+									0,
+									safeLimit * 3));
+
+			List<Map<String, Object>> continueListening = new ArrayList<>();
+
+			for (ListeningHistory history : continueRows) {
+				double position = history.getLastPosition() == null
+						? 0
+						: history.getLastPosition();
+
+				double duration = history.getDuration() == null
+						? 0
+						: history.getDuration();
+
+				if (position < 5
+						|| duration <= 0
+						|| position / duration >= 0.95) {
+					continue;
+				}
+
+				Map<String, Object> item = toListeningHistoryResponse(
+						history);
+
+				if (item != null) {
+					continueListening.add(item);
+				}
+
+				if (continueListening.size() >= safeLimit) {
+					break;
+				}
+			}
+
+			List<ListeningHistory> recentRows = listeningHistoryRepository
+					.findByUserIdOrderByLastPlayedAtDesc(
+							user.getId(),
+							PageRequest.of(
+									0,
+									safeLimit * 2));
+
+			List<Map<String, Object>> recentlyPlayed = new ArrayList<>();
+
+			for (ListeningHistory history : recentRows) {
+				Map<String, Object> item = toListeningHistoryResponse(
+						history);
+
+				if (item != null) {
+					recentlyPlayed.add(item);
+				}
+
+				if (recentlyPlayed.size() >= safeLimit) {
+					break;
+				}
+			}
+
+			Map<String, Object> data = new LinkedHashMap<>();
+
+			data.put(
+					"continueListening",
+					continueListening);
+
+			data.put(
+					"recentlyPlayed",
+					recentlyPlayed);
+
+			return ResponseEntity.ok(
+					new ApiResponse<>(
+							200,
+							"Fetch home listening history",
+							data));
+
+		} catch (Exception e) {
+			e.printStackTrace();
+
+			return ResponseEntity
+					.status(500)
+					.body(
+							new ApiResponse<>(
+									500,
+									e.getMessage(),
+									null));
+		}
+	}
+
+	/// API Because You Listened To
+	@GetMapping("/because-you-listened")
+	public ResponseEntity<?> getBecauseYouListened(
+			@RequestParam(defaultValue = "10") int limit,
+			HttpServletRequest request) {
+
+		try {
+			User user = getCurrentUser(request);
+
+			if (user == null) {
+				return ResponseEntity
+						.status(401)
+						.body(
+								new ApiResponse<>(
+										401,
+										"Unauthorized",
+										null));
+			}
+
+			int safeLimit = Math.min(
+					Math.max(limit, 1),
+					20);
+
+			List<ListeningHistory> histories = listeningHistoryRepository
+					.findByUserIdOrderByLastPlayedAtDesc(
+							user.getId(),
+							PageRequest.of(0, 50));
+
+			Track basedOnTrack = null;
+
+			List<String> excludedIds = new ArrayList<>();
+
+			for (ListeningHistory history : histories) {
+				if (history.getTrackId() != null) {
+					excludedIds.add(
+							history.getTrackId());
+				}
+
+				if (basedOnTrack != null) {
+					continue;
+				}
+
+				Track candidate = trackRepository
+						.findById(
+								history.getTrackId())
+						.orElse(null);
+
+				if (candidate != null
+						&& !Boolean.TRUE.equals(
+								candidate.getIsDeleted())
+						&& isApproved(candidate)
+						&& candidate.getCategoryId() != null
+						&& !candidate
+								.getCategoryId()
+								.isBlank()) {
+					basedOnTrack = candidate;
+				}
+			}
+
+			Map<String, Object> data = new LinkedHashMap<>();
+
+			if (basedOnTrack == null) {
+				data.put("basedOn", null);
+				data.put(
+						"result",
+						new ArrayList<>());
+
+				return ResponseEntity.ok(
+						new ApiResponse<>(
+								200,
+								"Not enough listening history",
+								data));
+			}
+
+			if (excludedIds.isEmpty()) {
+				excludedIds.add(
+						basedOnTrack.getId());
+			}
+
+			List<Track> recommendations = trackRepository
+					.findRecommendedByCategory(
+							basedOnTrack
+									.getCategoryId(),
+							TRACK_APPROVED,
+							excludedIds,
+							PageRequest.of(
+									0,
+									safeLimit));
+
+			data.put(
+					"basedOn",
+					toTrackDTO(basedOnTrack));
+
+			data.put(
+					"result",
+					toTrackDTOList(
+							recommendations));
+
+			return ResponseEntity.ok(
+					new ApiResponse<>(
+							200,
+							"Fetch recommendations",
+							data));
+
+		} catch (Exception e) {
+			e.printStackTrace();
+
+			return ResponseEntity
+					.status(500)
+					.body(
+							new ApiResponse<>(
+									500,
+									e.getMessage(),
+									null));
+		}
+	}
+
+	/// API Hidden Gems
+	@GetMapping("/hidden-gems")
+	public ResponseEntity<?> getHiddenGems(
+			@RequestParam(defaultValue = "10") int limit,
+
+			@RequestParam(defaultValue = "1000") int maxPlays) {
+
+		try {
+			int safeLimit = Math.min(
+					Math.max(limit, 1),
+					20);
+
+			int safeMaxPlays = Math.max(
+					maxPlays,
+					0);
+
+			List<Track> tracks = trackRepository
+					.findHiddenGems(
+							TRACK_APPROVED,
+							safeMaxPlays,
+							PageRequest.of(
+									0,
+									safeLimit));
+
+			return ResponseEntity.ok(
+					new ApiResponse<>(
+							200,
+							"Fetch hidden gems",
+							toTrackDTOList(tracks)));
+
+		} catch (Exception e) {
+			e.printStackTrace();
+
+			return ResponseEntity
+					.status(500)
+					.body(
+							new ApiResponse<>(
+									500,
+									e.getMessage(),
+									null));
+		}
+	}
+
 }

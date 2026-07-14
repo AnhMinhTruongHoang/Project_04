@@ -12,8 +12,6 @@ import CloudUploadRoundedIcon from "@mui/icons-material/CloudUploadRounded";
 import WorkspacePremiumRoundedIcon from "@mui/icons-material/WorkspacePremiumRounded";
 import ErrorOutlineRoundedIcon from "@mui/icons-material/ErrorOutlineRounded";
 
-import type { IMySubscriptionData, SubscriptionPlanCode } from "@/utils/api";
-
 type Props = {
   data: IMySubscriptionData | null;
   loading?: boolean;

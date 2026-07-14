@@ -6,10 +6,7 @@ import { useSession } from "next-auth/react";
 
 import { Box, Typography } from "@mui/material";
 
-import { getMySubscriptionApi, type IMySubscriptionData } from "@/utils/api";
-
 import {
-  studioBenefits,
   studioTabs,
   type StudioTab,
 } from "../../../../utils/actions/artistStudioData";
@@ -20,6 +17,7 @@ import StudioTabs from "./studioTabs";
 import StudioActions from "./studioActions";
 import ArtistTracksTable from "./artistTracksTable";
 import ArtistBenefits from "./artistBenefits";
+import { getArtistBenefitsApi, getMySubscriptionApi } from "@/utils/api";
 
 const ArtistStudioView = () => {
   const { data: session, status: sessionStatus } = useSession();
@@ -32,6 +30,12 @@ const ArtistStudioView = () => {
   const [subscriptionLoading, setSubscriptionLoading] = useState(true);
 
   const [subscriptionError, setSubscriptionError] = useState("");
+
+  const [benefits, setBenefits] = useState<IArtistBenefit[]>([]);
+
+  const [benefitsLoading, setBenefitsLoading] = useState(true);
+
+  const [benefitsError, setBenefitsError] = useState("");
 
   const accessToken =
     (session as any)?.access_token ||
@@ -50,6 +54,7 @@ const ArtistStudioView = () => {
     const loadSubscription = async () => {
       if (!accessToken) {
         setSubscriptionData(null);
+
         setSubscriptionLoading(false);
 
         setSubscriptionError("Please login to view your subscription.");
@@ -59,6 +64,7 @@ const ArtistStudioView = () => {
 
       try {
         setSubscriptionLoading(true);
+
         setSubscriptionError("");
 
         const response = await getMySubscriptionApi(accessToken);
@@ -83,7 +89,7 @@ const ArtistStudioView = () => {
 
         setSubscriptionData(response.data);
       } catch (error) {
-        console.error("Cannot load Artist Studio subscription:", error);
+        console.error("Cannot load subscription:", error);
 
         if (!cancelled) {
           setSubscriptionData(null);
@@ -98,6 +104,57 @@ const ArtistStudioView = () => {
     };
 
     void loadSubscription();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [accessToken, sessionStatus]);
+
+  useEffect(() => {
+    if (sessionStatus === "loading") {
+      return;
+    }
+
+    let cancelled = false;
+
+    const loadBenefits = async () => {
+      try {
+        setBenefitsLoading(true);
+        setBenefitsError("");
+
+        const response = await getArtistBenefitsApi(accessToken);
+
+        if (cancelled) {
+          return;
+        }
+
+        if (response?.error || Number(response?.statusCode) >= 400) {
+          setBenefits([]);
+
+          setBenefitsError(
+            response?.message || "Cannot load membership benefits."
+          );
+
+          return;
+        }
+
+        setBenefits(Array.isArray(response?.data) ? response.data : []);
+      } catch (error) {
+        console.error("Cannot load Artist Studio benefits:", error);
+
+        if (!cancelled) {
+          setBenefits([]);
+
+          setBenefitsError("Cannot load membership benefits.");
+        }
+      } finally {
+        if (!cancelled) {
+          setBenefitsLoading(false);
+        }
+      }
+    };
+
+    void loadBenefits();
 
     return () => {
       cancelled = true;
@@ -196,7 +253,7 @@ const ArtistStudioView = () => {
                   fontWeight: 700,
                 }}
               >
-                This section will be connected to real data later.
+                This section is not available yet.
               </Typography>
             </Box>
           </Box>
@@ -206,8 +263,9 @@ const ArtistStudioView = () => {
       <Box sx={{ mt: 4 }}>
         <ArtistBenefits
           plan={subscriptionData?.plan || null}
-          loading={subscriptionLoading}
-          benefits={studioBenefits}
+          loading={benefitsLoading || subscriptionLoading}
+          error={benefitsError}
+          benefits={benefits}
         />
       </Box>
     </Box>

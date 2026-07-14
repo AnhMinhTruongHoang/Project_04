@@ -28,9 +28,6 @@ import {
   changeSubscriptionPlanApi,
   getMySubscriptionApi,
   getSubscriptionPlansApi,
-  type IMySubscriptionData,
-  type ISubscriptionPlan,
-  type SubscriptionPlanCode,
 } from "@/utils/api";
 
 type NoticeState = {

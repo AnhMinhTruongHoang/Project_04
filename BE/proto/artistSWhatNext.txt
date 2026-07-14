@@ -1,0 +1,27 @@
+Đã hoàn thành ✅
+Quản lý track thật từ API.
+Hiển thị APPROVED, PENDING, REJECTED.
+Hiển thị lý do admin từ chối, copyright status và audio hash.
+Trang /plans lấy plan từ backend.
+Đổi plan và hủy cuối kỳ.
+Upload quota theo BASIC, ARTIST, ARTIST_PRO.
+Chặn upload vượt quota ở backend.
+Lưu track và cộng quota trong cùng transaction.
+Chống hai upload đồng thời vượt quota.
+Đổi plan không reset usage.
+Khóa/mở Distribution, Monetization, Stats, Benefits theo plan.
+Đã loại bỏ AI Mastering.
+Chưa hoàn thiện ⚠️
+
+Trong source hiện tại, các tab ngoài Tracks vẫn đang là placeholder.
+
+Distribution: chưa có màn hình và nghiệp vụ thật.
+Monetization: mới phân quyền, chưa có workspace.
+Artist Studio Stats: quyền đã khóa/mở nhưng số liệu như repost, download, earnings, fans chưa lấy từ API thật.
+Benefits: vẫn dùng danh sách benefit hard-code.
+Schedule release: mới có quyền trong plan, chưa có chức năng đặt lịch.
+Quản lý subscription: chưa có dialog hủy gói, ngày gia hạn và lịch sử gói đầy đủ.
+Payment thật, webhook và hóa đơn chưa làm.
+Nên refresh quota ngay sau upload thành công thay vì đợi reload trang.
+Cần test lại upload, đổi gói, hạ gói và hết hạn theo toàn bộ flow.
+Kết luận

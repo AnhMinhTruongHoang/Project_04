@@ -1331,63 +1331,6 @@ export const getMyStudioTracksApi = (accessToken: string) => {
    SUBSCRIPTION APIs
 ========================= */
 
-export type SubscriptionPlanCode = "BASIC" | "ARTIST" | "ARTIST_PRO";
-
-export type SubscriptionStatus = "ACTIVE" | "EXPIRED" | "CANCELED" | "PENDING";
-
-export interface ISubscriptionPlan {
-  id: string;
-  code: SubscriptionPlanCode;
-  name: string;
-  description: string;
-
-  monthlyPrice: number;
-
-  uploadMinutesLimit: number;
-  unlimitedUploads: boolean;
-
-  advancedInsightsDays: number;
-
-  canDistribute: boolean;
-  canMonetize: boolean;
-  canScheduleRelease: boolean;
-  hasMembershipBenefits: boolean;
-
-  isActive: boolean;
-}
-
-export interface IUserSubscription {
-  id: string;
-  status: SubscriptionStatus;
-
-  startedAt?: string;
-  currentPeriodStart?: string;
-  currentPeriodEnd?: string;
-
-  cancelAtPeriodEnd: boolean;
-}
-
-export interface ISubscriptionUsage {
-  uploadedSeconds: number;
-  uploadedMinutes: number;
-
-  limitMinutes: number;
-  remainingMinutes: number;
-
-  percentage: number;
-  unlimited: boolean;
-}
-
-export interface IMySubscriptionData {
-  plan: ISubscriptionPlan;
-  subscription: IUserSubscription;
-  usage: ISubscriptionUsage;
-}
-
-export interface ISubscribePlanPayload {
-  planCode: SubscriptionPlanCode;
-}
-
 export const getSubscriptionPlansApi = () => {
   return sendRequest<IBackendRes<ISubscriptionPlan[]>>({
     url: "/api/v1/subscriptions/plans",
@@ -1456,6 +1399,22 @@ export const cancelSubscriptionApi = (accessToken?: string) => {
   });
 };
 
+/* =========================
+Benefits
+========================= */
+
+export const getArtistBenefitsApi = (accessToken?: string) => {
+  return sendRequest<IBackendRes<IArtistBenefit[]>>({
+    url: "/api/v1/artist-studio/benefits",
+    method: "GET",
+
+    headers: authHeaders(accessToken),
+
+    nextOption: {
+      cache: "no-store",
+    },
+  });
+};
 /* =========================
 
 ========================= */

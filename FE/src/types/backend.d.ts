@@ -507,7 +507,7 @@ declare global {
 
   /// upload
 
-  export type TrackUploadState = {
+  type TrackUploadState = {
     fileName: string;
     percent: number;
     uploadedTrackName: string;
@@ -569,4 +569,72 @@ declare global {
     description?: string;
     isDeleted?: boolean;
   }
+
+  interface IArtistBenefit {
+    id: string;
+    title: string;
+    description?: string;
+    saveLabel?: string;
+    imageUrl?: string | null;
+  }
+
+  interface IMySubscriptionData {
+    plan: ISubscriptionPlan;
+    subscription: IUserSubscription;
+    usage: ISubscriptionUsage;
+  }
+
+  interface ISubscribePlanPayload {
+    planCode: SubscriptionPlanCode;
+  }
+  ///subscriptions
+
+  type SubscriptionPlanCode = "BASIC" | "ARTIST" | "ARTIST_PRO";
+
+  type SubscriptionStatus = "ACTIVE" | "EXPIRED" | "CANCELED" | "PENDING";
+
+  interface ISubscriptionPlan {
+    id: string;
+    code: SubscriptionPlanCode;
+    name: string;
+    description: string;
+
+    monthlyPrice: number;
+
+    uploadMinutesLimit: number;
+    unlimitedUploads: boolean;
+
+    advancedInsightsDays: number;
+
+    canDistribute: boolean;
+    canMonetize: boolean;
+    canScheduleRelease: boolean;
+    hasMembershipBenefits: boolean;
+
+    isActive: boolean;
+  }
+
+  interface IUserSubscription {
+    id: string;
+    status: SubscriptionStatus;
+
+    startedAt?: string;
+    currentPeriodStart?: string;
+    currentPeriodEnd?: string;
+
+    cancelAtPeriodEnd: boolean;
+  }
+
+  interface ISubscriptionUsage {
+    uploadedSeconds: number;
+    uploadedMinutes: number;
+
+    limitMinutes: number;
+    remainingMinutes: number;
+
+    percentage: number;
+    unlimited: boolean;
+  }
+
+  ///
 }

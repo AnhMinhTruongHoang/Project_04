@@ -19,8 +19,6 @@ import AttachMoneyRoundedIcon from "@mui/icons-material/AttachMoneyRounded";
 import LockRoundedIcon from "@mui/icons-material/LockRounded";
 import WorkspacePremiumRoundedIcon from "@mui/icons-material/WorkspacePremiumRounded";
 
-import type { ISubscriptionPlan } from "@/utils/api";
-
 type Props = {
   plan: ISubscriptionPlan | null;
   loading?: boolean;

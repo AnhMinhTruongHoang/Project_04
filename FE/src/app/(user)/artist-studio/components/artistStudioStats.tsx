@@ -20,8 +20,6 @@ import RepeatRoundedIcon from "@mui/icons-material/RepeatRounded";
 import PlayCircleFilledRoundedIcon from "@mui/icons-material/PlayCircleFilledRounded";
 import LockRoundedIcon from "@mui/icons-material/LockRounded";
 
-import type { ISubscriptionPlan, SubscriptionPlanCode } from "@/utils/api";
-
 type ArtistStudioStatsData = {
   plays: number;
   reposts: number;

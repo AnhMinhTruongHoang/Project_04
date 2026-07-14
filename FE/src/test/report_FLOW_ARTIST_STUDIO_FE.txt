@@ -1,0 +1,1447 @@
+============================================================
+BÁO CÁO CHI TIẾT FLOW ARTIST STUDIO - FRONTEND
+Dự án: SoundClone
+Ngày cập nhật: 14/07/2026
+============================================================
+
+MỤC LỤC
+
+I. Mục tiêu của Artist Studio
+II. Phạm vi đã triển khai
+III. Cấu trúc frontend
+IV. Nguồn dữ liệu và API đang sử dụng
+V. Flow hoạt động của trang /artist-studio
+VI. Chi tiết từng component
+VII. Phân quyền theo subscription plan
+VIII. Flow upload và cập nhật quota
+IX. Flow Benefits và trang quản trị Benefits
+X. Hướng dẫn test API bằng Postman
+XI. Checklist test frontend
+XII. Các lỗi đã gặp và cách xử lý
+XIII. Các vấn đề còn tồn tại
+XIV. Thứ tự phát triển tiếp theo
+XV. Kết luận
+
+
+============================================================
+I. MỤC TIÊU CỦA ARTIST STUDIO
+============================================================
+
+Artist Studio là khu vực dành cho artist quản lý hoạt động âm nhạc của mình.
+
+Mục tiêu chính:
+
+1. Quản lý các track đã upload.
+2. Hiển thị trạng thái kiểm duyệt và copyright.
+3. Theo dõi quota upload theo subscription plan.
+4. Hiển thị thống kê tổng hợp của artist.
+5. Phân quyền Distribution, Monetization, Insights và Benefits.
+6. Hiển thị quyền hiện tại của BASIC, ARTIST và ARTIST_PRO.
+7. Cho phép admin quản lý Artist Pro Membership Benefits.
+8. Chuẩn bị nền tảng cho payment, distribution và monetization thật.
+9. Không triển khai AI Mastering trong phạm vi hiện tại.
+
+
+============================================================
+II. PHẠM VI ĐÃ TRIỂN KHAI
+============================================================
+
+1. Trang Artist Studio
+
+Route:
+
+/artist-studio
+
+Các phần đã có:
+
+- UploadQuotaBar
+- ArtistStudioStats
+- StudioTabs
+- StudioActions
+- ArtistTracksTable
+- ArtistBenefits
+
+2. Trang Plans
+
+Route:
+
+/plans
+
+Chức năng:
+
+- Lấy danh sách plan từ backend.
+- Lấy subscription hiện tại.
+- Hiển thị BASIC, ARTIST, ARTIST_PRO.
+- Đổi plan trong chế độ test.
+- Hủy subscription cuối kỳ.
+- So sánh quyền giữa các plan.
+
+3. Trang Admin Benefits
+
+Route:
+
+/dashboard/benefits
+
+Chức năng:
+
+- Xem toàn bộ benefits.
+- Thêm benefit.
+- Sửa benefit.
+- Bật hoặc ẩn benefit.
+- Xóa benefit.
+- Sắp xếp bằng sortOrder.
+- Hiển thị ảnh từ backend.
+- Cho phép imageUrl để trống.
+
+4. Track table
+
+Nguồn dữ liệu:
+
+GET /api/v1/tracks/my-tracks
+
+Chức năng:
+
+- Lấy track của user hiện tại.
+- Hiển thị APPROVED, PENDING, REJECTED.
+- Hiển thị processingStatus.
+- Hiển thị copyrightStatus.
+- Hiển thị admin note hoặc rejectionReason.
+- Hiển thị SHA-256 audioHash.
+- Hiển thị countPlay.
+- Tìm kiếm theo title, hash hoặc admin note.
+- Lọc All, Public, Private, Rejected.
+
+5. Subscription và quota
+
+Nguồn dữ liệu:
+
+GET /api/v1/subscriptions/me
+
+Chức năng:
+
+- Hiển thị plan hiện tại.
+- Hiển thị upload usage.
+- Hiển thị phần trăm quota.
+- Hiển thị số phút đã dùng và còn lại.
+- Hiển thị Unlimited đối với ARTIST_PRO.
+- Phân quyền các action trong Artist Studio.
+
+6. Artist Studio Stats
+
+Nguồn dữ liệu:
+
+GET /api/v1/artist-studio/stats
+
+Dữ liệu thật đang hỗ trợ:
+
+- plays
+- likes
+- comments
+- fans
+
+Dữ liệu tạm thời trả 0 vì chưa có module nghiệp vụ:
+
+- reposts
+- downloads
+- earnings
+
+7. Artist Pro Benefits
+
+Nguồn dữ liệu user:
+
+GET /api/v1/artist-studio/benefits
+
+Nguồn dữ liệu admin:
+
+GET /api/v1/admin/artist-benefits
+POST /api/v1/admin/artist-benefits
+PUT /api/v1/admin/artist-benefits/{id}
+PATCH /api/v1/admin/artist-benefits/{id}/toggle
+DELETE /api/v1/admin/artist-benefits/{id}
+
+Benefits không còn lấy từ artistStudioData.ts.
+
+
+============================================================
+III. CẤU TRÚC FRONTEND
+============================================================
+
+Cấu trúc đề xuất hiện tại:
+
+src/app/(user)/artist-studio/
+├── page.tsx
+└── components/
+    ├── artistStudioView.tsx
+    ├── uploadQuotaBar.tsx
+    ├── artistStudioStats.tsx
+    ├── studioTabs.tsx
+    ├── studioActions.tsx
+    ├── artistTracksTable.tsx
+    └── artistBenefits.tsx
+
+src/app/(user)/plans/
+├── page.tsx
+└── components/
+    └── subscriptionPlansView.tsx
+
+src/app/(admin)/dashboard/benefits/
+├── page.tsx
+└── components/
+    └── benefitsTable.tsx
+
+src/utils/
+├── api.ts
+└── actions/
+    ├── artistStudioData.ts
+    └── getImages.ts
+
+global.d.ts
+
+Lưu ý về Next.js route group:
+
+- Folder (user) và (admin) không xuất hiện trên URL.
+- File src/app/(admin)/dashboard/benefits/page.tsx tạo route /dashboard/benefits.
+- File src/app/(user)/artist-studio/page.tsx tạo route /artist-studio.
+
+
+============================================================
+IV. NGUỒN DỮ LIỆU VÀ API ĐANG SỬ DỤNG
+============================================================
+
+1. Subscription
+
+GET /api/v1/subscriptions/plans
+GET /api/v1/subscriptions/me
+GET /api/v1/subscriptions/me/usage
+POST /api/v1/subscriptions/subscribe
+POST /api/v1/subscriptions/change-plan
+POST /api/v1/subscriptions/cancel
+
+2. Artist Studio
+
+GET /api/v1/artist-studio/stats
+GET /api/v1/artist-studio/benefits
+
+3. Track
+
+GET /api/v1/tracks/my-tracks
+POST /api/v1/tracks
+POST /api/v1/tracks/create
+
+Tùy mapping trong TrackController, create có thể hỗ trợ cả hai URL trên.
+
+4. Admin Benefits
+
+GET /api/v1/admin/artist-benefits
+POST /api/v1/admin/artist-benefits
+PUT /api/v1/admin/artist-benefits/{benefitId}
+PATCH /api/v1/admin/artist-benefits/{benefitId}/toggle
+DELETE /api/v1/admin/artist-benefits/{benefitId}
+
+5. Static image
+
+Backend public /uploads/**.
+
+Ví dụ:
+
+http://localhost:8080/uploads/benefits/benefit1.png
+http://localhost:8080/uploads/benefits/benefit2.png
+http://localhost:8080/uploads/benefits/benefit3.png
+http://localhost:8080/uploads/benefits/benefit4.png
+
+Database lưu đường dẫn tương đối:
+
+/uploads/benefits/benefit1.png
+
+Frontend dùng getBenefitImageUrl() để nối backend domain.
+
+
+============================================================
+V. FLOW HOẠT ĐỘNG CỦA TRANG /artist-studio
+============================================================
+
+1. User mở /artist-studio.
+
+2. NextAuth cung cấp session.
+
+3. artistStudioView.tsx lấy access token từ session.
+
+Hiện đang hỗ trợ các key:
+
+session.access_token
+session.accessToken
+session.user.access_token
+session.user.accessToken
+
+4. Khi sessionStatus không còn là loading, frontend gọi các API:
+
+- GET /api/v1/subscriptions/me
+- GET /api/v1/artist-studio/stats
+- GET /api/v1/artist-studio/benefits
+
+ArtistTracksTable tự gọi riêng:
+
+- GET /api/v1/tracks/my-tracks
+
+5. Dữ liệu subscription được lưu vào subscriptionData.
+
+Cấu trúc chính:
+
+subscriptionData.plan
+subscriptionData.subscription
+subscriptionData.usage
+
+6. Dữ liệu stats được lưu vào studioStats.
+
+7. Dữ liệu benefits được lưu vào benefits.
+
+8. Các component nhận dữ liệu qua props:
+
+UploadQuotaBar:
+- data={subscriptionData}
+- loading={subscriptionLoading}
+- error={subscriptionError}
+
+ArtistStudioStats:
+- plan={subscriptionData?.plan || null}
+- stats={studioStats}
+- loading={subscriptionLoading || statsLoading}
+
+StudioActions:
+- plan={subscriptionData?.plan || null}
+- loading={subscriptionLoading}
+
+ArtistBenefits:
+- plan={subscriptionData?.plan || null}
+- benefits={benefits}
+- loading={benefitsLoading || subscriptionLoading}
+- error={benefitsError}
+
+9. ArtistTracksTable tự quản lý loading, error, search, filter và tracks.
+
+10. Khi user đổi tab, activeTab được cập nhật.
+
+Tab SoundClone Tracks hiện render dữ liệu thật.
+
+Các tab chưa hoàn thiện vẫn render placeholder.
+
+
+============================================================
+VI. CHI TIẾT TỪNG COMPONENT
+============================================================
+
+1. UploadQuotaBar
+
+Nguồn:
+
+GET /api/v1/subscriptions/me
+
+Dữ liệu sử dụng:
+
+plan.code
+plan.name
+plan.unlimitedUploads
+usage.uploadedMinutes
+usage.limitMinutes
+usage.remainingMinutes
+usage.percentage
+usage.unlimited
+subscription.currentPeriodEnd
+
+Cách hiển thị:
+
+BASIC:
+120 / 180 minutes used
+60 minutes remaining
+
+ARTIST:
+120 / 600 minutes used
+480 minutes remaining
+
+ARTIST_PRO:
+Unlimited uploads
+
+Nút action:
+
+BASIC: Upgrade plan
+ARTIST: Upgrade to Artist Pro
+ARTIST_PRO: Manage subscription
+
+Tất cả chuyển tới /plans.
+
+2. ArtistStudioStats
+
+Nguồn:
+
+GET /api/v1/artist-studio/stats
+GET /api/v1/subscriptions/me
+
+Stats API cung cấp:
+
+plays
+reposts
+downloads
+likes
+comments
+earnings
+fans
+
+Subscription API cung cấp:
+
+advancedInsightsDays
+hasMembershipBenefits
+plan.code
+plan.name
+
+Cách tính hiện tại phía backend:
+
+plays:
+SUM Track.countPlay của các track thuộc artist và chưa bị xóa.
+
+likes:
+SUM Track.countLike của các track thuộc artist và chưa bị xóa.
+
+comments:
+COUNT Comment thuộc các track của artist và comment chưa bị xóa.
+
+fans:
+COUNT UserFollow có following là artist hiện tại.
+
+reposts:
+Tạm thời 0.
+
+downloads:
+Tạm thời 0.
+
+earnings:
+Tạm thời 0.
+
+Insights:
+
+BASIC: 7 days
+ARTIST: 30 days
+ARTIST_PRO: Unlimited
+
+Benefits:
+
+ARTIST_PRO: Active
+BASIC và ARTIST: Locked
+
+3. StudioTabs
+
+Hiện có:
+
+SoundClone Tracks
+Distribution
+Vinyl Records
+Comments
+Benefits
+
+studioTabs là cấu hình UI tĩnh và có thể giữ trong artistStudioData.ts.
+
+Đây không phải dữ liệu nghiệp vụ nên không cần gọi API.
+
+artistStudioData.ts chỉ nên còn:
+
+- StudioTab type
+- studioTabs array
+
+Không còn:
+
+- studioTracks
+- studioStats
+- studioBenefits
+- gradient giả
+
+4. StudioActions
+
+Các action:
+
+Upload or drop tracks
+Distribute tracks
+Monetize tracks
+
+Đã loại bỏ Master track audio.
+
+Phân quyền:
+
+Upload:
+Tất cả plan được dùng. BASIC và ARTIST bị giới hạn quota. ARTIST_PRO unlimited.
+
+Distribution:
+ARTIST và ARTIST_PRO.
+
+Monetization:
+Chỉ ARTIST_PRO.
+
+Hành vi:
+
+- Action được mở thì xử lý chức năng hoặc chuyển tab.
+- Action bị khóa thì chuyển tới /plans.
+- Backend của module tương ứng phải kiểm tra lại quyền khi triển khai API thật.
+
+5. ArtistTracksTable
+
+Nguồn:
+
+GET /api/v1/tracks/my-tracks
+
+Authorization:
+
+Bearer accessToken
+
+Bảng hiển thị:
+
+- cover
+- title
+- audio file name
+- SHA-256
+- approval status
+- processing status
+- copyright status
+- date
+- admin note
+- plays
+
+Filter:
+
+All
+Public
+Private
+Rejected
+
+Search:
+
+- title
+- audioHash
+- admin note
+- rejection reason
+
+6. ArtistBenefits
+
+Nguồn:
+
+GET /api/v1/artist-studio/benefits
+
+ARTIST_PRO:
+
+- Hiển thị toàn bộ benefit.
+- Badge ACTIVE.
+- Không có overlay khóa.
+
+BASIC và ARTIST:
+
+- Benefit cards bị làm mờ.
+- Hiển thị overlay khóa.
+- Nút Upgrade to Artist Pro.
+- Chuyển tới /plans.
+
+Ảnh:
+
+- Nếu imageUrl tồn tại: hiển thị ảnh.
+- Nếu imageUrl null: hiển thị placeholder.
+- getBenefitImageUrl() nối domain backend với đường dẫn tương đối.
+
+7. AdminBenefitsTable
+
+Route:
+
+/dashboard/benefits
+
+Nguồn:
+
+GET /api/v1/admin/artist-benefits
+
+Chức năng:
+
+- Load danh sách benefit.
+- Tạo mới bằng Dialog.
+- Sửa benefit.
+- Toggle active.
+- Xóa.
+- Refresh.
+- Preview ảnh.
+- Hiển thị saveLabel.
+- Hiển thị sortOrder.
+- Hiển thị createdAt hoặc updatedAt.
+
+Khi tạo hoặc sửa thành công:
+
+- đóng dialog
+- hiển thị Snackbar
+- gọi lại loadBenefits()
+
+Khi toggle:
+
+- gọi PATCH
+- cập nhật row tương ứng trong state
+- không cần reload toàn bảng
+
+Khi xóa:
+
+- gọi DELETE
+- loại row khỏi state
+
+
+============================================================
+VII. PHÂN QUYỀN THEO SUBSCRIPTION PLAN
+============================================================
+
+1. BASIC
+
+Giá: 0 VNĐ/tháng
+Upload: 180 phút mỗi chu kỳ
+Upload: mở trong quota
+Distribution: khóa
+Monetization: khóa
+Insights: 7 ngày
+Benefits: khóa
+
+2. ARTIST
+
+Giá: 49.000 VNĐ/tháng
+Upload: 600 phút mỗi chu kỳ
+Upload: mở trong quota
+Distribution: mở
+Monetization: khóa
+Insights: 30 ngày
+Benefits: khóa
+
+3. ARTIST_PRO
+
+Giá: 99.000 VNĐ/tháng
+Upload: không giới hạn
+Upload: unlimited
+Distribution: mở
+Monetization: mở
+Insights: unlimited
+Benefits: mở
+
+Nguyên tắc bảo mật:
+
+Frontend chỉ hiển thị trạng thái quyền.
+
+Backend phải kiểm tra lại:
+
+- upload quota
+- distribution permission
+- monetization permission
+- schedule release permission
+- benefits permission
+- advanced insights permission
+
+
+============================================================
+VIII. FLOW UPLOAD VÀ CẬP NHẬT QUOTA
+============================================================
+
+1. User mở trang upload.
+2. User chọn title, description, category, image và audio.
+3. Frontend gửi multipart request POST /api/v1/tracks.
+4. Backend đọc user từ JWT.
+5. Backend kiểm tra dữ liệu bắt buộc.
+6. Backend tính SHA-256 của audio.
+7. Backend kiểm tra audio trùng.
+8. Backend đọc durationSeconds.
+9. Backend lấy subscription access.
+10. Backend kiểm tra remainingSeconds.
+11. Backend upload image và audio.
+12. Backend lưu Track và cộng uploadedSeconds trong cùng transaction.
+13. Nếu quota không đủ, trả HTTP 403 với message Upload quota exceeded.
+14. Nếu Track save lỗi, rollback quota và xóa file ảnh/audio đã upload.
+15. Nếu hai request upload đồng thời, backend khóa user bằng PESSIMISTIC_WRITE.
+16. Khi đổi plan, giữ nguyên uploadedSeconds trong chu kỳ hiện tại.
+
+Hạn chế frontend hiện tại:
+
+Sau upload thành công, Artist Studio có thể cần reload để quota và stats cập nhật.
+
+Chưa có global event hoặc callback tự refresh Artist Studio ngay sau upload.
+
+
+============================================================
+IX. FLOW BENEFITS VÀ TRANG QUẢN TRỊ BENEFITS
+============================================================
+
+1. Seeder
+
+Backend seed 4 benefits với ID cố định:
+
+artist-benefit-1
+artist-benefit-2
+artist-benefit-3
+artist-benefit-4
+
+Ảnh:
+
+/uploads/benefits/benefit1.png
+/uploads/benefits/benefit2.png
+/uploads/benefits/benefit3.png
+/uploads/benefits/benefit4.png
+
+2. User flow
+
+GET /api/v1/artist-studio/benefits
+
+Chỉ trả active = true.
+
+Sắp xếp:
+
+sortOrder ASC
+createdAt DESC
+
+3. Admin flow
+
+Admin mở /dashboard/benefits.
+
+Frontend gọi GET /api/v1/admin/artist-benefits.
+
+API admin trả cả active và hidden.
+
+4. Tạo benefit
+
+POST /api/v1/admin/artist-benefits
+
+5. Sửa benefit
+
+PUT /api/v1/admin/artist-benefits/{id}
+
+6. Ẩn hoặc hiện benefit
+
+PATCH /api/v1/admin/artist-benefits/{id}/toggle
+
+7. Xóa benefit
+
+DELETE /api/v1/admin/artist-benefits/{id}
+
+8. Image URL
+
+Hiện admin nhập URL hoặc đường dẫn vào TextField.
+
+Chưa có upload ảnh trực tiếp từ trang admin.
+
+
+============================================================
+X. HƯỚNG DẪN TEST API BẰNG POSTMAN
+============================================================
+
+Biến môi trường Postman:
+
+BASE_URL = http://localhost:8080
+ACCESS_TOKEN = JWT của user
+ADMIN_TOKEN = JWT của admin
+
+------------------------------------------------------------
+1. Lấy subscription hiện tại
+------------------------------------------------------------
+
+Method: GET
+URL: {{BASE_URL}}/api/v1/subscriptions/me
+Headers: Authorization: Bearer {{ACCESS_TOKEN}}
+Body: Không có.
+
+Kết quả mong đợi: HTTP 200.
+
+Dữ liệu gồm:
+
+plan
+subscription
+usage
+
+------------------------------------------------------------
+2. Lấy usage
+------------------------------------------------------------
+
+Method: GET
+URL: {{BASE_URL}}/api/v1/subscriptions/me/usage
+Headers: Authorization: Bearer {{ACCESS_TOKEN}}
+Body: Không có.
+
+Kết quả mong đợi: HTTP 200.
+
+------------------------------------------------------------
+3. Đổi plan
+------------------------------------------------------------
+
+Method: POST
+URL: {{BASE_URL}}/api/v1/subscriptions/change-plan
+Headers:
+Authorization: Bearer {{ACCESS_TOKEN}}
+Content-Type: application/json
+
+Body BASIC:
+
+{
+  "planCode": "BASIC"
+}
+
+Body ARTIST:
+
+{
+  "planCode": "ARTIST"
+}
+
+Body ARTIST_PRO:
+
+{
+  "planCode": "ARTIST_PRO"
+}
+
+Kết quả mong đợi: HTTP 200.
+
+uploadedSeconds không được reset trong cùng chu kỳ.
+
+------------------------------------------------------------
+4. Hủy subscription cuối kỳ
+------------------------------------------------------------
+
+Method: POST
+URL: {{BASE_URL}}/api/v1/subscriptions/cancel
+Headers: Authorization: Bearer {{ACCESS_TOKEN}}
+Body: Không có.
+
+Kết quả mong đợi: HTTP 200 và cancelAtPeriodEnd = true.
+
+------------------------------------------------------------
+5. Lấy Artist Studio Stats
+------------------------------------------------------------
+
+Method: GET
+URL: {{BASE_URL}}/api/v1/artist-studio/stats
+Headers: Authorization: Bearer {{ACCESS_TOKEN}}
+Body: Không có.
+
+Kết quả mong đợi:
+
+HTTP 200
+
+{
+  "statusCode": 200,
+  "message": "Get artist studio stats successfully",
+  "data": {
+    "plays": 5,
+    "reposts": 0,
+    "downloads": 0,
+    "likes": 0,
+    "comments": 0,
+    "earnings": 0,
+    "fans": 0
+  }
+}
+
+------------------------------------------------------------
+6. Lấy track của artist
+------------------------------------------------------------
+
+Method: GET
+URL: {{BASE_URL}}/api/v1/tracks/my-tracks
+Headers: Authorization: Bearer {{ACCESS_TOKEN}}
+Body: Không có.
+
+Kết quả mong đợi: HTTP 200.
+
+Data gồm cả APPROVED, PENDING và REJECTED.
+
+------------------------------------------------------------
+7. Upload track
+------------------------------------------------------------
+
+Method: POST
+URL: {{BASE_URL}}/api/v1/tracks
+Headers: Authorization: Bearer {{ACCESS_TOKEN}}
+Body: form-data
+
+Các field:
+
+title: Tên bài hát
+description: Mô tả
+category: Music
+image: File ảnh
+audio: File audio
+
+Kết quả thành công: HTTP 200.
+
+Kết quả vượt quota: HTTP 403.
+
+{
+  "statusCode": 403,
+  "message": "Upload quota exceeded",
+  "data": {
+    "planCode": "BASIC",
+    "requiredSeconds": 240,
+    "remainingSeconds": 60,
+    "requiredMinutes": 4,
+    "remainingMinutes": 1
+  }
+}
+
+------------------------------------------------------------
+8. Lấy Benefits phía user
+------------------------------------------------------------
+
+Method: GET
+URL: {{BASE_URL}}/api/v1/artist-studio/benefits
+Headers: Authorization: Bearer {{ACCESS_TOKEN}}
+Body: Không có.
+
+Kết quả mong đợi: HTTP 200 và chỉ trả benefit active.
+
+------------------------------------------------------------
+9. Lấy toàn bộ Benefits phía admin
+------------------------------------------------------------
+
+Method: GET
+URL: {{BASE_URL}}/api/v1/admin/artist-benefits
+Headers: Authorization: Bearer {{ADMIN_TOKEN}}
+Body: Không có.
+
+Kết quả mong đợi: HTTP 200 và trả cả active lẫn hidden.
+
+------------------------------------------------------------
+10. Tạo Benefit
+------------------------------------------------------------
+
+Method: POST
+URL: {{BASE_URL}}/api/v1/admin/artist-benefits
+Headers:
+Authorization: Bearer {{ADMIN_TOKEN}}
+Content-Type: application/json
+
+Body:
+
+{
+  "title": "New Artist Pro Benefit",
+  "description": "Benefit description",
+  "saveLabel": "Save $20",
+  "imageUrl": "/uploads/benefits/new-benefit.png",
+  "sortOrder": 5,
+  "active": true
+}
+
+Kết quả mong đợi: HTTP 200.
+
+------------------------------------------------------------
+11. Sửa Benefit
+------------------------------------------------------------
+
+Method: PUT
+URL: {{BASE_URL}}/api/v1/admin/artist-benefits/{{BENEFIT_ID}}
+Headers:
+Authorization: Bearer {{ADMIN_TOKEN}}
+Content-Type: application/json
+
+Body:
+
+{
+  "title": "Updated benefit",
+  "description": "Updated description",
+  "saveLabel": "Save $30",
+  "imageUrl": "/uploads/benefits/updated.png",
+  "sortOrder": 2,
+  "active": true
+}
+
+Kết quả mong đợi: HTTP 200.
+
+------------------------------------------------------------
+12. Toggle Benefit
+------------------------------------------------------------
+
+Method: PATCH
+URL: {{BASE_URL}}/api/v1/admin/artist-benefits/{{BENEFIT_ID}}/toggle
+Headers: Authorization: Bearer {{ADMIN_TOKEN}}
+Body: Không có.
+
+Kết quả mong đợi: HTTP 200 và active đổi trạng thái.
+
+------------------------------------------------------------
+13. Xóa Benefit
+------------------------------------------------------------
+
+Method: DELETE
+URL: {{BASE_URL}}/api/v1/admin/artist-benefits/{{BENEFIT_ID}}
+Headers: Authorization: Bearer {{ADMIN_TOKEN}}
+Body: Không có.
+
+Kết quả mong đợi: HTTP 200.
+
+------------------------------------------------------------
+14. Test không có token
+------------------------------------------------------------
+
+Method: GET
+URL: {{BASE_URL}}/api/v1/artist-studio/stats
+Không gửi Authorization.
+
+Kết quả mong đợi:
+
+HTTP 401
+
+{
+  "statusCode": 401,
+  "message": "Unauthorized",
+  "data": null
+}
+
+------------------------------------------------------------
+15. Test ảnh Benefits
+------------------------------------------------------------
+
+Method: GET
+URL: {{BASE_URL}}/uploads/benefits/benefit1.png
+
+Kết quả mong đợi:
+
+HTTP 200
+Content-Type: image/png
+
+
+============================================================
+XI. CHECKLIST TEST FRONTEND
+============================================================
+
+1. Artist Studio loading
+
+[ ] Mở /artist-studio khi đã login.
+[ ] Không xuất hiện lỗi token.
+[ ] UploadQuotaBar load đúng.
+[ ] Stats load đúng.
+[ ] Track table load đúng.
+[ ] Benefits load đúng.
+
+2. Plan BASIC
+
+[ ] Upload quota hiển thị 180 phút.
+[ ] Distribution bị khóa.
+[ ] Monetization bị khóa.
+[ ] Insights hiển thị 7 days.
+[ ] Benefits bị khóa.
+[ ] Bấm action khóa chuyển tới /plans.
+
+3. Plan ARTIST
+
+[ ] Upload quota hiển thị 600 phút.
+[ ] Distribution được mở.
+[ ] Monetization bị khóa.
+[ ] Insights hiển thị 30 days.
+[ ] Benefits bị khóa.
+
+4. Plan ARTIST_PRO
+
+[ ] Upload quota hiển thị Unlimited.
+[ ] Distribution được mở.
+[ ] Monetization được mở.
+[ ] Insights hiển thị Unlimited.
+[ ] Benefits hiển thị Active.
+[ ] Benefit cards không bị overlay khóa.
+
+5. Stats
+
+[ ] countPlay trong track table khớp tổng plays.
+[ ] Likes khớp database.
+[ ] Comments khớp database.
+[ ] Fans khớp follower count.
+[ ] Reposts hiện 0.
+[ ] Downloads hiện 0.
+[ ] Earnings hiện 0.
+
+6. Track table
+
+[ ] Search theo title.
+[ ] Search theo audioHash.
+[ ] Search theo admin note.
+[ ] Filter All.
+[ ] Filter Public.
+[ ] Filter Private.
+[ ] Filter Rejected.
+[ ] Status APPROVED đúng.
+[ ] Status PENDING đúng.
+[ ] Status REJECTED đúng.
+
+7. Admin Benefits
+
+[ ] Mở /dashboard/benefits bằng admin.
+[ ] Load đủ 4 benefit seed.
+[ ] Ảnh benefit hiển thị đúng.
+[ ] Tạo benefit.
+[ ] Sửa benefit.
+[ ] Toggle active.
+[ ] Benefit hidden không xuất hiện phía user.
+[ ] Xóa benefit.
+[ ] Refresh hoạt động.
+[ ] Snackbar hiển thị đúng.
+
+8. Responsive
+
+[ ] Artist Studio không tràn ngang trên mobile.
+[ ] Tabs có thể scroll ngang.
+[ ] Track table có horizontal scroll.
+[ ] Benefits chuyển 1 cột trên mobile.
+[ ] Action buttons hiển thị đúng trên mobile.
+
+
+============================================================
+XII. CÁC LỖI ĐÃ GẶP VÀ CÁCH XỬ LÝ
+============================================================
+
+1. getAdminArtistBenefitsApi is not defined
+
+Nguyên nhân:
+
+Hàm được export trong api.ts nhưng benefitsTable.tsx chưa import runtime function.
+
+Cách xử lý:
+
+Import các hàm get/create/update/toggle/delete từ @/utils/api.
+
+Interface global không cần import type, nhưng runtime function bắt buộc phải import.
+
+2. No static resource api/v1/admin/artist-benefits
+
+Nguyên nhân:
+
+Backend chưa có controller mapping /api/v1/admin/artist-benefits.
+
+Cách xử lý:
+
+Tạo AdminArtistBenefitController với đầy đủ CRUD mapping.
+
+3. MUI Tooltip bọc disabled button
+
+Nguyên nhân:
+
+Disabled button không phát event để Tooltip bắt.
+
+Cách xử lý:
+
+Bọc button bằng span.
+
+4. bis_skin_checked hydration warning
+
+Nguyên nhân:
+
+Browser extension hoặc phần mềm bảo mật chèn thuộc tính vào DOM.
+
+Cách xử lý:
+
+Không cần sửa source. Có thể test bằng Incognito hoặc tắt extension.
+
+5. studioTabs is not defined
+
+Nguyên nhân:
+
+artistStudioView.tsx vẫn dùng studioTabs nhưng đã xóa import.
+
+Cách xử lý:
+
+Import lại studioTabs từ artistStudioData.ts.
+
+6. Route admin không khớp
+
+File cũ tạo route /benefits nhưng menu trỏ /dashboard/benefits.
+
+Cách xử lý:
+
+Chuyển file tới src/app/(admin)/dashboard/benefits/page.tsx.
+
+7. Stats hiển thị 0 dù track có plays
+
+Nguyên nhân:
+
+ArtistStudioStats chỉ nhận plan, không nhận stats API và dùng defaultStats bằng 0.
+
+Cách xử lý:
+
+- Tạo GET /api/v1/artist-studio/stats.
+- Gọi getArtistStudioStatsApi().
+- Truyền stats={studioStats} vào ArtistStudioStats.
+
+8. Benefit vẫn hard-code
+
+Nguyên nhân:
+
+ArtistStudioView import studioBenefits từ artistStudioData.ts.
+
+Cách xử lý:
+
+- Tạo GET /api/v1/artist-studio/benefits.
+- Tạo admin CRUD.
+- Gọi API trong frontend.
+- Xóa studioBenefits khỏi data file.
+
+
+============================================================
+XIII. CÁC VẤN ĐỀ CÒN TỒN TẠI
+============================================================
+
+1. Distribution chưa có chức năng thật
+
+Hiện trạng:
+
+- Tab tồn tại.
+- Permission đã có.
+- Button đã mở hoặc khóa theo plan.
+- Chưa có view.
+- Chưa có entity.
+- Chưa có API.
+- Chưa có trạng thái phát hành.
+
+2. Vinyl Records chưa có chức năng thật
+
+Hiện trạng:
+
+- Tab chỉ là placeholder.
+
+3. Comments tab chưa có chức năng thật
+
+Hiện trạng:
+
+- Stats đã đếm comment.
+- Track detail đã có comment.
+- Artist Studio Comments tab chưa có view/API riêng.
+
+API đề xuất:
+
+GET /api/v1/artist-studio/comments
+
+Chức năng đề xuất:
+
+- Lấy toàn bộ comment trên track của artist.
+- Filter theo track.
+- Search.
+- Reply.
+- Delete hoặc hide.
+- Pagination.
+
+4. Benefits tab riêng chưa render dữ liệu thật
+
+Hiện trạng:
+
+- ArtistBenefits đang render ở cuối trang.
+- Tab Benefits trong StudioTabs vẫn có thể đang đi vào placeholder.
+
+Cần sửa:
+
+Khi activeTab === "benefits", render ArtistBenefits trong vùng tab và không render cố định ở cuối trang.
+
+Hoặc xóa tab Benefits nếu muốn benefits luôn hiển thị ở cuối trang.
+
+Không nên vừa có tab Benefits vừa render benefits cố định bên ngoài tab.
+
+5. Stats chưa đầy đủ
+
+Đã thật:
+
+- plays
+- likes
+- comments
+- fans
+
+Chưa thật:
+
+- reposts
+- downloads
+- earnings
+
+6. Không tự refresh sau upload
+
+Hiện trạng:
+
+- Upload thành công.
+- Quota và stats có thể chỉ cập nhật sau khi reload Artist Studio.
+
+Cần làm:
+
+- React context hoặc event.
+- router.refresh().
+- refetch subscription.
+- refetch stats.
+- refetch tracks.
+
+7. Không có pagination cho track table
+
+Hiện trạng:
+
+- Load toàn bộ track.
+- Filter và search ở client.
+
+Cần làm:
+
+GET /api/v1/tracks/my-tracks?page=0&size=20&search=&status=
+
+8. Admin Benefits chưa upload ảnh trực tiếp
+
+Hiện chỉ nhập imageUrl.
+
+Cần làm sau:
+
+POST /api/v1/admin/artist-benefits/upload-image
+
+Body multipart: image
+
+9. Admin endpoint cần kiểm tra role chắc chắn
+
+Backend phải đảm bảo ROLE_ADMIN cho /api/v1/admin/artist-benefits/**.
+
+10. Permission Distribution và Monetization mới chủ yếu ở UI
+
+Khi triển khai API thật, backend phải gọi SubscriptionService để kiểm tra canDistribute và canMonetize.
+
+11. Payment chưa có
+
+Hiện change-plan kích hoạt plan trực tiếp để test.
+
+Chưa có:
+
+- checkout
+- payment transaction
+- webhook
+- invoice
+- refund
+- trial
+- proration
+- grace period
+
+12. Schedule release chưa có
+
+Plan có canScheduleRelease nhưng chưa có field releaseAt, scheduler job, UI chọn ngày giờ và backend publish đúng thời điểm.
+
+13. Session token đang đọc bằng any
+
+Hiện tại dùng (session as any).
+
+Cần mở rộng NextAuth Session type để dùng session.accessToken rõ ràng.
+
+14. Error state chưa thống nhất
+
+Cần chuẩn hóa ApiError, Toast, HTTP 401, HTTP 403 và retry HTTP 500.
+
+15. Artist Studio có nhiều API gọi riêng
+
+Hiện trang gọi subscription, stats, benefits và tracks.
+
+Có thể tạo aggregate endpoint GET /api/v1/artist-studio/overview nếu cần giảm request, nhưng không bắt buộc trong MVP.
+
+16. Benefits ảnh phụ thuộc backend static resource
+
+Production cần đảm bảo upload directory persistent, domain đúng, reverse proxy phục vụ /uploads/**, validate MIME type và giới hạn kích thước ảnh.
+
+17. Delete benefit hiện là hard delete
+
+Có thể đổi thành soft delete bằng isDeleted và deletedAt hoặc chỉ dùng active = false.
+
+18. Earning nên dùng BigDecimal
+
+Khi triển khai monetization, nên dùng BigDecimal earnings và currencyCode.
+
+19. Next.js 14.0.2 outdated
+
+Không làm hỏng Artist Studio. Nên upgrade sau khi module ổn định và test regression.
+
+
+============================================================
+XIV. THỨ TỰ PHÁT TRIỂN TIẾP THEO
+============================================================
+
+Ưu tiên 1: Comments tab
+
+1. Tạo ArtistStudioCommentDTO.
+2. Tạo query comment theo uploader.
+3. Tạo GET /api/v1/artist-studio/comments.
+4. Tạo ArtistCommentsTable.
+5. Render khi activeTab === "comments".
+6. Thêm search, filter và pagination.
+
+Ưu tiên 2: Sửa Benefits tab
+
+1. Chuyển ArtistBenefits vào active tab.
+2. Không render trùng ở cuối trang.
+3. Giữ permission overlay.
+
+Ưu tiên 3: Refresh Artist Studio sau upload
+
+1. Tạo callback hoặc context.
+2. Refetch subscription.
+3. Refetch stats.
+4. Refetch tracks.
+
+Ưu tiên 4: Distribution MVP
+
+1. Submission entity.
+2. Track selection.
+3. Submit release.
+4. Status table.
+5. Admin review.
+6. Backend permission guard.
+
+Ưu tiên 5: Pagination Track table
+
+1. Backend pageable.
+2. Search server-side.
+3. Filter server-side.
+4. FE pagination.
+
+Ưu tiên 6: Image upload cho Benefits
+
+1. Multipart endpoint.
+2. Validate PNG/JPG/WebP.
+3. File size limit.
+4. Preview.
+5. Save returned path.
+
+Ưu tiên 7: Payment
+
+Chỉ làm sau khi nghiệp vụ Artist Studio ổn định.
+
+
+============================================================
+XV. KẾT LUẬN
+============================================================
+
+Artist Studio hiện đã đạt mức MVP tốt cho các phần:
+
+- Subscription UI.
+- Upload quota.
+- Track management.
+- Approval và copyright status.
+- Artist stats cơ bản.
+- Plan-based permission UI.
+- Artist Pro Benefits từ database.
+- Admin CRUD Benefits.
+- Ảnh Benefits từ backend.
+- Upload transaction và quota protection.
+
+Các phần chưa hoàn chỉnh:
+
+- Distribution.
+- Vinyl Records.
+- Comments workspace.
+- Reposts.
+- Downloads.
+- Earnings.
+- Schedule release.
+- Payment.
+- Auto refresh sau upload.
+- Pagination lớn.
+
+Đánh giá trạng thái hiện tại:
+
+Artist Studio shell/UI: Hoàn thành.
+Subscription integration: Hoàn thành mức MVP.
+Track management: Hoàn thành mức MVP.
+Benefits: Hoàn thành mức MVP.
+Stats: Hoàn thành một phần.
+Distribution: Chưa làm.
+Vinyl: Chưa làm.
+Comments tab: Chưa làm.
+Payment: Chưa làm.
+
+Mức hoàn thiện tổng thể Artist Studio:
+
+Khoảng 80% nếu phạm vi là Artist Studio quản lý track + subscription + benefits.
+
+Khoảng 60-65% nếu tính đầy đủ Distribution, Monetization, Vinyl, Comments workspace, Payment và Schedule Release.
+
+============================================================
+HẾT BÁO CÁO
+============================================================

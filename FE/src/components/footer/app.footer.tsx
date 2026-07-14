@@ -26,7 +26,7 @@ import { saveListeningProgressApi, sendRequest } from "@/utils/api";
 import { saveListeningHistory } from "@/utils/actions/history";
 import { getTrackHref, getUserHref } from "@/utils/actions/navigation";
 
-import FooterQueuePopover from "./footer.queue.popover";
+import FooterQueuePopover from "./components/footer.queue.popover";
 
 const formatTime = (seconds = 0) => {
   const safeSeconds = Number.isFinite(seconds) ? Math.max(seconds, 0) : 0;

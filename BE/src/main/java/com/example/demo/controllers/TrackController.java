@@ -56,6 +56,7 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 
 import com.example.demo.responses.ApiResponse;
+import com.example.demo.services.NotificationService;
 import com.example.demo.services.PlaylistService;
 
 @RestController
@@ -87,6 +88,9 @@ public class TrackController {
 
 	@Autowired
 	private TrackUploadService trackUploadService;
+
+	@Autowired
+	private NotificationService notificationService;
 
 	@Value("${images_url}")
 	private String imagesUrl;
@@ -999,6 +1003,17 @@ public class TrackController {
 			comment.setCreatedAt(LocalDateTime.now());
 			comment.setUpdatedAt(LocalDateTime.now());
 			Comment savedComment = commentRepository.save(comment);
+
+			try {
+				notificationService.notifyTrackComment(
+						user,
+						track,
+						savedComment);
+			} catch (Exception notificationError) {
+				System.err.println(
+						"Cannot create comment notification: "
+								+ notificationError.getMessage());
+			}
 
 			return ResponseEntity.ok(
 					new ApiResponse<>(

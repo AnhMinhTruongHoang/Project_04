@@ -20,7 +20,6 @@ import LogoutRoundedIcon from "@mui/icons-material/LogoutRounded";
 import PersonRoundedIcon from "@mui/icons-material/PersonRounded";
 import CloudRoundedIcon from "@mui/icons-material/CloudRounded";
 import FavoriteRoundedIcon from "@mui/icons-material/FavoriteRounded";
-import GraphicEqRoundedIcon from "@mui/icons-material/GraphicEqRounded";
 import GroupsRoundedIcon from "@mui/icons-material/GroupsRounded";
 import StarsRoundedIcon from "@mui/icons-material/StarsRounded";
 import BarChartRoundedIcon from "@mui/icons-material/BarChartRounded";
@@ -31,6 +30,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { signOut, useSession } from "next-auth/react";
 import { PlaylistPlaySharp } from "@mui/icons-material";
 import SearchDropdown from "@/app/search/components/search.dropdown";
+import NotificationBell from "../../app/(user)/notifications/components/notificationBell";
 
 const AppHeader = () => {
   const router = useRouter();
@@ -359,44 +359,7 @@ const AppHeader = () => {
                     />
                   </Box>
 
-                  <IconButton
-                    size="small"
-                    sx={{
-                      color: "#b8b8b8",
-                      p: 0.5,
-                      "&:hover": {
-                        color: "#ffffff",
-                      },
-                    }}
-                  >
-                    <NotificationsNoneRoundedIcon fontSize="small" />
-                  </IconButton>
-
-                  <IconButton
-                    size="small"
-                    sx={{
-                      color: "#b8b8b8",
-                      p: 0.5,
-                      position: "relative",
-
-                      "&:hover": {
-                        color: "#ffffff",
-                      },
-
-                      "&::after": {
-                        content: '""',
-                        position: "absolute",
-                        top: 4,
-                        right: 3,
-                        width: 7,
-                        height: 7,
-                        borderRadius: "50%",
-                        backgroundColor: "#ff5500",
-                      },
-                    }}
-                  >
-                    <MailOutlineRoundedIcon fontSize="small" />
-                  </IconButton>
+                  <NotificationBell />
 
                   <IconButton
                     size="small"

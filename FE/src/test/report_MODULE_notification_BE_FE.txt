@@ -1,0 +1,657 @@
+BÁO CÁO TỔNG HỢP MODULE THÔNG BÁO
+Dự án: SoundCloud Clone
+Phạm vi: Backend + Frontend
+Trạng thái: Đã hoàn thành phần lõi, cần kiểm thử runtime và tiếp tục gắn các trigger nghiệp vụ còn lại
+Ngày cập nhật: 15/07/2026
+
+============================================================
+1. MỤC TIÊU MODULE
+============================================================
+
+Module thông báo được xây dựng để:
+
+- Lưu thông báo theo từng người nhận.
+- Hiển thị số lượng thông báo chưa đọc trên icon chuông.
+- Hiển thị danh sách thông báo nhanh bằng popup ở Header.
+- Có trang /notifications để xem toàn bộ lịch sử thông báo.
+- Hỗ trợ đánh dấu đã đọc, đánh dấu tất cả đã đọc và xóa thông báo.
+- Điều hướng người dùng đến đúng track, user hoặc màn hình liên quan.
+- Chống tạo trùng thông báo bằng deduplicationKey.
+- Không tạo thông báo khi người thực hiện hành động cũng là người nhận.
+- Có khả năng mở rộng cho Follow, Like, Comment, kiểm duyệt track, bản quyền, subscription và quota.
+
+============================================================
+2. TRẠNG THÁI BACKEND
+============================================================
+
+2.1. Các thành phần lõi đã có
+
+Backend hiện đã có hoặc đã thiết kế đầy đủ các thành phần:
+
+- Notification.java
+- NotificationRepository.java
+- NotificationService.java
+- NotificationController.java
+- NotificationDTO.java
+- NotificationCreateDTO.java
+- NotificationPageDTO.java
+- UnreadNotificationCountDTO.java
+- NotificationType.java
+- NotificationEntityType.java
+
+2.2. Cấu trúc dữ liệu Notification
+
+Các trường chính:
+
+- id
+- recipientId
+- actorId
+- type
+- title
+- message
+- entityType
+- entityId
+- redirectUrl
+- metadataJson
+- isRead
+- readAt
+- deduplicationKey
+- createdAt
+- updatedAt
+
+Ý nghĩa:
+
+- recipientId: người nhận thông báo.
+- actorId: người tạo ra hành động.
+- entityType và entityId: đối tượng liên quan như TRACK, USER, COMMENT hoặc SUBSCRIPTION.
+- redirectUrl: đường dẫn frontend khi người dùng bấm vào thông báo.
+- metadataJson: dữ liệu bổ sung để frontend mở rộng sau này.
+- deduplicationKey: khóa chống tạo thông báo trùng.
+- isRead và readAt: trạng thái đọc.
+- createdAt: thời điểm thông báo được tạo hoặc được đẩy lại lên đầu khi event lặp lại.
+
+2.3. Các loại thông báo đã định nghĩa
+
+- NEW_FOLLOW
+- TRACK_LIKE
+- TRACK_COMMENT
+- TRACK_APPROVED
+- TRACK_REJECTED
+- COPYRIGHT_APPROVED
+- COPYRIGHT_REJECTED
+- TRACK_PROCESSING_COMPLETED
+- UPLOAD_QUOTA_WARNING
+- UPLOAD_QUOTA_EXCEEDED
+- SUBSCRIPTION_CHANGED
+- SUBSCRIPTION_CANCEL_SCHEDULED
+- SUBSCRIPTION_RENEWED
+- SUBSCRIPTION_EXPIRING
+- SYSTEM
+
+2.4. API backend đã có
+
+GET /api/v1/notifications?page=0&size=20&status=all
+
+Mục đích:
+- Lấy danh sách thông báo của user hiện tại.
+- Có phân trang.
+- status hỗ trợ all hoặc unread.
+
+GET /api/v1/notifications/unread-count
+
+Mục đích:
+- Lấy số lượng thông báo chưa đọc.
+- Dùng cho badge trên icon chuông.
+
+PATCH /api/v1/notifications/{notificationId}/read
+
+Mục đích:
+- Đánh dấu một thông báo là đã đọc.
+
+PATCH /api/v1/notifications/read-all
+
+Mục đích:
+- Đánh dấu toàn bộ thông báo của user hiện tại là đã đọc.
+
+DELETE /api/v1/notifications/{notificationId}
+
+Mục đích:
+- Xóa một thông báo thuộc user hiện tại.
+
+DELETE /api/v1/notifications/clear-read
+
+Mục đích:
+- Xóa toàn bộ thông báo đã đọc của user hiện tại.
+
+2.5. Quy tắc bảo mật đã áp dụng
+
+- User được lấy từ JWT Bearer Token.
+- Mọi thao tác đọc, sửa hoặc xóa đều gắn với recipientId của user hiện tại.
+- User không thể đọc hoặc xóa thông báo của user khác.
+- Không gửi thông báo cho chính actor nếu actorId bằng recipientId.
+- NotificationRepository sử dụng findByIdAndRecipientId để giới hạn quyền truy cập.
+
+2.6. Flow Comment đã được gắn
+
+Nơi gắn đúng:
+
+TrackController.java
+
+Endpoint tạo comment:
+
+POST /{trackId}/comments
+
+Sau khi lưu comment:
+
+Comment savedComment = commentRepository.save(comment);
+
+Backend gọi:
+
+notificationService.notifyTrackComment(
+    user,
+    track,
+    savedComment
+);
+
+Kết quả:
+
+- User B comment vào track của User A:
+  + Comment được lưu.
+  + User A nhận notification loại TRACK_COMMENT.
+  + unreadCount của User A tăng lên.
+- User A tự comment vào track của mình:
+  + Comment vẫn được lưu.
+  + Không tạo notification cho chính User A.
+- Mỗi comment dùng deduplicationKey:
+  TRACK_COMMENT:{commentId}
+- Một comment chỉ tạo tối đa một notification.
+
+2.7. CommentController hiện tại
+
+CommentController hiện chỉ phụ trách:
+
+- GET danh sách comment cho Admin.
+- DELETE comment theo dạng soft delete.
+
+Vì vậy:
+
+- Không cần inject NotificationService trong CommentController.
+- Không cần tạo CommentService chỉ để làm notification.
+- Notification được gọi tại TrackController vì đây là nơi tạo comment thật.
+
+2.8. Trạng thái backend hiện tại
+
+Đã hoàn thành:
+
+- Entity notification.
+- Repository notification.
+- Service notification.
+- Controller notification.
+- DTO và enum.
+- Phân trang.
+- Đếm chưa đọc.
+- Mark one read.
+- Mark all read.
+- Delete one.
+- Clear read.
+- Chống self-notification.
+- Chống trùng bằng deduplicationKey.
+- Gắn trigger TRACK_COMMENT.
+
+Chưa gắn trigger:
+
+- NEW_FOLLOW.
+- TRACK_LIKE.
+- TRACK_APPROVED.
+- TRACK_REJECTED.
+- COPYRIGHT_APPROVED.
+- COPYRIGHT_REJECTED.
+- TRACK_PROCESSING_COMPLETED.
+- UPLOAD_QUOTA_WARNING.
+- UPLOAD_QUOTA_EXCEEDED.
+- SUBSCRIPTION_CHANGED.
+- SUBSCRIPTION_CANCEL_SCHEDULED.
+- SUBSCRIPTION_RENEWED.
+- SUBSCRIPTION_EXPIRING.
+
+Kết luận backend:
+
+- Phần lõi đã hoàn thành.
+- Flow Comment đã hoàn thành về code.
+- Toàn bộ module notification chưa hoàn tất 100% vì các trigger nghiệp vụ khác chưa được gắn.
+- Cần chạy ứng dụng và test database/API để xác nhận không có lỗi mapping, schema hoặc transaction.
+
+============================================================
+3. TRẠNG THÁI FRONTEND
+============================================================
+
+3.1. API frontend trong api.ts
+
+Đã thêm các hàm:
+
+- getNotificationsApi
+- getUnreadNotificationCountApi
+- markNotificationAsReadApi
+- markAllNotificationsAsReadApi
+- deleteNotificationApi
+- clearReadNotificationsApi
+
+Các hàm sử dụng access token và gọi đúng endpoint backend.
+
+3.2. Interface global
+
+Đã có hoặc cần có:
+
+- INotification
+- INotificationPage
+- IUnreadNotificationCount
+
+INotification hỗ trợ:
+
+- id
+- recipientId
+- actorId
+- type
+- title
+- message
+- entityType
+- entityId
+- redirectUrl
+- metadataJson
+- isRead
+- readAt
+- createdAt
+
+3.3. NotificationBell trên Header
+
+Đã thiết kế component NotificationBell với các chức năng:
+
+- Hiển thị icon chuông.
+- Hiển thị badge số notification chưa đọc.
+- Bấm chuông mở Popover.
+- Load notification gần nhất.
+- Load unread count.
+- Polling unread count định kỳ.
+- Hiển thị icon theo loại notification.
+- Hiển thị title, message và thời gian.
+- Highlight notification chưa đọc.
+- Bấm notification:
+  + Gọi API mark as read.
+  + Giảm badge.
+  + Điều hướng theo redirectUrl.
+- Mark all as read.
+- Nút View all notifications chuyển đến /notifications.
+- Giao diện dark mode theo phong cách SoundCloud.
+
+Popup có:
+
+maxHeight: 410
+overflowY: auto
+
+Do đó popup tự cuộn khi danh sách dài.
+
+3.4. Switch bật/tắt notification
+
+Nút Settings trong popup đã được thay bằng switch On/Off đơn giản.
+
+Hiện trạng switch:
+
+- Lưu trạng thái bằng localStorage.
+- Khi Off:
+  + Không load notification.
+  + Không polling unread count.
+  + Badge về 0.
+  + Danh sách popup được làm trống.
+- Khi On:
+  + Load lại unread count.
+  + Load lại notification.
+
+Lưu ý quan trọng:
+
+Switch hiện chỉ tắt notification ở phía frontend trên trình duyệt hiện tại.
+
+Switch chưa:
+
+- Lưu cài đặt vào database.
+- Tắt việc backend tạo notification.
+- Đồng bộ giữa nhiều thiết bị.
+- Đồng bộ giữa nhiều trình duyệt.
+
+Nếu muốn thành tính năng cài đặt thật, cần thêm notificationEnabled trong User hoặc UserSetting và có API backend cập nhật trạng thái.
+
+3.5. Trang /notifications
+
+Đã tạo route:
+
+src/app/(user)/notifications/page.tsx
+
+Đường dẫn:
+
+/notifications
+
+Các chức năng:
+
+- Hiển thị toàn bộ notification theo phân trang.
+- Filter All.
+- Filter Unread.
+- Hiển thị unread count.
+- Refresh danh sách.
+- Mark all read.
+- Xóa một notification.
+- Clear read.
+- Load more.
+- Bấm notification để mark read.
+- Điều hướng theo redirectUrl.
+- Loading skeleton.
+- Empty state.
+- Error alert.
+- Trạng thái chưa đăng nhập.
+- Dark mode.
+- Responsive trên mobile và desktop.
+
+3.6. Trạng thái frontend hiện tại
+
+Đã hoàn thành về mặt code:
+
+- API client.
+- Badge chuông.
+- Popup notification.
+- Scroll popup.
+- Mark as read.
+- Mark all as read.
+- Trang /notifications.
+- Filter all/unread.
+- Delete.
+- Clear read.
+- Load more.
+- Empty state.
+- Loading state.
+- Error state.
+- Switch On/Off cục bộ.
+- Điều hướng bằng redirectUrl.
+
+Chưa xác nhận runtime:
+
+- Build TypeScript thành công.
+- Token của session có đúng trường accessToken/access_token hay không.
+- Kiểu IBackendRes có khớp response backend hay không.
+- API trả đúng field content, last, totalElements và unreadCount hay không.
+- Page và popup cập nhật đồng bộ tức thời hay chỉ sau polling/reload.
+- redirectUrl có đúng route track thực tế hay không.
+
+============================================================
+4. FLOW HOẠT ĐỘNG HIỆN TẠI
+============================================================
+
+Flow Comment:
+
+1. User B đăng nhập.
+2. User B comment vào track của User A.
+3. TrackController lưu Comment.
+4. NotificationService tạo TRACK_COMMENT.
+5. Notification được lưu với recipientId là User A.
+6. Header của User A gọi unread-count.
+7. Badge chuông hiển thị số chưa đọc.
+8. User A mở popup.
+9. Popup gọi API lấy danh sách notification.
+10. User A bấm notification.
+11. Frontend gọi API mark read.
+12. Badge giảm.
+13. Frontend điều hướng đến redirectUrl.
+14. User A có thể xem toàn bộ lịch sử tại /notifications.
+
+============================================================
+5. CÁC ĐIỂM CẦN KIỂM TRA TRƯỚC KHI XÁC NHẬN HOÀN THÀNH
+============================================================
+
+5.1. Database
+
+Kiểm tra bảng notifications đã được tạo.
+
+Các cột cần tồn tại:
+
+- id
+- recipient_id
+- actor_id
+- type
+- title
+- message
+- entity_type
+- entity_id
+- redirect_url
+- metadata_json
+- is_read
+- read_at
+- deduplication_key
+- created_at
+- updated_at
+
+Kiểm tra unique index của deduplication_key.
+
+5.2. Backend compile
+
+Đảm bảo:
+
+- Không còn import không dùng nghiêm trọng.
+- Không có hai class CommentController trùng trong cùng file.
+- NotificationService được inject tại TrackController.
+- CommentController không còn NotificationService nếu không sử dụng.
+- UserRepository.findByEmail trả đúng kiểu User hoặc Optional<User>.
+- Track có các getter:
+  + getUploaderId()
+  + getTitle()
+  + getSlug()
+  + getId()
+- Comment có getId().
+- NotificationRepository có đầy đủ method service đang gọi.
+
+5.3. API test
+
+Dùng hai user khác nhau.
+
+User A:
+- Chủ sở hữu track.
+
+User B:
+- Người comment.
+
+Test:
+
+1. User B comment vào track của User A.
+2. Kiểm tra bảng notifications.
+3. Đăng nhập User A.
+4. Gọi:
+   GET /api/v1/notifications/unread-count
+5. Kết quả mong đợi:
+   unreadCount = 1
+6. Gọi:
+   GET /api/v1/notifications?page=0&size=20&status=all
+7. Kết quả phải có:
+   type = TRACK_COMMENT
+   isRead = false
+8. Gọi mark read.
+9. Gọi unread-count lại.
+10. Kết quả phải giảm về 0.
+
+5.4. Frontend test
+
+Kiểm tra:
+
+- Header không gọi API khi chưa đăng nhập.
+- Không bị lỗi 401 khi session đang loading.
+- Badge đúng với unreadCount.
+- Popup mở đúng vị trí.
+- Popup có scroll khi nhiều item.
+- Mark all read hoạt động.
+- View all mở /notifications.
+- Filter Unread hoạt động.
+- Delete hoạt động.
+- Clear read hoạt động.
+- Load more không lặp item.
+- Bấm notification không bị gọi delete do event bubbling.
+- Mobile không bị tràn chiều ngang.
+- Dark mode không có chữ đen trên nền tối.
+
+5.5. Redirect URL
+
+NotificationService hiện có thể tạo:
+
+/track/{slug}
+
+Cần đối chiếu route frontend thật.
+
+Nếu route frontend đang là:
+
+/track/{slug}-{id}.html
+
+thì phải sửa redirectUrl cho khớp.
+
+Nếu không sửa, notification vẫn hiển thị nhưng bấm vào có thể vào trang 404.
+
+============================================================
+6. CÁC VIỆC CÒN LẠI
+============================================================
+
+Ưu tiên 1: Xác nhận flow Comment chạy runtime
+
+- Build backend.
+- Test comment bằng hai user.
+- Kiểm tra notification được insert.
+- Test API unread count.
+- Test Header và page.
+
+Ưu tiên 2: Gắn notification Follow
+
+Khi User B follow User A:
+
+- recipientId = User A.
+- actorId = User B.
+- type = NEW_FOLLOW.
+- entityType = USER.
+- entityId = User B.
+- redirectUrl = profile của User B.
+- deduplicationKey:
+  NEW_FOLLOW:{actorId}:{recipientId}
+
+Ưu tiên 3: Gắn notification Like
+
+Khi User B like track của User A:
+
+- recipientId = User A.
+- actorId = User B.
+- type = TRACK_LIKE.
+- entityType = TRACK.
+- entityId = trackId.
+- redirectUrl = route track.
+- deduplicationKey:
+  TRACK_LIKE:{trackId}:{actorId}
+
+Ưu tiên 4: Gắn notification kiểm duyệt track
+
+Khi Admin duyệt hoặc từ chối track:
+
+- TRACK_APPROVED.
+- TRACK_REJECTED.
+- COPYRIGHT_APPROVED.
+- COPYRIGHT_REJECTED.
+- TRACK_PROCESSING_COMPLETED.
+
+Người nhận là uploader của track.
+
+Ưu tiên 5: Gắn notification Subscription và Quota
+
+Các thời điểm:
+
+- Đổi plan.
+- Hủy gia hạn.
+- Gia hạn thành công.
+- Sắp hết hạn.
+- Dùng gần hết upload quota.
+- Vượt upload quota.
+
+Nên dùng deduplicationKey theo subscription period để tránh spam.
+
+Ưu tiên 6: Đồng bộ switch notification với backend
+
+Nếu cần cài đặt thật:
+
+- Thêm notificationEnabled vào User hoặc UserSetting.
+- API:
+  GET /api/v1/users/me/notification-settings
+  PATCH /api/v1/users/me/notification-settings
+- Backend kiểm tra setting trước khi tạo notification.
+- Frontend không chỉ dùng localStorage.
+- Cài đặt đồng bộ trên mọi thiết bị.
+
+============================================================
+7. ĐÁNH GIÁ TIẾN ĐỘ
+============================================================
+
+Backend core notification:
+Khoảng 85%.
+
+Lý do chưa 100%:
+- Chưa test runtime đầy đủ.
+- Mới gắn trigger Comment.
+- Chưa gắn Follow, Like, Moderation, Subscription và Quota.
+
+Frontend notification:
+Khoảng 90%.
+
+Lý do chưa 100%:
+- Code UI và API đã đầy đủ.
+- Chưa xác nhận build và runtime.
+- Switch mới là local setting.
+- Chưa xác nhận redirectUrl.
+- Chưa xác nhận đồng bộ badge giữa popup và page trong mọi trường hợp.
+
+Flow Comment end-to-end:
+Khoảng 90%.
+
+Lý do chưa 100%:
+- Code đã nối từ create comment sang NotificationService.
+- Cần chạy thử bằng hai tài khoản và kiểm tra database/API/UI.
+
+============================================================
+8. KẾT LUẬN
+============================================================
+
+Frontend notification hiện đã hoàn thành gần đầy đủ về mặt giao diện và luồng xử lý:
+
+- Header badge.
+- Popup.
+- Scroll.
+- Mark read.
+- Mark all.
+- Trang notification.
+- Filter.
+- Delete.
+- Clear read.
+- Load more.
+- Switch On/Off cục bộ.
+
+Backend notification đã hoàn thành phần lõi:
+
+- Entity.
+- Repository.
+- Service.
+- Controller.
+- DTO.
+- Enum.
+- CRUD/read-state.
+- Unread count.
+- Deduplication.
+- Recipient security.
+- Trigger Comment.
+
+Tuy nhiên chưa nên ghi nhận module hoàn thành 100% cho đến khi:
+
+1. Test runtime flow Comment bằng hai user.
+2. Xác nhận bảng notifications có dữ liệu.
+3. Xác nhận Header và trang /notifications đọc đúng API.
+4. Sửa redirectUrl nếu route track chưa khớp.
+5. Gắn các trigger Follow, Like, Moderation, Subscription và Quota.
+
+Trạng thái phù hợp để ghi trong báo cáo dự án:
+
+“Module Notification đã hoàn thành phần lõi Backend và Frontend. Hệ thống đã hỗ trợ lưu, phân trang, hiển thị, đếm chưa đọc, đánh dấu đã đọc, xóa và điều hướng notification. Trigger Comment đã được tích hợp. Các trigger Follow, Like, kiểm duyệt Track, Subscription và Upload Quota đang ở giai đoạn tích hợp tiếp theo.”

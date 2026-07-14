@@ -1493,5 +1493,87 @@ export const getArtistStudioStatsApi = (accessToken?: string) => {
 };
 
 /* =========================
+Notifications APIs
+========================= */
+
+export const getNotificationsApi = (
+  page: number = 0,
+  size: number = 20,
+  status: "all" | "unread" = "all",
+  accessToken?: string
+) => {
+  const safePage = Math.max(page, 0);
+  const safeSize = Math.min(Math.max(size, 1), 100);
+
+  return sendRequest<IBackendRes<INotificationPage>>({
+    url: `/api/v1/notifications?page=${safePage}&size=${safeSize}&status=${encodeURIComponent(
+      status
+    )}`,
+    method: "GET",
+
+    headers: authHeaders(accessToken),
+
+    nextOption: {
+      cache: "no-store",
+    },
+  });
+};
+
+export const getUnreadNotificationCountApi = (accessToken?: string) => {
+  return sendRequest<IBackendRes<IUnreadNotificationCount>>({
+    url: "/api/v1/notifications/unread-count",
+    method: "GET",
+
+    headers: authHeaders(accessToken),
+
+    nextOption: {
+      cache: "no-store",
+    },
+  });
+};
+
+export const markNotificationAsReadApi = (
+  notificationId: string,
+  accessToken?: string
+) => {
+  return sendRequest<IBackendRes<INotification>>({
+    url: `/api/v1/notifications/${encodeURIComponent(notificationId)}/read`,
+    method: "PATCH",
+
+    headers: authHeaders(accessToken),
+  });
+};
+
+export const markAllNotificationsAsReadApi = (accessToken?: string) => {
+  return sendRequest<IBackendRes<number>>({
+    url: "/api/v1/notifications/read-all",
+    method: "PATCH",
+
+    headers: authHeaders(accessToken),
+  });
+};
+
+export const deleteNotificationApi = (
+  notificationId: string,
+  accessToken?: string
+) => {
+  return sendRequest<IBackendRes<null>>({
+    url: `/api/v1/notifications/${encodeURIComponent(notificationId)}`,
+    method: "DELETE",
+
+    headers: authHeaders(accessToken),
+  });
+};
+
+export const clearReadNotificationsApi = (accessToken?: string) => {
+  return sendRequest<IBackendRes<number>>({
+    url: "/api/v1/notifications/clear-read",
+    method: "DELETE",
+
+    headers: authHeaders(accessToken),
+  });
+};
+
+/* =========================
 
 ========================= */

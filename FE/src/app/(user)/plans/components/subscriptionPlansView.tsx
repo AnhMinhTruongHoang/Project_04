@@ -648,11 +648,8 @@ const SubscriptionPlansView = () => {
           >
             {paidPlans.map((plan) => {
               const accent = getPlanAccent(plan.code);
-
               const isCurrent = currentPlanCode === plan.code;
-
               const isChanging = changingPlanCode === plan.code;
-
               const isPopular = plan.code === "ARTIST_PRO";
 
               return (
@@ -662,26 +659,24 @@ const SubscriptionPlansView = () => {
                     position: "relative",
                     overflow: "hidden",
                     minHeight: 390,
-
                     borderRadius: "10px",
-
                     border: `1px solid ${
                       isCurrent ? accent.main : accent.border
                     }`,
-
                     background: accent.gradient,
-
                     boxShadow: isPopular
                       ? "0 22px 60px rgba(215,169,40,0.13)"
                       : "0 22px 60px rgba(0,0,0,0.24)",
-
                     p: {
                       xs: 2.5,
                       md: 3,
                     },
 
+                    /* CENTER CONTENT: align items and center text */
                     display: "flex",
                     flexDirection: "column",
+                    alignItems: "center",
+                    textAlign: "center",
                   }}
                 >
                   {isPopular && (
@@ -690,13 +685,10 @@ const SubscriptionPlansView = () => {
                         position: "absolute",
                         top: 0,
                         right: 0,
-
                         px: 1.4,
                         py: 0.55,
-
                         color: "#111111",
                         backgroundColor: accent.main,
-
                         fontSize: 9,
                         fontWeight: 950,
                         letterSpacing: "0.05em",
@@ -707,11 +699,13 @@ const SubscriptionPlansView = () => {
                     </Box>
                   )}
 
+                  {/* Header: icon + title centered */}
                   <Box
                     sx={{
                       display: "flex",
                       alignItems: "center",
                       gap: 1,
+                      justifyContent: "center",
                     }}
                   >
                     <WorkspacePremiumRoundedIcon
@@ -745,12 +739,14 @@ const SubscriptionPlansView = () => {
                     {plan.description}
                   </Typography>
 
+                  {/* Price centered */}
                   <Box
                     sx={{
                       mt: 2.5,
                       display: "flex",
                       alignItems: "baseline",
                       gap: 0.7,
+                      justifyContent: "center",
                     }}
                   >
                     <Typography
@@ -777,60 +773,61 @@ const SubscriptionPlansView = () => {
                     )}
                   </Box>
 
-                  <Button
-                    fullWidth
-                    disabled={isCurrent || isChanging}
-                    onClick={() => void handleChoosePlan(plan)}
-                    sx={{
-                      mt: 2,
-                      mb: 2.5,
-                      height: 42,
-                      borderRadius: "999px",
-                      color: isCurrent ? "#a0a0a0" : "#ffffff",
+                  {/* Button stays full width but constrained visually; center container */}
+                  <Box sx={{ width: "100%", maxWidth: 360, mt: 2, mb: 2.5 }}>
+                    <Button
+                      fullWidth
+                      disabled={isCurrent || isChanging}
+                      onClick={() => void handleChoosePlan(plan)}
+                      sx={{
+                        height: 42,
+                        borderRadius: "999px",
+                        color: isCurrent ? "#a0a0a0" : "#ffffff",
+                        backgroundColor: isCurrent
+                          ? "rgba(255,255,255,0.06)"
+                          : "#050505",
+                        border: "1px solid rgba(255,255,255,0.2)",
+                        textTransform: "none",
+                        fontSize: 13,
+                        fontWeight: 950,
+                        "&:hover": {
+                          backgroundColor: accent.main,
+                          color:
+                            plan.code === "ARTIST_PRO" ? "#111111" : "#ffffff",
+                        },
+                        "&.Mui-disabled": {
+                          color: "#8c8c8c",
+                          backgroundColor: "rgba(255,255,255,0.05)",
+                        },
+                      }}
+                    >
+                      {isChanging ? (
+                        <CircularProgress
+                          size={18}
+                          sx={{
+                            color: accent.main,
+                          }}
+                        />
+                      ) : isCurrent ? (
+                        "Current plan"
+                      ) : accessToken ? (
+                        `Choose ${plan.name}`
+                      ) : (
+                        "Sign in to upgrade"
+                      )}
+                    </Button>
+                  </Box>
 
-                      backgroundColor: isCurrent
-                        ? "rgba(255,255,255,0.06)"
-                        : "#050505",
-
-                      border: "1px solid rgba(255,255,255,0.2)",
-
-                      textTransform: "none",
-                      fontSize: 13,
-                      fontWeight: 950,
-
-                      "&:hover": {
-                        backgroundColor: accent.main,
-                        color:
-                          plan.code === "ARTIST_PRO" ? "#111111" : "#ffffff",
-                      },
-
-                      "&.Mui-disabled": {
-                        color: "#8c8c8c",
-                        backgroundColor: "rgba(255,255,255,0.05)",
-                      },
-                    }}
-                  >
-                    {isChanging ? (
-                      <CircularProgress
-                        size={18}
-                        sx={{
-                          color: accent.main,
-                        }}
-                      />
-                    ) : isCurrent ? (
-                      "Current plan"
-                    ) : accessToken ? (
-                      `Choose ${plan.name}`
-                    ) : (
-                      "Sign in to upgrade"
-                    )}
-                  </Button>
-
+                  {/* Features: center the list */}
                   <Box
                     sx={{
                       display: "flex",
                       flexDirection: "column",
                       gap: 1.25,
+                      alignItems: "center",
+                      mt: 1,
+                      width: "100%",
+                      maxWidth: 420,
                     }}
                   >
                     <PlanFeature icon={<CloudUploadRoundedIcon />}>
@@ -899,15 +896,11 @@ const SubscriptionPlansView = () => {
               sx={{
                 overflowX: "auto",
                 borderRadius: "10px",
-
                 border: "1px solid rgba(255,255,255,0.1)",
-
                 backgroundColor: "rgba(13,15,16,0.88)",
-
                 "&::-webkit-scrollbar": {
                   height: 8,
                 },
-
                 "&::-webkit-scrollbar-thumb": {
                   backgroundColor: "rgba(255,255,255,0.18)",
                   borderRadius: "999px",
@@ -924,22 +917,15 @@ const SubscriptionPlansView = () => {
                     display: "grid",
                     gridTemplateColumns:
                       "minmax(280px,1.5fr) repeat(3,minmax(160px,1fr))",
-
                     minHeight: 130,
                     alignItems: "center",
-
                     borderBottom: "1px solid rgba(255,255,255,0.14)",
                   }}
                 >
-                  <Box
-                    sx={{
-                      px: 3,
-                    }}
-                  />
+                  <Box sx={{ px: 3 }} />
 
                   {sortedPlans.map((plan) => {
                     const accent = getPlanAccent(plan.code);
-
                     const isCurrent = currentPlanCode === plan.code;
 
                     return (
@@ -986,19 +972,15 @@ const SubscriptionPlansView = () => {
                           sx={{
                             mt: 1.2,
                             height: 22,
-
                             color: isCurrent ? accent.main : "#ffffff",
-
                             backgroundColor: isCurrent
                               ? accent.soft
                               : "rgba(255,255,255,0.06)",
-
                             border: `1px solid ${
                               isCurrent
                                 ? accent.border
                                 : "rgba(255,255,255,0.12)"
                             }`,
-
                             fontSize: 9,
                             fontWeight: 900,
                           }}
@@ -1036,26 +1018,17 @@ const SubscriptionPlansView = () => {
                         key={feature.key}
                         sx={{
                           display: "grid",
-
                           gridTemplateColumns:
                             "minmax(280px,1.5fr) repeat(3,minmax(160px,1fr))",
-
                           minHeight: 78,
-
                           alignItems: "center",
-
                           borderBottom:
                             featureIndex === group.features.length - 1
                               ? "none"
                               : "1px solid rgba(255,255,255,0.075)",
                         }}
                       >
-                        <Box
-                          sx={{
-                            px: 3,
-                            py: 1.5,
-                          }}
-                        >
+                        <Box sx={{ px: 3, py: 1.5 }}>
                           <Typography
                             sx={{
                               color: "#ffffff",
@@ -1086,15 +1059,10 @@ const SubscriptionPlansView = () => {
                             sx={{
                               px: 2,
                               py: 1.5,
-
                               minHeight: 78,
-
                               display: "flex",
-
                               alignItems: "center",
-
                               justifyContent: "center",
-
                               borderLeft: "1px solid rgba(255,255,255,0.055)",
                             }}
                           >

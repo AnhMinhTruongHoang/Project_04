@@ -739,5 +739,64 @@ declare global {
     | "comments"
     | "benefits";
 
+  /// notifications
+  interface INotification {
+    id: string;
+    recipientId: string;
+    actorId?: string | null;
+
+    type:
+      | "NEW_FOLLOW"
+      | "TRACK_LIKE"
+      | "TRACK_COMMENT"
+      | "TRACK_APPROVED"
+      | "TRACK_REJECTED"
+      | "COPYRIGHT_APPROVED"
+      | "COPYRIGHT_REJECTED"
+      | "TRACK_PROCESSING_COMPLETED"
+      | "UPLOAD_QUOTA_WARNING"
+      | "UPLOAD_QUOTA_EXCEEDED"
+      | "SUBSCRIPTION_CHANGED"
+      | "SUBSCRIPTION_CANCEL_SCHEDULED"
+      | "SUBSCRIPTION_RENEWED"
+      | "SUBSCRIPTION_EXPIRING"
+      | "SYSTEM";
+
+    title: string;
+    message: string;
+
+    entityType?:
+      | "USER"
+      | "TRACK"
+      | "COMMENT"
+      | "SUBSCRIPTION"
+      | "SYSTEM"
+      | null;
+
+    entityId?: string | null;
+    redirectUrl?: string | null;
+    metadataJson?: string | null;
+
+    isRead: boolean;
+    readAt?: string | null;
+    createdAt: string;
+  }
+
+  interface INotificationPage {
+    content: INotification[];
+
+    page: number;
+    size: number;
+
+    totalElements: number;
+    totalPages: number;
+
+    first: boolean;
+    last: boolean;
+  }
+
+  interface IUnreadNotificationCount {
+    unreadCount: number;
+  }
   ///
 }

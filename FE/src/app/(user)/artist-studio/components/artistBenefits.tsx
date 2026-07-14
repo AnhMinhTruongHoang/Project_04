@@ -12,6 +12,7 @@ import WorkspacePremiumRoundedIcon from "@mui/icons-material/WorkspacePremiumRou
 import ArrowForwardRoundedIcon from "@mui/icons-material/ArrowForwardRounded";
 import CheckCircleRoundedIcon from "@mui/icons-material/CheckCircleRounded";
 import ImageNotSupportedRoundedIcon from "@mui/icons-material/ImageNotSupportedRounded";
+import { getBenefitImageUrl } from "@/utils/actions/getImages";
 
 type Props = {
   plan: ISubscriptionPlan | null;
@@ -345,7 +346,7 @@ const ArtistBenefits = ({
                 {item.imageUrl ? (
                   <Box
                     component="img"
-                    src={item.imageUrl}
+                    src={getBenefitImageUrl(item.imageUrl)}
                     alt={item.title}
                     sx={{
                       width: "100%",

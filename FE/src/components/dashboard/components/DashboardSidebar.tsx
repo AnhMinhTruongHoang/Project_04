@@ -15,6 +15,7 @@ import CommentRoundedIcon from "@mui/icons-material/CommentRounded";
 import HomeRoundedIcon from "@mui/icons-material/HomeRounded";
 import ChevronLeftRoundedIcon from "@mui/icons-material/ChevronLeftRounded";
 import ChevronRightRoundedIcon from "@mui/icons-material/ChevronRightRounded";
+import WorkspacePremiumRoundedIcon from "@mui/icons-material/WorkspacePremiumRounded";
 import { ArticleOutlined } from "@mui/icons-material";
 
 type Props = {
@@ -52,6 +53,11 @@ const menuItems = [
     label: "Comments",
     href: "/dashboard/comments",
     icon: <CommentRoundedIcon />,
+  },
+  {
+    label: "Artist Benefits",
+    href: "/dashboard/benefits",
+    icon: <WorkspacePremiumRoundedIcon />,
   },
 ];
 

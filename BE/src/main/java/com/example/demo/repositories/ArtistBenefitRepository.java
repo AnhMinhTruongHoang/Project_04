@@ -11,5 +11,9 @@ import com.example.demo.entities.ArtistBenefit;
 public interface ArtistBenefitRepository
         extends JpaRepository<ArtistBenefit, String> {
 
-    List<ArtistBenefit> findByActiveTrueOrderBySortOrderAscCreatedAtDesc();
+    List<ArtistBenefit>
+    findByActiveTrueOrderBySortOrderAscCreatedAtDesc();
+
+    List<ArtistBenefit>
+    findAllByOrderBySortOrderAscCreatedAtDesc();
 }

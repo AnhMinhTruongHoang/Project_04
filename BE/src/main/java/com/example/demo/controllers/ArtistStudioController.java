@@ -2,60 +2,190 @@ package com.example.demo.controllers;
 
 import java.util.List;
 
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.example.demo.dtos.ArtistBenefitDTO;
+import com.example.demo.dtos.ArtistStudioStatsDTO;
 import com.example.demo.entities.ArtistBenefit;
+import com.example.demo.entities.User;
+import com.example.demo.helpers.JwtHelper;
 import com.example.demo.repositories.ArtistBenefitRepository;
+import com.example.demo.repositories.UserRepository;
 import com.example.demo.responses.ApiResponse;
+import com.example.demo.services.ArtistStudioService;
+
+import io.jsonwebtoken.Claims;
+import jakarta.servlet.http.HttpServletRequest;
 
 @RestController
 @RequestMapping("/api/v1/artist-studio")
 public class ArtistStudioController {
 
-    @Autowired
-    private ArtistBenefitRepository artistBenefitRepository;
+        private final ArtistBenefitRepository artistBenefitRepository;
 
-    @GetMapping("/benefits")
-    public ResponseEntity<?> getBenefits() {
+        private final ArtistStudioService artistStudioService;
 
-        List<ArtistBenefitDTO> benefits = artistBenefitRepository
-                .findByActiveTrueOrderBySortOrderAscCreatedAtDesc()
-                .stream()
-                .map(this::toDTO)
-                .toList();
+        private final UserRepository userRepository;
 
-        return ResponseEntity.ok(
-                new ApiResponse<>(
-                        200,
-                        "Get artist benefits successfully",
-                        benefits));
-    }
+        public ArtistStudioController(
+                        ArtistBenefitRepository artistBenefitRepository,
+                        ArtistStudioService artistStudioService,
+                        UserRepository userRepository) {
 
-    private ArtistBenefitDTO toDTO(
-            ArtistBenefit benefit) {
+                this.artistBenefitRepository = artistBenefitRepository;
+                this.artistStudioService = artistStudioService;
+                this.userRepository = userRepository;
+        }
 
-        ArtistBenefitDTO dto = new ArtistBenefitDTO();
+        @GetMapping("/benefits")
+        public ResponseEntity<?> getBenefits() {
 
-        dto.setId(
-                benefit.getId());
+                try {
+                        List<ArtistBenefitDTO> benefits = artistBenefitRepository
+                                        .findByActiveTrueOrderBySortOrderAscCreatedAtDesc()
+                                        .stream()
+                                        .map(this::toDTO)
+                                        .toList();
 
-        dto.setTitle(
-                benefit.getTitle());
+                        return ResponseEntity.ok(
+                                        new ApiResponse<>(
+                                                        200,
+                                                        "Get artist benefits successfully",
+                                                        benefits));
 
-        dto.setDescription(
-                benefit.getDescription());
+                } catch (Exception e) {
+                        e.printStackTrace();
 
-        dto.setSaveLabel(
-                benefit.getSaveLabel());
+                        return ResponseEntity
+                                        .internalServerError()
+                                        .body(
+                                                        new ApiResponse<>(
+                                                                        500,
+                                                                        e.getMessage(),
+                                                                        null));
+                }
+        }
 
-        dto.setImageUrl(
-                benefit.getImageUrl());
+        @GetMapping("/stats")
+        public ResponseEntity<?> getStats(
+                        HttpServletRequest request) {
 
-        return dto;
-    }
+                try {
+                        User user = getCurrentUser(request);
+
+                        if (user == null) {
+                                return ResponseEntity
+                                                .status(401)
+                                                .body(
+                                                                new ApiResponse<>(
+                                                                                401,
+                                                                                "Unauthorized",
+                                                                                null));
+                        }
+
+                        ArtistStudioStatsDTO stats = artistStudioService
+                                        .getStats(user.getId());
+
+                        return ResponseEntity.ok(
+                                        new ApiResponse<>(
+                                                        200,
+                                                        "Get artist studio stats successfully",
+                                                        stats));
+
+                } catch (Exception e) {
+                        e.printStackTrace();
+
+                        return ResponseEntity
+                                        .internalServerError()
+                                        .body(
+                                                        new ApiResponse<>(
+                                                                        500,
+                                                                        e.getMessage(),
+                                                                        null));
+                }
+        }
+
+        private String getBearerToken(
+                        HttpServletRequest request) {
+
+                String authorization = request.getHeader(
+                                "Authorization");
+
+                if (authorization == null
+                                || !authorization.startsWith("Bearer ")) {
+
+                        return null;
+                }
+
+                String token = authorization
+                                .substring(7)
+                                .trim();
+
+                return token.isEmpty()
+                                ? null
+                                : token;
+        }
+
+        private User getCurrentUser(
+                        HttpServletRequest request) {
+
+                try {
+                        String token = getBearerToken(request);
+
+                        if (token == null) {
+                                return null;
+                        }
+
+                        Claims claims = JwtHelper.verifyToken(token);
+
+                        String email = claims.getSubject();
+
+                        if (email == null
+                                        || email.isBlank()) {
+
+                                return null;
+                        }
+
+                        return userRepository.findByEmail(email);
+
+                } catch (Exception e) {
+                        return null;
+                }
+        }
+
+        private ArtistBenefitDTO toDTO(
+                        ArtistBenefit benefit) {
+
+                ArtistBenefitDTO dto = new ArtistBenefitDTO();
+
+                dto.setId(benefit.getId());
+
+                dto.setTitle(benefit.getTitle());
+
+                dto.setDescription(
+                                benefit.getDescription());
+
+                dto.setSaveLabel(
+                                benefit.getSaveLabel());
+
+                dto.setImageUrl(
+                                benefit.getImageUrl());
+
+                dto.setSortOrder(
+                                benefit.getSortOrder());
+
+                dto.setActive(
+                                benefit.getActive());
+
+                dto.setCreatedAt(
+                                benefit.getCreatedAt());
+
+                dto.setUpdatedAt(
+                                benefit.getUpdatedAt());
+
+                return dto;
+        }
 }

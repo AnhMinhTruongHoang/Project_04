@@ -570,13 +570,99 @@ declare global {
     isDeleted?: boolean;
   }
 
-  interface IArtistBenefit {
+  export interface IArtistBenefit {
     id: string;
     title: string;
     description?: string;
     saveLabel?: string;
     imageUrl?: string | null;
+
+    sortOrder: number;
+    active: boolean;
+
+    createdAt?: string;
+    updatedAt?: string;
   }
+
+  export interface IArtistBenefitPayload {
+    title: string;
+    description?: string;
+    saveLabel?: string;
+    imageUrl?: string | null;
+    sortOrder: number;
+    active: boolean;
+  }
+
+  export const getAdminArtistBenefitsApi = (accessToken?: string) => {
+    return sendRequest<IBackendRes<IArtistBenefit[]>>({
+      url: "/api/v1/admin/artist-benefits",
+      method: "GET",
+
+      headers: authHeaders(accessToken),
+
+      nextOption: {
+        cache: "no-store",
+      },
+    });
+  };
+
+  export const createAdminArtistBenefitApi = (
+    payload: IArtistBenefitPayload,
+    accessToken?: string
+  ) => {
+    return sendRequest<IBackendRes<IArtistBenefit>>({
+      url: "/api/v1/admin/artist-benefits",
+      method: "POST",
+
+      headers: authHeaders(accessToken),
+
+      body: payload,
+    });
+  };
+
+  export const updateAdminArtistBenefitApi = (
+    benefitId: string,
+    payload: IArtistBenefitPayload,
+    accessToken?: string
+  ) => {
+    return sendRequest<IBackendRes<IArtistBenefit>>({
+      url: `/api/v1/admin/artist-benefits/${encodeURIComponent(benefitId)}`,
+
+      method: "PUT",
+
+      headers: authHeaders(accessToken),
+
+      body: payload,
+    });
+  };
+
+  export const toggleAdminArtistBenefitApi = (
+    benefitId: string,
+    accessToken?: string
+  ) => {
+    return sendRequest<IBackendRes<IArtistBenefit>>({
+      url: `/api/v1/admin/artist-benefits/${encodeURIComponent(
+        benefitId
+      )}/toggle`,
+
+      method: "PATCH",
+
+      headers: authHeaders(accessToken),
+    });
+  };
+
+  export const deleteAdminArtistBenefitApi = (
+    benefitId: string,
+    accessToken?: string
+  ) => {
+    return sendRequest<IBackendRes<null>>({
+      url: `/api/v1/admin/artist-benefits/${encodeURIComponent(benefitId)}`,
+
+      method: "DELETE",
+
+      headers: authHeaders(accessToken),
+    });
+  };
 
   interface IMySubscriptionData {
     plan: ISubscriptionPlan;
@@ -635,6 +721,23 @@ declare global {
     percentage: number;
     unlimited: boolean;
   }
+
+  interface IArtistStudioStats {
+    plays: number;
+    reposts: number;
+    downloads: number;
+    likes: number;
+    comments: number;
+    earnings: number;
+    fans: number;
+  }
+
+  type StudioTab =
+    | "tracks"
+    | "distribution"
+    | "vinyl"
+    | "comments"
+    | "benefits";
 
   ///
 }

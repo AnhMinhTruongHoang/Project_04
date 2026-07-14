@@ -93,5 +93,24 @@ public interface TrackRepository extends JpaRepository<Track, String> {
 			@Param("maxPlays") Integer maxPlays,
 
 			Pageable pageable);
+
+	/// artist stats
+	@Query("""
+			    SELECT COALESCE(SUM(track.countPlay), 0)
+			    FROM Track track
+			    WHERE track.uploaderId = :userId
+			      AND track.isDeleted = false
+			""")
+	Long sumPlaysByUploaderId(
+			@Param("userId") String userId);
+
+	@Query("""
+			    SELECT COALESCE(SUM(track.countLike), 0)
+			    FROM Track track
+			    WHERE track.uploaderId = :userId
+			      AND track.isDeleted = false
+			""")
+	Long sumLikesByUploaderId(
+			@Param("userId") String userId);
 	///
 }

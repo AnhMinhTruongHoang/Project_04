@@ -2,7 +2,6 @@
 
 import Box from "@mui/material/Box";
 import Typography from "@mui/material/Typography";
-import type { StudioTab } from "../../../../utils/actions/artistStudioData";
 
 type Props = {
   tabs: {
@@ -12,6 +11,32 @@ type Props = {
   activeTab: StudioTab;
   onChange: (value: StudioTab) => void;
 };
+
+export const studioTabs: {
+  label: string;
+  value: StudioTab;
+}[] = [
+  {
+    label: "SoundClone Tracks",
+    value: "tracks",
+  },
+  {
+    label: "Distribution",
+    value: "distribution",
+  },
+  {
+    label: "Vinyl Records",
+    value: "vinyl",
+  },
+  {
+    label: "Comments",
+    value: "comments",
+  },
+  {
+    label: "Benefits",
+    value: "benefits",
+  },
+];
 
 const StudioTabs = ({ tabs, activeTab, onChange }: Props) => {
   return (

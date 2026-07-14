@@ -6,21 +6,23 @@ import { useSession } from "next-auth/react";
 
 import { Box, Typography } from "@mui/material";
 
-import {
-  studioTabs,
-  type StudioTab,
-} from "../../../../utils/actions/artistStudioData";
-
 import UploadQuotaBar from "./uploadQuotaBar";
 import ArtistStudioStats from "./artistStudioStats";
-import StudioTabs from "./studioTabs";
 import StudioActions from "./studioActions";
 import ArtistTracksTable from "./artistTracksTable";
 import ArtistBenefits from "./artistBenefits";
-import { getArtistBenefitsApi, getMySubscriptionApi } from "@/utils/api";
+import {
+  getArtistBenefitsApi,
+  getArtistStudioStatsApi,
+  getMySubscriptionApi,
+} from "@/utils/api";
+import StudioTabs, { studioTabs } from "./studioTabs";
 
 const ArtistStudioView = () => {
   const { data: session, status: sessionStatus } = useSession();
+  const [statsLoading, setStatsLoading] = useState(true);
+
+  const [statsError, setStatsError] = useState("");
 
   const [activeTab, setActiveTab] = useState<StudioTab>("tracks");
 
@@ -37,12 +39,99 @@ const ArtistStudioView = () => {
 
   const [benefitsError, setBenefitsError] = useState("");
 
+  const [studioStats, setStudioStats] = useState<IArtistStudioStats>({
+    plays: 0,
+    reposts: 0,
+    downloads: 0,
+    likes: 0,
+    comments: 0,
+    earnings: 0,
+    fans: 0,
+  });
+
   const accessToken =
     (session as any)?.access_token ||
     (session as any)?.accessToken ||
     (session as any)?.user?.access_token ||
     (session as any)?.user?.accessToken ||
     "";
+
+  ///load stats
+  useEffect(() => {
+    if (sessionStatus === "loading") {
+      return;
+    }
+
+    let cancelled = false;
+
+    const loadStudioStats = async () => {
+      if (!accessToken) {
+        setStatsLoading(false);
+        setStatsError("Please login to view Artist Studio stats.");
+
+        return;
+      }
+
+      try {
+        setStatsLoading(true);
+        setStatsError("");
+
+        const response = await getArtistStudioStatsApi(accessToken);
+
+        if (cancelled) {
+          return;
+        }
+
+        if (
+          response?.error ||
+          Number(response?.statusCode) >= 400 ||
+          !response?.data
+        ) {
+          throw new Error(
+            response?.message || "Cannot load Artist Studio stats."
+          );
+        }
+
+        setStudioStats({
+          plays: Number(response.data.plays || 0),
+
+          reposts: Number(response.data.reposts || 0),
+
+          downloads: Number(response.data.downloads || 0),
+
+          likes: Number(response.data.likes || 0),
+
+          comments: Number(response.data.comments || 0),
+
+          earnings: Number(response.data.earnings || 0),
+
+          fans: Number(response.data.fans || 0),
+        });
+      } catch (loadError) {
+        console.error("Cannot load Artist Studio stats:", loadError);
+
+        if (!cancelled) {
+          setStatsError(
+            loadError instanceof Error
+              ? loadError.message
+              : "Cannot load Artist Studio stats."
+          );
+        }
+      } finally {
+        if (!cancelled) {
+          setStatsLoading(false);
+        }
+      }
+    };
+
+    void loadStudioStats();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [accessToken, sessionStatus]);
+
+  ///
 
   useEffect(() => {
     if (sessionStatus === "loading") {
@@ -189,7 +278,8 @@ const ArtistStudioView = () => {
       <Box sx={{ mt: 2 }}>
         <ArtistStudioStats
           plan={subscriptionData?.plan || null}
-          loading={subscriptionLoading}
+          loading={subscriptionLoading || statsLoading}
+          stats={studioStats}
         />
       </Box>
 

@@ -1,38 +1,19 @@
-package com.example.demo.dtos;
+package com.example.demo.responses;
 
-import java.time.LocalDateTime;
-
-public class ArtistBenefitDTO {
-
-    private String id;
+public class ArtistBenefitResponse {
 
     private String title;
-
     private String description;
-
     private String saveLabel;
-
     private String imageUrl;
-
     private Integer sortOrder;
     private Boolean active;
-    private LocalDateTime createdAt;
-    private LocalDateTime updatedAt;
-
-    public String getId() {
-        return id;
-    }
-
-    public void setId(String id) {
-        this.id = id;
-    }
 
     public String getTitle() {
         return title;
     }
 
-    public void setTitle(
-            String title) {
+    public void setTitle(String title) {
         this.title = title;
     }
 
@@ -79,23 +60,5 @@ public class ArtistBenefitDTO {
     public void setActive(
             Boolean active) {
         this.active = active;
-    }
-
-    public LocalDateTime getCreatedAt() {
-        return createdAt;
-    }
-
-    public void setCreatedAt(
-            LocalDateTime createdAt) {
-        this.createdAt = createdAt;
-    }
-
-    public LocalDateTime getUpdatedAt() {
-        return updatedAt;
-    }
-
-    public void setUpdatedAt(
-            LocalDateTime updatedAt) {
-        this.updatedAt = updatedAt;
     }
 }

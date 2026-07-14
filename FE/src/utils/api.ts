@@ -1415,6 +1415,83 @@ export const getArtistBenefitsApi = (accessToken?: string) => {
     },
   });
 };
+
+export const getAdminArtistBenefitsApi = (accessToken?: string) => {
+  return sendRequest<IBackendRes<IArtistBenefit[]>>({
+    url: "/api/v1/admin/artist-benefits",
+    method: "GET",
+    headers: authHeaders(accessToken),
+    nextOption: {
+      cache: "no-store",
+    },
+  });
+};
+
+export const createAdminArtistBenefitApi = (
+  payload: IArtistBenefitPayload,
+  accessToken?: string
+) => {
+  return sendRequest<IBackendRes<IArtistBenefit>>({
+    url: "/api/v1/admin/artist-benefits",
+    method: "POST",
+    headers: authHeaders(accessToken),
+    body: payload,
+  });
+};
+
+export const updateAdminArtistBenefitApi = (
+  benefitId: string,
+  payload: IArtistBenefitPayload,
+  accessToken?: string
+) => {
+  return sendRequest<IBackendRes<IArtistBenefit>>({
+    url: `/api/v1/admin/artist-benefits/${encodeURIComponent(benefitId)}`,
+    method: "PUT",
+    headers: authHeaders(accessToken),
+    body: payload,
+  });
+};
+
+export const toggleAdminArtistBenefitApi = (
+  benefitId: string,
+  accessToken?: string
+) => {
+  return sendRequest<IBackendRes<IArtistBenefit>>({
+    url: `/api/v1/admin/artist-benefits/${encodeURIComponent(
+      benefitId
+    )}/toggle`,
+    method: "PATCH",
+    headers: authHeaders(accessToken),
+  });
+};
+
+export const deleteAdminArtistBenefitApi = (
+  benefitId: string,
+  accessToken?: string
+) => {
+  return sendRequest<IBackendRes<null>>({
+    url: `/api/v1/admin/artist-benefits/${encodeURIComponent(benefitId)}`,
+    method: "DELETE",
+    headers: authHeaders(accessToken),
+  });
+};
+
+/* =========================
+artist studio  stats APIs
+========================= */
+export const getArtistStudioStatsApi = (accessToken?: string) => {
+  return sendRequest<IBackendRes<IArtistStudioStats>>({
+    url: "/api/v1/artist-studio/stats",
+    method: "GET",
+
+    headers: authHeaders(accessToken),
+
+    nextOption: {
+      cache: "no-store",
+    },
+  });
+};
+
 /* =========================
 
 ========================= */

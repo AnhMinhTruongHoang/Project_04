@@ -24,6 +24,7 @@ public class TrackDTO {
 	private Boolean isDeleted;
 	private String approvalStatus;
 	private String rejectionReason;
+	private Long durationSeconds;
 	private LocalDateTime createdAt;
 	private LocalDateTime updatedAt;
 
@@ -180,6 +181,15 @@ public class TrackDTO {
 	public void setRejectionReason(
 			String rejectionReason) {
 		this.rejectionReason = rejectionReason;
+	}
+
+	public Long getDurationSeconds() {
+		return durationSeconds;
+	}
+
+	public void setDurationSeconds(
+			Long durationSeconds) {
+		this.durationSeconds = durationSeconds;
 	}
 
 	public LocalDateTime getCreatedAt() {

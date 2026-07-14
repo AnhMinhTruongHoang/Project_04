@@ -234,6 +234,9 @@ public class Track implements java.io.Serializable {
 		this.approvalStatus = approvalStatus;
 	}
 
+	@Column(name = "durationSeconds")
+	private Long durationSeconds;
+
 	@Column(name = "isDeleted")
 	public Boolean getIsDeleted() {
 		return this.isDeleted;
@@ -360,5 +363,14 @@ public class Track implements java.io.Serializable {
 	public void setScannedAt(
 			LocalDateTime scannedAt) {
 		this.scannedAt = scannedAt;
+	}
+
+	public Long getDurationSeconds() {
+		return durationSeconds;
+	}
+
+	public void setDurationSeconds(
+			Long durationSeconds) {
+		this.durationSeconds = durationSeconds;
 	}
 }

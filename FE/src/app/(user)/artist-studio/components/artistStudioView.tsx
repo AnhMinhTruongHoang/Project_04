@@ -1,13 +1,19 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+
+import { useSession } from "next-auth/react";
+
+import { Box, Typography } from "@mui/material";
+
+import { getMySubscriptionApi, type IMySubscriptionData } from "@/utils/api";
+
 import {
   studioBenefits,
   studioTabs,
-  studioTracks,
   type StudioTab,
 } from "../../../../utils/actions/artistStudioData";
-import { Box, Typography } from "@mui/material";
+
 import UploadQuotaBar from "./uploadQuotaBar";
 import ArtistStudioStats from "./artistStudioStats";
 import StudioTabs from "./studioTabs";
@@ -16,24 +22,118 @@ import ArtistTracksTable from "./artistTracksTable";
 import ArtistBenefits from "./artistBenefits";
 
 const ArtistStudioView = () => {
+  const { data: session, status: sessionStatus } = useSession();
+
   const [activeTab, setActiveTab] = useState<StudioTab>("tracks");
+
+  const [subscriptionData, setSubscriptionData] =
+    useState<IMySubscriptionData | null>(null);
+
+  const [subscriptionLoading, setSubscriptionLoading] = useState(true);
+
+  const [subscriptionError, setSubscriptionError] = useState("");
+
+  const accessToken =
+    (session as any)?.access_token ||
+    (session as any)?.accessToken ||
+    (session as any)?.user?.access_token ||
+    (session as any)?.user?.accessToken ||
+    "";
+
+  useEffect(() => {
+    if (sessionStatus === "loading") {
+      return;
+    }
+
+    let cancelled = false;
+
+    const loadSubscription = async () => {
+      if (!accessToken) {
+        setSubscriptionData(null);
+        setSubscriptionLoading(false);
+
+        setSubscriptionError("Please login to view your subscription.");
+
+        return;
+      }
+
+      try {
+        setSubscriptionLoading(true);
+        setSubscriptionError("");
+
+        const response = await getMySubscriptionApi(accessToken);
+
+        if (cancelled) {
+          return;
+        }
+
+        if (
+          response?.error ||
+          Number(response?.statusCode) >= 400 ||
+          !response?.data
+        ) {
+          setSubscriptionData(null);
+
+          setSubscriptionError(
+            response?.message || "Cannot load subscription."
+          );
+
+          return;
+        }
+
+        setSubscriptionData(response.data);
+      } catch (error) {
+        console.error("Cannot load Artist Studio subscription:", error);
+
+        if (!cancelled) {
+          setSubscriptionData(null);
+
+          setSubscriptionError("Cannot load subscription.");
+        }
+      } finally {
+        if (!cancelled) {
+          setSubscriptionLoading(false);
+        }
+      }
+    };
+
+    void loadSubscription();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [accessToken, sessionStatus]);
 
   return (
     <Box
       sx={{
         minHeight: "100vh",
+
         background:
           "radial-gradient(circle at 20% 0%, rgba(255,77,0,0.08), transparent 32%), linear-gradient(180deg, #111314 0%, #0b0d0e 100%)",
+
         color: "#ffffff",
-        px: { xs: 2, md: 3.5 },
+
+        px: {
+          xs: 2,
+          md: 3.5,
+        },
+
         py: 3,
         pb: 10,
       }}
     >
-      <UploadQuotaBar />
+      <UploadQuotaBar
+        data={subscriptionData}
+        loading={subscriptionLoading}
+        error={subscriptionError}
+      />
 
       <Box sx={{ mt: 2 }}>
-        <ArtistStudioStats />
+        <ArtistStudioStats
+          plan={subscriptionData?.plan || null}
+          loading={subscriptionLoading}
+        />
       </Box>
 
       <Box sx={{ mt: 3.5 }}>
@@ -47,28 +147,45 @@ const ArtistStudioView = () => {
       <Box sx={{ mt: 3 }}>
         {activeTab === "tracks" ? (
           <>
-            <StudioActions />
+            <StudioActions
+              plan={subscriptionData?.plan || null}
+              loading={subscriptionLoading}
+              onDistributionClick={() => {
+                setActiveTab("distribution");
+              }}
+            />
 
             <Box sx={{ mt: 3 }}>
-              <ArtistTracksTable tracks={studioTracks} />
+              <ArtistTracksTable />
             </Box>
           </>
         ) : (
           <Box
             sx={{
               minHeight: 260,
+
               borderRadius: "18px",
+
               border: "1px solid rgba(255,255,255,0.08)",
+
               background: "rgba(255,255,255,0.035)",
+
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
+
               textAlign: "center",
               px: 3,
             }}
           >
             <Box>
-              <Typography sx={{ fontSize: 20, fontWeight: 950, mb: 1 }}>
+              <Typography
+                sx={{
+                  fontSize: 20,
+                  fontWeight: 950,
+                  mb: 1,
+                }}
+              >
                 {studioTabs.find((tab) => tab.value === activeTab)?.label}
               </Typography>
 
@@ -79,8 +196,7 @@ const ArtistStudioView = () => {
                   fontWeight: 700,
                 }}
               >
-                This section is a hardcoded placeholder. You can connect real
-                data later.
+                This section will be connected to real data later.
               </Typography>
             </Box>
           </Box>
@@ -88,7 +204,11 @@ const ArtistStudioView = () => {
       </Box>
 
       <Box sx={{ mt: 4 }}>
-        <ArtistBenefits benefits={studioBenefits} />
+        <ArtistBenefits
+          plan={subscriptionData?.plan || null}
+          loading={subscriptionLoading}
+          benefits={studioBenefits}
+        />
       </Box>
     </Box>
   );

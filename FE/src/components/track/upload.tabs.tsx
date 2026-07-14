@@ -77,7 +77,7 @@ const UploadTabs = () => {
           }}
         >
           <CloudQueueRoundedIcon sx={{ fontSize: 30, color: "#ffffff" }} />
-          Tải lên
+          Upload
         </Box>
 
         <IconButton

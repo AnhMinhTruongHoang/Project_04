@@ -9,6 +9,7 @@ import LinearProgress from "@mui/material/LinearProgress";
 import CloudUploadRoundedIcon from "@mui/icons-material/CloudUploadRounded";
 import MicRoundedIcon from "@mui/icons-material/MicRounded";
 import KeyboardArrowDownRoundedIcon from "@mui/icons-material/KeyboardArrowDownRounded";
+import Link from "next/link";
 
 interface IProps {
   setValue: React.Dispatch<React.SetStateAction<number>>;
@@ -89,11 +90,13 @@ const Step1 = (props: IProps) => {
           <Box sx={{ display: "flex", alignItems: "center", gap: 1.2 }}>
             <CloudUploadRoundedIcon sx={{ fontSize: 22, color: "#d8d8d8" }} />
             <Typography sx={{ fontSize: 14, fontWeight: 800 }}>
-              {trackUpload?.percent || 0}% tải lên được sử dụng
+              {trackUpload?.percent || 0}% upload used
             </Typography>
           </Box>
 
           <Button
+            component={Link}
+            href="/plans"
             sx={{
               height: 36,
               px: 3,
@@ -108,7 +111,7 @@ const Step1 = (props: IProps) => {
               },
             }}
           >
-            Tải lên không giới hạn
+            Unlimited uploads
           </Button>
         </Box>
 
@@ -120,7 +123,7 @@ const Step1 = (props: IProps) => {
             mb: 2,
           }}
         >
-          Tải lên các tệp âm thanh của bạn.
+          Upload your audio files.
         </Typography>
 
         <Typography
@@ -131,8 +134,8 @@ const Step1 = (props: IProps) => {
             mb: 3.5,
           }}
         >
-          Để có chất lượng tốt nhất, hãy sử dụng WAV, FLAC, AIFF hoặc ALAC. Kích
-          thước tệp tối đa là 4GB không nén.{" "}
+          For best quality, use WAV, FLAC, AIFF or ALAC. Maximum file size is
+          4GB uncompressed.{" "}
           <Box
             component="span"
             sx={{
@@ -141,7 +144,7 @@ const Step1 = (props: IProps) => {
               fontWeight: 900,
             }}
           >
-            Tìm hiểu thêm.
+            Learn more.
           </Box>
         </Typography>
 
@@ -187,8 +190,8 @@ const Step1 = (props: IProps) => {
             }}
           >
             {isDragActive
-              ? "Thả tệp âm thanh vào đây..."
-              : "Kéo và thả các tệp âm thanh để bắt đầu."}
+              ? "Drop audio files here..."
+              : "Drag and drop audio files to start."}
           </Typography>
 
           <Button
@@ -207,7 +210,7 @@ const Step1 = (props: IProps) => {
               },
             }}
           >
-            Chọn tệp
+            Choose files
           </Button>
 
           {trackUpload?.fileName && (
@@ -274,7 +277,7 @@ const Step1 = (props: IProps) => {
                 color: "#ffffff",
               }}
             >
-              Hoặc ghi âm bằng micro
+              Or record with microphone
             </Typography>
 
             <Typography
@@ -285,8 +288,8 @@ const Step1 = (props: IProps) => {
                 mt: 0.8,
               }}
             >
-              Tải lên bản ghi nhớ thoại, cập nhật, tin tức hoặc phần giới thiệu
-              đã ghi cho các bản phát hành mới.
+              Upload voice memos, updates, news or recorded introductions for
+              new releases.
             </Typography>
           </Box>
 

@@ -43,4 +43,42 @@ public class FileHelper {
 		return fileName;
 	}
 
+	/// hàm xóa file
+	public static void deleteIfExists(
+			String storedName,
+			String uploadFolder) {
+
+		if (storedName == null
+				|| storedName.isBlank()
+				|| uploadFolder == null
+				|| uploadFolder.isBlank()) {
+			return;
+		}
+
+		try {
+			Path uploadRoot = Path.of(uploadFolder)
+					.toAbsolutePath()
+					.normalize();
+
+			String safeFileName = Path.of(storedName)
+					.getFileName()
+					.toString();
+
+			Path target = uploadRoot
+					.resolve(safeFileName)
+					.normalize();
+
+			if (!target.startsWith(uploadRoot)) {
+				return;
+			}
+
+			Files.deleteIfExists(target);
+
+		} catch (Exception e) {
+			System.err.println(
+					"Cannot delete uploaded file: "
+							+ storedName);
+		}
+	}
+	///
 }

@@ -248,7 +248,7 @@ const AppHeader = () => {
             >
               <Button
                 component={Link}
-                href="/premium"
+                href="/plans"
                 variant="outlined"
                 sx={{
                   height: 30,
@@ -533,7 +533,7 @@ const AppHeader = () => {
         <MenuItem
           onClick={() => {
             setAnchorEl(null);
-            router.push("/premium");
+            router.push("/plans");
           }}
         >
           <StarsRoundedIcon

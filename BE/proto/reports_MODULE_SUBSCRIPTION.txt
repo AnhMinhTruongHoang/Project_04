@@ -1,0 +1,1066 @@
+BÁO CÁO MODULE SUBSCRIPTION
+Dự án: SoundClone / Artist Studio
+Ngày cập nhật: 14/07/2026
+
+============================================================
+I. API TEST TRÊN POSTMAN
+============================================================
+
+1. Cấu hình Environment
+
+BASE_URL=http://localhost:8000
+ACCESS_TOKEN=<JWT_ACCESS_TOKEN_CỦA_USER>
+
+Header cho API cần đăng nhập:
+
+Authorization: Bearer {{ACCESS_TOKEN}}
+Content-Type: application/json
+
+
+1.1. Lấy danh sách gói
+
+Method:
+GET
+
+URL:
+{{BASE_URL}}/api/v1/subscriptions/plans
+
+Auth:
+Không bắt buộc.
+
+Kết quả mong đợi:
+HTTP 200, trả về 3 plan BASIC, ARTIST và ARTIST_PRO.
+
+
+1.2. Lấy subscription hiện tại
+
+Method:
+GET
+
+URL:
+{{BASE_URL}}/api/v1/subscriptions/me
+
+Headers:
+Authorization: Bearer {{ACCESS_TOKEN}}
+
+Kết quả mong đợi:
+HTTP 200.
+
+Lần đầu gọi, hệ thống tự tạo:
+- UserSubscription gói BASIC.
+- SubscriptionUsage với uploadedSeconds = 0.
+
+Response mẫu:
+
+{
+  "statusCode": 200,
+  "message": "Fetch current subscription",
+  "data": {
+    "plan": {
+      "code": "BASIC",
+      "name": "Basic",
+      "monthlyPrice": 0,
+      "uploadMinutesLimit": 180,
+      "unlimitedUploads": false,
+      "advancedInsightsDays": 7,
+      "canDistribute": false,
+      "canMonetize": false,
+      "canScheduleRelease": false,
+      "hasMembershipBenefits": false
+    },
+    "subscription": {
+      "status": "ACTIVE",
+      "currentPeriodStart": "2026-07-14T15:00:00",
+      "currentPeriodEnd": "2026-08-14T15:00:00",
+      "cancelAtPeriodEnd": false
+    },
+    "usage": {
+      "uploadedSeconds": 0,
+      "uploadedMinutes": 0.0,
+      "limitMinutes": 180,
+      "remainingMinutes": 180.0,
+      "percentage": 0.0,
+      "unlimited": false
+    }
+  }
+}
+
+
+1.3. Lấy riêng quota upload
+
+Method:
+GET
+
+URL:
+{{BASE_URL}}/api/v1/subscriptions/me/usage
+
+Headers:
+Authorization: Bearer {{ACCESS_TOKEN}}
+
+Kết quả mong đợi:
+HTTP 200.
+
+Response mẫu:
+
+{
+  "statusCode": 200,
+  "message": "Fetch subscription usage",
+  "data": {
+    "uploadedSeconds": 3600,
+    "uploadedMinutes": 60.0,
+    "limitMinutes": 180,
+    "remainingMinutes": 120.0,
+    "percentage": 33.3333333333,
+    "unlimited": false
+  }
+}
+
+
+1.4. Nâng lên gói ARTIST
+
+Method:
+POST
+
+URL:
+{{BASE_URL}}/api/v1/subscriptions/subscribe
+
+Headers:
+Authorization: Bearer {{ACCESS_TOKEN}}
+Content-Type: application/json
+
+Body raw JSON:
+
+{
+  "planCode": "ARTIST"
+}
+
+Kết quả mong đợi:
+HTTP 200.
+Plan hiện tại chuyển sang ARTIST.
+Quota mới là 600 phút.
+canDistribute = true.
+canMonetize = false.
+
+
+1.5. Nâng lên gói ARTIST_PRO
+
+Method:
+POST
+
+URL:
+{{BASE_URL}}/api/v1/subscriptions/subscribe
+
+Headers:
+Authorization: Bearer {{ACCESS_TOKEN}}
+Content-Type: application/json
+
+Body raw JSON:
+
+{
+  "planCode": "ARTIST_PRO"
+}
+
+Kết quả mong đợi:
+HTTP 200.
+
+Kiểm tra:
+unlimitedUploads = true
+canDistribute = true
+canMonetize = true
+canScheduleRelease = true
+hasMembershipBenefits = true
+usage.unlimited = true
+usage.remainingMinutes = -1
+
+
+1.6. Đổi gói
+
+Method:
+POST
+
+URL:
+{{BASE_URL}}/api/v1/subscriptions/change-plan
+
+Headers:
+Authorization: Bearer {{ACCESS_TOKEN}}
+Content-Type: application/json
+
+Body:
+
+{
+  "planCode": "BASIC"
+}
+
+Hoặc:
+
+{
+  "planCode": "ARTIST"
+}
+
+Hoặc:
+
+{
+  "planCode": "ARTIST_PRO"
+}
+
+Kết quả mong đợi:
+HTTP 200.
+Subscription ACTIVE cũ chuyển EXPIRED.
+Hệ thống tạo subscription ACTIVE mới.
+
+
+1.7. Hủy subscription
+
+Method:
+POST
+
+URL:
+{{BASE_URL}}/api/v1/subscriptions/cancel
+
+Headers:
+Authorization: Bearer {{ACCESS_TOKEN}}
+Content-Type: application/json
+
+Body:
+Không có.
+
+Kết quả mong đợi:
+HTTP 200.
+
+Subscription vẫn ACTIVE đến hết currentPeriodEnd.
+cancelAtPeriodEnd = true.
+
+Gói BASIC không thể hủy.
+
+
+1.8. Test không có token
+
+Method:
+GET
+
+URL:
+{{BASE_URL}}/api/v1/subscriptions/me
+
+Không gửi Authorization.
+
+Kết quả mong đợi:
+
+HTTP 401
+
+{
+  "statusCode": 401,
+  "message": "Unauthorized",
+  "data": null
+}
+
+
+1.9. Test plan không hợp lệ
+
+Method:
+POST
+
+URL:
+{{BASE_URL}}/api/v1/subscriptions/subscribe
+
+Headers:
+Authorization: Bearer {{ACCESS_TOKEN}}
+Content-Type: application/json
+
+Body:
+
+{
+  "planCode": "VIP"
+}
+
+Kết quả mong đợi:
+
+HTTP 400
+
+{
+  "statusCode": 400,
+  "message": "Subscription plan not found",
+  "data": null
+}
+
+
+1.10. Test plan code rỗng
+
+Method:
+POST
+
+URL:
+{{BASE_URL}}/api/v1/subscriptions/subscribe
+
+Headers:
+Authorization: Bearer {{ACCESS_TOKEN}}
+Content-Type: application/json
+
+Body:
+
+{
+  "planCode": ""
+}
+
+Kết quả mong đợi:
+
+HTTP 400
+
+{
+  "statusCode": 400,
+  "message": "Plan code is required",
+  "data": null
+}
+
+
+============================================================
+II. TỔNG QUAN MODULE
+============================================================
+
+Module Subscription quản lý quyền sử dụng Artist Studio theo từng gói.
+
+Mục tiêu:
+
+1. Quản lý 3 gói BASIC, ARTIST và ARTIST_PRO.
+2. Tự cấp BASIC cho user chưa có subscription.
+3. Quản lý trạng thái ACTIVE và EXPIRED.
+4. Quản lý chu kỳ subscription theo tháng.
+5. Quản lý quota upload theo số giây audio.
+6. Phân quyền distribution, monetization, schedule release, insights và benefits.
+7. Làm nguồn dữ liệu cho Artist Studio.
+8. Chuẩn bị nền tảng để tích hợp thanh toán thật.
+9. Không triển khai AI Mastering.
+
+Trạng thái hiện tại:
+Đã hoàn thành core backend.
+Chưa tích hợp payment thật.
+Chưa nối toàn bộ dữ liệu vào frontend Artist Studio.
+
+
+============================================================
+III. CẤU HÌNH CÁC GÓI
+============================================================
+
+1. BASIC
+
+Giá:
+0 VNĐ/tháng
+
+Upload:
+180 phút mỗi chu kỳ
+
+Quyền:
+- Upload trong giới hạn.
+- Public track sau khi admin duyệt.
+- Advanced Insights 7 ngày.
+- Không distribution.
+- Không monetization.
+- Không schedule release.
+- Không có Artist Pro Membership Benefits.
+
+
+2. ARTIST
+
+Giá:
+49.000 VNĐ/tháng
+
+Upload:
+600 phút mỗi chu kỳ
+
+Quyền:
+- Distribution.
+- Schedule release.
+- Advanced Insights 30 ngày.
+- Chưa có monetization.
+- Chưa có Artist Pro Membership Benefits.
+
+
+3. ARTIST_PRO
+
+Giá:
+99.000 VNĐ/tháng
+
+Upload:
+Không giới hạn
+
+Quyền:
+- Unlimited uploads.
+- Distribution.
+- Monetization.
+- Schedule release.
+- Advanced Insights không giới hạn.
+- Artist Pro Membership Benefits.
+
+
+============================================================
+IV. DATABASE
+============================================================
+
+1. subscription_plans
+
+Các field:
+
+id
+code
+name
+description
+monthlyPrice
+uploadMinutesLimit
+unlimitedUploads
+advancedInsightsDays
+canDistribute
+canMonetize
+canScheduleRelease
+hasMembershipBenefits
+isActive
+createdAt
+updatedAt
+
+Ràng buộc:
+- id là primary key.
+- code là unique.
+- code hợp lệ: BASIC, ARTIST, ARTIST_PRO.
+
+
+2. user_subscriptions
+
+Các field:
+
+id
+userId
+planId
+status
+startedAt
+currentPeriodStart
+currentPeriodEnd
+cancelAtPeriodEnd
+createdAt
+updatedAt
+
+Status hiện dùng:
+ACTIVE
+EXPIRED
+
+
+3. subscription_usages
+
+Các field:
+
+id
+userId
+subscriptionId
+periodStart
+periodEnd
+uploadedSeconds
+createdAt
+updatedAt
+
+Unique constraint:
+
+userId
+subscriptionId
+periodStart
+periodEnd
+
+Công thức:
+
+uploadedMinutes = uploadedSeconds / 60
+
+percentage =
+uploadedMinutes / uploadMinutesLimit * 100
+
+Với gói unlimited:
+
+percentage = 0
+remainingMinutes = -1
+unlimited = true
+
+
+============================================================
+V. FILE BACKEND ĐÃ TẠO
+============================================================
+
+Entity:
+
+src/main/java/com/example/demo/entities/SubscriptionPlan.java
+src/main/java/com/example/demo/entities/UserSubscription.java
+src/main/java/com/example/demo/entities/SubscriptionUsage.java
+
+Repository:
+
+src/main/java/com/example/demo/repositories/SubscriptionPlanRepository.java
+src/main/java/com/example/demo/repositories/UserSubscriptionRepository.java
+src/main/java/com/example/demo/repositories/SubscriptionUsageRepository.java
+
+DTO:
+
+src/main/java/com/example/demo/dtos/SubscribePlanDTO.java
+src/main/java/com/example/demo/dtos/SubscriptionAccessDTO.java
+
+Service:
+
+src/main/java/com/example/demo/services/SubscriptionService.java
+
+Controller:
+
+src/main/java/com/example/demo/controllers/SubscriptionController.java
+
+Seeder:
+
+src/main/java/com/example/demo/config/SubscriptionPlanSeeder.java
+
+
+============================================================
+VI. NGHIỆP VỤ SUBSCRIPTION SERVICE
+============================================================
+
+1. getPlans()
+
+- Lấy các plan đang active.
+- Sắp xếp theo monthlyPrice tăng dần.
+
+
+2. getMySubscription(userId)
+
+- Tìm subscription ACTIVE.
+- Nếu chưa có thì tự tạo BASIC.
+- Kiểm tra currentPeriodEnd.
+- Tạo hoặc lấy usage hiện tại.
+- Trả plan, subscription và usage.
+
+
+3. subscribe(userId, planCode)
+
+- Chuẩn hóa planCode thành chữ hoa.
+- Kiểm tra plan tồn tại và đang active.
+- Nếu đang dùng đúng plan thì giữ nguyên.
+- Nếu đang có plan khác:
+  plan cũ chuyển EXPIRED.
+- Tạo subscription ACTIVE mới.
+- Tạo usage mới.
+
+
+4. cancel(userId)
+
+- Không cho hủy BASIC.
+- Gói trả phí được đặt cancelAtPeriodEnd = true.
+- Quyền vẫn còn đến hết currentPeriodEnd.
+
+
+5. getAccessForUser(userId)
+
+Trả quyền chuẩn hóa:
+
+planCode
+unlimitedUploads
+uploadLimitSeconds
+uploadedSeconds
+remainingSeconds
+canDistribute
+canMonetize
+canScheduleRelease
+hasMembershipBenefits
+advancedInsightsDays
+
+
+6. addUploadedSeconds(userId, uploadedSeconds)
+
+- Cộng số giây upload vào usage hiện tại.
+- Bỏ qua nếu uploadedSeconds <= 0.
+
+
+7. Hết chu kỳ
+
+Nếu cancelAtPeriodEnd = false:
+- Tự gia hạn thêm một tháng.
+
+Nếu cancelAtPeriodEnd = true:
+- Plan cũ chuyển EXPIRED.
+- Tự tạo BASIC.
+- Tạo usage mới cho BASIC.
+
+
+============================================================
+VII. API BACKEND
+============================================================
+
+Base mapping:
+
+/api/subscriptions
+/api/v1/subscriptions
+
+API công khai:
+
+GET /api/v1/subscriptions/plans
+
+API yêu cầu JWT:
+
+GET /api/v1/subscriptions/me
+GET /api/v1/subscriptions/me/usage
+POST /api/v1/subscriptions/subscribe
+POST /api/v1/subscriptions/change-plan
+POST /api/v1/subscriptions/cancel
+
+
+============================================================
+VIII. SUBSCRIPTION PLAN SEEDER
+============================================================
+
+Seeder chạy khi backend khởi động.
+
+Chức năng:
+
+- Tạo hoặc cập nhật BASIC.
+- Tạo hoặc cập nhật ARTIST.
+- Tạo hoặc cập nhật ARTIST_PRO.
+- Không tạo trùng do tìm plan theo code.
+- Cho phép cập nhật giá và quyền khi cấu hình thay đổi.
+
+
+============================================================
+IX. TÍCH HỢP ARTIST STUDIO
+============================================================
+
+Artist Studio hiện có:
+
+UploadQuotaBar
+ArtistStudioStats
+StudioTabs
+StudioActions
+ArtistTracksTable
+ArtistBenefits
+
+API nguồn:
+
+GET /api/v1/subscriptions/me
+
+
+1. UploadQuotaBar
+
+Sẽ dùng:
+
+usage.percentage
+usage.uploadedMinutes
+usage.limitMinutes
+usage.remainingMinutes
+usage.unlimited
+
+Hiển thị dự kiến:
+
+Basic:
+60 / 180 minutes used
+
+Artist:
+120 / 600 minutes used
+
+Artist Pro:
+Unlimited uploads
+
+
+2. StudioActions
+
+Giữ:
+
+Upload or drop tracks
+Distribute tracks
+Monetize tracks
+
+Bỏ:
+
+Master track audio
+
+Phân quyền:
+
+Upload:
+Tất cả plan, nhưng BASIC và ARTIST bị quota.
+
+Distribution:
+ARTIST và ARTIST_PRO.
+
+Monetization:
+Chỉ ARTIST_PRO.
+
+
+3. ArtistStudioStats
+
+Basic:
+Plays
+Likes
+Comments
+Insights giới hạn
+
+Artist:
+Plays
+Likes
+Comments
+Reposts
+Downloads
+Insights 30 ngày
+
+Artist Pro:
+Mở toàn bộ nhóm thống kê được hỗ trợ.
+
+
+4. ArtistBenefits
+
+BASIC và ARTIST:
+Hiển thị upsell và nút Upgrade to Artist Pro.
+
+ARTIST_PRO:
+Hiển thị đầy đủ membership benefits.
+
+
+============================================================
+X. TÍCH HỢP TRACK UPLOAD
+============================================================
+
+Backend phải kiểm tra quota trước khi lưu file.
+
+Luồng:
+
+1. Nhận multipart upload.
+2. Đọc user từ JWT.
+3. Gọi:
+
+subscriptionService.getAccessForUser(user.getId())
+
+4. Nếu không unlimited:
+
+remainingSeconds =
+uploadLimitSeconds - uploadedSeconds
+
+5. Nếu duration audio lớn hơn remainingSeconds:
+
+HTTP 403
+
+{
+  "statusCode": 403,
+  "message": "Upload quota exceeded",
+  "data": null
+}
+
+6. Nếu hợp lệ:
+Tiếp tục upload và save Track.
+
+7. Sau khi save thành công:
+
+subscriptionService.addUploadedSeconds(
+    user.getId(),
+    audioDurationSeconds
+)
+
+Yêu cầu bổ sung:
+Track nên có field:
+
+private Long durationSeconds;
+
+
+============================================================
+XI. SQL KIỂM TRA DATABASE
+============================================================
+
+1. Kiểm tra plan
+
+SELECT
+    id,
+    code,
+    name,
+    monthlyPrice,
+    uploadMinutesLimit,
+    unlimitedUploads,
+    canDistribute,
+    canMonetize,
+    canScheduleRelease,
+    hasMembershipBenefits,
+    isActive
+FROM subscription_plans
+ORDER BY monthlyPrice ASC;
+
+
+2. Kiểm tra subscription
+
+SELECT
+    id,
+    userId,
+    planId,
+    status,
+    startedAt,
+    currentPeriodStart,
+    currentPeriodEnd,
+    cancelAtPeriodEnd,
+    createdAt,
+    updatedAt
+FROM user_subscriptions
+ORDER BY createdAt DESC;
+
+
+3. Kiểm tra usage
+
+SELECT
+    id,
+    userId,
+    subscriptionId,
+    periodStart,
+    periodEnd,
+    uploadedSeconds,
+    createdAt,
+    updatedAt
+FROM subscription_usages
+ORDER BY createdAt DESC;
+
+
+4. Subscription ACTIVE của một user
+
+SELECT *
+FROM user_subscriptions
+WHERE userId = 'USER_ID'
+  AND status = 'ACTIVE'
+ORDER BY createdAt DESC;
+
+
+5. Usage hiện tại
+
+SELECT *
+FROM subscription_usages
+WHERE userId = 'USER_ID'
+  AND periodStart <= NOW()
+  AND periodEnd > NOW()
+ORDER BY createdAt DESC;
+
+
+============================================================
+XII. TEST CASE
+============================================================
+
+TEST 01:
+User mới gọi GET /me.
+
+Mong đợi:
+- Tạo BASIC.
+- Tạo usage = 0.
+- HTTP 200.
+
+
+TEST 02:
+BASIC đổi sang ARTIST.
+
+Mong đợi:
+- BASIC cũ EXPIRED.
+- ARTIST mới ACTIVE.
+- Quota 600 phút.
+
+
+TEST 03:
+ARTIST đổi sang ARTIST_PRO.
+
+Mong đợi:
+- ARTIST cũ EXPIRED.
+- ARTIST_PRO ACTIVE.
+- unlimited = true.
+
+
+TEST 04:
+ARTIST_PRO cancel.
+
+Mong đợi:
+- Vẫn ACTIVE.
+- cancelAtPeriodEnd = true.
+
+
+TEST 05:
+Cancel BASIC.
+
+Mong đợi:
+HTTP 400.
+Basic plan cannot be canceled.
+
+
+TEST 06:
+Plan không tồn tại.
+
+Mong đợi:
+HTTP 400.
+Subscription plan not found.
+
+
+TEST 07:
+Hết kỳ, không cancel.
+
+Mong đợi:
+- Gia hạn thêm một tháng.
+- Status vẫn ACTIVE.
+
+
+TEST 08:
+Hết kỳ và cancel.
+
+Mong đợi:
+- Plan cũ EXPIRED.
+- Tự tạo BASIC.
+
+
+TEST 09:
+Cộng usage.
+
+subscriptionService.addUploadedSeconds(userId, 300)
+
+Mong đợi:
+uploadedSeconds tăng thêm 300.
+
+
+TEST 10:
+Upload vượt quota sau khi tích hợp TrackController.
+
+Mong đợi:
+HTTP 403.
+Upload quota exceeded.
+
+
+============================================================
+XIII. TRẠNG THÁI TIẾN ĐỘ
+============================================================
+
+Đã hoàn thành:
+
+[OK] SubscriptionPlan
+[OK] UserSubscription
+[OK] SubscriptionUsage
+[OK] Repository
+[OK] DTO
+[OK] SubscriptionService
+[OK] SubscriptionController
+[OK] SubscriptionPlanSeeder
+[OK] GET plans
+[OK] GET current subscription
+[OK] GET usage
+[OK] Subscribe test
+[OK] Change plan test
+[OK] Cancel at period end
+[OK] Auto-create BASIC
+[OK] Auto-renew
+[OK] Auto-return BASIC sau khi gói hủy hết hạn
+
+Chưa hoàn thành:
+
+[TODO] API helper frontend
+[TODO] Trang /plans
+[TODO] Plan cards
+[TODO] Compare features
+[TODO] Gắn UploadQuotaBar
+[TODO] Gắn StudioActions
+[TODO] Gắn ArtistStudioStats
+[TODO] Gắn ArtistBenefits
+[TODO] Kiểm tra quota trong TrackController
+[TODO] Đọc duration audio backend
+[TODO] Cộng usage sau upload
+[TODO] Payment entity
+[TODO] Checkout
+[TODO] Webhook
+[TODO] Invoice
+[TODO] Lịch sử thanh toán
+
+
+============================================================
+XIV. BẢO MẬT
+============================================================
+
+Frontend không được tự quyết định quyền subscription.
+
+Backend phải tự lấy:
+
+- userId từ JWT.
+- plan từ database.
+- quyền từ SubscriptionService.
+- usage từ database.
+
+Frontend chỉ hiển thị UI.
+
+Các giới hạn quan trọng phải kiểm tra lại tại backend:
+
+- Upload quota.
+- Distribution.
+- Monetization.
+- Schedule release.
+- Benefits.
+- Advanced Insights.
+
+
+============================================================
+XV. GIỚI HẠN HIỆN TẠI
+============================================================
+
+1. Chưa có thanh toán thật.
+2. API subscribe đang kích hoạt plan trực tiếp để test.
+3. Chưa có invoice.
+4. Chưa có webhook.
+5. Chưa có refund.
+6. Chưa có trial.
+7. Chưa có proration khi đổi gói giữa kỳ.
+8. Chưa có grace period.
+9. Chưa tính quota từ duration track thật.
+10. Artist Studio chưa lấy subscription API.
+11. Không triển khai AI Mastering.
+
+
+============================================================
+XVI. PHASE TIẾP THEO
+============================================================
+
+Phase 2: Frontend Subscription
+
+- getSubscriptionPlansApi()
+- getMySubscriptionApi()
+- subscribePlanApi()
+- changePlanApi()
+- cancelSubscriptionApi()
+- Tạo type subscription.
+- Tạo route /plans.
+- Tạo plan card.
+- Tạo compare features.
+- Tạo manage subscription.
+- Nối Artist Studio.
+
+Phase 3: Upload Quota
+
+- Thêm durationSeconds vào Track.
+- Đọc duration audio.
+- Kiểm tra remainingSeconds.
+- Chặn upload vượt quota.
+- Cộng usage sau upload thành công.
+
+Phase 4: Payment
+
+- SubscriptionPayment entity.
+- Checkout session.
+- Callback/webhook.
+- Kích hoạt plan khi payment PAID.
+- Transaction ID.
+- Invoice.
+- Lịch sử thanh toán.
+
+
+============================================================
+XVII. KẾT LUẬN
+============================================================
+
+Module Subscription core đã tạo xong nền tảng backend cho SoundClone Artist Studio.
+
+Hệ thống hiện có thể:
+
+- Quản lý 3 plan.
+- Tự tạo BASIC.
+- Nâng và đổi plan.
+- Hủy cuối kỳ.
+- Gia hạn chu kỳ.
+- Theo dõi upload usage.
+- Trả quyền theo plan.
+- Chuẩn bị tích hợp quota vào TrackController.
+- Chuẩn bị nối trực tiếp vào Artist Studio.
+- Chuẩn bị tích hợp payment ở phase sau.
+
+Quyết định phạm vi:
+
+AI Mastering: Không triển khai.
+Subscription lấy từ backend: Có.
+Kiểm tra quota backend: Phase tiếp theo.
+Artist Studio là trung tâm quản lý subscription: Có.
+Payment thật: Làm sau khi hoàn thành nghiệp vụ và UI.

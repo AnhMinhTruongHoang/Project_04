@@ -6,18 +6,9 @@ import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
-
 import WorkspacePremiumRoundedIcon from "@mui/icons-material/WorkspacePremiumRounded";
 
-type Props = {
-  upgradeHref?: string;
-  learnMoreHref?: string;
-};
-
-const ProfileSupportTab = ({
-  upgradeHref = "/upgrade",
-  learnMoreHref = "/artist-studio",
-}: Props) => {
+const ProfileSupportTab = () => {
   return (
     <Box
       sx={{
@@ -159,7 +150,7 @@ const ProfileSupportTab = ({
           >
             <Button
               component={Link}
-              href={upgradeHref}
+              href="/plans"
               sx={{
                 minHeight: 44,
                 px: 2.5,
@@ -182,7 +173,7 @@ const ProfileSupportTab = ({
 
             <Button
               component={Link}
-              href={learnMoreHref}
+              href="/plans"
               sx={{
                 minHeight: 44,
                 px: 2.5,

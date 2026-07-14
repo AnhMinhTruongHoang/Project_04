@@ -1,5 +1,8 @@
 package com.example.demo.controllers;
 
+import com.example.demo.services.SubscriptionService;
+import com.example.demo.services.TrackUploadService;
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.text.Normalizer;
@@ -30,6 +33,7 @@ import org.springframework.web.multipart.MultipartFile;
 import com.example.demo.dtos.CreateAlbumDTO;
 import com.example.demo.dtos.CreateCommentDTO;
 import com.example.demo.dtos.ListeningProgressDTO;
+import com.example.demo.dtos.SubscriptionAccessDTO;
 import com.example.demo.dtos.TrackDTO;
 import com.example.demo.dtos.UserDTO;
 import com.example.demo.entities.Category;
@@ -38,7 +42,8 @@ import com.example.demo.entities.ListeningHistory;
 import com.example.demo.entities.Playlist;
 import com.example.demo.entities.Track;
 import com.example.demo.entities.User;
-
+import com.example.demo.exceptions.UploadQuotaExceededException;
+import com.example.demo.helpers.AudioMetadataHelper;
 import com.example.demo.helpers.FileHelper;
 import com.example.demo.helpers.JwtHelper;
 import com.example.demo.repositories.CategoryRepository;
@@ -57,6 +62,7 @@ import com.example.demo.services.PlaylistService;
 @RequestMapping({ "/api/tracks", "/api/v1/tracks" })
 public class TrackController {
 
+	private final SubscriptionService subscriptionService;
 	private static final String TRACK_PENDING = "PENDING";
 	private static final String TRACK_APPROVED = "APPROVED";
 	private static final String TRACK_REJECTED = "REJECTED";
@@ -79,11 +85,18 @@ public class TrackController {
 	@Autowired
 	private ListeningHistoryRepository listeningHistoryRepository;
 
+	@Autowired
+	private TrackUploadService trackUploadService;
+
 	@Value("${images_url}")
 	private String imagesUrl;
 
 	@Value("${audio_url}")
 	private String audioUrl;
+
+	TrackController(SubscriptionService subscriptionService) {
+		this.subscriptionService = subscriptionService;
+	}
 
 	private String generateId() {
 		return UUID.randomUUID().toString().replace("-", "").substring(0, 24);
@@ -315,6 +328,7 @@ public class TrackController {
 		dto.setUpdatedAt(track.getUpdatedAt());
 		dto.setAudioHash(track.getAudioHash());
 		dto.setAudioSize(track.getAudioSize());
+		dto.setDurationSeconds(track.getDurationSeconds());
 		dto.setProcessingStatus(track.getProcessingStatus());
 		dto.setCopyrightStatus(track.getCopyrightStatus());
 		dto.setCopyrightMessage(track.getCopyrightMessage());
@@ -356,15 +370,10 @@ public class TrackController {
 	@PostMapping(value = { "", "create" }, consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
 	public ResponseEntity<?> create(
 			@RequestParam("title") String title,
-
 			@RequestParam("description") String description,
-
 			@RequestParam("category") String category,
-
 			@RequestParam("image") MultipartFile image,
-
 			@RequestParam("audio") MultipartFile audio,
-
 			HttpServletRequest request) {
 
 		try {
@@ -423,6 +432,10 @@ public class TrackController {
 								null));
 			}
 
+			/*
+			 * Kiểm tra audio trùng trước,
+			 * không trừ quota cho file bị từ chối.
+			 */
 			String audioHash = calculateSha256(audio);
 
 			Track duplicatedTrack = trackRepository
@@ -452,6 +465,66 @@ public class TrackController {
 								duplicateData));
 			}
 
+			long durationSeconds;
+
+			try {
+				durationSeconds = AudioMetadataHelper
+						.getDurationSeconds(audio);
+
+			} catch (IllegalArgumentException e) {
+				return ResponseEntity
+						.badRequest()
+						.body(new ApiResponse<>(
+								400,
+								e.getMessage(),
+								null));
+			}
+
+			SubscriptionAccessDTO access = subscriptionService
+					.getAccessForUser(
+							user.getId());
+
+			boolean unlimitedUploads = Boolean.TRUE.equals(
+					access.getUnlimitedUploads());
+
+			long remainingSeconds = access.getRemainingSeconds() == null
+					? 0
+					: access.getRemainingSeconds();
+
+			if (!unlimitedUploads
+					&& durationSeconds > remainingSeconds) {
+
+				Map<String, Object> quotaData = new LinkedHashMap<>();
+
+				quotaData.put(
+						"planCode",
+						access.getPlanCode());
+
+				quotaData.put(
+						"requiredSeconds",
+						durationSeconds);
+
+				quotaData.put(
+						"remainingSeconds",
+						remainingSeconds);
+
+				quotaData.put(
+						"requiredMinutes",
+						Math.ceil(
+								durationSeconds / 60.0));
+
+				quotaData.put(
+						"remainingMinutes",
+						remainingSeconds / 60.0);
+
+				return ResponseEntity
+						.status(403)
+						.body(new ApiResponse<>(
+								403,
+								"Upload quota exceeded",
+								quotaData));
+			}
+
 			String id = generateId();
 
 			String cleanTitle = title.trim();
@@ -476,7 +549,9 @@ public class TrackController {
 			Track track = new Track();
 
 			track.setId(id);
-			track.setTitle(cleanTitle);
+
+			track.setTitle(
+					cleanTitle);
 
 			track.setSlug(
 					createSlug(
@@ -489,14 +564,20 @@ public class TrackController {
 			track.setCategoryId(
 					categoryEntity.getId());
 
-			track.setImgUrl(imageName);
-			track.setTrackUrl(audioName);
+			track.setImgUrl(
+					imageName);
+
+			track.setTrackUrl(
+					audioName);
 
 			track.setAudioHash(
 					audioHash);
 
 			track.setAudioSize(
 					audio.getSize());
+
+			track.setDurationSeconds(
+					durationSeconds);
 
 			track.setProcessingStatus(
 					"PROCESSING");
@@ -507,13 +588,17 @@ public class TrackController {
 			track.setApprovalStatus(
 					TRACK_PENDING);
 
-			track.setRejectionReason(null);
+			track.setRejectionReason(
+					null);
 
 			track.setCopyrightMessage(
 					"Waiting for copyright scan");
 
-			track.setCopyrightScore(null);
-			track.setScannedAt(null);
+			track.setCopyrightScore(
+					null);
+
+			track.setScannedAt(
+					null);
 
 			track.setCountLike(0);
 			track.setCountPlay(0);
@@ -521,20 +606,87 @@ public class TrackController {
 			track.setUploaderId(
 					user.getId());
 
-			track.setIsDeleted(false);
+			track.setIsDeleted(
+					false);
 
-			/*
-			 * Admin cũng phải chờ kiểm tra,
-			 * không tự động public.
-			 */
-			track.setApprovalStatus(
-					TRACK_PENDING);
+			track.setCreatedAt(
+					now);
 
-			track.setCreatedAt(now);
-			track.setUpdatedAt(now);
+			track.setUpdatedAt(
+					now);
 
-			Track savedTrack = trackRepository.save(
-					track);
+			Track savedTrack;
+
+			try {
+				savedTrack = trackUploadService
+						.saveTrackWithQuota(
+								track,
+								durationSeconds);
+
+			} catch (UploadQuotaExceededException e) {
+
+				/*
+				 * Database đã rollback.
+				 * Xóa file vật lý vừa upload.
+				 */
+				FileHelper.deleteIfExists(
+						imageName,
+						"uploads/images");
+
+				FileHelper.deleteIfExists(
+						audioName,
+						"uploads/audio");
+
+				Map<String, Object> quotaData = new LinkedHashMap<>();
+
+				quotaData.put(
+						"planCode",
+						e.getPlanCode());
+
+				quotaData.put(
+						"requiredSeconds",
+						e.getRequiredSeconds());
+
+				quotaData.put(
+						"remainingSeconds",
+						e.getRemainingSeconds());
+
+				quotaData.put(
+						"requiredMinutes",
+						Math.ceil(
+								e.getRequiredSeconds()
+										/ 60.0));
+
+				quotaData.put(
+						"remainingMinutes",
+						e.getRemainingSeconds()
+								/ 60.0);
+
+				return ResponseEntity
+						.status(403)
+						.body(new ApiResponse<>(
+								403,
+								e.getMessage(),
+								quotaData));
+
+			} catch (Exception e) {
+
+				/*
+				 * Track hoặc transaction lỗi:
+				 * dọn file tránh file rác.
+				 */
+				FileHelper.deleteIfExists(
+						imageName,
+						"uploads/images");
+
+				FileHelper.deleteIfExists(
+						audioName,
+						"uploads/audio");
+
+				throw e;
+			}
+
+			///
 
 			return ResponseEntity.ok(
 					new ApiResponse<>(
@@ -542,7 +694,9 @@ public class TrackController {
 							"Track uploaded and waiting for processing",
 							toTrackDTO(savedTrack)));
 
-		} catch (Exception e) {
+		} catch (
+
+		Exception e) {
 			e.printStackTrace();
 
 			return ResponseEntity

@@ -258,6 +258,8 @@ declare global {
 
     rejectionReason?: string | null;
 
+    durationSeconds?: number;
+
     audioHash?: string | null;
     audioSize?: number | null;
     processingStatus?: string | null;

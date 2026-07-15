@@ -33,7 +33,7 @@ const AppOpenAds = () => {
   const handleGoToMagazine = () => {
     sessionStorage.setItem(ADS_STORAGE_KEY, "true");
     setOpen(false);
-    router.push("/eMagazine/sontung");
+    router.push("/eMagazine/weeknd");
   };
 
   return (
@@ -103,7 +103,7 @@ const AppOpenAds = () => {
       >
         <Box
           component="img"
-          src="/images/media/sontungP.jpg"
+          src="/images/media/weeknd01.jpg"
           alt="Sơn Tùng eMagazine"
           sx={{
             width: "100%",

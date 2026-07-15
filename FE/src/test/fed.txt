@@ -1,18 +1,21 @@
 "use client";
 
 import * as React from "react";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+
 import Box from "@mui/material/Box";
 import Chip from "@mui/material/Chip";
 import IconButton from "@mui/material/IconButton";
 import Typography from "@mui/material/Typography";
+
+import LibraryMusicOutlined from "@mui/icons-material/LibraryMusicOutlined";
+
 import Search from "./blogSearch";
+import EmagazineCardGrid from "./EmagazineCardGrid";
+
 import { getTrackId } from "@/utils/api";
 import { getListeningHistory } from "@/utils/actions/history";
 import { useTrackContext } from "@/lib/track.wrapper";
-import { LibraryMusicOutlined } from "@mui/icons-material";
-import EmagazineCardGrid from "./EmagazineCardGrid";
-import { Pagination } from "@mui/material";
 
 const TEMP_AVATAR = "/images/logo/Sc.png";
 
@@ -87,7 +90,7 @@ const cardData = [
     title: "BLACKPINK: Four Voices, One Visual Language",
     description:
       "An editorial journey through BLACKPINK’s distinct identities, iconic performances, global influence, and powerful black-and-pink universe.",
-    href: "/eMagazine/blackpink",
+    href: "/eMagazine/blackPink",
     authors: [
       {
         name: "Minh",
@@ -114,7 +117,7 @@ export default function MainContent() {
 
   const latestTrack = tracks[0];
 
-  const filteredCards = React.useMemo(() => {
+  const filteredCards = useMemo(() => {
     if (activeCategory === "All") {
       return cardData;
     }
@@ -207,18 +210,6 @@ export default function MainContent() {
           },
         }}
       >
-        <Typography
-          variant="h1"
-          gutterBottom
-          sx={{
-            fontWeight: 900,
-            color: "#ffffff",
-            fontSize: { xs: 40, md: 64 },
-            letterSpacing: "-0.04em",
-          }}
-        >
-          NEWS
-        </Typography>
         <Typography
           sx={{
             maxWidth: 720,
@@ -479,45 +470,6 @@ export default function MainContent() {
           </Typography>
         </Box>
       )}
-
-      <Box
-        sx={{
-          display: "flex",
-          justifyContent: "center",
-          alignItems: "center",
-          width: "100%",
-          pt: 4,
-        }}
-      >
-        <Pagination
-          hidePrevButton
-          hideNextButton
-          count={10}
-          boundaryCount={10}
-          sx={{
-            "& .MuiPaginationItem-root": {
-              color: "#a7a7a7",
-              borderColor: "rgba(255,255,255,0.12)",
-              fontWeight: 800,
-            },
-
-            "& .MuiPaginationItem-root:hover": {
-              bgcolor: "rgba(0,255,224,0.08)",
-              color: "#00ffe0",
-            },
-
-            "& .Mui-selected": {
-              bgcolor: "#00ffe0 !important",
-              color: "#020617",
-              fontWeight: 900,
-            },
-
-            "& .MuiPaginationItem-ellipsis": {
-              color: "#8b949e",
-            },
-          }}
-        />
-      </Box>
     </Box>
   );
 }

@@ -1,0 +1,1493 @@
+//// ========================================================================
+//// E-MAGAZINE LAYOUT LIBRARY — 10 MẪU REACT + MUI
+//// Dùng cho SoundClone / Next.js App Router
+//// ========================================================================
+
+//// CÁCH DÙNG
+//// 1. Mỗi layout bên dưới là một khối JSX độc lập.
+//// 2. Chỉ copy PHẦN BÊN TRONG `return (...)` của layout cần dùng vào page hiện tại.
+//// 3. Các layout giả định bạn đã có những component/helper sau:
+////    - MagazineImage
+////    - TextBlock
+////    - TornLabel
+////    - YouTubeBlock
+////    - QuoteStrip
+////    - TrackSlider hoặc slider riêng của nghệ sĩ
+//// 4. Đổi tên TrackSlider thành component thật, ví dụ:
+////    - BlackpinkTrackSlider
+////    - SonTungTrackSlider
+////    - WeekndTrackSlider
+//// 5. Đổi các key ảnh theo MAGAZINE_IMAGES của từng bài.
+//// 6. Màu mặc định:
+////    background: #101010
+////    surface:    #151515
+////    accent:     #ff7eb6
+////    text:       #ffffff
+//// 7. Mỗi mẫu được ngăn bằng dòng `////`.
+//// 8. Không dùng đồng thời cả 10 mẫu trong một page. Dùng từng mẫu một.
+
+//// ========================================================================
+//// LAYOUT 01 — CINEMATIC HERO + OFFSET COLLAGE
+//// Phù hợp: nghệ sĩ lớn, bài mở đầu mạnh, nhiều ảnh chân dung và sân khấu
+//// Đặc trưng: hero toàn màn hình, chữ cực lớn, ảnh lệch tầng, quote giữa bài
+//// ========================================================================
+
+function Layout01_CinematicHero() {
+  return (
+    <Box sx={{ minHeight: "100vh", bgcolor: "#101010", color: "#fff" }}>
+      <Box
+        sx={{
+          position: "relative",
+          minHeight: { xs: 760, md: 920 },
+          display: "flex",
+          alignItems: "flex-end",
+          overflow: "hidden",
+        }}
+      >
+        <Box
+          component="img"
+          src={MAGAZINE_IMAGES.HERO}
+          alt="Hero"
+          sx={{
+            position: "absolute",
+            inset: 0,
+            width: "100%",
+            height: "100%",
+            objectFit: "cover",
+            objectPosition: "center top",
+            opacity: 0.72,
+            filter: "contrast(1.12) saturate(0.9)",
+          }}
+        />
+
+        <Box
+          sx={{
+            position: "absolute",
+            inset: 0,
+            background:
+              "linear-gradient(180deg, rgba(16,16,16,0.08) 0%, rgba(16,16,16,0.22) 45%, #101010 100%)",
+          }}
+        />
+
+        <Container
+          maxWidth="lg"
+          sx={{
+            position: "relative",
+            zIndex: 2,
+            pb: { xs: 7, md: 10 },
+          }}
+        >
+          <Chip
+            label="EMAGAZINE"
+            sx={{
+              mb: 2,
+              bgcolor: "#ff7eb6",
+              color: "#111",
+              fontWeight: 950,
+              letterSpacing: "0.14em",
+            }}
+          />
+
+          <Typography
+            component="h1"
+            sx={{
+              maxWidth: 1050,
+              fontSize: { xs: 48, sm: 70, md: 98 },
+              lineHeight: { xs: "55px", sm: "78px", md: "101px" },
+              fontWeight: 950,
+              letterSpacing: "-0.07em",
+            }}
+          >
+            YOUR MAIN EDITORIAL TITLE GOES HERE
+          </Typography>
+
+          <Typography
+            sx={{
+              mt: 3,
+              maxWidth: 760,
+              color: "#d0d0d0",
+              fontSize: { xs: 18, md: 23 },
+              lineHeight: { xs: "30px", md: "38px" },
+              fontWeight: 600,
+            }}
+          >
+            A cinematic introduction about sound, image, identity, and the era
+            built around this artist.
+          </Typography>
+        </Container>
+      </Box>
+
+      <TextBlock eyebrow="Opening">
+        <p>
+          Write the opening paragraph here. Start with the strongest contrast,
+          visual idea, or cultural tension surrounding the artist.
+        </p>
+        <p>
+          Use a second paragraph to connect the image to the music and the
+          emotional world behind it.
+        </p>
+      </TextBlock>
+
+      <Container maxWidth="lg" sx={{ my: { xs: 8, md: 12 } }}>
+        <Box sx={{ position: "relative", minHeight: { xs: 960, md: 760 } }}>
+          <MagazineImage
+            id="IMAGE_01"
+            rotate={-3}
+            sx={{
+              position: { xs: "relative", md: "absolute" },
+              left: { md: 0 },
+              top: { md: 30 },
+              width: { xs: "100%", md: "60%" },
+              height: { xs: 520, md: 660 },
+            }}
+          />
+
+          <MagazineImage
+            id="IMAGE_02"
+            rotate={3}
+            hashtagAlign="right"
+            sx={{
+              position: { xs: "relative", md: "absolute" },
+              right: { md: 0 },
+              bottom: { md: 0 },
+              mt: { xs: 3, md: 0 },
+              width: { xs: "100%", md: "48%" },
+              height: { xs: 420, md: 520 },
+              border: "8px solid #101010",
+            }}
+          />
+
+          <Box
+            sx={{
+              position: "absolute",
+              left: { xs: 16, md: "48%" },
+              top: { xs: 18, md: 0 },
+              zIndex: 3,
+            }}
+          >
+            <TornLabel top="KEY WORD" bottom="SECOND LINE" />
+          </Box>
+        </Box>
+      </Container>
+
+      <QuoteStrip />
+
+      <Container maxWidth="lg" sx={{ my: { xs: 8, md: 12 } }}>
+        <YouTubeBlock
+          videoUrl={MAGAZINE_VIDEOS.MAIN}
+          sx={{ height: { xs: 320, sm: 470, md: 660 } }}
+        />
+      </Container>
+
+      <Container maxWidth="lg" sx={{ my: { xs: 8, md: 12 } }}>
+        <TrackSlider />
+      </Container>
+    </Box>
+  );
+}
+
+//// ========================================================================
+//// LAYOUT 02 — TORN PAPER SCRAPBOOK
+//// Phù hợp: BLACKPINK, punk, Y2K, hip-hop, fashion music
+//// Đặc trưng: giấy xé, ảnh nghiêng, label chồng, bố cục scrapbook
+//// ========================================================================
+
+function Layout02_TornPaperScrapbook() {
+  return (
+    <Box sx={{ minHeight: "100vh", bgcolor: "#0e0e0e", color: "#fff" }}>
+      <Container maxWidth="lg" sx={{ pt: { xs: 8, md: 12 } }}>
+        <Box
+          sx={{
+            position: "relative",
+            minHeight: { xs: 850, md: 760 },
+          }}
+        >
+          <Typography
+            sx={{
+              position: "absolute",
+              top: { xs: 10, md: -20 },
+              left: 0,
+              zIndex: 4,
+              color: "#ff7eb6",
+              fontSize: { xs: 72, md: 150 },
+              lineHeight: 0.82,
+              fontWeight: 950,
+              letterSpacing: "-0.08em",
+              textTransform: "uppercase",
+            }}
+          >
+            MAIN
+            <br />
+            WORD
+          </Typography>
+
+          <MagazineImage
+            id="IMAGE_01"
+            rotate={-5}
+            clipPath="polygon(3% 0, 98% 4%, 100% 94%, 6% 100%, 0 15%)"
+            sx={{
+              position: "absolute",
+              top: { xs: 210, md: 120 },
+              left: { xs: 0, md: "4%" },
+              width: { xs: "92%", md: "54%" },
+              height: { xs: 470, md: 600 },
+            }}
+          />
+
+          <MagazineImage
+            id="IMAGE_02"
+            rotate={4}
+            clipPath="polygon(2% 3%, 100% 0, 96% 100%, 0 95%)"
+            sx={{
+              position: "absolute",
+              top: { xs: 500, md: 60 },
+              right: { xs: 0, md: "2%" },
+              width: { xs: "75%", md: "43%" },
+              height: { xs: 330, md: 500 },
+              border: "10px solid #0e0e0e",
+            }}
+          />
+
+          <Box
+            sx={{
+              position: "absolute",
+              right: { xs: 10, md: "10%" },
+              bottom: { xs: 20, md: 40 },
+              zIndex: 5,
+            }}
+          >
+            <TornLabel top="LOUD" bottom="UNFILTERED" />
+          </Box>
+        </Box>
+      </Container>
+
+      <TextBlock
+        eyebrow="Chapter 01"
+        title="A visual identity assembled from fragments"
+      >
+        <p>
+          Use this section to describe how different images, eras, and
+          personalities are combined into one recognizable visual language.
+        </p>
+      </TextBlock>
+
+      <Container maxWidth="lg" sx={{ my: { xs: 8, md: 12 } }}>
+        <Box
+          sx={{
+            display: "grid",
+            gridTemplateColumns: { xs: "1fr", md: "1.1fr 0.9fr" },
+            gap: 3,
+            alignItems: "center",
+          }}
+        >
+          <MagazineImage
+            id="IMAGE_03"
+            rotate={-2}
+            sx={{ height: { xs: 480, md: 640 } }}
+          />
+
+          <Box>
+            <Typography
+              sx={{
+                color: "#ff7eb6",
+                fontSize: 12,
+                fontWeight: 950,
+                letterSpacing: "0.18em",
+                textTransform: "uppercase",
+              }}
+            >
+              #EDITORIAL_NOTE
+            </Typography>
+
+            <Typography
+              sx={{
+                mt: 2,
+                color: "#fff",
+                fontSize: { xs: 36, md: 58 },
+                lineHeight: { xs: "45px", md: "68px" },
+                fontWeight: 950,
+                letterSpacing: "-0.05em",
+              }}
+            >
+              The image feels handmade, but the identity stays precise
+            </Typography>
+          </Box>
+        </Box>
+      </Container>
+
+      <Container maxWidth="lg" sx={{ my: { xs: 8, md: 12 } }}>
+        <TrackSlider />
+      </Container>
+    </Box>
+  );
+}
+
+//// ========================================================================
+//// LAYOUT 03 — FULL-BLEED CHAPTERS
+//// Phù hợp: The Weeknd, concept album, cinematic MV, dark pop
+//// Đặc trưng: mỗi chapter mở bằng ảnh full màn hình + text overlay
+//// ========================================================================
+
+function Layout03_FullBleedChapters() {
+  return (
+    <Box sx={{ minHeight: "100vh", bgcolor: "#090909", color: "#fff" }}>
+      <Box
+        sx={{
+          position: "relative",
+          height: { xs: 760, md: 940 },
+          overflow: "hidden",
+        }}
+      >
+        <Box
+          component="img"
+          src={MAGAZINE_IMAGES.HERO}
+          alt="Hero"
+          sx={{
+            width: "100%",
+            height: "100%",
+            objectFit: "cover",
+            filter: "contrast(1.15)",
+          }}
+        />
+
+        <Box
+          sx={{
+            position: "absolute",
+            inset: 0,
+            background:
+              "linear-gradient(180deg, rgba(0,0,0,0.05), rgba(0,0,0,0.88))",
+          }}
+        />
+
+        <Container
+          maxWidth="lg"
+          sx={{
+            position: "absolute",
+            left: "50%",
+            bottom: { xs: 50, md: 80 },
+            transform: "translateX(-50%)",
+          }}
+        >
+          <Typography
+            sx={{
+              color: "#ff3b3b",
+              fontSize: 12,
+              fontWeight: 950,
+              letterSpacing: "0.22em",
+              textTransform: "uppercase",
+            }}
+          >
+            Chapter Zero
+          </Typography>
+
+          <Typography
+            sx={{
+              mt: 2,
+              maxWidth: 950,
+              fontSize: { xs: 48, md: 96 },
+              lineHeight: { xs: "55px", md: "100px" },
+              fontWeight: 950,
+              letterSpacing: "-0.07em",
+            }}
+          >
+            THE CITY NEVER STOPS GLOWING
+          </Typography>
+        </Container>
+      </Box>
+
+      <TextBlock
+        eyebrow="Chapter 01"
+        title="The first transformation"
+      >
+        <p>
+          Explain the first major era, visual shift, or musical reinvention.
+        </p>
+      </TextBlock>
+
+      {[
+        {
+          image: MAGAZINE_IMAGES.IMAGE_01,
+          chapter: "Chapter 02",
+          title: "A second world appears",
+          align: "left",
+        },
+        {
+          image: MAGAZINE_IMAGES.IMAGE_02,
+          chapter: "Chapter 03",
+          title: "Performance becomes mythology",
+          align: "right",
+        },
+      ].map((section) => (
+        <Box
+          key={section.chapter}
+          sx={{
+            position: "relative",
+            height: { xs: 620, md: 820 },
+            overflow: "hidden",
+            my: { xs: 7, md: 11 },
+          }}
+        >
+          <Box
+            component="img"
+            src={section.image}
+            alt={section.title}
+            sx={{
+              width: "100%",
+              height: "100%",
+              objectFit: "cover",
+            }}
+          />
+
+          <Box
+            sx={{
+              position: "absolute",
+              inset: 0,
+              background:
+                "linear-gradient(90deg, rgba(0,0,0,0.9), rgba(0,0,0,0.12), rgba(0,0,0,0.72))",
+            }}
+          />
+
+          <Container
+            maxWidth="lg"
+            sx={{
+              position: "absolute",
+              inset: 0,
+              left: "50%",
+              transform: "translateX(-50%)",
+              display: "flex",
+              alignItems: "flex-end",
+              justifyContent:
+                section.align === "left" ? "flex-start" : "flex-end",
+              pb: { xs: 5, md: 8 },
+            }}
+          >
+            <Box sx={{ maxWidth: 680 }}>
+              <Typography
+                sx={{
+                  color: "#ff3b3b",
+                  fontSize: 12,
+                  fontWeight: 950,
+                  letterSpacing: "0.2em",
+                }}
+              >
+                {section.chapter}
+              </Typography>
+
+              <Typography
+                sx={{
+                  mt: 2,
+                  fontSize: { xs: 38, md: 64 },
+                  lineHeight: { xs: "48px", md: "74px" },
+                  fontWeight: 950,
+                  letterSpacing: "-0.05em",
+                }}
+              >
+                {section.title}
+              </Typography>
+            </Box>
+          </Container>
+        </Box>
+      ))}
+
+      <Container maxWidth="lg" sx={{ my: { xs: 8, md: 12 } }}>
+        <YouTubeBlock
+          videoUrl={MAGAZINE_VIDEOS.MAIN}
+          sx={{ height: { xs: 320, sm: 470, md: 660 } }}
+        />
+      </Container>
+    </Box>
+  );
+}
+
+//// ========================================================================
+//// LAYOUT 04 — FOUR-PROFILE / MEMBER GRID
+//// Phù hợp: nhóm nhạc, ban nhạc, collective, crew
+//// Đặc trưng: 4 profile đều nhau, ảnh dọc, role + mô tả riêng
+//// ========================================================================
+
+function Layout04_MemberProfiles() {
+  const members = [
+    {
+      image: "MEMBER_01",
+      name: "MEMBER ONE",
+      role: "The visual anchor",
+      copy: "Short description for member one.",
+    },
+    {
+      image: "MEMBER_02",
+      name: "MEMBER TWO",
+      role: "The emotional frequency",
+      copy: "Short description for member two.",
+    },
+    {
+      image: "MEMBER_03",
+      name: "MEMBER THREE",
+      role: "The kinetic edge",
+      copy: "Short description for member three.",
+    },
+    {
+      image: "MEMBER_04",
+      name: "MEMBER FOUR",
+      role: "The controlled spark",
+      copy: "Short description for member four.",
+    },
+  ];
+
+  return (
+    <Box sx={{ minHeight: "100vh", bgcolor: "#101010", color: "#fff" }}>
+      <TextBlock
+        eyebrow="The Group"
+        title="Different identities, one unmistakable silhouette"
+        align="center"
+      >
+        <p>
+          Introduce the group dynamic and explain why each member must remain
+          visually distinct.
+        </p>
+      </TextBlock>
+
+      <Container maxWidth="lg" sx={{ my: { xs: 8, md: 12 } }}>
+        <Box
+          sx={{
+            display: "grid",
+            gridTemplateColumns: {
+              xs: "1fr",
+              sm: "1fr 1fr",
+              lg: "repeat(4, minmax(0, 1fr))",
+            },
+            gap: 2.5,
+          }}
+        >
+          {members.map((member, index) => (
+            <Box
+              key={member.name}
+              sx={{
+                overflow: "hidden",
+                bgcolor: "#151515",
+                border: "1px solid rgba(255,255,255,0.1)",
+                transform: {
+                  lg: index % 2 === 0 ? "translateY(0)" : "translateY(36px)",
+                },
+              }}
+            >
+              <Box sx={{ position: "relative", height: 430 }}>
+                <Box
+                  component="img"
+                  src={MAGAZINE_IMAGES[member.image]}
+                  alt={member.name}
+                  sx={{
+                    width: "100%",
+                    height: "100%",
+                    objectFit: "cover",
+                    objectPosition: "center top",
+                  }}
+                />
+
+                <Box
+                  sx={{
+                    position: "absolute",
+                    inset: 0,
+                    background:
+                      "linear-gradient(180deg, transparent 45%, rgba(0,0,0,0.88) 100%)",
+                  }}
+                />
+
+                <Box
+                  sx={{
+                    position: "absolute",
+                    left: 15,
+                    bottom: 15,
+                    px: 1.2,
+                    py: 0.6,
+                    bgcolor: "#ff7eb6",
+                    color: "#111",
+                    fontSize: 11,
+                    fontWeight: 950,
+                  }}
+                >
+                  #{member.name.replaceAll(" ", "_")}
+                </Box>
+              </Box>
+
+              <Box sx={{ p: 2.5 }}>
+                <Typography
+                  sx={{
+                    color: "#ff7eb6",
+                    fontSize: 11,
+                    fontWeight: 950,
+                    letterSpacing: "0.12em",
+                    textTransform: "uppercase",
+                  }}
+                >
+                  {member.role}
+                </Typography>
+
+                <Typography
+                  sx={{
+                    mt: 1,
+                    fontSize: 28,
+                    fontWeight: 950,
+                    letterSpacing: "-0.04em",
+                  }}
+                >
+                  {member.name}
+                </Typography>
+
+                <Typography
+                  sx={{
+                    mt: 1.3,
+                    color: "#aaa",
+                    fontSize: 14,
+                    lineHeight: "24px",
+                    fontWeight: 600,
+                  }}
+                >
+                  {member.copy}
+                </Typography>
+              </Box>
+            </Box>
+          ))}
+        </Box>
+      </Container>
+
+      <QuoteStrip />
+
+      <Container maxWidth="lg" sx={{ my: { xs: 8, md: 12 } }}>
+        <TrackSlider />
+      </Container>
+    </Box>
+  );
+}
+
+//// ========================================================================
+//// LAYOUT 05 — MUSIC VIDEO SPOTLIGHT
+//// Phù hợp: bài viết tập trung một MV hoặc một ca khúc
+//// Đặc trưng: YouTube ở giữa, frame analysis, ảnh nhỏ như storyboard
+//// ========================================================================
+
+function Layout05_MusicVideoSpotlight() {
+  const frames = ["FRAME_01", "FRAME_02", "FRAME_03", "FRAME_04"];
+
+  return (
+    <Box sx={{ minHeight: "100vh", bgcolor: "#0b0b0b", color: "#fff" }}>
+      <TextBlock
+        eyebrow="Music Video Study"
+        title="One song, one city, one unforgettable visual code"
+        align="center"
+      >
+        <p>
+          Introduce the video’s central visual idea, emotional conflict, and
+          recurring symbols.
+        </p>
+      </TextBlock>
+
+      <Container maxWidth="lg" sx={{ my: { xs: 8, md: 12 } }}>
+        <YouTubeBlock
+          videoUrl={MAGAZINE_VIDEOS.MAIN}
+          sx={{ height: { xs: 320, sm: 470, md: 660 } }}
+        />
+      </Container>
+
+      <Container maxWidth="lg" sx={{ my: { xs: 8, md: 12 } }}>
+        <Box
+          sx={{
+            display: "grid",
+            gridTemplateColumns: { xs: "1fr 1fr", md: "repeat(4, 1fr)" },
+            gap: 1.5,
+          }}
+        >
+          {frames.map((frame, index) => (
+            <Box
+              key={frame}
+              sx={{
+                position: "relative",
+                height: { xs: 220, md: 330 },
+                overflow: "hidden",
+                border: "8px solid #111",
+                transform: `rotate(${index % 2 === 0 ? -2 : 2}deg)`,
+              }}
+            >
+              <Box
+                component="img"
+                src={MAGAZINE_IMAGES[frame]}
+                alt={`Frame ${index + 1}`}
+                sx={{
+                  width: "100%",
+                  height: "100%",
+                  objectFit: "cover",
+                }}
+              />
+
+              <Box
+                sx={{
+                  position: "absolute",
+                  left: 10,
+                  bottom: 10,
+                  color: "#fff",
+                  fontSize: 11,
+                  fontWeight: 950,
+                  letterSpacing: "0.1em",
+                }}
+              >
+                FRAME {String(index + 1).padStart(2, "0")}
+              </Box>
+            </Box>
+          ))}
+        </Box>
+      </Container>
+
+      <TextBlock
+        eyebrow="Visual Analysis"
+        title="Every frame repeats the same emotional pressure"
+      >
+        <p>
+          Break down color, camera movement, costume, lighting, and recurring
+          symbols.
+        </p>
+      </TextBlock>
+
+      <Container maxWidth="lg" sx={{ my: { xs: 8, md: 12 } }}>
+        <TrackSlider />
+      </Container>
+    </Box>
+  );
+}
+
+//// ========================================================================
+//// LAYOUT 06 — ALBUM ERA TIMELINE
+//// Phù hợp: hành trình sự nghiệp, 1000 ngày, nhiều album/era
+//// Đặc trưng: timeline dọc, từng mốc có ảnh + năm + mô tả
+//// ========================================================================
+
+function Layout06_AlbumEraTimeline() {
+  const eras = [
+    {
+      year: "2016",
+      image: "ERA_01",
+      title: "The first signal",
+      text: "Describe the debut era and the first visual identity.",
+    },
+    {
+      year: "2018",
+      image: "ERA_02",
+      title: "The breakthrough",
+      text: "Describe the era that expanded the audience.",
+    },
+    {
+      year: "2020",
+      image: "ERA_03",
+      title: "The global frame",
+      text: "Describe the international stage and larger production.",
+    },
+    {
+      year: "2024",
+      image: "ERA_04",
+      title: "The new chapter",
+      text: "Describe the current direction and mature identity.",
+    },
+  ];
+
+  return (
+    <Box sx={{ minHeight: "100vh", bgcolor: "#101010", color: "#fff" }}>
+      <TextBlock
+        eyebrow="Timeline"
+        title="Every era changed the scale, but never erased the identity"
+        align="center"
+      >
+        <p>
+          Use this layout for a chronological journey through albums, tours,
+          awards, or visual eras.
+        </p>
+      </TextBlock>
+
+      <Container maxWidth="lg" sx={{ my: { xs: 8, md: 12 } }}>
+        <Box sx={{ position: "relative" }}>
+          <Box
+            sx={{
+              position: "absolute",
+              left: { xs: 18, md: "50%" },
+              top: 0,
+              bottom: 0,
+              width: 2,
+              bgcolor: "rgba(255,126,182,0.32)",
+            }}
+          />
+
+          <Stack spacing={{ xs: 7, md: 10 }}>
+            {eras.map((era, index) => {
+              const leftSide = index % 2 === 0;
+
+              return (
+                <Box
+                  key={era.year}
+                  sx={{
+                    display: "grid",
+                    gridTemplateColumns: {
+                      xs: "1fr",
+                      md: "1fr 90px 1fr",
+                    },
+                    gap: { xs: 2, md: 3 },
+                    alignItems: "center",
+                  }}
+                >
+                  <Box
+                    sx={{
+                      order: { xs: 2, md: leftSide ? 1 : 3 },
+                    }}
+                  >
+                    {leftSide ? (
+                      <MagazineImage
+                        id={era.image}
+                        rotate={-2}
+                        sx={{ height: { xs: 400, md: 520 } }}
+                      />
+                    ) : (
+                      <Box>
+                        <Typography
+                          sx={{
+                            color: "#ff7eb6",
+                            fontSize: 12,
+                            fontWeight: 950,
+                            letterSpacing: "0.16em",
+                          }}
+                        >
+                          ERA {era.year}
+                        </Typography>
+                        <Typography
+                          sx={{
+                            mt: 1.5,
+                            fontSize: { xs: 34, md: 48 },
+                            lineHeight: { xs: "43px", md: "58px" },
+                            fontWeight: 950,
+                            letterSpacing: "-0.05em",
+                          }}
+                        >
+                          {era.title}
+                        </Typography>
+                        <Typography
+                          sx={{
+                            mt: 2,
+                            color: "#aaa",
+                            fontSize: 16,
+                            lineHeight: "29px",
+                          }}
+                        >
+                          {era.text}
+                        </Typography>
+                      </Box>
+                    )}
+                  </Box>
+
+                  <Box
+                    sx={{
+                      order: { xs: 1, md: 2 },
+                      position: "relative",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: { xs: "flex-start", md: "center" },
+                      pl: { xs: 0, md: 0 },
+                    }}
+                  >
+                    <Box
+                      sx={{
+                        width: 58,
+                        height: 58,
+                        borderRadius: "50%",
+                        bgcolor: "#ff7eb6",
+                        color: "#111",
+                        display: "grid",
+                        placeItems: "center",
+                        fontSize: 12,
+                        fontWeight: 950,
+                        zIndex: 2,
+                      }}
+                    >
+                      {era.year}
+                    </Box>
+                  </Box>
+
+                  <Box
+                    sx={{
+                      order: { xs: 3, md: leftSide ? 3 : 1 },
+                    }}
+                  >
+                    {leftSide ? (
+                      <Box>
+                        <Typography
+                          sx={{
+                            color: "#ff7eb6",
+                            fontSize: 12,
+                            fontWeight: 950,
+                            letterSpacing: "0.16em",
+                          }}
+                        >
+                          ERA {era.year}
+                        </Typography>
+                        <Typography
+                          sx={{
+                            mt: 1.5,
+                            fontSize: { xs: 34, md: 48 },
+                            lineHeight: { xs: "43px", md: "58px" },
+                            fontWeight: 950,
+                            letterSpacing: "-0.05em",
+                          }}
+                        >
+                          {era.title}
+                        </Typography>
+                        <Typography
+                          sx={{
+                            mt: 2,
+                            color: "#aaa",
+                            fontSize: 16,
+                            lineHeight: "29px",
+                          }}
+                        >
+                          {era.text}
+                        </Typography>
+                      </Box>
+                    ) : (
+                      <MagazineImage
+                        id={era.image}
+                        rotate={2}
+                        sx={{ height: { xs: 400, md: 520 } }}
+                      />
+                    )}
+                  </Box>
+                </Box>
+              );
+            })}
+          </Stack>
+        </Box>
+      </Container>
+    </Box>
+  );
+}
+
+//// ========================================================================
+//// LAYOUT 07 — NEON POSTER GRID
+//// Phù hợp: synth-pop, EDM, cyberpunk, night-drive
+//// Đặc trưng: card poster, glow, typography lớn, background grid
+//// ========================================================================
+
+function Layout07_NeonPosterGrid() {
+  const posters = ["POSTER_01", "POSTER_02", "POSTER_03", "POSTER_04"];
+
+  return (
+    <Box
+      sx={{
+        minHeight: "100vh",
+        bgcolor: "#050509",
+        color: "#fff",
+        backgroundImage:
+          "linear-gradient(rgba(255,0,140,0.08) 1px, transparent 1px), linear-gradient(90deg, rgba(0,255,224,0.06) 1px, transparent 1px)",
+        backgroundSize: "60px 60px",
+      }}
+    >
+      <Container maxWidth="lg" sx={{ pt: { xs: 9, md: 13 } }}>
+        <Typography
+          sx={{
+            color: "#ff2ba6",
+            fontSize: 12,
+            fontWeight: 950,
+            letterSpacing: "0.24em",
+            textTransform: "uppercase",
+          }}
+        >
+          Neon Archive
+        </Typography>
+
+        <Typography
+          sx={{
+            mt: 2,
+            maxWidth: 980,
+            fontSize: { xs: 52, md: 100 },
+            lineHeight: { xs: "58px", md: "102px" },
+            fontWeight: 950,
+            letterSpacing: "-0.08em",
+            textShadow:
+              "0 0 25px rgba(255,43,166,0.35), 0 0 70px rgba(138,0,255,0.28)",
+          }}
+        >
+          THE NIGHT BECAME A VISUAL INSTRUMENT
+        </Typography>
+      </Container>
+
+      <Container maxWidth="lg" sx={{ my: { xs: 8, md: 12 } }}>
+        <Box
+          sx={{
+            display: "grid",
+            gridTemplateColumns: { xs: "1fr", sm: "1fr 1fr" },
+            gap: 2,
+          }}
+        >
+          {posters.map((poster, index) => (
+            <Box
+              key={poster}
+              sx={{
+                position: "relative",
+                height: { xs: 480, md: 620 },
+                overflow: "hidden",
+                border: "1px solid rgba(255,43,166,0.35)",
+                boxShadow:
+                  "0 30px 100px rgba(0,0,0,0.65), 0 0 45px rgba(255,43,166,0.08)",
+              }}
+            >
+              <Box
+                component="img"
+                src={MAGAZINE_IMAGES[poster]}
+                alt={`Poster ${index + 1}`}
+                sx={{
+                  width: "100%",
+                  height: "100%",
+                  objectFit: "cover",
+                  filter: "contrast(1.1) saturate(1.1)",
+                }}
+              />
+
+              <Box
+                sx={{
+                  position: "absolute",
+                  inset: 0,
+                  background:
+                    "linear-gradient(180deg, transparent 45%, rgba(5,5,9,0.92) 100%)",
+                }}
+              />
+
+              <Typography
+                sx={{
+                  position: "absolute",
+                  left: 20,
+                  bottom: 22,
+                  color: index % 2 === 0 ? "#ff2ba6" : "#00ffe0",
+                  fontSize: { xs: 34, md: 48 },
+                  lineHeight: 0.95,
+                  fontWeight: 950,
+                  letterSpacing: "-0.05em",
+                  textTransform: "uppercase",
+                }}
+              >
+                POSTER
+                <br />
+                {String(index + 1).padStart(2, "0")}
+              </Typography>
+            </Box>
+          ))}
+        </Box>
+      </Container>
+
+      <Container maxWidth="lg" sx={{ my: { xs: 8, md: 12 } }}>
+        <TrackSlider />
+      </Container>
+    </Box>
+  );
+}
+
+//// ========================================================================
+//// LAYOUT 08 — FILM STRIP DOCUMENTARY
+//// Phù hợp: backstage, concert tour, documentary, behind the scenes
+//// Đặc trưng: dải phim, ảnh ngang, caption, cảm giác tư liệu
+//// ========================================================================
+
+function Layout08_FilmStripDocumentary() {
+  const filmFrames = [
+    "FILM_01",
+    "FILM_02",
+    "FILM_03",
+    "FILM_04",
+    "FILM_05",
+    "FILM_06",
+  ];
+
+  return (
+    <Box sx={{ minHeight: "100vh", bgcolor: "#111", color: "#fff" }}>
+      <TextBlock
+        eyebrow="Documentary"
+        title="The moments between performances tell the larger story"
+        align="center"
+      >
+        <p>
+          This layout works best with candid images, rehearsal photographs,
+          backstage stills, and tour footage.
+        </p>
+      </TextBlock>
+
+      <Box
+        sx={{
+          py: { xs: 5, md: 8 },
+          bgcolor: "#090909",
+          borderTop: "1px solid rgba(255,255,255,0.08)",
+          borderBottom: "1px solid rgba(255,255,255,0.08)",
+          overflowX: "auto",
+        }}
+      >
+        <Box
+          sx={{
+            display: "flex",
+            gap: 1.5,
+            minWidth: "max-content",
+            px: { xs: 2, md: 5 },
+          }}
+        >
+          {filmFrames.map((frame, index) => (
+            <Box
+              key={frame}
+              sx={{
+                width: { xs: 300, md: 440 },
+                height: { xs: 220, md: 320 },
+                p: 1.2,
+                bgcolor: "#050505",
+                borderTop: "18px solid #050505",
+                borderBottom: "18px solid #050505",
+                position: "relative",
+              }}
+            >
+              <Box
+                component="img"
+                src={MAGAZINE_IMAGES[frame]}
+                alt={`Film frame ${index + 1}`}
+                sx={{
+                  width: "100%",
+                  height: "100%",
+                  objectFit: "cover",
+                  filter: "grayscale(0.15) contrast(1.08)",
+                }}
+              />
+
+              <Typography
+                sx={{
+                  position: "absolute",
+                  left: 18,
+                  bottom: 20,
+                  px: 1,
+                  py: 0.4,
+                  bgcolor: "rgba(0,0,0,0.7)",
+                  color: "#fff",
+                  fontSize: 10,
+                  fontWeight: 950,
+                  letterSpacing: "0.1em",
+                }}
+              >
+                FRAME {String(index + 1).padStart(2, "0")}
+              </Typography>
+            </Box>
+          ))}
+        </Box>
+      </Box>
+
+      <TextBlock
+        eyebrow="Behind the lights"
+        title="The polished image is built from ordinary hours"
+      >
+        <p>
+          Write about rehearsals, creative direction, exhaustion, friendship,
+          and the work hidden behind the public image.
+        </p>
+      </TextBlock>
+
+      <Container maxWidth="lg" sx={{ my: { xs: 8, md: 12 } }}>
+        <YouTubeBlock
+          videoUrl={MAGAZINE_VIDEOS.MAIN}
+          sx={{ height: { xs: 320, sm: 470, md: 660 } }}
+        />
+      </Container>
+    </Box>
+  );
+}
+
+//// ========================================================================
+//// LAYOUT 09 — MINIMAL LUXURY EDITORIAL
+//// Phù hợp: ballad, luxury pop, solo artist, fashion editorial
+//// Đặc trưng: nhiều khoảng trắng/đen, ảnh lớn, chữ serif hoặc display thanh lịch
+//// ========================================================================
+
+function Layout09_MinimalLuxury() {
+  return (
+    <Box sx={{ minHeight: "100vh", bgcolor: "#0d0d0d", color: "#fff" }}>
+      <Container maxWidth="lg" sx={{ pt: { xs: 10, md: 15 } }}>
+        <Typography
+          sx={{
+            maxWidth: 900,
+            fontSize: { xs: 52, md: 96 },
+            lineHeight: { xs: "60px", md: "104px" },
+            fontWeight: 500,
+            letterSpacing: "-0.055em",
+          }}
+        >
+          A QUIET IMAGE CAN CARRY THE LOUDEST EMOTION
+        </Typography>
+
+        <Typography
+          sx={{
+            mt: 4,
+            maxWidth: 620,
+            color: "#999",
+            fontSize: { xs: 17, md: 20 },
+            lineHeight: { xs: "29px", md: "34px" },
+          }}
+        >
+          Minimal editorial layout with fewer decorative elements and stronger
+          focus on image quality, typography, and pacing.
+        </Typography>
+      </Container>
+
+      <Container maxWidth="lg" sx={{ my: { xs: 9, md: 14 } }}>
+        <Box
+          component="img"
+          src={MAGAZINE_IMAGES.HERO}
+          alt="Editorial hero"
+          sx={{
+            width: "100%",
+            height: { xs: 560, md: 860 },
+            objectFit: "cover",
+            display: "block",
+          }}
+        />
+      </Container>
+
+      <TextBlock
+        eyebrow="Essay"
+        title="The power of restraint"
+      >
+        <p>
+          Use fewer paragraphs, longer pauses, and one strong image per section.
+        </p>
+      </TextBlock>
+
+      <Container maxWidth="lg" sx={{ my: { xs: 9, md: 14 } }}>
+        <Box
+          sx={{
+            display: "grid",
+            gridTemplateColumns: { xs: "1fr", md: "0.8fr 1.2fr" },
+            gap: { xs: 3, md: 7 },
+            alignItems: "center",
+          }}
+        >
+          <Box>
+            <Typography
+              sx={{
+                color: "#777",
+                fontSize: 12,
+                fontWeight: 900,
+                letterSpacing: "0.18em",
+                textTransform: "uppercase",
+              }}
+            >
+              Portrait study
+            </Typography>
+
+            <Typography
+              sx={{
+                mt: 2,
+                fontSize: { xs: 36, md: 54 },
+                lineHeight: { xs: "46px", md: "64px" },
+                fontWeight: 500,
+                letterSpacing: "-0.04em",
+              }}
+            >
+              Let the image breathe before the next sentence begins
+            </Typography>
+          </Box>
+
+          <MagazineImage
+            id="IMAGE_01"
+            sx={{ height: { xs: 520, md: 720 } }}
+          />
+        </Box>
+      </Container>
+
+      <Container maxWidth="lg" sx={{ my: { xs: 8, md: 12 } }}>
+        <TrackSlider />
+      </Container>
+    </Box>
+  );
+}
+
+//// ========================================================================
+//// LAYOUT 10 — GRAND FINALE / SCROLLING POSTER
+//// Phù hợp: bài kết mạnh, nhiều lớp ảnh, cần cảm giác poster điện ảnh
+//// Đặc trưng: hero đầu + title giữa + closing image cực lớn + final statement
+//// ========================================================================
+
+function Layout10_GrandFinale() {
+  return (
+    <Box sx={{ minHeight: "100vh", bgcolor: "#101010", color: "#fff" }}>
+      <Box
+        sx={{
+          position: "relative",
+          height: { xs: 760, md: 940 },
+          overflow: "hidden",
+        }}
+      >
+        <Box
+          component="img"
+          src={MAGAZINE_IMAGES.HERO}
+          alt="Opening hero"
+          sx={{
+            width: "100%",
+            height: "100%",
+            objectFit: "cover",
+          }}
+        />
+
+        <Box
+          sx={{
+            position: "absolute",
+            inset: 0,
+            background:
+              "linear-gradient(180deg, rgba(16,16,16,0.05), #101010 100%)",
+          }}
+        />
+
+        <Typography
+          sx={{
+            position: "absolute",
+            left: "50%",
+            bottom: { xs: 60, md: 90 },
+            transform: "translateX(-50%)",
+            width: "92%",
+            textAlign: "center",
+            fontSize: { xs: 52, md: 105 },
+            lineHeight: { xs: "58px", md: "108px" },
+            fontWeight: 950,
+            letterSpacing: "-0.08em",
+          }}
+        >
+          THE STORY WAS ALWAYS LARGER THAN ONE SONG
+        </Typography>
+      </Box>
+
+      <TextBlock
+        eyebrow="The Journey"
+        title="Build tension through three short chapters"
+      >
+        <p>
+          Chapter one introduces the artist. Chapter two expands the visual
+          world. Chapter three connects the music to cultural influence.
+        </p>
+      </TextBlock>
+
+      <QuoteStrip />
+
+      <Container maxWidth="lg" sx={{ my: { xs: 8, md: 12 } }}>
+        <TrackSlider />
+      </Container>
+
+      <Container maxWidth="lg" sx={{ my: { xs: 9, md: 14 } }}>
+        <Box
+          sx={{
+            position: "relative",
+            minHeight: { xs: 620, md: 850 },
+            overflow: "hidden",
+            border: "1px solid rgba(255,255,255,0.1)",
+          }}
+        >
+          <Box
+            component="img"
+            src={MAGAZINE_IMAGES.CLOSING}
+            alt="Closing"
+            sx={{
+              width: "100%",
+              height: "100%",
+              position: "absolute",
+              inset: 0,
+              objectFit: "cover",
+              opacity: 0.75,
+            }}
+          />
+
+          <Box
+            sx={{
+              position: "absolute",
+              inset: 0,
+              background:
+                "linear-gradient(90deg, rgba(16,16,16,0.95), rgba(16,16,16,0.18), rgba(16,16,16,0.72))",
+            }}
+          />
+
+          <Box
+            sx={{
+              position: "absolute",
+              left: { xs: 24, md: 60 },
+              bottom: { xs: 32, md: 60 },
+              maxWidth: 720,
+            }}
+          >
+            <TornLabel top="FINAL WORD" bottom="BUILT TO LAST" />
+
+            <Typography
+              sx={{
+                mt: 3,
+                fontSize: { xs: 34, md: 58 },
+                lineHeight: { xs: "44px", md: "68px" },
+                fontWeight: 950,
+                letterSpacing: "-0.055em",
+              }}
+            >
+              The strongest identity is the one that survives every era
+            </Typography>
+          </Box>
+        </Box>
+      </Container>
+
+      <TextBlock eyebrow="Closing">
+        <p>
+          End with one concise conclusion that connects sound, image, and
+          cultural memory.
+        </p>
+      </TextBlock>
+    </Box>
+  );
+}
+
+//// ========================================================================
+//// GỢI Ý PHÂN BỔ 10 MẪU
+//// ========================================================================
+
+//// LAYOUT 01:
+//// Dùng cho nghệ sĩ chính, bài flagship, nhiều ảnh chất lượng cao.
+
+//// LAYOUT 02:
+//// Dùng cho BLACKPINK, rap, fashion, Y2K, scrapbook.
+
+//// LAYOUT 03:
+//// Dùng cho The Weeknd, MV điện ảnh, concept album, dark pop.
+
+//// LAYOUT 04:
+//// Dùng cho nhóm nhạc 4–6 thành viên hoặc crew.
+
+//// LAYOUT 05:
+//// Dùng cho bài phân tích riêng một MV hoặc một ca khúc.
+
+//// LAYOUT 06:
+//// Dùng cho hành trình sự nghiệp, timeline, album eras.
+
+//// LAYOUT 07:
+//// Dùng cho synth-pop, EDM, neon, cyberpunk.
+
+//// LAYOUT 08:
+//// Dùng cho hậu trường, tour, documentary, concert.
+
+//// LAYOUT 09:
+//// Dùng cho solo artist, ballad, fashion luxury, editorial tối giản.
+
+//// LAYOUT 10:
+//// Dùng cho bài tổng kết lớn, kết thúc mạnh, poster cinematic.
+
+//// ========================================================================
+//// CHECKLIST TRƯỚC KHI DÙNG
+//// ========================================================================
+
+//// [ ] Đổi TrackSlider thành component slider đúng bài.
+//// [ ] Đổi MAGAZINE_IMAGES key cho khớp.
+//// [ ] Đổi màu accent theo chủ đề nghệ sĩ.
+//// [ ] Kiểm tra tất cả ảnh nằm trong public/images/media/.
+//// [ ] YouTube dùng youtube-nocookie.com nếu cần giảm request tracking.
+//// [ ] Mỗi ảnh nên có hashtag hoặc caption.
+//// [ ] Mobile: kiểm tra chiều cao ảnh xs.
+//// [ ] Desktop: kiểm tra maxWidth="lg".
+//// [ ] Không đặt JSX bên ngoài return.
+//// [ ] Route phải nằm trong page.tsx hoặc [slug]/page.tsx.
+
+//// ========================================================================
+//// END OF FILE
+//// ========================================================================

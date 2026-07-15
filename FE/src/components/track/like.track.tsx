@@ -17,10 +17,9 @@ import { useEffect, useState } from "react";
 import { sendRequest } from "@/utils/api";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
-import { handleLikeTrackAction } from "@/utils/actions/actions";
 import { Box } from "@mui/material";
 import { useToast } from "@/utils/toast";
-import { PlaylistAdd, UploadFile } from "@mui/icons-material";
+import { PlaylistAdd } from "@mui/icons-material";
 
 interface IProps {
   track: ITrackTop | null;

@@ -1,14 +1,13 @@
 "use client";
 
-import * as React from "react";
 import { useRouter } from "next/navigation";
+
 import Avatar from "@mui/material/Avatar";
 import AvatarGroup from "@mui/material/AvatarGroup";
 import Box from "@mui/material/Box";
 import Card from "@mui/material/Card";
 import CardContent from "@mui/material/CardContent";
 import CardMedia from "@mui/material/CardMedia";
-import Grid from "@mui/material/Grid";
 import Typography from "@mui/material/Typography";
 import { styled } from "@mui/material/styles";
 
@@ -29,79 +28,104 @@ export type EmagazineCardItem = {
 const StyledCard = styled(Card)({
   display: "flex",
   flexDirection: "column",
-  padding: 0,
+
+  width: "100%",
   height: "100%",
-  backgroundColor: "#16181d",
-  color: "#ffffff",
-  border: "1px solid rgba(255,255,255,0.12)",
-  boxShadow: "0 18px 60px rgba(0,0,0,0.35)",
-  borderRadius: "24px",
+  minHeight: 520,
+
+  padding: 0,
   overflow: "hidden",
-  transition: "0.25s ease",
+
+  color: "#ffffff",
+  backgroundColor: "#16181d",
+
+  border: "1px solid rgba(255,255,255,0.12)",
+  borderRadius: "24px",
+
+  boxShadow: "0 18px 60px rgba(0,0,0,0.35)",
+
+  cursor: "pointer",
+
+  transition:
+    "transform 220ms ease, border-color 220ms ease, background-color 220ms ease, box-shadow 220ms ease",
 
   "&:hover": {
-    backgroundColor: "#1d2027",
-    cursor: "pointer",
-    borderColor: "rgba(0,255,224,0.45)",
     transform: "translateY(-6px)",
+
+    backgroundColor: "#1d2027",
+    borderColor: "rgba(0,255,224,0.45)",
+
     boxShadow: "0 26px 90px rgba(0,0,0,0.55)",
   },
 
   "&:focus-visible": {
-    outline: "3px solid",
-    outlineColor: "rgba(0, 255, 224, 0.5)",
-    outlineOffset: "2px",
+    outline: "3px solid rgba(0,255,224,0.5)",
+    outlineOffset: "3px",
   },
 });
 
 const StyledCardContent = styled(CardContent)({
   display: "flex",
   flexDirection: "column",
-  gap: 4,
-  padding: 18,
   flexGrow: 1,
 
-  "&:last-child": {
-    paddingBottom: 18,
-  },
-});
+  gap: 8,
 
-const StyledTypography = styled(Typography)({
-  display: "-webkit-box",
-  WebkitBoxOrient: "vertical",
-  WebkitLineClamp: 2,
-  overflow: "hidden",
-  textOverflow: "ellipsis",
+  padding: 20,
+
+  "&:last-child": {
+    paddingBottom: 20,
+  },
 });
 
 function Author({ authors }: { authors: AuthorType[] }) {
   return (
     <Box
       sx={{
+        mt: "auto",
+        px: 2.5,
+        py: 2,
+
         display: "flex",
         flexDirection: "row",
-        gap: 2,
         alignItems: "center",
         justifyContent: "space-between",
-        padding: "16px 18px",
+
+        gap: 2,
+
+        borderTop: "1px solid rgba(255,255,255,0.08)",
       }}
     >
       <Box
         sx={{
           display: "flex",
           flexDirection: "row",
-          gap: 1,
           alignItems: "center",
+
+          gap: 1,
           minWidth: 0,
         }}
       >
-        <AvatarGroup max={3}>
+        <AvatarGroup
+          max={3}
+          sx={{
+            flexShrink: 0,
+
+            "& .MuiAvatar-root": {
+              width: 26,
+              height: 26,
+
+              fontSize: 11,
+
+              border: "2px solid #16181d",
+            },
+          }}
+        >
           {authors.map((author, index) => (
             <Avatar
-              key={index}
+              key={`${author.name}-${index}`}
               alt={author.name}
               src={author.avatar}
-              sx={{ width: 24, height: 24 }}
             />
           ))}
         </AvatarGroup>
@@ -110,7 +134,11 @@ function Author({ authors }: { authors: AuthorType[] }) {
           variant="caption"
           noWrap
           sx={{
+            minWidth: 0,
+
             color: "#c9d1d9",
+
+            fontSize: 12,
             fontWeight: 700,
           }}
         >
@@ -121,9 +149,12 @@ function Author({ authors }: { authors: AuthorType[] }) {
       <Typography
         variant="caption"
         sx={{
-          color: "#8b949e",
-          fontWeight: 700,
           flexShrink: 0,
+
+          color: "#8b949e",
+
+          fontSize: 12,
+          fontWeight: 700,
         }}
       >
         July 14, 2026
@@ -138,122 +169,153 @@ export default function EmagazineCardGrid({
   cards: EmagazineCardItem[];
 }) {
   const router = useRouter();
-  const [focusedCardIndex, setFocusedCardIndex] = React.useState<number | null>(
-    null
-  );
 
-  const handleFocus = (index: number) => {
-    setFocusedCardIndex(index);
+  const handleOpenCard = (href: string) => {
+    router.push(href);
   };
 
-  const handleBlur = () => {
-    setFocusedCardIndex(null);
-  };
-
-  const renderCard = (index: number, showImage = true) => {
-    const card = cards[index];
-
-    if (!card) return null;
-
-    return (
-      <StyledCard
-        variant="outlined"
-        onClick={() => router.push(card.href)}
-        onFocus={() => handleFocus(index)}
-        onBlur={handleBlur}
-        tabIndex={0}
-        className={focusedCardIndex === index ? "Mui-focused" : ""}
-        sx={{ height: "100%" }}
-      >
-        {showImage && (
-          <CardMedia
-            component="img"
-            alt={card.title}
-            image={card.img}
-            sx={{
-              aspectRatio: "16 / 9",
-              objectFit: "cover",
-              borderBottom: "1px solid rgba(255,255,255,0.08)",
-            }}
-          />
-        )}
-
-        <StyledCardContent>
-          <Typography
-            gutterBottom
-            variant="caption"
-            component="div"
-            sx={{
-              color: "#00ffe0",
-              fontWeight: 900,
-              letterSpacing: "0.12em",
-              textTransform: "uppercase",
-            }}
-          >
-            {card.tag}
-          </Typography>
-
-          <Typography
-            gutterBottom
-            variant="h6"
-            component="div"
-            sx={{
-              color: "#ffffff",
-              fontWeight: 900,
-              lineHeight: 1.25,
-            }}
-          >
-            {card.title}
-          </Typography>
-
-          <StyledTypography
-            variant="body2"
-            gutterBottom
-            sx={{
-              color: "#a7a7a7",
-              lineHeight: 1.7,
-            }}
-          >
-            {card.description}
-          </StyledTypography>
-        </StyledCardContent>
-
-        <Author authors={card.authors} />
-      </StyledCard>
-    );
+  const handleKeyDown = (event: React.KeyboardEvent, href: string) => {
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      handleOpenCard(href);
+    }
   };
 
   return (
-    <Grid container spacing={2} columns={12}>
-      <Grid item xs={12} md={6}>
-        {renderCard(0)}
-      </Grid>
+    <Box
+      sx={{
+        display: "grid",
 
-      <Grid item xs={12} md={6}>
-        {renderCard(1)}
-      </Grid>
+        gridTemplateColumns: {
+          xs: "minmax(0, 1fr)",
+          md: "repeat(2, minmax(0, 1fr))",
+        },
 
-      <Grid item xs={12} md={4}>
-        {renderCard(2)}
-      </Grid>
+        gridAutoRows: "1fr",
 
-      <Grid item xs={12} md={4}>
-        <Box
-          sx={{
-            display: "flex",
-            flexDirection: "column",
-            gap: 2,
-            height: "100%",
-          }}
+        gap: {
+          xs: 2,
+          md: 2.5,
+        },
+
+        width: "100%",
+      }}
+    >
+      {cards.map((card, index) => (
+        <StyledCard
+          key={`${card.href}-${index}`}
+          variant="outlined"
+          role="button"
+          tabIndex={0}
+          onClick={() => handleOpenCard(card.href)}
+          onKeyDown={(event) => handleKeyDown(event, card.href)}
         >
-          {renderCard(3, false)}
-          {renderCard(4, false)}
-        </Box>
-      </Grid>
+          <CardMedia
+            component="img"
+            image={card.img}
+            alt={card.title}
+            sx={{
+              width: "100%",
 
-      <Grid item xs={12} md={4}>
-        {renderCard(5)}
-      </Grid>
-    </Grid>
+              height: {
+                xs: 220,
+                sm: 250,
+                md: 270,
+              },
+
+              flexShrink: 0,
+
+              display: "block",
+
+              objectFit: "cover",
+              objectPosition: "center",
+
+              backgroundColor: "#090a0d",
+
+              borderBottom: "1px solid rgba(255,255,255,0.08)",
+
+              transition: "transform 500ms ease",
+
+              ".MuiCard-root:hover &": {
+                transform: "scale(1.035)",
+              },
+            }}
+          />
+
+          <StyledCardContent>
+            <Typography
+              component="div"
+              sx={{
+                color: "#00ffe0",
+
+                fontSize: 12,
+                fontWeight: 900,
+
+                letterSpacing: "0.12em",
+                textTransform: "uppercase",
+              }}
+            >
+              {card.tag}
+            </Typography>
+
+            <Typography
+              component="h2"
+              sx={{
+                minHeight: {
+                  xs: "auto",
+                  md: 60,
+                },
+
+                color: "#ffffff",
+
+                fontSize: {
+                  xs: 20,
+                  md: 22,
+                },
+
+                lineHeight: {
+                  xs: "27px",
+                  md: "30px",
+                },
+
+                fontWeight: 900,
+                letterSpacing: "-0.025em",
+
+                display: "-webkit-box",
+                WebkitBoxOrient: "vertical",
+                WebkitLineClamp: 2,
+
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+              }}
+            >
+              {card.title}
+            </Typography>
+
+            <Typography
+              component="p"
+              sx={{
+                color: "#a7a7a7",
+
+                fontSize: 14,
+                lineHeight: "24px",
+                fontWeight: 500,
+
+                display: "-webkit-box",
+                WebkitBoxOrient: "vertical",
+                WebkitLineClamp: 3,
+
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+              }}
+            >
+              {card.description}
+            </Typography>
+          </StyledCardContent>
+
+          <Author authors={card.authors} />
+        </StyledCard>
+      ))}
+    </Box>
   );
 }

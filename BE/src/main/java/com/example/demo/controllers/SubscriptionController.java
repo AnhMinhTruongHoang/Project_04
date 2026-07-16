@@ -18,248 +18,312 @@ import com.example.demo.services.SubscriptionService;
 
 @RestController
 @RequestMapping({
-        "/api/subscriptions",
-        "/api/v1/subscriptions"
+                "/api/subscriptions",
+                "/api/v1/subscriptions"
 })
 public class SubscriptionController {
 
-    @Autowired
-    private SubscriptionService subscriptionService;
+        @Autowired
+        private SubscriptionService subscriptionService;
 
-    @Autowired
-    private UserRepository userRepository;
+        @Autowired
+        private UserRepository userRepository;
 
-    private String getBearerToken(
-            HttpServletRequest request) {
+        private String getBearerToken(
+                        HttpServletRequest request) {
 
-        String authorization = request.getHeader(
-                "Authorization");
+                String authorization = request.getHeader(
+                                "Authorization");
 
-        if (authorization == null
-                || !authorization.startsWith(
-                        "Bearer ")) {
-            return null;
+                if (authorization == null
+                                || !authorization.startsWith(
+                                                "Bearer ")) {
+                        return null;
+                }
+
+                return authorization.substring(7);
         }
 
-        return authorization.substring(7);
-    }
+        private User getCurrentUser(
+                        HttpServletRequest request) {
 
-    private User getCurrentUser(
-            HttpServletRequest request) {
+                try {
+                        String token = getBearerToken(request);
 
-        try {
-            String token = getBearerToken(request);
+                        if (token == null) {
+                                return null;
+                        }
 
-            if (token == null) {
-                return null;
-            }
+                        Claims claims = JwtHelper.verifyToken(token);
 
-            Claims claims = JwtHelper.verifyToken(token);
+                        String email = claims.getSubject();
 
-            String email = claims.getSubject();
+                        return userRepository.findByEmail(
+                                        email);
 
-            return userRepository.findByEmail(
-                    email);
-
-        } catch (Exception e) {
-            return null;
+                } catch (Exception e) {
+                        return null;
+                }
         }
-    }
 
-    @GetMapping("/plans")
-    public ResponseEntity<?> getPlans() {
+        @GetMapping("/plans")
+        public ResponseEntity<?> getPlans() {
 
-        try {
-            return ResponseEntity.ok(
-                    new ApiResponse<>(
-                            200,
-                            "Fetch subscription plans",
-                            subscriptionService.getPlans()));
+                try {
+                        return ResponseEntity.ok(
+                                        new ApiResponse<>(
+                                                        200,
+                                                        "Fetch subscription plans",
+                                                        subscriptionService.getPlans()));
 
-        } catch (Exception e) {
-            e.printStackTrace();
+                } catch (Exception e) {
+                        e.printStackTrace();
 
-            return ResponseEntity
-                    .status(500)
-                    .body(new ApiResponse<>(
-                            500,
-                            e.getMessage(),
-                            null));
+                        return ResponseEntity
+                                        .status(500)
+                                        .body(new ApiResponse<>(
+                                                        500,
+                                                        e.getMessage(),
+                                                        null));
+                }
         }
-    }
 
-    @GetMapping("/me")
-    public ResponseEntity<?> getMySubscription(
-            HttpServletRequest request) {
+        @GetMapping("/me")
+        public ResponseEntity<?> getMySubscription(
+                        HttpServletRequest request) {
 
-        try {
-            User user = getCurrentUser(request);
+                try {
+                        User user = getCurrentUser(request);
 
-            if (user == null) {
-                return ResponseEntity
-                        .status(401)
-                        .body(new ApiResponse<>(
-                                401,
-                                "Unauthorized",
-                                null));
-            }
+                        if (user == null) {
+                                return ResponseEntity
+                                                .status(401)
+                                                .body(new ApiResponse<>(
+                                                                401,
+                                                                "Unauthorized",
+                                                                null));
+                        }
 
-            Map<String, Object> data = subscriptionService
-                    .getMySubscription(
-                            user.getId());
+                        Map<String, Object> data = subscriptionService
+                                        .getMySubscription(
+                                                        user.getId());
 
-            return ResponseEntity.ok(
-                    new ApiResponse<>(
-                            200,
-                            "Fetch current subscription",
-                            data));
+                        return ResponseEntity.ok(
+                                        new ApiResponse<>(
+                                                        200,
+                                                        "Fetch current subscription",
+                                                        data));
 
-        } catch (Exception e) {
-            e.printStackTrace();
+                } catch (Exception e) {
+                        e.printStackTrace();
 
-            return ResponseEntity
-                    .status(500)
-                    .body(new ApiResponse<>(
-                            500,
-                            e.getMessage(),
-                            null));
+                        return ResponseEntity
+                                        .status(500)
+                                        .body(new ApiResponse<>(
+                                                        500,
+                                                        e.getMessage(),
+                                                        null));
+                }
         }
-    }
 
-    @GetMapping("/me/usage")
-    public ResponseEntity<?> getMyUsage(
-            HttpServletRequest request) {
+        @GetMapping("/me/usage")
+        public ResponseEntity<?> getMyUsage(
+                        HttpServletRequest request) {
 
-        try {
-            User user = getCurrentUser(request);
+                try {
+                        User user = getCurrentUser(request);
 
-            if (user == null) {
-                return ResponseEntity
-                        .status(401)
-                        .body(new ApiResponse<>(
-                                401,
-                                "Unauthorized",
-                                null));
-            }
+                        if (user == null) {
+                                return ResponseEntity
+                                                .status(401)
+                                                .body(new ApiResponse<>(
+                                                                401,
+                                                                "Unauthorized",
+                                                                null));
+                        }
 
-            Map<String, Object> fullData = subscriptionService
-                    .getMySubscription(
-                            user.getId());
+                        Map<String, Object> fullData = subscriptionService
+                                        .getMySubscription(
+                                                        user.getId());
 
-            return ResponseEntity.ok(
-                    new ApiResponse<>(
-                            200,
-                            "Fetch subscription usage",
-                            fullData.get("usage")));
+                        return ResponseEntity.ok(
+                                        new ApiResponse<>(
+                                                        200,
+                                                        "Fetch subscription usage",
+                                                        fullData.get("usage")));
 
-        } catch (Exception e) {
-            e.printStackTrace();
+                } catch (Exception e) {
+                        e.printStackTrace();
 
-            return ResponseEntity
-                    .status(500)
-                    .body(new ApiResponse<>(
-                            500,
-                            e.getMessage(),
-                            null));
+                        return ResponseEntity
+                                        .status(500)
+                                        .body(new ApiResponse<>(
+                                                        500,
+                                                        e.getMessage(),
+                                                        null));
+                }
         }
-    }
 
-    @PostMapping({
-            "/subscribe",
-            "/change-plan"
-    })
-    public ResponseEntity<?> subscribe(
-            @RequestBody SubscribePlanDTO dto,
-            HttpServletRequest request) {
+        @PostMapping({
+                        "/subscribe",
+                        "/change-plan"
+        })
+        public ResponseEntity<?> subscribe(
+                        @RequestBody SubscribePlanDTO dto,
+                        HttpServletRequest request) {
 
-        try {
-            User user = getCurrentUser(request);
+                try {
+                        User user = getCurrentUser(request);
 
-            if (user == null) {
-                return ResponseEntity
-                        .status(401)
-                        .body(new ApiResponse<>(
-                                401,
-                                "Unauthorized",
-                                null));
-            }
+                        if (user == null) {
+                                return ResponseEntity
+                                                .status(401)
+                                                .body(new ApiResponse<>(
+                                                                401,
+                                                                "Unauthorized",
+                                                                null));
+                        }
 
-            Map<String, Object> data = subscriptionService
-                    .subscribe(
-                            user.getId(),
-                            dto.getPlanCode());
+                        Map<String, Object> data = subscriptionService
+                                        .subscribe(
+                                                        user.getId(),
+                                                        dto.getPlanCode());
 
-            return ResponseEntity.ok(
-                    new ApiResponse<>(
-                            200,
-                            "Subscription updated",
-                            data));
+                        return ResponseEntity.ok(
+                                        new ApiResponse<>(
+                                                        200,
+                                                        "Subscription updated",
+                                                        data));
 
-        } catch (IllegalArgumentException e) {
+                } catch (IllegalArgumentException e) {
 
-            return ResponseEntity
-                    .badRequest()
-                    .body(new ApiResponse<>(
-                            400,
-                            e.getMessage(),
-                            null));
+                        return ResponseEntity
+                                        .badRequest()
+                                        .body(new ApiResponse<>(
+                                                        400,
+                                                        e.getMessage(),
+                                                        null));
 
-        } catch (Exception e) {
-            e.printStackTrace();
+                } catch (Exception e) {
+                        e.printStackTrace();
 
-            return ResponseEntity
-                    .status(500)
-                    .body(new ApiResponse<>(
-                            500,
-                            e.getMessage(),
-                            null));
+                        return ResponseEntity
+                                        .status(500)
+                                        .body(new ApiResponse<>(
+                                                        500,
+                                                        e.getMessage(),
+                                                        null));
+                }
         }
-    }
 
-    @PostMapping("/cancel")
-    public ResponseEntity<?> cancel(
-            HttpServletRequest request) {
+        @PostMapping("/cancel")
+        public ResponseEntity<?> cancel(
+                        HttpServletRequest request) {
 
-        try {
-            User user = getCurrentUser(request);
+                try {
+                        User user = getCurrentUser(request);
 
-            if (user == null) {
-                return ResponseEntity
-                        .status(401)
-                        .body(new ApiResponse<>(
-                                401,
-                                "Unauthorized",
-                                null));
-            }
+                        if (user == null) {
+                                return ResponseEntity
+                                                .status(401)
+                                                .body(new ApiResponse<>(
+                                                                401,
+                                                                "Unauthorized",
+                                                                null));
+                        }
 
-            Map<String, Object> data = subscriptionService
-                    .cancel(
-                            user.getId());
+                        Map<String, Object> data = subscriptionService
+                                        .cancel(
+                                                        user.getId());
 
-            return ResponseEntity.ok(
-                    new ApiResponse<>(
-                            200,
-                            "Subscription will be canceled at period end",
-                            data));
+                        return ResponseEntity.ok(
+                                        new ApiResponse<>(
+                                                        200,
+                                                        "Subscription will be canceled at period end",
+                                                        data));
 
-        } catch (IllegalArgumentException e) {
+                } catch (IllegalArgumentException e) {
 
-            return ResponseEntity
-                    .badRequest()
-                    .body(new ApiResponse<>(
-                            400,
-                            e.getMessage(),
-                            null));
+                        return ResponseEntity
+                                        .badRequest()
+                                        .body(new ApiResponse<>(
+                                                        400,
+                                                        e.getMessage(),
+                                                        null));
 
-        } catch (Exception e) {
-            e.printStackTrace();
+                } catch (Exception e) {
+                        e.printStackTrace();
 
-            return ResponseEntity
-                    .status(500)
-                    .body(new ApiResponse<>(
-                            500,
-                            e.getMessage(),
-                            null));
+                        return ResponseEntity
+                                        .status(500)
+                                        .body(new ApiResponse<>(
+                                                        500,
+                                                        e.getMessage(),
+                                                        null));
+                }
         }
-    }
+
+        /// overview chart
+        @GetMapping("/insights")
+        public ResponseEntity<?> getInsights(
+                        @RequestParam(defaultValue = "monthly") String period,
+                        HttpServletRequest request) {
+
+                try {
+                        User user = getCurrentUser(
+                                        request);
+
+                        if (user == null) {
+                                return ResponseEntity
+                                                .status(401)
+                                                .body(new ApiResponse<>(
+                                                                401,
+                                                                "Unauthorized",
+                                                                null));
+                        }
+
+                        if (user.getRole() == null
+                                        || !"ADMIN".equalsIgnoreCase(
+                                                        user.getRole())) {
+
+                                return ResponseEntity
+                                                .status(403)
+                                                .body(new ApiResponse<>(
+                                                                403,
+                                                                "Admin access required",
+                                                                null));
+                        }
+
+                        Map<String, Object> data = subscriptionService
+                                        .getInsights(
+                                                        period);
+
+                        return ResponseEntity.ok(
+                                        new ApiResponse<>(
+                                                        200,
+                                                        "Fetch subscription insights",
+                                                        data));
+
+                } catch (IllegalArgumentException e) {
+
+                        return ResponseEntity
+                                        .badRequest()
+                                        .body(new ApiResponse<>(
+                                                        400,
+                                                        e.getMessage(),
+                                                        null));
+
+                } catch (Exception e) {
+
+                        e.printStackTrace();
+
+                        return ResponseEntity
+                                        .status(500)
+                                        .body(new ApiResponse<>(
+                                                        500,
+                                                        e.getMessage(),
+                                                        null));
+                }
+        }
+        ///
 }

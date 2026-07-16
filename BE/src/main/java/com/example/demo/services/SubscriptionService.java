@@ -1,8 +1,13 @@
 package com.example.demo.services;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -32,6 +37,10 @@ public class SubscriptionService {
 
         private static final String STATUS_EXPIRED = "EXPIRED";
 
+        private static final String PLAN_ARTIST = "ARTIST";
+
+        private static final String PLAN_ARTIST_PRO = "ARTIST_PRO";
+
         @Autowired
         private SubscriptionPlanRepository subscriptionPlanRepository;
 
@@ -59,6 +68,152 @@ public class SubscriptionService {
                                 .collect(Collectors.toList());
         }
 
+        /// overview chart
+        @Transactional(readOnly = true)
+        public Map<String, Object> getInsights(
+                        String period) {
+
+                String normalizedPeriod = period == null
+                                ? "monthly"
+                                : period.trim().toLowerCase();
+
+                LocalDateTime now = LocalDateTime.now();
+
+                List<InsightBucket> buckets = buildInsightBuckets(
+                                normalizedPeriod,
+                                now);
+
+                LocalDateTime rangeStart = buckets.get(0).getStart();
+
+                LocalDateTime rangeEnd = now.plusSeconds(1);
+
+                List<UserSubscription> subscriptions = userSubscriptionRepository
+                                .findByCreatedAtGreaterThanEqualAndCreatedAtLessThanOrderByCreatedAtAsc(
+                                                rangeStart,
+                                                rangeEnd);
+
+                Map<String, String> planCodeById = new HashMap<>();
+
+                for (SubscriptionPlan plan : subscriptionPlanRepository.findAll()) {
+
+                        planCodeById.put(
+                                        plan.getId(),
+                                        plan.getCode());
+                }
+
+                List<Map<String, Object>> points = new ArrayList<>();
+
+                for (InsightBucket bucket : buckets) {
+
+                        long artistCount = 0;
+                        long artistProCount = 0;
+
+                        for (UserSubscription subscription : subscriptions) {
+
+                                LocalDateTime createdAt = subscription.getCreatedAt();
+
+                                if (createdAt == null) {
+                                        continue;
+                                }
+
+                                boolean insideBucket = !createdAt.isBefore(
+                                                bucket.getStart())
+                                                && createdAt.isBefore(
+                                                                bucket.getEnd());
+
+                                if (!insideBucket) {
+                                        continue;
+                                }
+
+                                String planCode = planCodeById.get(
+                                                subscription.getPlanId());
+
+                                if (PLAN_ARTIST.equals(
+                                                planCode)) {
+
+                                        artistCount++;
+
+                                } else if (PLAN_ARTIST_PRO.equals(
+                                                planCode)) {
+
+                                        artistProCount++;
+                                }
+                        }
+
+                        Map<String, Object> point = new LinkedHashMap<>();
+
+                        point.put(
+                                        "label",
+                                        bucket.getLabel());
+
+                        point.put(
+                                        "artist",
+                                        artistCount);
+
+                        point.put(
+                                        "artistPro",
+                                        artistProCount);
+
+                        points.add(point);
+                }
+
+                long activeArtist = 0;
+                long activeArtistPro = 0;
+
+                List<UserSubscription> activeSubscriptions = userSubscriptionRepository
+                                .findByStatus(
+                                                STATUS_ACTIVE);
+
+                for (UserSubscription subscription : activeSubscriptions) {
+
+                        String planCode = planCodeById.get(
+                                        subscription.getPlanId());
+
+                        if (PLAN_ARTIST.equals(
+                                        planCode)) {
+
+                                activeArtist++;
+
+                        } else if (PLAN_ARTIST_PRO.equals(
+                                        planCode)) {
+
+                                activeArtistPro++;
+                        }
+                }
+
+                Map<String, Object> totals = new LinkedHashMap<>();
+
+                totals.put(
+                                "artist",
+                                activeArtist);
+
+                totals.put(
+                                "artistPro",
+                                activeArtistPro);
+
+                Map<String, Object> result = new LinkedHashMap<>();
+
+                result.put(
+                                "period",
+                                normalizedPeriod);
+
+                result.put(
+                                "metric",
+                                "PLAN_ACTIVATIONS");
+
+                result.put(
+                                "points",
+                                points);
+
+                result.put(
+                                "totals",
+                                totals);
+
+                return result;
+        }
+
+        ///
+
         @Transactional
         public Map<String, Object> getMySubscription(
                         String userId) {
@@ -78,14 +233,117 @@ public class SubscriptionService {
                                 usage);
         }
 
-        /*
-         * =========================
-         * Giữ nguyên chu kỳ hiện tại.
-         * Giữ nguyên uploadedSeconds.
-         * Chỉ thay quyền và giới hạn của gói mới.
-         * Không thể đổi gói liên tục để lấy lại quota.
-         * =========================
-         */
+        ///
+        private List<InsightBucket> buildInsightBuckets(
+                        String period,
+                        LocalDateTime now) {
+
+                List<InsightBucket> buckets = new ArrayList<>();
+
+                switch (period) {
+
+                        case "weekly": {
+
+                                LocalDate firstDate = now.toLocalDate()
+                                                .minusDays(6);
+
+                                DateTimeFormatter formatter = DateTimeFormatter.ofPattern(
+                                                "EEE",
+                                                Locale.ENGLISH);
+
+                                for (int index = 0; index < 7; index++) {
+
+                                        LocalDateTime start = firstDate
+                                                        .plusDays(index)
+                                                        .atStartOfDay();
+
+                                        LocalDateTime end = index == 6
+                                                        ? now.plusSeconds(1)
+                                                        : start.plusDays(1);
+
+                                        String label = start.toLocalDate()
+                                                        .format(formatter);
+
+                                        buckets.add(
+                                                        new InsightBucket(
+                                                                        label,
+                                                                        start,
+                                                                        end));
+                                }
+
+                                break;
+                        }
+
+                        case "yearly": {
+
+                                LocalDate firstMonth = now.toLocalDate()
+                                                .withDayOfMonth(1)
+                                                .minusMonths(11);
+
+                                DateTimeFormatter formatter = DateTimeFormatter.ofPattern(
+                                                "MMM",
+                                                Locale.ENGLISH);
+
+                                for (int index = 0; index < 12; index++) {
+
+                                        LocalDateTime start = firstMonth
+                                                        .plusMonths(index)
+                                                        .atStartOfDay();
+
+                                        LocalDateTime end = index == 11
+                                                        ? now.plusSeconds(1)
+                                                        : firstMonth
+                                                                        .plusMonths(
+                                                                                        index + 1)
+                                                                        .atStartOfDay();
+
+                                        String label = start.toLocalDate()
+                                                        .format(formatter);
+
+                                        buckets.add(
+                                                        new InsightBucket(
+                                                                        label,
+                                                                        start,
+                                                                        end));
+                                }
+
+                                break;
+                        }
+
+                        case "monthly": {
+
+                                LocalDateTime firstWeek = now.minusWeeks(4)
+                                                .toLocalDate()
+                                                .atStartOfDay();
+
+                                for (int index = 0; index < 4; index++) {
+
+                                        LocalDateTime start = firstWeek.plusWeeks(
+                                                        index);
+
+                                        LocalDateTime end = index == 3
+                                                        ? now.plusSeconds(1)
+                                                        : firstWeek.plusWeeks(
+                                                                        index + 1);
+
+                                        buckets.add(
+                                                        new InsightBucket(
+                                                                        "Week " + (index + 1),
+                                                                        start,
+                                                                        end));
+                                }
+
+                                break;
+                        }
+
+                        default:
+                                throw new IllegalArgumentException(
+                                                "Period must be weekly, monthly, or yearly");
+                }
+
+                return buckets;
+        }
+
         ///
         @Transactional
         public Map<String, Object> subscribe(
@@ -816,5 +1074,38 @@ public class SubscriptionService {
                 subscriptionUsageRepository.save(
                                 usage);
         }
+
+        /// overview chart
+        private static class InsightBucket {
+
+                private final String label;
+
+                private final LocalDateTime start;
+
+                private final LocalDateTime end;
+
+                private InsightBucket(
+                                String label,
+                                LocalDateTime start,
+                                LocalDateTime end) {
+
+                        this.label = label;
+                        this.start = start;
+                        this.end = end;
+                }
+
+                public String getLabel() {
+                        return label;
+                }
+
+                public LocalDateTime getStart() {
+                        return start;
+                }
+
+                public LocalDateTime getEnd() {
+                        return end;
+                }
+        }
+
         ///
 }

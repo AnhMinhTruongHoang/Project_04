@@ -28,12 +28,13 @@ const MUSIC_CATEGORIES: MusicCategory[] = [
 
 const cardData = [
   {
-    img: "/images/media/sontungP.jpg",
-    tag: "V-Pop",
-    title: "Sơn Tùng M-TP: The Eastern Star Who Turned Pop Into a Visual Era",
+    img: "/images/media/blackpink01.jpg",
+    objectFit: "fill",
+    tag: "K-Pop",
+    title: "BLACKPINK: Four Voices, One Visual Language",
     description:
-      "A cinematic journey through Sơn Tùng M-TP’s music, visual identity, ambition, and influence on the modern Vietnamese pop landscape.",
-    href: "/eMagazine/sontung",
+      "An editorial journey through BLACKPINK’s distinct identities, iconic performances, global influence, and powerful black-and-pink universe.",
+    href: "/eMagazine/blackpink",
     authors: [
       {
         name: "Minh",
@@ -64,12 +65,12 @@ const cardData = [
     ],
   },
   {
-    img: "/images/user/NCS.jpg",
-    tag: "Electronic",
-    title: "NCS: The Colored Circles That Powered a Generation of Creators",
+    img: "/images/media/sontungP.jpg",
+    tag: "V-Pop",
+    title: "Sơn Tùng M-TP: The Eastern Star Who Turned Pop Into a Visual Era",
     description:
-      "The story of NoCopyrightSounds, electronic music culture, independent creators, and the visual identity that became recognizable worldwide.",
-    href: "/eMagazine/ncs",
+      "A cinematic journey through Sơn Tùng M-TP’s music, visual identity, ambition, and influence on the modern Vietnamese pop landscape.",
+    href: "/eMagazine/sontung",
     authors: [
       {
         name: "Minh",
@@ -81,13 +82,14 @@ const cardData = [
       },
     ],
   },
+
   {
-    img: "/images/media/blackpink-main.jpg",
-    tag: "K-Pop",
-    title: "BLACKPINK: Four Voices, One Visual Language",
+    img: "/images/user/NCS.jpg",
+    tag: "Electronic",
+    title: "NCS: The Colored Circles That Powered a Generation of Creators",
     description:
-      "An editorial journey through BLACKPINK’s distinct identities, iconic performances, global influence, and powerful black-and-pink universe.",
-    href: "/eMagazine/blackpink",
+      "The story of NoCopyrightSounds, electronic music culture, independent creators, and the visual identity that became recognizable worldwide.",
+    href: "/eMagazine/ncs",
     authors: [
       {
         name: "Minh",

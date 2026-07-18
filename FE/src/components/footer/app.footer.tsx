@@ -19,6 +19,8 @@ import Replay10RoundedIcon from "@mui/icons-material/Replay10Rounded";
 import Forward10RoundedIcon from "@mui/icons-material/Forward10Rounded";
 import VolumeUpRoundedIcon from "@mui/icons-material/VolumeUpRounded";
 import VolumeOffRoundedIcon from "@mui/icons-material/VolumeOffRounded";
+import SkipPreviousRoundedIcon from "@mui/icons-material/SkipPreviousRounded";
+import SkipNextRoundedIcon from "@mui/icons-material/SkipNextRounded";
 
 import { useTrackContext } from "@/lib/track.wrapper";
 import { useHasMounted } from "@/utils/customHook";
@@ -778,464 +780,60 @@ const AppFooter = () => {
   const canOpenArtist = footerArtistHref !== "#";
 
   return (
-    <div>
+    <>
       <AppBar
         position="fixed"
         sx={{
           top: "auto",
           bottom: 0,
+          zIndex: 1300,
+
           background: "#181A1B",
+
           borderTop: "1px solid rgba(255,255,255,0.08)",
+
           boxShadow: "0 -6px 20px rgba(0,0,0,0.35)",
+
+          pb: {
+            xs: "env(safe-area-inset-bottom)",
+            md: 0,
+          },
         }}
       >
         <Container
           disableGutters
           sx={{
-            display: "flex",
-            gap: 4,
-            alignItems: "center",
+            position: "relative",
+
+            width: "100%",
+            maxWidth: "none !important",
+
+            minHeight: {
+              xs: 66,
+              md: 64,
+            },
+
             backgroundColor: "#181A1B",
+
+            overflow: "visible",
+
             color: "#ffffff",
-
-            ".rhap_container": {
-              backgroundColor: "#181A1B",
-              boxShadow: "unset",
-              color: "#ffffff",
-            },
-
-            ".rhap_main": {
-              gap: "20px",
-            },
-
-            ".rhap_time": {
-              color: "#cfcfcf",
-              fontSize: "12px",
-              fontWeight: 700,
-            },
-
-            ".rhap_current-time": {
-              color: "#ff5500",
-            },
-
-            ".rhap_main-controls-button": {
-              color: "#ffffff",
-            },
-
-            ".rhap_play-pause-button": {
-              color: "#ffffff",
-            },
-
-            ".rhap_volume-button": {
-              color: "#ffffff",
-            },
-
-            ".rhap_progress-bar": {
-              backgroundColor: "#3a3a3a",
-            },
-
-            ".rhap_progress-filled": {
-              backgroundColor: "#ff5500",
-            },
-
-            ".rhap_progress-indicator": {
-              backgroundColor: "#ff5500",
-            },
-
-            ".rhap_download-progress": {
-              backgroundColor: "#555",
-            },
-
-            ".rhap_volume-bar": {
-              backgroundColor: "#3a3a3a",
-            },
-
-            ".rhap_volume-indicator": {
-              backgroundColor: "#ffffff",
-            },
           }}
         >
-          {isWaveControlled ? (
-            <Box
-              sx={{
-                flex: 1,
-                height: 64,
-                display: "flex",
-                alignItems: "center",
-                gap: 1.1,
-                px: 2,
-                backgroundColor: "#181A1B",
-                color: "#ffffff",
-                minWidth: 0,
-              }}
-            >
-              <IconButton
-                onClick={handleToggleShuffleMode}
-                sx={{
-                  width: 34,
-                  height: 34,
-                  p: 0,
-                  color: shuffleMode ? "#ff5500" : "#8f8f8f",
-                  opacity: "1 !important",
-
-                  "&:hover": {
-                    backgroundColor: "rgba(255,85,0,0.12)",
-                    color: "#ff5500",
-                  },
-
-                  "& .MuiSvgIcon-root": {
-                    fontSize: 27,
-                  },
-                }}
-              >
-                <ShuffleRoundedIcon />
-              </IconButton>
-
-              <IconButton
-                onClick={() => handleSeekBy(-10)}
-                sx={{
-                  width: 34,
-                  height: 34,
-                  p: 0,
-                  color: "#ffffff",
-
-                  "&:hover": {
-                    backgroundColor: "rgba(255,255,255,0.08)",
-                  },
-
-                  "& .MuiSvgIcon-root": {
-                    fontSize: 28,
-                  },
-                }}
-              >
-                <Replay10RoundedIcon />
-              </IconButton>
-
-              <IconButton
-                onClick={() => {
-                  setCurrentTrack({
-                    ...currentTrack,
-                    isPlaying: !Boolean(currentTrack.isPlaying),
-                    source: "footer-control",
-                  } as any);
-                }}
-                sx={{
-                  width: 42,
-                  height: 42,
-                  p: 0,
-                  borderRadius: "50%",
-                  color: "#181A1B",
-                  backgroundColor: "#ffffff",
-                  border: "none",
-                  flexShrink: 0,
-
-                  "&:hover": {
-                    backgroundColor: "#f1f1f1",
-                  },
-
-                  "& .MuiSvgIcon-root": {
-                    fontSize: 32,
-                  },
-                }}
-              >
-                {currentTrack.isPlaying ? <PauseIcon /> : <PlayArrowIcon />}
-              </IconButton>
-
-              <IconButton
-                onClick={() => handleSeekBy(10)}
-                sx={{
-                  width: 34,
-                  height: 34,
-                  p: 0,
-                  color: "#ffffff",
-
-                  "&:hover": {
-                    backgroundColor: "rgba(255,255,255,0.08)",
-                  },
-
-                  "& .MuiSvgIcon-root": {
-                    fontSize: 28,
-                  },
-                }}
-              >
-                <Forward10RoundedIcon />
-              </IconButton>
-
-              <Box
-                sx={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 0.8,
-                  width: 95,
-                  flexShrink: 0,
-                }}
-              >
-                <IconButton
-                  onClick={handleToggleMute}
-                  sx={{
-                    width: 28,
-                    height: 28,
-                    p: 0,
-                    color: "#ffffff",
-
-                    "&:hover": {
-                      backgroundColor: "rgba(255,255,255,0.08)",
-                    },
-
-                    "& .MuiSvgIcon-root": {
-                      fontSize: 24,
-                    },
-                  }}
-                >
-                  {volume > 0 ? (
-                    <VolumeUpRoundedIcon />
-                  ) : (
-                    <VolumeOffRoundedIcon />
-                  )}
-                </IconButton>
-
-                <Slider
-                  value={volume * 100}
-                  min={0}
-                  max={100}
-                  onChange={(_, value) => {
-                    handleChangeVolume(Number(value) / 100);
-                  }}
-                  sx={{
-                    width: 58,
-                    color: "#ffffff",
-                    p: 0,
-
-                    "& .MuiSlider-rail": {
-                      height: 4,
-                      opacity: 1,
-                      backgroundColor: "#4a4a4a",
-                    },
-
-                    "& .MuiSlider-track": {
-                      height: 4,
-                      backgroundColor: "#ffffff",
-                      border: "none",
-                    },
-
-                    "& .MuiSlider-thumb": {
-                      width: 13,
-                      height: 13,
-                      backgroundColor: "#ffffff",
-                      boxShadow: "none",
-
-                      "&:hover, &.Mui-focusVisible": {
-                        boxShadow: "0 0 0 6px rgba(255,255,255,0.12)",
-                      },
-
-                      "&:before": {
-                        boxShadow: "none",
-                      },
-                    },
-                  }}
-                />
-              </Box>
-
-              <Typography
-                sx={{
-                  color: "#ff5500",
-                  fontSize: "12px",
-                  fontWeight: 800,
-                  minWidth: 38,
-                  textAlign: "right",
-                  flexShrink: 0,
-                }}
-              >
-                {formatTime(footerCurrentTime)}
-              </Typography>
-
-              <Slider
-                value={
-                  footerDuration
-                    ? Math.min(footerCurrentTime, footerDuration)
-                    : 0
-                }
-                min={0}
-                max={footerDuration || 1}
-                onChangeCommitted={(_, value) => {
-                  setCurrentTrack({
-                    ...currentTrack,
-                    currentTime: Number(value),
-                    seekTime: Number(value),
-                    seekId: Date.now(),
-                    source: "footer-control",
-                  } as any);
-                }}
-                sx={{
-                  flex: 1,
-                  minWidth: 180,
-                  color: "#ff5500",
-                  p: 0,
-
-                  "& .MuiSlider-rail": {
-                    height: 4,
-                    opacity: 1,
-                    backgroundColor: "#4a4a4a",
-                  },
-
-                  "& .MuiSlider-track": {
-                    height: 4,
-                    backgroundColor: "#ff5500",
-                    border: "none",
-                  },
-
-                  "& .MuiSlider-thumb": {
-                    width: 16,
-                    height: 16,
-                    backgroundColor: "#ff5500",
-                    boxShadow: "none",
-
-                    "&:hover, &.Mui-focusVisible": {
-                      boxShadow: "0 0 0 6px rgba(255,85,0,0.16)",
-                    },
-
-                    "&:before": {
-                      boxShadow: "none",
-                    },
-                  },
-                }}
-              />
-
-              <Typography
-                sx={{
-                  color: "#ffffff",
-                  fontSize: "12px",
-                  fontWeight: 800,
-                  minWidth: 42,
-                  flexShrink: 0,
-                }}
-              >
-                {formatTime(footerDuration)}
-              </Typography>
-            </Box>
-          ) : (
-            <AudioPlayer
-              ref={playerRef}
-              layout="horizontal-reverse"
-              showSkipControls
-              /// listening history props
-              listenInterval={1000}
-              onListen={(event: any) => {
-                const audio =
-                  event?.currentTarget || playerRef.current?.audio?.current;
-
-                if (!audio || !currentTrack) {
-                  return;
-                }
-
-                const currentTime = Math.max(Number(audio.currentTime) || 0, 0);
-
-                const duration = Math.max(Number(audio.duration) || 0, 0);
-
-                setCurrentTrack({
-                  ...currentTrack,
-                  currentTime,
-                  duration,
-                  isPlaying: !audio.paused,
-                  source: "footer",
-                  seekTime: undefined,
-                  seekId: undefined,
-                } as any);
-              }}
-              ///
-              customAdditionalControls={[
-                <IconButton
-                  key="shuffle"
-                  onClick={handleToggleShuffleMode}
-                  sx={{
-                    width: 34,
-                    height: 34,
-                    p: 0,
-                    color: shuffleMode ? "#ff5500" : "#ffffff",
-
-                    "&:hover": {
-                      backgroundColor: "rgba(255,85,0,0.12)",
-                      color: "#ff5500",
-                    },
-
-                    "& .MuiSvgIcon-root": {
-                      fontSize: 24,
-                    },
-                  }}
-                >
-                  <ShuffleRoundedIcon />
-                </IconButton>,
-              ]}
-              onClickPrevious={handlePlayPreviousTrack}
-              onClickNext={handlePlayNextTrack}
-              onEnded={handleAudioEnded}
-              src={getAudioUrl(currentTrack.trackUrl)}
-              volume={volume}
-              muted={volume === 0}
-              onVolumeChange={(event: any) => {
-                const nextVolume = Number(event?.target?.volume ?? volume);
-
-                if (!Number.isFinite(nextVolume)) {
-                  return;
-                }
-
-                setAppVolume(nextVolume);
-              }}
-              style={{
-                boxShadow: "unset",
-                background: "#181A1B",
-              }}
-              onPlay={() => {
-                if (suppressFooterAudioEventRef.current) {
-                  return;
-                }
-
-                if (isTrackDetailPage) {
-                  return;
-                }
-
-                setCurrentTrack({
-                  ...currentTrack,
-                  isPlaying: true,
-                  source: "footer",
-                } as any);
-              }}
-              onPause={(event: any) => {
-                if (suppressFooterAudioEventRef.current) {
-                  return;
-                }
-
-                if (isTrackDetailPage) {
-                  return;
-                }
-
-                const audio =
-                  event?.currentTarget || playerRef.current?.audio?.current;
-
-                const nextTrack = {
-                  ...currentTrack,
-                  isPlaying: false,
-                  currentTime: Number(audio?.currentTime) || 0,
-                  duration: Number(audio?.duration) || 0,
-                  source: "footer",
-                };
-
-                setCurrentTrack(nextTrack as any);
-
-                void persistListeningProgress(nextTrack);
-              }}
-            />
-          )}
-
+          {/*MOBILE PROGRESS BAR*/}
           <Box
             sx={{
-              display: "flex",
+              display: {
+                xs: "flex",
+                md: "none",
+              },
+              width: "100%",
+              height: 66,
+              px: 1,
               alignItems: "center",
-              justifyContent: "center",
-              gap: "10px",
-              width: "320px",
-              minWidth: "320px",
-              pr: "10px",
+              gap: 1,
+              overflow: "hidden",
+              backgroundColor: "#181A1B",
             }}
           >
             <Box
@@ -1247,84 +845,749 @@ const AppFooter = () => {
                 }
               }}
               sx={{
-                width: 38,
-                height: 38,
+                width: 44,
+                height: 44,
                 flexShrink: 0,
                 display: "block",
-                borderRadius: "3px",
                 overflow: "hidden",
-                cursor: canOpenTrack ? "pointer" : "default",
+                borderRadius: "4px",
                 backgroundColor: "#111",
-
-                "&:hover img": canOpenTrack
-                  ? {
-                      opacity: 0.82,
-                      transform: "scale(1.04)",
-                    }
-                  : {},
+                cursor: canOpenTrack ? "pointer" : "default",
               }}
             >
               <Box
                 component="img"
                 src={getTrackImage()}
-                alt={currentTrack.title || "track image"}
+                alt={currentTrack?.title || "track image"}
                 onError={(event: any) => {
                   event.currentTarget.src = "/audio/SC.png";
                 }}
                 sx={{
                   width: "100%",
                   height: "100%",
-                  objectFit: "cover",
                   display: "block",
-                  transition: "0.18s ease",
+                  objectFit: "cover",
                 }}
               />
             </Box>
 
             <Box
               sx={{
+                flex: 1,
+                minWidth: 0,
                 display: "flex",
                 flexDirection: "column",
-                alignItems: "start",
                 justifyContent: "center",
-                width: "220px",
                 overflow: "hidden",
-                minWidth: 0,
               }}
             >
               <Typography
-                component={Link}
-                href={footerArtistHref}
-                onClick={(event) => {
-                  if (!canOpenArtist) {
-                    event.preventDefault();
-                  }
-                }}
-                title={currentTrack.description || "Unknown artist"}
+                noWrap
                 sx={{
-                  width: "100%",
-                  color: "#a8a8a8",
-                  fontSize: "12px",
-                  fontWeight: 700,
-                  overflow: "hidden",
-                  textOverflow: "ellipsis",
-                  whiteSpace: "nowrap",
-                  textDecoration: "none",
-                  cursor: canOpenArtist ? "pointer" : "default",
-
-                  "&:hover": canOpenArtist
-                    ? {
-                        color: "#ff5500",
-                      }
-                    : {},
+                  color: "#ffffff",
+                  fontSize: 13,
+                  lineHeight: "18px",
+                  fontWeight: 900,
                 }}
               >
-                {footerArtist?.name ||
-                  currentTrack.description ||
-                  "Unknown artist"}
+                {currentTrack?.title || "Unknown track"}
               </Typography>
 
               <Typography
+                noWrap
+                sx={{
+                  color: "#d0d0d0",
+                  fontSize: 11,
+                  lineHeight: "15px",
+                  fontWeight: 700,
+                  textTransform: "uppercase",
+                }}
+              >
+                {footerArtist?.name ||
+                  currentTrack?.uploader?.name ||
+                  currentTrack?.description ||
+                  "Unknown artist"}
+              </Typography>
+            </Box>
+
+            {/* OPEN PLAYLIST / QUEUE POPOVER */}
+            <IconButton
+              aria-label="Open queue"
+              onClick={handleOpenQueue}
+              sx={{
+                width: 34,
+                height: 34,
+                p: 0,
+                flexShrink: 0,
+                color: "#ffffff",
+                "&:hover": {
+                  color: "#ff5500",
+                  backgroundColor: "rgba(255,85,0,0.10)",
+                },
+                "& .MuiSvgIcon-root": {
+                  fontSize: 22,
+                },
+              }}
+            >
+              <QueueMusicRoundedIcon />
+            </IconButton>
+
+            {/* PLAY / PAUSE */}
+            <IconButton
+              aria-label={currentTrack?.isPlaying ? "Pause" : "Play"}
+              onClick={() => {
+                if (!currentTrack) return;
+
+                setCurrentTrack({
+                  ...currentTrack,
+                  isPlaying: !Boolean(currentTrack.isPlaying),
+                  source: "footer-control",
+                } as any);
+              }}
+              sx={{
+                width: 34,
+                height: 34,
+                p: 0,
+                flexShrink: 0,
+                color: "#ffffff",
+                "&:hover": {
+                  color: "#ff5500",
+                  backgroundColor: "rgba(255,85,0,0.10)",
+                },
+                "& .MuiSvgIcon-root": {
+                  fontSize: 24,
+                },
+              }}
+            >
+              {currentTrack?.isPlaying ? <PauseIcon /> : <PlayArrowIcon />}
+            </IconButton>
+          </Box>
+
+          {/* MOBILE PROGRESS BAR */}
+          <Box
+            sx={{
+              display: {
+                xs: "block",
+                md: "none",
+              },
+
+              position: "absolute",
+
+              top: 0,
+              left: 0,
+              right: 0,
+
+              height: 10,
+
+              zIndex: 30,
+
+              transform: "translateY(-50%)",
+            }}
+          >
+            <Slider
+              value={
+                footerDuration ? Math.min(footerCurrentTime, footerDuration) : 0
+              }
+              min={0}
+              max={footerDuration || 1}
+              onChangeCommitted={(_, value) => {
+                setCurrentTrack({
+                  ...currentTrack,
+
+                  currentTime: Number(value),
+                  seekTime: Number(value),
+                  seekId: Date.now(),
+
+                  source: "footer-control",
+                } as any);
+              }}
+              sx={{
+                position: "absolute",
+
+                top: "50%",
+                left: 0,
+
+                transform: "translateY(-50%)",
+
+                width: "100%",
+                height: 10,
+
+                p: 0,
+
+                color: "#ff5500",
+
+                "& .MuiSlider-rail": {
+                  height: 2,
+
+                  opacity: 1,
+
+                  backgroundColor: "rgba(255,255,255,0.22)",
+                },
+
+                "& .MuiSlider-track": {
+                  height: 2,
+
+                  border: 0,
+
+                  backgroundColor: "#ff5500",
+                },
+
+                "& .MuiSlider-thumb": {
+                  width: 9,
+                  height: 9,
+
+                  opacity: 0,
+
+                  backgroundColor: "#ff5500",
+
+                  boxShadow: "none",
+
+                  "&:before": {
+                    boxShadow: "none",
+                  },
+                },
+
+                "&:active .MuiSlider-thumb": {
+                  opacity: 1,
+                },
+              }}
+            />
+          </Box>
+
+          {/* DESKTOP PLAYER*/}
+          <Box
+            sx={{
+              display: {
+                xs: "none",
+                md: "flex",
+              },
+
+              width: "100%",
+
+              minHeight: 64,
+
+              alignItems: "center",
+
+              gap: 4,
+
+              backgroundColor: "#181A1B",
+
+              ".rhap_container": {
+                flex: 1,
+
+                minWidth: 0,
+
+                backgroundColor: "#181A1B",
+
+                boxShadow: "unset",
+
+                color: "#ffffff",
+              },
+
+              ".rhap_main": {
+                gap: "20px",
+              },
+
+              ".rhap_time": {
+                color: "#cfcfcf",
+
+                fontSize: "12px",
+                fontWeight: 700,
+              },
+
+              ".rhap_current-time": {
+                color: "#ff5500",
+              },
+
+              ".rhap_main-controls-button": {
+                color: "#ffffff",
+              },
+
+              ".rhap_play-pause-button": {
+                color: "#ffffff",
+              },
+
+              ".rhap_volume-button": {
+                color: "#ffffff",
+              },
+
+              ".rhap_progress-bar": {
+                backgroundColor: "#3a3a3a",
+              },
+
+              ".rhap_progress-filled": {
+                backgroundColor: "#ff5500",
+              },
+
+              ".rhap_progress-indicator": {
+                backgroundColor: "#ff5500",
+              },
+
+              ".rhap_download-progress": {
+                backgroundColor: "#555",
+              },
+
+              ".rhap_volume-bar": {
+                backgroundColor: "#3a3a3a",
+              },
+
+              ".rhap_volume-indicator": {
+                backgroundColor: "#ffffff",
+              },
+            }}
+          >
+            {/* PLAYER CONTROLS */}
+            {isWaveControlled ? (
+              <Box
+                sx={{
+                  flex: 1,
+
+                  height: 64,
+
+                  display: "flex",
+                  alignItems: "center",
+
+                  gap: 1.1,
+
+                  px: 2,
+
+                  minWidth: 0,
+
+                  backgroundColor: "#181A1B",
+
+                  color: "#ffffff",
+                }}
+              >
+                {/* SHUFFLE */}
+                <IconButton
+                  onClick={handleToggleShuffleMode}
+                  sx={{
+                    width: 34,
+                    height: 34,
+
+                    p: 0,
+
+                    color: shuffleMode ? "#ff5500" : "#8f8f8f",
+
+                    opacity: "1 !important",
+
+                    "&:hover": {
+                      backgroundColor: "rgba(255,85,0,0.12)",
+
+                      color: "#ff5500",
+                    },
+
+                    "& .MuiSvgIcon-root": {
+                      fontSize: 27,
+                    },
+                  }}
+                >
+                  <ShuffleRoundedIcon />
+                </IconButton>
+
+                {/* -10 */}
+                <IconButton
+                  onClick={() => handleSeekBy(-10)}
+                  sx={{
+                    width: 34,
+                    height: 34,
+
+                    p: 0,
+
+                    color: "#ffffff",
+
+                    "&:hover": {
+                      backgroundColor: "rgba(255,255,255,0.08)",
+                    },
+
+                    "& .MuiSvgIcon-root": {
+                      fontSize: 28,
+                    },
+                  }}
+                >
+                  <Replay10RoundedIcon />
+                </IconButton>
+
+                {/* PLAY */}
+                <IconButton
+                  onClick={() => {
+                    setCurrentTrack({
+                      ...currentTrack,
+
+                      isPlaying: !Boolean(currentTrack.isPlaying),
+
+                      source: "footer-control",
+                    } as any);
+                  }}
+                  sx={{
+                    width: 42,
+                    height: 42,
+
+                    p: 0,
+
+                    borderRadius: "50%",
+
+                    color: "#181A1B",
+
+                    backgroundColor: "#ffffff",
+
+                    flexShrink: 0,
+
+                    "&:hover": {
+                      backgroundColor: "#f1f1f1",
+                    },
+
+                    "& .MuiSvgIcon-root": {
+                      fontSize: 32,
+                    },
+                  }}
+                >
+                  {currentTrack.isPlaying ? <PauseIcon /> : <PlayArrowIcon />}
+                </IconButton>
+
+                {/* +10 */}
+                <IconButton
+                  onClick={() => handleSeekBy(10)}
+                  sx={{
+                    width: 34,
+                    height: 34,
+
+                    p: 0,
+
+                    color: "#ffffff",
+
+                    "&:hover": {
+                      backgroundColor: "rgba(255,255,255,0.08)",
+                    },
+
+                    "& .MuiSvgIcon-root": {
+                      fontSize: 28,
+                    },
+                  }}
+                >
+                  <Forward10RoundedIcon />
+                </IconButton>
+
+                {/* VOLUME */}
+                <Box
+                  sx={{
+                    display: "flex",
+
+                    alignItems: "center",
+
+                    gap: 0.8,
+
+                    width: 95,
+
+                    flexShrink: 0,
+                  }}
+                >
+                  <IconButton
+                    onClick={handleToggleMute}
+                    sx={{
+                      width: 28,
+                      height: 28,
+
+                      p: 0,
+
+                      color: "#ffffff",
+
+                      "& .MuiSvgIcon-root": {
+                        fontSize: 24,
+                      },
+                    }}
+                  >
+                    {volume > 0 ? (
+                      <VolumeUpRoundedIcon />
+                    ) : (
+                      <VolumeOffRoundedIcon />
+                    )}
+                  </IconButton>
+
+                  <Slider
+                    value={volume * 100}
+                    min={0}
+                    max={100}
+                    onChange={(_, value) => {
+                      handleChangeVolume(Number(value) / 100);
+                    }}
+                    sx={{
+                      width: 58,
+
+                      p: 0,
+
+                      color: "#ffffff",
+
+                      "& .MuiSlider-rail": {
+                        height: 4,
+
+                        opacity: 1,
+
+                        backgroundColor: "#4a4a4a",
+                      },
+
+                      "& .MuiSlider-track": {
+                        height: 4,
+
+                        border: "none",
+
+                        backgroundColor: "#ffffff",
+                      },
+
+                      "& .MuiSlider-thumb": {
+                        width: 13,
+                        height: 13,
+
+                        backgroundColor: "#ffffff",
+
+                        boxShadow: "none",
+                      },
+                    }}
+                  />
+                </Box>
+
+                {/* CURRENT TIME */}
+                <Typography
+                  sx={{
+                    color: "#ff5500",
+
+                    fontSize: 12,
+                    fontWeight: 800,
+
+                    minWidth: 38,
+
+                    textAlign: "right",
+
+                    flexShrink: 0,
+                  }}
+                >
+                  {formatTime(footerCurrentTime)}
+                </Typography>
+
+                {/* DESKTOP SEEK */}
+                <Slider
+                  value={
+                    footerDuration
+                      ? Math.min(footerCurrentTime, footerDuration)
+                      : 0
+                  }
+                  min={0}
+                  max={footerDuration || 1}
+                  onChangeCommitted={(_, value) => {
+                    setCurrentTrack({
+                      ...currentTrack,
+
+                      currentTime: Number(value),
+
+                      seekTime: Number(value),
+
+                      seekId: Date.now(),
+
+                      source: "footer-control",
+                    } as any);
+                  }}
+                  sx={{
+                    flex: 1,
+
+                    minWidth: 180,
+
+                    p: 0,
+
+                    color: "#ff5500",
+
+                    "& .MuiSlider-rail": {
+                      height: 4,
+
+                      opacity: 1,
+
+                      backgroundColor: "#4a4a4a",
+                    },
+
+                    "& .MuiSlider-track": {
+                      height: 4,
+
+                      border: "none",
+
+                      backgroundColor: "#ff5500",
+                    },
+
+                    "& .MuiSlider-thumb": {
+                      width: 16,
+                      height: 16,
+
+                      backgroundColor: "#ff5500",
+
+                      boxShadow: "none",
+                    },
+                  }}
+                />
+
+                {/* DURATION */}
+                <Typography
+                  sx={{
+                    color: "#ffffff",
+
+                    fontSize: 12,
+                    fontWeight: 800,
+
+                    minWidth: 42,
+
+                    flexShrink: 0,
+                  }}
+                >
+                  {formatTime(footerDuration)}
+                </Typography>
+              </Box>
+            ) : (
+              <AudioPlayer
+                ref={playerRef}
+                layout="horizontal-reverse"
+                showSkipControls
+                listenInterval={1000}
+                onListen={(event: any) => {
+                  const audio =
+                    event?.currentTarget || playerRef.current?.audio?.current;
+
+                  if (!audio || !currentTrack) {
+                    return;
+                  }
+
+                  const currentTime = Math.max(
+                    Number(audio.currentTime) || 0,
+                    0
+                  );
+
+                  const duration = Math.max(Number(audio.duration) || 0, 0);
+
+                  setCurrentTrack({
+                    ...currentTrack,
+
+                    currentTime,
+                    duration,
+
+                    isPlaying: !audio.paused,
+
+                    source: "footer",
+
+                    seekTime: undefined,
+                    seekId: undefined,
+                  } as any);
+                }}
+                customAdditionalControls={[
+                  <IconButton
+                    key="shuffle"
+                    onClick={handleToggleShuffleMode}
+                    sx={{
+                      width: 34,
+                      height: 34,
+
+                      p: 0,
+
+                      color: shuffleMode ? "#ff5500" : "#ffffff",
+
+                      "&:hover": {
+                        backgroundColor: "rgba(255,85,0,0.12)",
+
+                        color: "#ff5500",
+                      },
+                    }}
+                  >
+                    <ShuffleRoundedIcon />
+                  </IconButton>,
+                ]}
+                onClickPrevious={handlePlayPreviousTrack}
+                onClickNext={handlePlayNextTrack}
+                onEnded={handleAudioEnded}
+                src={getAudioUrl(currentTrack.trackUrl)}
+                volume={volume}
+                muted={volume === 0}
+                onVolumeChange={(event: any) => {
+                  const nextVolume = Number(event?.target?.volume ?? volume);
+
+                  if (!Number.isFinite(nextVolume)) {
+                    return;
+                  }
+
+                  setAppVolume(nextVolume);
+                }}
+                style={{
+                  flex: 1,
+
+                  minWidth: 0,
+
+                  boxShadow: "unset",
+
+                  background: "#181A1B",
+                }}
+                onPlay={() => {
+                  if (suppressFooterAudioEventRef.current) {
+                    return;
+                  }
+
+                  if (isTrackDetailPage) {
+                    return;
+                  }
+
+                  setCurrentTrack({
+                    ...currentTrack,
+
+                    isPlaying: true,
+
+                    source: "footer",
+                  } as any);
+                }}
+                onPause={(event: any) => {
+                  if (suppressFooterAudioEventRef.current) {
+                    return;
+                  }
+
+                  if (isTrackDetailPage) {
+                    return;
+                  }
+
+                  const audio =
+                    event?.currentTarget || playerRef.current?.audio?.current;
+
+                  const nextTrack = {
+                    ...currentTrack,
+
+                    isPlaying: false,
+
+                    currentTime: Number(audio?.currentTime) || 0,
+
+                    duration: Number(audio?.duration) || 0,
+
+                    source: "footer",
+                  };
+
+                  setCurrentTrack(nextTrack as any);
+
+                  void persistListeningProgress(nextTrack);
+                }}
+              />
+            )}
+
+            {/* =====================================================
+          DESKTOP TRACK INFO
+      ====================================================== */}
+            <Box
+              sx={{
+                display: "flex",
+
+                alignItems: "center",
+
+                justifyContent: "center",
+
+                gap: "10px",
+
+                width: "320px",
+                minWidth: "320px",
+
+                pr: "10px",
+              }}
+            >
+              {/* COVER */}
+              <Box
                 component={Link}
                 href={footerTrackHref}
                 onClick={(event) => {
@@ -1332,44 +1595,135 @@ const AppFooter = () => {
                     event.preventDefault();
                   }
                 }}
-                title={currentTrack.title || "Unknown track"}
                 sx={{
-                  width: "100%",
-                  color: "#ffffff",
-                  fontSize: 13,
-                  fontWeight: 800,
-                  textDecoration: "none",
-                  cursor: canOpenTrack ? "pointer" : "default",
-                  overflow: "hidden",
-                  textOverflow: "ellipsis",
-                  whiteSpace: "nowrap",
+                  width: 38,
+                  height: 38,
 
-                  "&:hover": canOpenTrack
-                    ? {
-                        color: "#ff5500",
-                      }
-                    : {},
+                  flexShrink: 0,
+
+                  display: "block",
+
+                  borderRadius: "3px",
+
+                  overflow: "hidden",
+
+                  backgroundColor: "#111",
+
+                  cursor: canOpenTrack ? "pointer" : "default",
                 }}
               >
-                {currentTrack.title || "Unknown track"}
-              </Typography>
+                <Box
+                  component="img"
+                  src={getTrackImage()}
+                  alt={currentTrack.title || "track image"}
+                  onError={(event: any) => {
+                    event.currentTarget.src = "/audio/SC.png";
+                  }}
+                  sx={{
+                    width: "100%",
+                    height: "100%",
+
+                    display: "block",
+
+                    objectFit: "cover",
+                  }}
+                />
+              </Box>
+
+              {/* TEXT */}
+              <Box
+                sx={{
+                  width: "220px",
+
+                  minWidth: 0,
+
+                  display: "flex",
+
+                  flexDirection: "column",
+
+                  justifyContent: "center",
+
+                  overflow: "hidden",
+                }}
+              >
+                <Typography
+                  component={Link}
+                  href={footerArtistHref}
+                  onClick={(event) => {
+                    if (!canOpenArtist) {
+                      event.preventDefault();
+                    }
+                  }}
+                  sx={{
+                    width: "100%",
+
+                    color: "#a8a8a8",
+
+                    fontSize: 12,
+                    fontWeight: 700,
+
+                    textDecoration: "none",
+
+                    overflow: "hidden",
+
+                    textOverflow: "ellipsis",
+
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  {footerArtist?.name ||
+                    currentTrack.description ||
+                    "Unknown artist"}
+                </Typography>
+
+                <Typography
+                  component={Link}
+                  href={footerTrackHref}
+                  onClick={(event) => {
+                    if (!canOpenTrack) {
+                      event.preventDefault();
+                    }
+                  }}
+                  sx={{
+                    width: "100%",
+
+                    color: "#ffffff",
+
+                    fontSize: 13,
+                    fontWeight: 800,
+
+                    textDecoration: "none",
+
+                    overflow: "hidden",
+
+                    textOverflow: "ellipsis",
+
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  {currentTrack.title || "Unknown track"}
+                </Typography>
+              </Box>
+
+              {/* QUEUE */}
+              <IconButton
+                onClick={handleOpenQueue}
+                sx={{
+                  width: 34,
+                  height: 34,
+
+                  color: "#ff5500",
+
+                  flexShrink: 0,
+
+                  "&:hover": {
+                    backgroundColor: "rgba(255,85,0,0.12)",
+                  },
+                }}
+              >
+                <QueueMusicRoundedIcon />
+              </IconButton>
             </Box>
-
-            <IconButton
-              onClick={handleOpenQueue}
-              sx={{
-                width: 34,
-                height: 34,
-                color: "#ff5500",
-                flexShrink: 0,
-
-                "&:hover": {
-                  backgroundColor: "rgba(255,85,0,0.12)",
-                },
-              }}
-            >
-              <QueueMusicRoundedIcon />
-            </IconButton>
           </Box>
         </Container>
       </AppBar>
@@ -1386,7 +1740,7 @@ const AppFooter = () => {
         onClear={() => setQueueTracks([])}
         onPlayTrack={handlePlayQueueTrack}
       />
-    </div>
+    </>
   );
 };
 

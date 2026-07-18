@@ -1,0 +1,2086 @@
+============================================================
+HƯỚNG PHÁT TRIỂN EARNING CHO SOUNCLONE
+============================================================
+
+I. KẾT LUẬN SAU KHI ĐỌC LẠI DỰ ÁN
+
+SoundClone hiện đã có nền tảng khá tốt để phát triển earning:
+
+- BASIC, ARTIST, ARTIST_PRO.
+- Quota upload theo thời lượng audio.
+- Phân quyền Distribution.
+- Phân quyền Monetization.
+- Artist Studio.
+- Stats plays, likes, comments, fans.
+- Track approval và copyright status.
+- Audio hash chống upload file trùng.
+- Listening history.
+- Notification.
+- Admin moderation.
+- Trang Plans.
+- Artist Pro Benefits.
+
+Hiện còn thiếu:
+
+- Payment entity.
+- Checkout thật.
+- Payment webhook.
+- Invoice.
+- Payment history.
+- Monetization submission.
+- Qualified play.
+- Earning ledger.
+- Artist balance.
+- Payout request.
+- Revenue dashboard thật.
+- Earnings chart thật.
+
+Vì vậy, không nên bắt đầu bằng việc gắn một con số tiền trực tiếp vào
+Track hoặc cộng earnings sau mỗi lượt play.
+
+Cần xây một luồng tài chính riêng, có lịch sử và có khả năng kiểm toán.
+
+
+============================================================
+II. PHẢI TÁCH 2 KHÁI NIỆM
+============================================================
+
+1. PLATFORM REVENUE
+
+Đây là tiền SoundClone thu được.
+
+Nguồn:
+
+- ARTIST: 49.000 VNĐ/tháng.
+- ARTIST_PRO: 99.000 VNĐ/tháng.
+- Platform fee từ fan tip.
+- Platform fee từ bán nhạc.
+- Platform fee từ merch.
+- Platform fee từ distribution.
+
+Dashboard dành cho ADMIN:
+
+- Gross revenue.
+- Net revenue.
+- Successful payments.
+- Failed payments.
+- Active subscriptions.
+- New subscribers.
+- Upgrade.
+- Downgrade.
+- Cancellation.
+- Refund.
+
+
+2. ARTIST EARNINGS
+
+Đây là tiền nghệ sĩ được nhận.
+
+Nguồn:
+
+- Qualified streams.
+- Fan tips.
+- Artist memberships.
+- Paid downloads.
+- Digital album sales.
+- Merch commission.
+- External distribution royalties.
+
+Dashboard dành cho ARTIST:
+
+- Available balance.
+- Pending balance.
+- This month earnings.
+- Lifetime earnings.
+- Earnings by track.
+- Earnings by source.
+- Payout history.
+
+
+Không được dùng chung:
+
+Admin Subscription Revenue
+và
+Artist Earnings
+
+Đây là hai loại dữ liệu tài chính hoàn toàn khác nhau.
+
+
+============================================================
+III. HƯỚNG KIẾM TIỀN NÊN TRIỂN KHAI
+============================================================
+
+THỨ TỰ KHUYẾN NGHỊ:
+
+1. Creator Subscription.
+2. Artist Earnings từ qualified streams.
+3. Fan Support.
+4. Paid Downloads.
+5. Artist Membership.
+6. Merch và Vinyl.
+7. External Distribution.
+
+Không nên làm external distribution thật ngay vì nó liên quan đến:
+
+- Quyền tác giả.
+- ISRC.
+- UPC.
+- Release metadata.
+- Store delivery.
+- Royalty statements.
+- Territory.
+- Tax.
+- Payout.
+- Takedown.
+- Ownership dispute.
+
+Distribution hiện tại chỉ nên là workflow demo:
+
+Artist submit release
+→ Admin review
+→ APPROVED
+→ DISTRIBUTED giả lập.
+
+
+============================================================
+IV. PHASE 1 — PAYMENT THẬT CHO SUBSCRIPTION
+============================================================
+
+Đây là phase bắt buộc trước khi làm earnings.
+
+Hiện tại:
+
+POST /subscriptions/subscribe
+
+đang kích hoạt plan ngay để test.
+
+Khi có payment thật, flow phải thành:
+
+User chọn plan
+→ Backend tạo payment order PENDING
+→ Frontend chuyển sang cổng thanh toán
+→ Payment provider gọi webhook
+→ Backend xác minh chữ ký
+→ Payment chuyển PAID
+→ Subscription mới được ACTIVE
+→ Tạo invoice
+→ Gửi notification
+
+
+Entity cần thêm:
+
+SubscriptionPayment
+
+Fields đề xuất:
+
+id
+userId
+planId
+subscriptionId
+provider
+providerTransactionId
+amount
+currency
+status
+paymentType
+paidAt
+failedAt
+refundedAt
+createdAt
+updatedAt
+
+
+Status:
+
+PENDING
+PAID
+FAILED
+CANCELED
+REFUNDED
+
+
+Payment type:
+
+NEW_SUBSCRIPTION
+RENEWAL
+UPGRADE
+DOWNGRADE
+
+
+Lưu ý quan trọng:
+
+Phải lưu snapshot tại thời điểm thanh toán:
+
+planCode
+planName
+amount
+currency
+
+Không lấy lại giá hiện tại từ SubscriptionPlan khi xem lịch sử.
+
+Ví dụ:
+
+ARTIST_PRO trước đây 99.000 VNĐ.
+Sau này đổi thành 129.000 VNĐ.
+
+Payment cũ vẫn phải hiển thị 99.000 VNĐ.
+
+
+============================================================
+V. KHÔNG DÙNG USER_SUBSCRIPTIONS ĐỂ TÍNH REVENUE
+============================================================
+
+Hiện tại khi đổi plan:
+
+- Subscription cũ chuyển EXPIRED.
+- Subscription mới được tạo.
+- createdAt mới được ghi.
+
+Nếu lấy user_subscriptions.createdAt để tính doanh thu:
+
+- Upgrade sẽ bị xem như một đơn hàng mới.
+- Downgrade cũng bị xem như một đơn hàng mới.
+- Đổi plan test cũng tạo activation.
+- Không biết người dùng đã thanh toán hay chưa.
+
+Vì vậy:
+
+Subscription Insights hiện tại chỉ nên gọi là:
+
+PLAN ACTIVATIONS
+
+Không được gọi là:
+
+REVENUE
+EARNINGS
+SALES
+
+
+Revenue thật phải lấy từ:
+
+subscription_payments
+
+với điều kiện:
+
+status = PAID
+
+và dùng:
+
+paidAt
+amount
+
+
+============================================================
+VI. PHASE 2 — TRACK MONETIZATION
+============================================================
+
+Chỉ ARTIST_PRO được submit monetization theo quyền hiện tại.
+
+Cần entity:
+
+TrackMonetization
+
+Fields:
+
+id
+trackId
+artistId
+status
+rightsType
+rightsConfirmation
+documentUrl
+submittedAt
+reviewedAt
+reviewedBy
+rejectionReason
+createdAt
+updatedAt
+
+
+Status:
+
+DRAFT
+PENDING
+APPROVED
+REJECTED
+SUSPENDED
+REMOVED
+
+
+Rights type:
+
+ORIGINAL
+LICENSED_BEAT
+LICENSED_SAMPLE
+EXCLUSIVE_LICENSE
+OTHER
+
+
+Flow:
+
+Artist mở track
+→ Chọn Monetize
+→ Xác nhận quyền sở hữu
+→ Upload tài liệu nếu có
+→ Submit
+→ Admin review
+→ APPROVED
+→ Track bắt đầu được tính qualified plays
+
+
+Điều kiện:
+
+Track approvalStatus = APPROVED
+Track copyrightStatus = CLEAN
+Track processingStatus = COMPLETED
+Track monetizationStatus = APPROVED
+Artist subscription = ARTIST_PRO
+Track không bị deleted
+Track không bị private
+
+
+Audio hash chỉ phát hiện file giống hệt.
+
+Audio hash không thể xác nhận:
+
+- Bản quyền.
+- Sample.
+- Cover.
+- Remix.
+- Beat đã mua.
+- File được đổi bitrate.
+- File được cắt hoặc chỉnh pitch.
+
+Vì vậy vẫn cần monetization review.
+
+
+============================================================
+VII. PHASE 3 — QUALIFIED PLAY
+============================================================
+
+Không được tính tiền theo countPlay hiện tại.
+
+countPlay chỉ phù hợp để hiển thị popularity.
+
+Cần lưu play event riêng.
+
+
+Entity đề xuất:
+
+TrackPlayEvent
+
+Fields:
+
+id
+trackId
+artistId
+listenerId
+sessionId
+listenedSeconds
+trackDurationSeconds
+qualified
+qualificationReason
+country
+deviceType
+createdAt
+
+
+Một play được tính qualified khi:
+
+- Track monetization APPROVED.
+- User thực sự phát audio.
+- listenedSeconds đạt ngưỡng.
+- Không phải artist tự nghe track của mình.
+- Không phải request bị lặp bất thường.
+- Không phải bot.
+- Không phải session đã được tính trước đó.
+
+
+Ngưỡng MVP đề xuất:
+
+requiredSeconds =
+min(
+    30 giây,
+    50% thời lượng track
+)
+
+
+Ví dụ:
+
+Track dài 20 giây:
+Nghe ít nhất 10 giây.
+
+Track dài 180 giây:
+Nghe ít nhất 30 giây.
+
+
+Không cộng earning ngay tại endpoint play.
+
+Flow đúng:
+
+Player gửi play event
+→ Backend lưu play event
+→ Đánh dấu qualified
+→ Scheduled job tổng hợp
+→ Tạo earning ledger
+
+
+Mục đích:
+
+- Tránh cộng tiền hai lần.
+- Có thể rollback.
+- Có thể kiểm tra fraud.
+- Có lịch sử giải thích số tiền.
+
+
+============================================================
+VIII. PHASE 4 — EARNING LEDGER
+============================================================
+
+Entity quan trọng nhất:
+
+ArtistEarningLedger
+
+Fields:
+
+id
+artistId
+trackId
+sourceType
+referenceId
+grossAmount
+platformFee
+netAmount
+currency
+status
+description
+availableAt
+paidAt
+createdAt
+updatedAt
+
+
+Source type:
+
+STREAM
+FAN_TIP
+MEMBERSHIP
+DIGITAL_SALE
+MERCH_SALE
+DISTRIBUTION_ROYALTY
+ADJUSTMENT
+REVERSAL
+
+
+Status:
+
+PENDING
+AVAILABLE
+PAID
+REVERSED
+HELD
+
+
+Ý nghĩa:
+
+grossAmount:
+Tổng tiền của giao dịch.
+
+platformFee:
+Phí nền tảng.
+
+netAmount:
+Tiền artist thực nhận.
+
+
+Công thức:
+
+netAmount =
+grossAmount - platformFee
+
+
+Không dùng:
+
+double
+float
+
+cho tiền.
+
+Nên dùng:
+
+BigDecimal
+
+Ví dụ Java:
+
+private BigDecimal grossAmount;
+private BigDecimal platformFee;
+private BigDecimal netAmount;
+
+private String currencyCode;
+
+
+Nếu toàn bộ hệ thống chỉ dùng VNĐ và không có số lẻ, có thể dùng Long.
+
+Tuy nhiên BigDecimal linh hoạt hơn cho:
+
+- USD.
+- Royalty nhỏ.
+- Quy đổi tiền tệ.
+- Phí phần trăm.
+
+
+============================================================
+IX. ARTIST WALLET
+============================================================
+
+Có hai hướng:
+
+Hướng 1:
+Tính balance trực tiếp từ ledger.
+
+Hướng 2:
+Có bảng cache ArtistWallet.
+
+
+Đề xuất:
+
+ArtistWallet
+
+Fields:
+
+id
+artistId
+pendingBalance
+availableBalance
+paidBalance
+lifetimeEarnings
+currency
+updatedAt
+
+
+Công thức:
+
+pendingBalance:
+Tổng ledger status PENDING.
+
+availableBalance:
+Tổng ledger status AVAILABLE.
+
+paidBalance:
+Tổng ledger status PAID.
+
+lifetimeEarnings:
+AVAILABLE + PAID.
+
+
+Ledger là nguồn dữ liệu thật.
+
+Wallet chỉ là cache để hiển thị nhanh.
+
+
+============================================================
+X. PAYOUT
+============================================================
+
+Entity:
+
+ArtistPayoutRequest
+
+Fields:
+
+id
+artistId
+amount
+currency
+paymentMethod
+accountName
+accountReference
+status
+requestedAt
+reviewedAt
+paidAt
+rejectionReason
+createdAt
+updatedAt
+
+
+Status:
+
+PENDING
+APPROVED
+PROCESSING
+PAID
+REJECTED
+CANCELED
+
+
+Flow MVP:
+
+Artist bấm Withdraw
+→ Nhập số tiền
+→ Backend kiểm tra availableBalance
+→ Tạo payout PENDING
+→ Khóa số tiền
+→ Admin approve
+→ Admin đánh dấu PAID
+→ Ledger chuyển PAID
+
+
+Trong đồ án chưa cần chuyển khoản ngân hàng tự động.
+
+Có thể dùng manual payout workflow để hoàn thiện nghiệp vụ.
+
+
+============================================================
+XI. CÁCH TÍNH EARNING
+============================================================
+
+Có hai giai đoạn.
+
+
+GIAI ĐOẠN 1 — MVP ĐƠN GIẢN
+
+Dùng rate cố định theo qualified play.
+
+Ví dụ cấu hình:
+
+earningRatePerQualifiedPlay
+
+Không hardcode trong service.
+
+Tạo bảng:
+
+EarningRateConfig
+
+Fields:
+
+id
+sourceType
+rate
+currency
+effectiveFrom
+effectiveTo
+active
+
+
+Công thức:
+
+grossAmount =
+qualifiedPlayCount × rate
+
+
+Đây là cách dễ demo và dễ test.
+
+
+GIAI ĐOẠN 2 — FAN-POWERED EARNINGS
+
+Mỗi listener có một pool riêng.
+
+Ví dụ:
+
+Listener A trả subscription.
+
+Trong tháng:
+
+- 70% thời gian nghe Artist X.
+- 20% nghe Artist Y.
+- 10% nghe Artist Z.
+
+Pool của Listener A được chia theo tỷ lệ đó.
+
+
+Công thức:
+
+listenerDistributableRevenue =
+listenerNetSubscriptionRevenue
+× artistShareRate
+
+
+artistEarning =
+listenerDistributableRevenue
+× artistQualifiedListeningSeconds
+÷ listenerTotalQualifiedListeningSeconds
+
+
+Ưu điểm:
+
+- Fan nghe ai thì tiền đi tới artist đó.
+- Artist nhỏ vẫn có cơ hội kiếm tiền.
+- Giảm tác động của bot loop toàn hệ thống.
+- Phù hợp định hướng SoundClone.
+
+
+Không nên triển khai fan-powered ngay trong sprint đầu.
+
+Phải hoàn thành trước:
+
+- Payment.
+- Qualified play.
+- Ledger.
+- Fraud checks.
+- Monthly settlement.
+
+
+============================================================
+XII. FAN SUPPORT
+============================================================
+
+Sau earning từ stream, nên làm fan support.
+
+Đây là nguồn earning dễ hiểu hơn royalty.
+
+
+Entity:
+
+FanSupportTransaction
+
+Fields:
+
+id
+fanId
+artistId
+amount
+currency
+message
+anonymous
+status
+paymentId
+createdAt
+
+
+Flow:
+
+Fan mở artist profile
+→ Bấm Support
+→ Chọn số tiền
+→ Thanh toán
+→ Backend tạo ledger
+→ Platform giữ fee
+→ Phần còn lại vào artist wallet
+
+
+API:
+
+POST /api/v1/artists/{artistId}/support
+GET  /api/v1/artist-studio/supporters
+GET  /api/v1/artist-studio/support-summary
+
+
+UI:
+
+Support this artist
+Buy me a coffee
+Send a tip
+Become a supporter
+
+
+Fan support nên triển khai trước merch vì không cần:
+
+- Kho hàng.
+- Shipping.
+- Inventory.
+- Address.
+- Return order.
+
+
+============================================================
+XIII. PAID DOWNLOAD VÀ DIGITAL SALE
+============================================================
+
+Sau fan support có thể thêm:
+
+- Mua track.
+- Mua album.
+- Pay what you want.
+- Download WAV/FLAC.
+- Bonus track.
+- Digital booklet.
+
+
+Entity:
+
+DigitalProduct
+DigitalOrder
+DigitalOrderItem
+
+
+Artist chọn:
+
+fixedPrice
+minimumPrice
+payWhatYouWant
+
+
+Platform lấy fee theo cấu hình.
+
+Không hardcode fee trực tiếp trong controller.
+
+
+============================================================
+XIV. VINYL RECORDS TAB
+============================================================
+
+Tab Vinyl Records hiện tại nên đổi định hướng thành:
+
+STORE
+
+Bên trong có:
+
+- Digital releases.
+- Vinyl.
+- CD.
+- T-shirt.
+- Poster.
+- Artist merch.
+
+
+Trong MVP:
+
+Chỉ cần mock inventory và order workflow.
+
+Không cần tích hợp shipping thật.
+
+
+Flow:
+
+Artist tạo product
+→ Admin approve
+→ Fan đặt hàng
+→ Order PENDING
+→ Admin/Artist PROCESSING
+→ SHIPPED
+→ COMPLETED
+
+
+============================================================
+XV. API EARNING ĐỀ XUẤT
+============================================================
+
+ARTIST API:
+
+GET /api/v1/artist-studio/earnings/overview
+GET /api/v1/artist-studio/earnings/chart?period=monthly
+GET /api/v1/artist-studio/earnings/by-track
+GET /api/v1/artist-studio/earnings/transactions
+GET /api/v1/artist-studio/payouts
+POST /api/v1/artist-studio/payouts
+
+
+MONETIZATION API:
+
+POST /api/v1/tracks/{trackId}/monetization/submit
+GET  /api/v1/tracks/{trackId}/monetization
+POST /api/v1/tracks/{trackId}/monetization/cancel
+
+
+ADMIN API:
+
+GET   /api/v1/admin/monetization/submissions
+PATCH /api/v1/admin/monetization/{id}/approve
+PATCH /api/v1/admin/monetization/{id}/reject
+PATCH /api/v1/admin/monetization/{id}/suspend
+
+GET /api/v1/admin/revenue/overview
+GET /api/v1/admin/revenue/chart
+GET /api/v1/admin/payments
+GET /api/v1/admin/payouts
+PATCH /api/v1/admin/payouts/{id}/approve
+PATCH /api/v1/admin/payouts/{id}/paid
+PATCH /api/v1/admin/payouts/{id}/reject
+
+
+============================================================
+XVI. ARTIST STUDIO EARNINGS UI
+============================================================
+
+Tab Monetization hoặc Earnings nên gồm:
+
+
+1. OVERVIEW CARDS
+
+Available Balance
+Pending Balance
+This Month
+Lifetime Earnings
+
+
+2. CHART
+
+Earnings over time.
+
+Filter:
+
+7 days
+30 days
+This year
+All time
+
+
+3. BREAKDOWN
+
+Streams
+Fan Support
+Digital Sales
+Merch
+Distribution
+
+
+4. TOP TRACKS
+
+Track
+Qualified Plays
+Gross Earnings
+Platform Fee
+Net Earnings
+
+
+5. TRANSACTIONS
+
+Date
+Source
+Description
+Gross
+Fee
+Net
+Status
+
+
+6. PAYOUT
+
+Available balance
+Minimum payout
+Payment method
+Withdraw button
+Payout history
+
+
+============================================================
+XVII. RESPONSIVE MOBILE
+============================================================
+
+Từ giai đoạn này, toàn bộ UI earning phải mobile-first.
+
+
+Overview cards:
+
+Desktop:
+4 cột.
+
+Tablet:
+2 cột.
+
+Mobile:
+1 hoặc 2 cột tùy chiều rộng.
+
+
+Chart:
+
+- ResponsiveContainer.
+- Font trục 10–11px.
+- Giảm số tick.
+- Có minWidth nếu dữ liệu dài.
+- Cho phép scroll ngang.
+- Tooltip không vượt viewport.
+
+
+Table:
+
+Desktop:
+Hiển thị bảng.
+
+Mobile:
+Chuyển mỗi row thành transaction card.
+
+
+Transaction card mobile:
+
+Source
+Date
+Net amount
+Status
+
+
+Filter:
+
+Desktop:
+Nằm cùng hàng với title.
+
+Mobile:
+Select full width hoặc Bottom Sheet.
+
+
+Withdraw:
+
+Desktop:
+Nút ở góc phải.
+
+Mobile:
+Nút full width.
+Có thể sticky dưới màn hình trong trang payout.
+
+
+Không dùng font cố định quá lớn.
+
+Dùng:
+
+fontSize: {
+  xs: ...,
+  sm: ...,
+  md: ...
+}
+
+
+Không để card:
+
+minWidth: 400px
+
+trên mobile nếu không có overflow xử lý.
+
+
+============================================================
+XVIII. CÁC VẤN ĐỀ KIẾN TRÚC CẦN SỬA
+============================================================
+
+1. users.subscriptionTier
+
+Hiện User có subscriptionTier.
+
+Trong khi hệ thống đã có:
+
+user_subscriptions
+subscription_plans
+
+
+Phải chọn một nguồn dữ liệu thật.
+
+Đề xuất:
+
+user_subscriptions là source of truth.
+
+
+users.subscriptionTier:
+
+- Xóa sau.
+hoặc
+- Chỉ dùng làm cache.
+hoặc
+- Đồng bộ trong cùng transaction.
+
+Không được để hai giá trị lệch nhau.
+
+
+2. countPlay
+
+Không dùng countPlay làm nguồn tính tiền.
+
+countPlay chỉ là counter hiển thị.
+
+
+3. Earnings trong ArtistStudioStats
+
+Hiện trả 0.
+
+Sau khi có ledger:
+
+earnings =
+SUM netAmount
+
+theo artistId và status phù hợp.
+
+
+4. Subscribe trực tiếp
+
+Không cho production gọi subscribe để active plan ngay.
+
+Subscription chỉ active sau payment webhook PAID.
+
+
+5. Revenue chart
+
+Không lấy từ user_subscriptions.
+
+Phải lấy từ subscription_payments.
+
+
+6. Permission
+
+Frontend chỉ khóa UI.
+
+Backend phải kiểm tra:
+
+canMonetize
+canDistribute
+subscription status
+currentPeriodEnd
+track ownership
+track approval
+copyright status
+
+
+============================================================
+XIX. ROADMAP ĐỀ XUẤT
+============================================================
+
+SPRINT 1 — PAYMENT FOUNDATION
+
+Backend:
+
+- SubscriptionPayment entity.
+- Repository.
+- Service.
+- Checkout order.
+- Payment status.
+- Webhook idempotency.
+- Payment history.
+- Chỉ activate plan sau payment PAID.
+
+Frontend:
+
+- Checkout page.
+- Payment pending.
+- Payment success.
+- Payment failed.
+- Payment history.
+- Mobile responsive.
+
+
+SPRINT 2 — MONETIZATION APPROVAL
+
+Backend:
+
+- TrackMonetization.
+- Submit API.
+- Admin approve/reject.
+- Permission ARTIST_PRO.
+- Copyright guard.
+- Notification.
+
+Frontend:
+
+- Monetization form.
+- Rights confirmation.
+- Status badge.
+- Admin moderation page.
+- Mobile form.
+
+
+SPRINT 3 — QUALIFIED PLAYS
+
+Backend:
+
+- TrackPlayEvent.
+- Listening duration.
+- Qualified rules.
+- Fraud limits.
+- Aggregation job.
+- Postman tests.
+
+Frontend:
+
+- Player gửi play event.
+- Không block audio khi tracking lỗi.
+
+
+SPRINT 4 — EARNING LEDGER
+
+Backend:
+
+- ArtistEarningLedger.
+- ArtistWallet.
+- Settlement job.
+- Earnings overview.
+- Breakdown by track.
+- Transaction history.
+
+Frontend:
+
+- Earnings overview.
+- Chart.
+- Top tracks.
+- Transactions.
+- Mobile responsive.
+
+
+SPRINT 5 — PAYOUT
+
+Backend:
+
+- ArtistPayoutRequest.
+- Balance locking.
+- Admin approve/reject.
+- Mark paid.
+- Notification.
+
+Frontend:
+
+- Withdraw form.
+- Payout history.
+- Admin payout dashboard.
+- Mobile responsive.
+
+
+SPRINT 6 — FAN SUPPORT
+
+Backend:
+
+- FanSupportTransaction.
+- Payment integration.
+- Platform fee.
+- Ledger integration.
+
+Frontend:
+
+- Support Artist button.
+- Tip dialog.
+- Supporter history.
+- Artist supporter list.
+
+
+SPRINT 7 — DIGITAL STORE
+
+- Paid track.
+- Paid album.
+- Download token.
+- Digital order.
+- Artist earnings.
+- Platform commission.
+
+
+SPRINT 8 — DISTRIBUTION DEMO
+
+- Release submission.
+- Track selection.
+- Metadata.
+- Admin review.
+- Status history.
+- Mock DSP delivery.
+- Mock royalty statement.
+
+
+============================================================
+XX. ƯU TIÊN THỰC TẾ CHO DỰ ÁN HIỆN TẠI
+============================================================
+
+Không nên làm tất cả cùng lúc.
+
+Thứ tự tốt nhất hiện tại:
+
+1. Hoàn thiện Subscription Insights đang làm.
+2. Tạo SubscriptionPayment.
+3. Tách Admin Revenue khỏi Artist Earnings.
+4. Làm TrackMonetization.
+5. Làm qualified plays.
+6. Làm EarningLedger.
+7. Nối earnings vào Artist Studio.
+8. Làm payout manual.
+9. Làm fan support.
+10. Sau cùng mới làm distribution và vinyl.
+
+
+MVP earning đủ mạnh để trình bày gồm:
+
+- Payment subscription.
+- Monetization approval.
+- Qualified plays.
+- Artist earning ledger.
+- Earnings dashboard.
+- Manual payout.
+
+
+Chỉ cần sáu phần này, dự án đã có một flow earning hoàn chỉnh:
+
+User trả tiền
+→ Platform có revenue
+
+Fan nghe track monetized
+→ Artist có earning
+
+Artist yêu cầu payout
+→ Admin xử lý payout
+
+
+============================================================
+XXI. HƯỚNG CHỐT
+============================================================
+
+Hướng phù hợp nhất cho SoundClone:
+
+CREATOR SUBSCRIPTION
++
+FAN-POWERED ARTIST EARNINGS
++
+DIRECT FAN SUPPORT
+
+
+Không nên lấy quảng cáo làm nguồn thu chính ở thời điểm này.
+
+Không nên làm royalty external distribution thật ở thời điểm này.
+
+Không nên cộng tiền trực tiếp từ countPlay.
+
+Không nên dùng user_subscriptions để tính revenue.
+
+Không nên lưu earnings trực tiếp trong User hoặc Track.
+
+
+Kiến trúc tài chính chuẩn:
+
+Payment
+→ Platform Revenue
+
+Qualified Play / Fan Tip / Digital Sale
+→ Earning Ledger
+→ Artist Wallet
+→ Payout Request
+→ Paid
+
+
+Đây là hướng vừa phù hợp với cấu trúc dự án hiện tại,
+vừa đủ thực tế để mở rộng về sau.
+////
+
+
+//// SOUNDCLONE — SPRINT 1: SUBSCRIPTION PAYMENT FOUNDATION
+//// Mục tiêu:
+//// - Tạo payment order PENDING.
+//// - Chỉ đổi plan sau khi payment được xác nhận PAID.
+//// - Lưu snapshot plan/giá tại thời điểm thanh toán.
+//// - Có lịch sử thanh toán của user.
+//// - Đây là MOCK confirmation để test end-to-end trước khi tích hợp VNPay/MoMo/Stripe.
+
+//// ========================================================================
+//// FILE 1
+//// src/main/java/com/example/demo/entities/SubscriptionPayment.java
+//// ========================================================================
+
+package com.example.demo.entities;
+
+import java.time.LocalDateTime;
+
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.Id;
+import jakarta.persistence.Index;
+import jakarta.persistence.Table;
+
+@Entity
+@Table(
+        name = "subscription_payments",
+        indexes = {
+                @Index(name = "idx_subscription_payment_user", columnList = "userId"),
+                @Index(name = "idx_subscription_payment_status", columnList = "status"),
+                @Index(name = "idx_subscription_payment_created", columnList = "createdAt"),
+                @Index(name = "idx_subscription_payment_transaction", columnList = "providerTransactionId")
+        })
+public class SubscriptionPayment {
+
+    @Id
+    @Column(length = 24)
+    private String id;
+
+    @Column(nullable = false, unique = true, length = 64)
+    private String paymentReference;
+
+    @Column(nullable = false, length = 24)
+    private String userId;
+
+    @Column(nullable = false, length = 24)
+    private String planId;
+
+    @Column(length = 24)
+    private String subscriptionId;
+
+    @Column(nullable = false, length = 32)
+    private String planCode;
+
+    @Column(nullable = false, length = 100)
+    private String planName;
+
+    @Column(nullable = false)
+    private Long amount;
+
+    @Column(nullable = false, length = 8)
+    private String currency;
+
+    @Column(nullable = false, length = 32)
+    private String provider;
+
+    @Column(length = 128)
+    private String providerTransactionId;
+
+    @Column(nullable = false, length = 32)
+    private String status;
+
+    @Column(nullable = false, length = 32)
+    private String paymentType;
+
+    @Column(length = 500)
+    private String failureReason;
+
+    private LocalDateTime paidAt;
+    private LocalDateTime failedAt;
+    private LocalDateTime refundedAt;
+    private LocalDateTime createdAt;
+    private LocalDateTime updatedAt;
+
+    public String getId() { return id; }
+    public void setId(String id) { this.id = id; }
+
+    public String getPaymentReference() { return paymentReference; }
+    public void setPaymentReference(String paymentReference) { this.paymentReference = paymentReference; }
+
+    public String getUserId() { return userId; }
+    public void setUserId(String userId) { this.userId = userId; }
+
+    public String getPlanId() { return planId; }
+    public void setPlanId(String planId) { this.planId = planId; }
+
+    public String getSubscriptionId() { return subscriptionId; }
+    public void setSubscriptionId(String subscriptionId) { this.subscriptionId = subscriptionId; }
+
+    public String getPlanCode() { return planCode; }
+    public void setPlanCode(String planCode) { this.planCode = planCode; }
+
+    public String getPlanName() { return planName; }
+    public void setPlanName(String planName) { this.planName = planName; }
+
+    public Long getAmount() { return amount; }
+    public void setAmount(Long amount) { this.amount = amount; }
+
+    public String getCurrency() { return currency; }
+    public void setCurrency(String currency) { this.currency = currency; }
+
+    public String getProvider() { return provider; }
+    public void setProvider(String provider) { this.provider = provider; }
+
+    public String getProviderTransactionId() { return providerTransactionId; }
+    public void setProviderTransactionId(String providerTransactionId) {
+        this.providerTransactionId = providerTransactionId;
+    }
+
+    public String getStatus() { return status; }
+    public void setStatus(String status) { this.status = status; }
+
+    public String getPaymentType() { return paymentType; }
+    public void setPaymentType(String paymentType) { this.paymentType = paymentType; }
+
+    public String getFailureReason() { return failureReason; }
+    public void setFailureReason(String failureReason) { this.failureReason = failureReason; }
+
+    public LocalDateTime getPaidAt() { return paidAt; }
+    public void setPaidAt(LocalDateTime paidAt) { this.paidAt = paidAt; }
+
+    public LocalDateTime getFailedAt() { return failedAt; }
+    public void setFailedAt(LocalDateTime failedAt) { this.failedAt = failedAt; }
+
+    public LocalDateTime getRefundedAt() { return refundedAt; }
+    public void setRefundedAt(LocalDateTime refundedAt) { this.refundedAt = refundedAt; }
+
+    public LocalDateTime getCreatedAt() { return createdAt; }
+    public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
+
+    public LocalDateTime getUpdatedAt() { return updatedAt; }
+    public void setUpdatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; }
+}
+
+
+//// ========================================================================
+//// FILE 2
+//// src/main/java/com/example/demo/repositories/SubscriptionPaymentRepository.java
+//// ========================================================================
+
+package com.example.demo.repositories;
+
+import java.util.List;
+import java.util.Optional;
+
+import org.springframework.data.jpa.repository.JpaRepository;
+
+import com.example.demo.entities.SubscriptionPayment;
+
+public interface SubscriptionPaymentRepository
+        extends JpaRepository<SubscriptionPayment, String> {
+
+    Optional<SubscriptionPayment> findByIdAndUserId(
+            String id,
+            String userId);
+
+    Optional<SubscriptionPayment> findByProviderAndProviderTransactionId(
+            String provider,
+            String providerTransactionId);
+
+    List<SubscriptionPayment> findByUserIdOrderByCreatedAtDesc(
+            String userId);
+}
+
+
+//// ========================================================================
+//// FILE 3
+//// src/main/java/com/example/demo/dtos/CreateSubscriptionPaymentDTO.java
+//// ========================================================================
+
+package com.example.demo.dtos;
+
+public class CreateSubscriptionPaymentDTO {
+
+    private String planCode;
+    private String provider;
+
+    public String getPlanCode() { return planCode; }
+    public void setPlanCode(String planCode) { this.planCode = planCode; }
+
+    public String getProvider() { return provider; }
+    public void setProvider(String provider) { this.provider = provider; }
+}
+
+
+//// ========================================================================
+//// FILE 4
+//// src/main/java/com/example/demo/dtos/ConfirmSubscriptionPaymentDTO.java
+//// ========================================================================
+
+package com.example.demo.dtos;
+
+public class ConfirmSubscriptionPaymentDTO {
+
+    private String providerTransactionId;
+
+    public String getProviderTransactionId() {
+        return providerTransactionId;
+    }
+
+    public void setProviderTransactionId(
+            String providerTransactionId) {
+        this.providerTransactionId = providerTransactionId;
+    }
+}
+
+
+//// ========================================================================
+//// FILE 5 — SỬA SubscriptionService.java
+//// ========================================================================
+
+//// THÊM IMPORT
+
+import com.example.demo.entities.SubscriptionPayment;
+import com.example.demo.repositories.SubscriptionPaymentRepository;
+
+
+//// THÊM CONSTANT
+
+private static final String PAYMENT_PENDING = "PENDING";
+private static final String PAYMENT_PAID = "PAID";
+private static final String PAYMENT_FAILED = "FAILED";
+private static final String PAYMENT_PROVIDER_MOCK = "MOCK";
+private static final String PAYMENT_NEW_SUBSCRIPTION = "NEW_SUBSCRIPTION";
+private static final String PAYMENT_UPGRADE = "UPGRADE";
+private static final String PAYMENT_DOWNGRADE = "DOWNGRADE";
+private static final String CURRENCY_VND = "VND";
+
+
+//// THÊM REPOSITORY
+
+@Autowired
+private SubscriptionPaymentRepository subscriptionPaymentRepository;
+
+
+//// THÊM METHOD — đặt trước private User lockUser(...)
+
+@Transactional
+public Map<String, Object> createPaymentOrder(
+        String userId,
+        String planCode,
+        String provider) {
+
+    String normalizedPlanCode = planCode == null
+            ? ""
+            : planCode.trim().toUpperCase();
+
+    if (normalizedPlanCode.isEmpty()) {
+        throw new IllegalArgumentException("Plan code is required");
+    }
+
+    SubscriptionPlan requestedPlan = subscriptionPlanRepository
+            .findByCodeAndIsActiveTrue(normalizedPlanCode);
+
+    if (requestedPlan == null) {
+        throw new IllegalArgumentException("Subscription plan not found");
+    }
+
+    if (PLAN_BASIC.equals(requestedPlan.getCode())) {
+        throw new IllegalArgumentException(
+                "Basic plan does not require payment");
+    }
+
+    long amount = requestedPlan.getMonthlyPrice() == null
+            ? 0
+            : requestedPlan.getMonthlyPrice();
+
+    if (amount <= 0) {
+        throw new IllegalStateException(
+                "Paid plan price must be greater than zero");
+    }
+
+    lockUser(userId);
+
+    UserSubscription currentSubscription =
+            getOrCreateCurrentSubscription(userId);
+
+    SubscriptionPlan currentPlan =
+            getPlan(currentSubscription.getPlanId());
+
+    if (requestedPlan.getId().equals(currentPlan.getId())) {
+        throw new IllegalArgumentException(
+                "You are already subscribed to this plan");
+    }
+
+    String paymentType =
+            resolvePaymentType(currentPlan, requestedPlan);
+
+    String normalizedProvider =
+            provider == null || provider.trim().isEmpty()
+                    ? PAYMENT_PROVIDER_MOCK
+                    : provider.trim().toUpperCase();
+
+    LocalDateTime now = LocalDateTime.now();
+
+    SubscriptionPayment payment = new SubscriptionPayment();
+
+    payment.setId(generateId());
+    payment.setPaymentReference(
+            "SC-"
+                    + UUID.randomUUID()
+                            .toString()
+                            .replace("-", "")
+                            .substring(0, 20)
+                            .toUpperCase());
+    payment.setUserId(userId);
+    payment.setPlanId(requestedPlan.getId());
+    payment.setPlanCode(requestedPlan.getCode());
+    payment.setPlanName(requestedPlan.getName());
+    payment.setAmount(amount);
+    payment.setCurrency(CURRENCY_VND);
+    payment.setProvider(normalizedProvider);
+    payment.setStatus(PAYMENT_PENDING);
+    payment.setPaymentType(paymentType);
+    payment.setCreatedAt(now);
+    payment.setUpdatedAt(now);
+
+    subscriptionPaymentRepository.save(payment);
+
+    return toPaymentResponse(payment);
+}
+
+
+@Transactional
+public Map<String, Object> confirmMockPayment(
+        String userId,
+        String paymentId,
+        String providerTransactionId) {
+
+    if (paymentId == null || paymentId.trim().isEmpty()) {
+        throw new IllegalArgumentException("Payment id is required");
+    }
+
+    String safeTransactionId = providerTransactionId == null
+            ? ""
+            : providerTransactionId.trim();
+
+    if (safeTransactionId.isEmpty()) {
+        throw new IllegalArgumentException(
+                "Provider transaction id is required");
+    }
+
+    lockUser(userId);
+
+    SubscriptionPayment payment = subscriptionPaymentRepository
+            .findByIdAndUserId(paymentId, userId)
+            .orElseThrow(
+                    () -> new IllegalArgumentException(
+                            "Payment not found"));
+
+    if (PAYMENT_PAID.equals(payment.getStatus())) {
+        return toPaymentResponse(payment);
+    }
+
+    if (!PAYMENT_PENDING.equals(payment.getStatus())) {
+        throw new IllegalArgumentException(
+                "Only pending payment can be confirmed");
+    }
+
+    SubscriptionPayment duplicatedTransaction =
+            subscriptionPaymentRepository
+                    .findByProviderAndProviderTransactionId(
+                            payment.getProvider(),
+                            safeTransactionId)
+                    .orElse(null);
+
+    if (duplicatedTransaction != null
+            && !duplicatedTransaction.getId().equals(payment.getId())) {
+        throw new IllegalArgumentException(
+                "Provider transaction already exists");
+    }
+
+    Map<String, Object> subscriptionResult =
+            subscribe(userId, payment.getPlanCode());
+
+    String activatedSubscriptionId =
+            extractSubscriptionId(subscriptionResult);
+
+    LocalDateTime now = LocalDateTime.now();
+
+    payment.setSubscriptionId(activatedSubscriptionId);
+    payment.setProviderTransactionId(safeTransactionId);
+    payment.setStatus(PAYMENT_PAID);
+    payment.setPaidAt(now);
+    payment.setUpdatedAt(now);
+
+    subscriptionPaymentRepository.save(payment);
+
+    Map<String, Object> result = new LinkedHashMap<>();
+
+    result.put("payment", toPaymentResponse(payment));
+    result.put("subscription", subscriptionResult);
+
+    return result;
+}
+
+
+@Transactional(readOnly = true)
+public List<Map<String, Object>> getMyPayments(
+        String userId) {
+
+    return subscriptionPaymentRepository
+            .findByUserIdOrderByCreatedAtDesc(userId)
+            .stream()
+            .map(this::toPaymentResponse)
+            .collect(Collectors.toList());
+}
+
+
+private String resolvePaymentType(
+        SubscriptionPlan currentPlan,
+        SubscriptionPlan requestedPlan) {
+
+    if (currentPlan == null
+            || PLAN_BASIC.equals(currentPlan.getCode())) {
+        return PAYMENT_NEW_SUBSCRIPTION;
+    }
+
+    long currentPrice = currentPlan.getMonthlyPrice() == null
+            ? 0
+            : currentPlan.getMonthlyPrice();
+
+    long requestedPrice = requestedPlan.getMonthlyPrice() == null
+            ? 0
+            : requestedPlan.getMonthlyPrice();
+
+    return requestedPrice > currentPrice
+            ? PAYMENT_UPGRADE
+            : PAYMENT_DOWNGRADE;
+}
+
+
+@SuppressWarnings("unchecked")
+private String extractSubscriptionId(
+        Map<String, Object> subscriptionResult) {
+
+    if (subscriptionResult == null) {
+        return null;
+    }
+
+    Object subscriptionObject =
+            subscriptionResult.get("subscription");
+
+    if (!(subscriptionObject instanceof Map)) {
+        return null;
+    }
+
+    Map<String, Object> subscriptionData =
+            (Map<String, Object>) subscriptionObject;
+
+    Object id = subscriptionData.get("id");
+
+    return id == null ? null : String.valueOf(id);
+}
+
+
+private Map<String, Object> toPaymentResponse(
+        SubscriptionPayment payment) {
+
+    Map<String, Object> result = new LinkedHashMap<>();
+
+    result.put("id", payment.getId());
+    result.put("paymentReference", payment.getPaymentReference());
+    result.put("planId", payment.getPlanId());
+    result.put("planCode", payment.getPlanCode());
+    result.put("planName", payment.getPlanName());
+    result.put("subscriptionId", payment.getSubscriptionId());
+    result.put("amount", payment.getAmount());
+    result.put("currency", payment.getCurrency());
+    result.put("provider", payment.getProvider());
+    result.put(
+            "providerTransactionId",
+            payment.getProviderTransactionId());
+    result.put("status", payment.getStatus());
+    result.put("paymentType", payment.getPaymentType());
+    result.put("failureReason", payment.getFailureReason());
+    result.put("paidAt", payment.getPaidAt());
+    result.put("failedAt", payment.getFailedAt());
+    result.put("refundedAt", payment.getRefundedAt());
+    result.put("createdAt", payment.getCreatedAt());
+    result.put("updatedAt", payment.getUpdatedAt());
+
+    return result;
+}
+
+
+//// ========================================================================
+//// FILE 6 — SỬA SubscriptionController.java
+//// ========================================================================
+
+//// THÊM IMPORT
+
+import com.example.demo.dtos.CreateSubscriptionPaymentDTO;
+import com.example.demo.dtos.ConfirmSubscriptionPaymentDTO;
+
+
+//// THÊM ENDPOINT — đặt trước dấu } cuối class
+
+@PostMapping("/payments/checkout")
+public ResponseEntity<?> createPaymentOrder(
+        @RequestBody CreateSubscriptionPaymentDTO dto,
+        HttpServletRequest request) {
+
+    try {
+        User user = getCurrentUser(request);
+
+        if (user == null) {
+            return ResponseEntity
+                    .status(401)
+                    .body(new ApiResponse<>(
+                            401,
+                            "Unauthorized",
+                            null));
+        }
+
+        if (dto == null) {
+            return ResponseEntity
+                    .badRequest()
+                    .body(new ApiResponse<>(
+                            400,
+                            "Request body is required",
+                            null));
+        }
+
+        Map<String, Object> data =
+                subscriptionService.createPaymentOrder(
+                        user.getId(),
+                        dto.getPlanCode(),
+                        dto.getProvider());
+
+        return ResponseEntity.ok(
+                new ApiResponse<>(
+                        200,
+                        "Payment order created",
+                        data));
+
+    } catch (IllegalArgumentException e) {
+        return ResponseEntity
+                .badRequest()
+                .body(new ApiResponse<>(
+                        400,
+                        e.getMessage(),
+                        null));
+
+    } catch (Exception e) {
+        e.printStackTrace();
+
+        return ResponseEntity
+                .status(500)
+                .body(new ApiResponse<>(
+                        500,
+                        e.getMessage(),
+                        null));
+    }
+}
+
+
+@PostMapping("/payments/{paymentId}/confirm")
+public ResponseEntity<?> confirmMockPayment(
+        @PathVariable String paymentId,
+        @RequestBody ConfirmSubscriptionPaymentDTO dto,
+        HttpServletRequest request) {
+
+    try {
+        User user = getCurrentUser(request);
+
+        if (user == null) {
+            return ResponseEntity
+                    .status(401)
+                    .body(new ApiResponse<>(
+                            401,
+                            "Unauthorized",
+                            null));
+        }
+
+        if (dto == null) {
+            return ResponseEntity
+                    .badRequest()
+                    .body(new ApiResponse<>(
+                            400,
+                            "Request body is required",
+                            null));
+        }
+
+        Map<String, Object> data =
+                subscriptionService.confirmMockPayment(
+                        user.getId(),
+                        paymentId,
+                        dto.getProviderTransactionId());
+
+        return ResponseEntity.ok(
+                new ApiResponse<>(
+                        200,
+                        "Payment confirmed",
+                        data));
+
+    } catch (IllegalArgumentException e) {
+        return ResponseEntity
+                .badRequest()
+                .body(new ApiResponse<>(
+                        400,
+                        e.getMessage(),
+                        null));
+
+    } catch (Exception e) {
+        e.printStackTrace();
+
+        return ResponseEntity
+                .status(500)
+                .body(new ApiResponse<>(
+                        500,
+                        e.getMessage(),
+                        null));
+    }
+}
+
+
+@GetMapping("/payments/me")
+public ResponseEntity<?> getMyPayments(
+        HttpServletRequest request) {
+
+    try {
+        User user = getCurrentUser(request);
+
+        if (user == null) {
+            return ResponseEntity
+                    .status(401)
+                    .body(new ApiResponse<>(
+                            401,
+                            "Unauthorized",
+                            null));
+        }
+
+        return ResponseEntity.ok(
+                new ApiResponse<>(
+                        200,
+                        "Fetch payment history",
+                        subscriptionService.getMyPayments(
+                                user.getId())));
+
+    } catch (Exception e) {
+        e.printStackTrace();
+
+        return ResponseEntity
+                .status(500)
+                .body(new ApiResponse<>(
+                        500,
+                        e.getMessage(),
+                        null));
+    }
+}
+
+
+//// ========================================================================
+//// BUILD
+//// ========================================================================
+
+mvnw.cmd clean compile
+
+
+//// ========================================================================
+//// TEST POSTMAN
+//// Base URL dự án theo tài liệu bàn giao: http://localhost:8000
+//// ========================================================================
+
+//// 1. Tạo checkout
+
+POST {{baseUrl}}/api/v1/subscriptions/payments/checkout
+
+Authorization:
+Bearer {{accessToken}}
+
+Body:
+{
+  "planCode": "ARTIST",
+  "provider": "MOCK"
+}
+
+
+//// 2. Confirm payment MOCK
+
+POST {{baseUrl}}/api/v1/subscriptions/payments/{{paymentId}}/confirm
+
+Authorization:
+Bearer {{accessToken}}
+
+Body:
+{
+  "providerTransactionId": "MOCK-TRANS-001"
+}
+
+
+//// 3. Lịch sử payment
+
+GET {{baseUrl}}/api/v1/subscriptions/payments/me
+
+Authorization:
+Bearer {{accessToken}}
+
+
+//// 4. Kiểm tra DB
+
+SELECT
+    id,
+    paymentReference,
+    userId,
+    planId,
+    subscriptionId,
+    planCode,
+    planName,
+    amount,
+    currency,
+    provider,
+    providerTransactionId,
+    status,
+    paymentType,
+    paidAt,
+    createdAt
+FROM subscription_payments
+ORDER BY createdAt DESC;
+
+
+//// ========================================================================
+//// PASS CHECKLIST
+//// ========================================================================
+
+//// [ ] Checkout tạo payment PENDING.
+//// [ ] Plan chưa đổi khi payment PENDING.
+//// [ ] Confirm chuyển payment sang PAID.
+//// [ ] Chỉ sau PAID mới đổi subscription.
+//// [ ] Confirm lần hai không tạo thêm subscription.
+//// [ ] providerTransactionId không dùng cho payment khác.
+//// [ ] Payment history chỉ trả payment của user hiện tại.
+//// [ ] amount và planName là snapshot.
+//// [ ] Sau khi BE pass mới nối frontend checkout responsive mobile-first.

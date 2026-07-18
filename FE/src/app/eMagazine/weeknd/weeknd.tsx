@@ -31,7 +31,7 @@ const HASHTAGS: Record<ImageKey, string> = {
   SIN_CITY: "#SIN_CITY",
   VEGAS_GLOW: "#VEGAS_GLOW",
   BLOOD_AND_GLASS: "#BLOOD_AND_GLASS",
-  FINAL_FRAME: "#NEON_NOIR",
+  FINAL_FRAME: "#SUN_COME_UP",
 };
 
 const getYouTubeEmbedUrl = (url: string) => {

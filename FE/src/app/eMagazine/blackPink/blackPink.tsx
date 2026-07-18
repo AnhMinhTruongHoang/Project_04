@@ -11,18 +11,18 @@ import Typography from "@mui/material/Typography";
 import BlackpinkTrackSlider from "@/app/blog/components/BlackpinkTrackSlider";
 
 const MAGAZINE_IMAGES = {
-  HERO: "/images/media/blackpink-main.jpg",
+  HERO: "/images/media/blackpink01.jpg",
   DEBUT: "/images/media/blackpink-main.jpg",
-  FOUR: "/images/media/blackpink-main.jpg",
-  STAGE: "/images/media/blackpink-main.jpg",
-  JENNIE: "/images/media/blackpink-main.jpg",
-  JISOO: "/images/media/blackpink-main.jpg",
-  ROSE: "/images/media/blackpink-main.jpg",
-  LISA: "/images/media/blackpink-main.jpg",
-  FILM_LEFT: "/images/media/blackpink-main.jpg",
-  FILM_CENTER: "/images/media/blackpink-main.jpg",
-  FILM_RIGHT: "/images/media/blackpink-main.jpg",
-  CLOSING: "/images/media/blackpink-main.jpg",
+  FOUR: "/images/media/blackpink04.jpg",
+  STAGE: "/images/media/blackpink05.jpg",
+  JENNIE: "/images/media/jennie.jpg",
+  JISOO: "/images/media/jisoo.jpg",
+  ROSE: "/images/media/rose.jpg",
+  LISA: "/images/media/lisa.jpg",
+  FILM_LEFT: "/images/media/pbleft.jpg",
+  FILM_CENTER: "/images/media/pbright.jpg",
+  FILM_RIGHT: "/images/media/pbmid.jpg",
+  CLOSING: "/images/media/blackpink02.jpg",
 };
 
 const MAGAZINE_VIDEOS = {
@@ -983,7 +983,7 @@ export default function BlackpinkMagazine() {
         <Box
           sx={{
             position: "relative",
-            minHeight: { xs: 560, md: 760 },
+            minHeight: { xs: 530, md: 700 },
             overflow: "hidden",
             bgcolor: "#151515",
             border: "1px solid rgba(255,255,255,0.08)",
@@ -1030,11 +1030,11 @@ export default function BlackpinkMagazine() {
                 letterSpacing: "-0.05em",
               }}
             >
-              BLACKPINK is strongest when every difference remains visible.
+              Tickets available now !
             </Typography>
           </Box>
 
-          <Hashtag text="#PINK_CROWN" align="right" />
+          <Hashtag text="#PINK_PASS" align="right" />
         </Box>
       </Container>
 

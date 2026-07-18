@@ -29,6 +29,7 @@ import { signOut, useSession } from "next-auth/react";
 import { PlaylistPlaySharp } from "@mui/icons-material";
 import SearchDropdown from "@/app/search/components/search.dropdown";
 import NotificationBell from "../../app/(user)/notifications/components/notificationBell";
+import MenuRoundedIcon from "@mui/icons-material/MenuRounded";
 
 const AppHeader = () => {
   const router = useRouter();
@@ -38,9 +39,11 @@ const AppHeader = () => {
   const isSessionLoading = status === "loading";
   const isAuthenticated = status === "authenticated" && Boolean(session);
   const isAdmin = isAuthenticated && user?.role === "ADMIN";
-  const [keyword, setKeyword] = React.useState("");
   const [anchorEl, setAnchorEl] = React.useState<null | HTMLElement>(null);
   const open = Boolean(anchorEl);
+  const [mobileNavAnchorEl, setMobileNavAnchorEl] =
+    React.useState<null | HTMLElement>(null);
+  const mobileNavOpen = Boolean(mobileNavAnchorEl);
 
   const navItemSx = (active: boolean) => ({
     height: 46,
@@ -106,7 +109,12 @@ const AppHeader = () => {
         sx={{
           top: 0,
           zIndex: 1200,
-          height: 46,
+
+          height: {
+            xs: 56,
+            md: 46,
+          },
+
           backgroundColor: "#111111",
           borderBottom: "1px solid #050505",
         }}
@@ -115,31 +123,62 @@ const AppHeader = () => {
           maxWidth="lg"
           disableGutters
           sx={{
-            height: 46,
+            height: {
+              xs: 56,
+              md: 46,
+            },
           }}
         >
           <Toolbar
             disableGutters
             sx={{
-              height: "46px !important",
-              minHeight: "46px !important",
-              px: { xs: 1, md: 0 },
+              height: {
+                xs: "56px !important",
+                md: "46px !important",
+              },
+
+              minHeight: {
+                xs: "56px !important",
+                md: "46px !important",
+              },
+
+              px: {
+                xs: 1,
+                sm: 1.5,
+                md: 0,
+              },
+
               display: "flex",
               alignItems: "center",
+              gap: {
+                xs: 0.5,
+                md: 0,
+              },
             }}
           >
-            {/* Logo */}
+            {/* LOGO */}
             <Box
               component={Link}
               href="/"
               sx={{
-                width: { xs: 58, sm: 88 },
-                height: 46,
+                width: {
+                  xs: 42,
+                  sm: 58,
+                  md: 88,
+                },
+
+                height: {
+                  xs: 56,
+                  md: 46,
+                },
+
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
+
                 color: "#ffffff",
                 textDecoration: "none",
+
                 flexShrink: 0,
               }}
             >
@@ -148,7 +187,11 @@ const AppHeader = () => {
                   width: 38,
                   height: 30,
                   position: "relative",
-                  display: { xs: "none", sm: "block" },
+
+                  display: {
+                    xs: "none",
+                    sm: "block",
+                  },
                 }}
               >
                 <Image
@@ -165,17 +208,25 @@ const AppHeader = () => {
 
               <CloudRoundedIcon
                 sx={{
-                  display: { xs: "block", sm: "none" },
+                  display: {
+                    xs: "block",
+                    sm: "none",
+                  },
+
                   color: "#ffffff",
-                  fontSize: 30,
+                  fontSize: 29,
                 }}
               />
             </Box>
 
-            {/* Left nav */}
+            {/* DESKTOP NAV */}
             <Box
               sx={{
-                display: { xs: "none", md: "flex" },
+                display: {
+                  xs: "none",
+                  md: "flex",
+                },
+
                 height: 46,
                 alignItems: "center",
                 flexShrink: 0,
@@ -201,45 +252,89 @@ const AppHeader = () => {
                 Library
               </Box>
               {isAdmin && (
-                <Box
-                  component={Link}
-                  href="/dashboard"
+                <MenuItem
+                  onClick={() => {
+                    setAnchorEl(null);
+                    router.push("/dashboard");
+                  }}
+                >
+                  <BarChartRoundedIcon fontSize="small" />
+                  Insights
+                </MenuItem>
+              )}
+
+              {isAdmin && (
+                <Divider
                   sx={{
-                    ...navItemSx(isActive("/dashboard")),
-                    color: isActive("/dashboard") ? "#ffffff" : "#ffb088",
-                    "&:hover": {
-                      color: "#ffffff",
-                      backgroundColor: "#1b1b1b",
-                    },
+                    borderColor: "rgba(255,255,255,0.08)",
+                  }}
+                />
+              )}
+
+              {isAdmin && (
+                <MenuItem
+                  onClick={() => {
+                    setMobileNavAnchorEl(null);
+                    router.push("/dashboard");
                   }}
                 >
                   Dashboard
-                </Box>
+                </MenuItem>
               )}
             </Box>
 
-            {/* Search */}
+            {/* SEARCH */}
             <Box
               sx={{
                 flex: 1,
-                px: { xs: 1, md: 2 },
+                minWidth: 0,
+                px: {
+                  xs: 0.4,
+                  sm: 1,
+                  md: 2,
+                },
+
+                maxWidth: {
+                  xs: "calc(100vw - 125px)",
+                  sm: "calc(100vw - 160px)",
+                  md: "none",
+                },
+
                 display: "flex",
                 alignItems: "center",
+
+                overflow: "hidden",
               }}
             >
-              <SearchDropdown
-                onEmptySearch={() => {
-                  router.push("/search");
+              <Box
+                sx={{
+                  width: "100%",
+                  minWidth: 0,
+
+                  "& > *": {
+                    maxWidth: "100%",
+                  },
                 }}
-              />
+              >
+                <SearchDropdown
+                  onEmptySearch={() => {
+                    router.push("/search");
+                  }}
+                />
+              </Box>
             </Box>
 
-            {/* Right actions */}
+            {/* DESKTOP RIGHT ACTIONS */}
             <Box
               sx={{
-                display: { xs: "none", md: "flex" },
+                display: {
+                  xs: "none",
+                  md: "flex",
+                },
+
                 alignItems: "center",
                 gap: 2.2,
+
                 height: 46,
                 flexShrink: 0,
               }}
@@ -251,15 +346,22 @@ const AppHeader = () => {
                 sx={{
                   height: 30,
                   px: 1.6,
+
                   borderRadius: "4px",
                   borderColor: "#ff5500",
+
                   color: "#ff5500",
+
                   textTransform: "none",
+
                   fontSize: 13,
                   fontWeight: 900,
+
                   whiteSpace: "nowrap",
+
                   "&:hover": {
                     borderColor: "#ff6a00",
+
                     backgroundColor: "rgba(255,85,0,0.1)",
                   },
                 }}
@@ -280,9 +382,11 @@ const AppHeader = () => {
                   sx={{
                     width: 142,
                     height: 32,
+
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "flex-end",
+
                     gap: 1.2,
                   }}
                 >
@@ -290,36 +394,22 @@ const AppHeader = () => {
                     sx={{
                       width: 28,
                       height: 28,
+
                       borderRadius: "50%",
+
                       backgroundColor: "rgba(255,255,255,0.1)",
+
                       animation: "headerPulse 1.2s ease-in-out infinite",
 
                       "@keyframes headerPulse": {
                         "0%, 100%": {
                           opacity: 0.45,
                         },
+
                         "50%": {
                           opacity: 0.9,
                         },
                       },
-                    }}
-                  />
-
-                  <Box
-                    sx={{
-                      width: 20,
-                      height: 20,
-                      borderRadius: "50%",
-                      backgroundColor: "rgba(255,255,255,0.08)",
-                    }}
-                  />
-
-                  <Box
-                    sx={{
-                      width: 20,
-                      height: 20,
-                      borderRadius: "50%",
-                      backgroundColor: "rgba(255,255,255,0.08)",
                     }}
                   />
                 </Box>
@@ -330,6 +420,7 @@ const AppHeader = () => {
                     sx={{
                       display: "flex",
                       alignItems: "center",
+
                       gap: 0.5,
                       cursor: "pointer",
                     }}
@@ -340,8 +431,10 @@ const AppHeader = () => {
                       sx={{
                         width: 28,
                         height: 28,
+
                         bgcolor: "#ff5500",
                         color: "#ffffff",
+
                         fontWeight: 900,
                         fontSize: 12,
                       }}
@@ -380,10 +473,14 @@ const AppHeader = () => {
                   sx={{
                     height: 30,
                     px: 1.8,
+
                     color: "#ffffff",
                     backgroundColor: "#ff5500",
+
                     borderRadius: "4px",
+
                     textTransform: "none",
+
                     fontSize: 13,
                     fontWeight: 900,
 
@@ -396,9 +493,209 @@ const AppHeader = () => {
                 </Button>
               )}
             </Box>
+
+            {/* MOBILE RIGHT ACTIONS */}
+            <Box
+              sx={{
+                display: {
+                  xs: "flex",
+                  md: "none",
+                },
+                alignItems: "center",
+                gap: 0.25,
+                flexShrink: 0,
+              }}
+            >
+              {/* HAMBURGER */}
+              <IconButton
+                aria-label="Open navigation"
+                onClick={(event) => {
+                  setMobileNavAnchorEl(event.currentTarget);
+                }}
+                sx={{
+                  width: 36,
+                  height: 36,
+                  color: "#d8d8d8",
+
+                  "&:hover": {
+                    color: "#ffffff",
+                    backgroundColor: "rgba(255,255,255,0.07)",
+                  },
+                }}
+              >
+                <MenuRoundedIcon
+                  sx={{
+                    fontSize: 25,
+                  }}
+                />
+              </IconButton>
+
+              {isSessionLoading ? (
+                <Box
+                  sx={{
+                    width: 31,
+                    height: 31,
+                    borderRadius: "50%",
+                    backgroundColor: "rgba(255,255,255,0.1)",
+                  }}
+                />
+              ) : isAuthenticated ? (
+                <IconButton
+                  onClick={(event) => {
+                    setAnchorEl(event.currentTarget);
+                  }}
+                  sx={{
+                    p: 0.25,
+                  }}
+                >
+                  <Avatar
+                    src={user?.avatarUrl || user?.avatar || ""}
+                    alt={user?.name || "User"}
+                    sx={{
+                      width: 31,
+                      height: 31,
+                      bgcolor: "#ff5500",
+                      color: "#ffffff",
+                      fontSize: 11,
+                      fontWeight: 900,
+                      border: "1px solid rgba(255,255,255,0.12)",
+                    }}
+                  >
+                    {getInitials(user?.name, user?.email)}
+                  </Avatar>
+                </IconButton>
+              ) : null}
+            </Box>
           </Toolbar>
         </Container>
       </AppBar>
+
+      <Menu
+        anchorEl={mobileNavAnchorEl}
+        open={mobileNavOpen}
+        onClose={() => {
+          setMobileNavAnchorEl(null);
+        }}
+        anchorOrigin={{
+          horizontal: "right",
+          vertical: "bottom",
+        }}
+        transformOrigin={{
+          horizontal: "right",
+          vertical: "top",
+        }}
+        slotProps={{
+          paper: {
+            sx: {
+              mt: 1,
+              width: 245,
+              maxWidth: "calc(100vw - 20px)",
+
+              backgroundColor: "#111111",
+              color: "#ffffff",
+
+              border: "1px solid rgba(255,255,255,0.09)",
+
+              borderRadius: "10px",
+
+              boxShadow: "0 18px 45px rgba(0,0,0,0.5)",
+
+              "& .MuiMenuItem-root": {
+                minHeight: 46,
+                px: 2,
+                fontSize: 14,
+                fontWeight: 800,
+
+                "&:hover": {
+                  backgroundColor: "#202020",
+                },
+              },
+            },
+          },
+        }}
+      >
+        <MenuItem
+          onClick={() => {
+            setMobileNavAnchorEl(null);
+            router.push("/");
+          }}
+        >
+          Home
+        </MenuItem>
+
+        <MenuItem
+          onClick={() => {
+            setMobileNavAnchorEl(null);
+            router.push("/blog");
+          }}
+        >
+          Feed
+        </MenuItem>
+
+        <MenuItem
+          onClick={() => {
+            setMobileNavAnchorEl(null);
+            router.push("/library");
+          }}
+        >
+          Library
+        </MenuItem>
+
+        <Divider
+          sx={{
+            borderColor: "rgba(255,255,255,0.08)",
+          }}
+        />
+
+        <MenuItem
+          onClick={() => {
+            setMobileNavAnchorEl(null);
+            router.push("/plans");
+          }}
+          sx={{
+            color: "#ff5500 !important",
+          }}
+        >
+          Upgrade plan
+        </MenuItem>
+
+        <MenuItem
+          onClick={() => {
+            setMobileNavAnchorEl(null);
+            router.push("/artist-studio");
+          }}
+        >
+          Artist Studio
+        </MenuItem>
+
+        <MenuItem
+          onClick={() => {
+            setMobileNavAnchorEl(null);
+            router.push("/track/upload");
+          }}
+        >
+          Upload
+        </MenuItem>
+
+        {isAdmin && (
+          <Divider
+            sx={{
+              borderColor: "rgba(255,255,255,0.08)",
+            }}
+          />
+        )}
+
+        {isAdmin && (
+          <MenuItem
+            onClick={() => {
+              setMobileNavAnchorEl(null);
+              router.push("/dashboard");
+            }}
+          >
+            Dashboard
+          </MenuItem>
+        )}
+      </Menu>
 
       <Menu
         anchorEl={anchorEl}
@@ -410,25 +707,48 @@ const AppHeader = () => {
           paper: {
             sx: {
               mt: 1,
-              minWidth: 210,
+
+              minWidth: {
+                xs: 230,
+                sm: 210,
+              },
+
+              maxWidth: "calc(100vw - 24px)",
+
+              maxHeight: "calc(100dvh - 80px)",
+
               backgroundColor: "#111111",
               color: "#f2f2f2",
+
               border: "1px solid rgba(255,255,255,0.08)",
-              borderRadius: 0,
+
+              borderRadius: {
+                xs: "10px",
+                md: 0,
+              },
+
               boxShadow: "0 18px 40px rgba(0,0,0,0.45)",
-              overflow: "hidden",
+
+              overflowY: "auto",
 
               "& .MuiList-root": {
                 py: 0.5,
               },
 
               "& .MuiMenuItem-root": {
-                minHeight: 36,
+                minHeight: {
+                  xs: 44,
+                  md: 36,
+                },
+
                 px: 2,
                 gap: 1.2,
+
                 fontSize: 14,
                 fontWeight: 800,
+
                 color: "#f2f2f2",
+
                 transition: "0.16s ease",
               },
 

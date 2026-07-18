@@ -168,105 +168,246 @@ const SearchDropdown = ({ onEmptySearch }: SearchDropdownProps) => {
   }, [searchValue]);
 
   return (
-    <ClickAwayListener onClickAway={() => setOpen(false)}>
+    <ClickAwayListener
+      onClickAway={() => {
+        setOpen(false);
+      }}
+    >
+      {/* SEARCH ROOT */}
       <Box
         sx={{
           position: "relative",
+
           width: "100%",
-          maxWidth: 420,
+
+          maxWidth: {
+            xs: "100%",
+            md: 420,
+          },
+
+          minWidth: 0,
         }}
       >
+        {/* SEARCH INPUT */}
         <Box
           component="form"
-          onSubmit={(e) => {
-            e.preventDefault();
+          onSubmit={(event) => {
+            event.preventDefault();
+
             handleGoSearch();
           }}
           sx={{
-            height: 34,
+            width: "100%",
+
+            height: {
+              xs: 32,
+              sm: 34,
+            },
+
             display: "flex",
             alignItems: "center",
+
             backgroundColor: "#202225",
+
             border: open
               ? "1px solid rgba(255,85,0,0.65)"
               : "1px solid rgba(255,255,255,0.12)",
-            borderRadius: "4px",
+
+            borderRadius: {
+              xs: "5px",
+              md: "4px",
+            },
+
             overflow: "hidden",
+
             transition: "0.18s ease",
 
             "&:focus-within": {
               backgroundColor: "#24272a",
+
               borderColor: "rgba(255,85,0,0.75)",
             },
           }}
         >
+          {/* SEARCH TEXT */}
           <InputBase
             value={keyword}
-            onFocus={() => setOpen(true)}
-            onChange={(e) => {
-              setKeyword(e.target.value);
+            onFocus={() => {
+              setOpen(true);
+            }}
+            onChange={(event) => {
+              setKeyword(event.target.value);
+
               setOpen(true);
             }}
             placeholder="Search"
             sx={{
               flex: 1,
+              minWidth: 0,
+
               height: "100%",
-              px: 1.8,
+
+              px: {
+                xs: 1.1,
+                sm: 1.5,
+                md: 1.8,
+              },
+
               color: "#ffffff",
-              fontSize: 14,
+
+              fontSize: {
+                xs: 12,
+                sm: 13,
+                md: 14,
+              },
+
               fontWeight: 600,
+
+              "& input": {
+                minWidth: 0,
+
+                p: 0,
+              },
 
               "& input::placeholder": {
                 color: "#9a9a9a",
+
                 opacity: 1,
               },
             }}
           />
 
+          {/* SEARCH BUTTON */}
           <IconButton
             type="submit"
+            aria-label="Search"
             sx={{
-              width: 40,
-              height: 34,
+              width: {
+                xs: 34,
+                md: 40,
+              },
+
+              height: {
+                xs: 32,
+                md: 34,
+              },
+
+              flexShrink: 0,
+
               borderRadius: 0,
+
               color: "#b8b8b8",
 
               "&:hover": {
                 color: "#ffffff",
+
                 backgroundColor: "rgba(255,255,255,0.06)",
+              },
+
+              "& .MuiSvgIcon-root": {
+                fontSize: {
+                  xs: 18,
+                  md: 20,
+                },
               },
             }}
           >
-            <SearchRoundedIcon fontSize="small" />
+            <SearchRoundedIcon />
           </IconButton>
         </Box>
 
+        {/* SEARCH DROPDOWN */}
         {open && searchValue && (
           <Box
             sx={{
-              position: "absolute",
-              top: 38,
-              left: 0,
-              right: 0,
-              zIndex: 1500,
+              // Mobile:
+              // bung dropdown rộng theo viewport.
+              position: {
+                xs: "fixed",
+                md: "absolute",
+              },
+
+              top: {
+                xs: 58,
+                md: 38,
+              },
+
+              left: {
+                xs: 8,
+                md: 0,
+              },
+
+              right: {
+                xs: 8,
+                md: 0,
+              },
+
+              width: {
+                xs: "auto",
+                md: "100%",
+              },
+
+              maxHeight: {
+                xs: "calc(100dvh - 80px)",
+                md: 480,
+              },
+
+              zIndex: 1600,
+
               backgroundColor: "#0f1111",
+
               border: "1px solid rgba(255,255,255,0.18)",
-              borderRadius: "0 0 6px 6px",
-              boxShadow: "0 18px 50px rgba(0,0,0,0.55)",
-              overflow: "hidden",
+
+              borderRadius: {
+                xs: "8px",
+                md: "0 0 6px 6px",
+              },
+
+              boxShadow: "0 18px 50px rgba(0,0,0,0.60)",
+
+              overflowX: "hidden",
+              overflowY: "auto",
+
+              WebkitOverflowScrolling: "touch",
+
+              "&::-webkit-scrollbar": {
+                width: 5,
+              },
+
+              "&::-webkit-scrollbar-thumb": {
+                backgroundColor: "rgba(255,255,255,0.14)",
+
+                borderRadius: "999px",
+              },
             }}
           >
+            {/* SEARCH FOR KEYWORD */}
             <Box
-              onMouseDown={(e) => {
-                e.preventDefault();
+              onMouseDown={(event) => {
+                event.preventDefault();
+
                 handleGoSearch(searchValue);
               }}
               sx={{
-                px: 1.7,
-                py: 1.1,
+                px: {
+                  xs: 1.5,
+                  md: 1.7,
+                },
+
+                py: {
+                  xs: 1.3,
+                  md: 1.1,
+                },
+
                 cursor: "pointer",
+
                 color: "#ffffff",
-                fontSize: 13,
+
+                fontSize: {
+                  xs: 13,
+                  md: 13,
+                },
+
                 fontWeight: 800,
 
                 "&:hover": {
@@ -275,50 +416,89 @@ const SearchDropdown = ({ onEmptySearch }: SearchDropdownProps) => {
               }}
             >
               Search for{" "}
-              <Box component="span" sx={{ color: "#ffffff", fontWeight: 900 }}>
+              <Box
+                component="span"
+                sx={{
+                  color: "#ff5500",
+
+                  fontWeight: 900,
+                }}
+              >
                 “{searchValue}”
               </Box>
             </Box>
 
-            <Divider sx={{ borderColor: "rgba(255,255,255,0.1)" }} />
+            <Divider
+              sx={{
+                borderColor: "rgba(255,255,255,0.1)",
+              }}
+            />
 
+            {/* SEARCH LOADING */}
             {loading && (
               <Box
                 sx={{
                   px: 1.7,
-                  py: 1.5,
+                  py: 1.8,
+
                   display: "flex",
                   alignItems: "center",
+
                   gap: 1,
+
                   color: "#b8b8b8",
                 }}
               >
-                <CircularProgress size={16} sx={{ color: "#ff5500" }} />
+                <CircularProgress
+                  size={16}
+                  sx={{
+                    color: "#ff5500",
+                  }}
+                />
 
-                <Typography sx={{ fontSize: 13, fontWeight: 700 }}>
+                <Typography
+                  sx={{
+                    fontSize: 13,
+
+                    fontWeight: 700,
+                  }}
+                >
                   Searching...
                 </Typography>
               </Box>
             )}
 
+            {/* RELATED TRACKS */}
             {!loading &&
               tracks.slice(0, 3).map((track) => {
                 const trackId = getTrackId(track);
+
                 const imageSrc = getTrackImage(track.imgUrl);
 
                 return (
                   <Box
                     key={trackId}
-                    onMouseDown={(e) => {
-                      e.preventDefault();
+                    onMouseDown={(event) => {
+                      event.preventDefault();
+
                       handleGoTrack(track);
                     }}
                     sx={{
-                      px: 1.7,
-                      py: 1,
+                      px: {
+                        xs: 1.4,
+                        md: 1.7,
+                      },
+
+                      py: {
+                        xs: 1.1,
+                        md: 1,
+                      },
+
                       display: "flex",
                       alignItems: "center",
+
                       gap: 1.2,
+
                       cursor: "pointer",
 
                       "&:hover": {
@@ -330,54 +510,88 @@ const SearchDropdown = ({ onEmptySearch }: SearchDropdownProps) => {
                       },
                     }}
                   >
+                    {/* TRACK IMAGE */}
                     <Box
                       component="img"
                       src={imageSrc}
                       alt={track.title}
-                      onError={(e) => {
-                        e.currentTarget.src = DEFAULT_IMAGE;
+                      onError={(event) => {
+                        event.currentTarget.src = DEFAULT_IMAGE;
                       }}
                       sx={{
-                        width: 34,
-                        height: 34,
+                        width: {
+                          xs: 42,
+                          md: 34,
+                        },
+
+                        height: {
+                          xs: 42,
+                          md: 34,
+                        },
+
                         objectFit: "cover",
-                        borderRadius: "3px",
+
+                        borderRadius: "4px",
+
                         backgroundColor: "#111",
+
                         flexShrink: 0,
                       }}
                     />
 
-                    <Box sx={{ flex: 1, minWidth: 0 }}>
+                    {/* TRACK INFO */}
+                    <Box
+                      sx={{
+                        flex: 1,
+
+                        minWidth: 0,
+                      }}
+                    >
                       <Typography
                         className="track-title"
                         noWrap
                         sx={{
                           color: "#ffffff",
-                          fontSize: 13,
+
+                          fontSize: {
+                            xs: 13,
+                            md: 13,
+                          },
+
                           fontWeight: 900,
+
                           lineHeight: 1.3,
                         }}
                       >
-                        Related tracks: {track.title}
+                        {track.title}
                       </Typography>
 
                       <Typography
                         noWrap
                         sx={{
+                          mt: 0.25,
+
                           color: "#9a9a9a",
-                          fontSize: 11,
+
+                          fontSize: {
+                            xs: 11,
+                            md: 11,
+                          },
+
                           fontWeight: 600,
-                          mt: 0.2,
                         }}
                       >
                         {track.description || "Unknown artist"}
                       </Typography>
                     </Box>
 
+                    {/* TRACK ICON */}
                     <QueueMusicRoundedIcon
                       sx={{
                         color: "#d8d8d8",
+
                         fontSize: 18,
+
                         flexShrink: 0,
                       }}
                     />
@@ -385,32 +599,89 @@ const SearchDropdown = ({ onEmptySearch }: SearchDropdownProps) => {
                 );
               })}
 
+            {/* TEXT SUGGESTIONS */}
             {!loading && tracks.length > 0 && (
-              <Box sx={{ py: 0.5 }}>
-                {tracks.slice(0, 5).map((track) => (
-                  <Box
-                    key={`suggestion-${getTrackId(track)}`}
-                    onMouseDown={(e) => {
-                      e.preventDefault();
-                      handleGoSearch(track.title);
-                    }}
-                    sx={{
-                      px: 1.7,
-                      py: 0.75,
-                      cursor: "pointer",
-                      color: "#dcdcdc",
-                      fontSize: 13,
-                      fontWeight: 800,
+              <>
+                <Divider
+                  sx={{
+                    borderColor: "rgba(255,255,255,0.08)",
+                  }}
+                />
 
-                      "&:hover": {
-                        color: "#ffffff",
-                        backgroundColor: "#1b1d1e",
-                      },
-                    }}
-                  >
-                    {track.title}
-                  </Box>
-                ))}
+                <Box
+                  sx={{
+                    py: 0.5,
+                  }}
+                >
+                  {tracks.slice(0, 5).map((track) => (
+                    <Box
+                      key={`suggestion-${getTrackId(track)}`}
+                      onMouseDown={(event) => {
+                        event.preventDefault();
+
+                        handleGoSearch(track.title);
+                      }}
+                      sx={{
+                        px: {
+                          xs: 1.5,
+                          md: 1.7,
+                        },
+
+                        py: {
+                          xs: 1,
+                          md: 0.75,
+                        },
+
+                        cursor: "pointer",
+
+                        color: "#dcdcdc",
+
+                        fontSize: 13,
+
+                        fontWeight: 800,
+
+                        overflow: "hidden",
+
+                        textOverflow: "ellipsis",
+
+                        whiteSpace: "nowrap",
+
+                        "&:hover": {
+                          color: "#ffffff",
+
+                          backgroundColor: "#1b1d1e",
+                        },
+                      }}
+                    >
+                      {track.title}
+                    </Box>
+                  ))}
+                </Box>
+              </>
+            )}
+
+            {/* EMPTY RESULT */}
+            {!loading && tracks.length === 0 && (
+              <Box
+                sx={{
+                  px: 1.7,
+
+                  py: 2,
+
+                  color: "#8f8f8f",
+
+                  textAlign: "center",
+                }}
+              >
+                <Typography
+                  sx={{
+                    fontSize: 13,
+
+                    fontWeight: 700,
+                  }}
+                >
+                  No related tracks found
+                </Typography>
               </Box>
             )}
           </Box>

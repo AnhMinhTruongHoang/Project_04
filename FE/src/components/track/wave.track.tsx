@@ -586,156 +586,835 @@ const WaveTrack = (props: IProps) => {
   const canOpenArtistProfile = artistHref !== "#";
 
   return (
-    <div style={{ marginTop: 20 }}>
-      <div
-        style={{
-          display: "flex",
-          gap: 15,
-          padding: 20,
-          height: 400,
-          borderRadius: 16,
-          overflow: "hidden",
-          border: "1px solid rgba(255,255,255,0.08)",
-          boxShadow: "0 24px 80px rgba(0,0,0,0.35)",
-          background:
-            "radial-gradient(circle at 0% 0%, rgba(255,85,0,0.35), transparent 35%), radial-gradient(circle at 100% 100%, rgba(0,188,174,0.22), transparent 40%), linear-gradient(135deg, #21120d 0%, #181a1b 48%, #0d2523 100%)",
-        }}
-      >
-        <div
-          className="left"
-          style={{
-            width: "75%",
-            height: "calc(100% - 10px)",
-            display: "flex",
-            flexDirection: "column",
-            justifyContent: "space-between",
-          }}
-        >
-          <div className="info" style={{ display: "flex" }}>
-            <div>
-              <div
-                onClick={() => {
-                  onPlayClick();
-                  handleIncreaseView();
+    <div
+      className="wave-track-page"
+      style={{
+        marginTop: 20,
+      }}
+    >
+      {/* ========================================
+          WAVE TRACK HERO
+      ======================================== */}
+      <div className="wave-track-card">
+        {/* ========================================
+            TRACK TOP INFO
+        ======================================== */}
+        <div className="wave-track-top">
+          {/* PLAY BUTTON */}
+          <button
+            type="button"
+            aria-label={isPlaying ? "Pause track" : "Play track"}
+            className="wave-track-play"
+            onClick={() => {
+              onPlayClick();
+              handleIncreaseView();
+            }}
+          >
+            {isPlaying === true ? (
+              <PauseIcon
+                sx={{
+                  fontSize: {
+                    xs: 25,
+                    sm: 30,
+                  },
+
+                  color: "#ffffff",
                 }}
-                style={{
-                  borderRadius: "50%",
-                  background: "#f50",
-                  height: "50px",
-                  width: "50px",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  cursor: "pointer",
+              />
+            ) : (
+              <PlayArrowIcon
+                sx={{
+                  fontSize: {
+                    xs: 27,
+                    sm: 30,
+                  },
+
+                  color: "#ffffff",
                 }}
-              >
-                {isPlaying === true ? (
-                  <PauseIcon sx={{ fontSize: 30, color: "white" }} />
-                ) : (
-                  <PlayArrowIcon sx={{ fontSize: 30, color: "white" }} />
-                )}
-              </div>
+              />
+            )}
+          </button>
+
+          {/* TRACK META */}
+          <div className="wave-track-meta">
+            {/* TRACK TITLE */}
+            <div className="wave-track-title" title={track?.title}>
+              {track?.title || "Unknown track"}
             </div>
 
-            <div style={{ marginLeft: 20 }}>
+            {/* ARTIST */}
+            <Link
+              href={artistHref}
+              onClick={(event) => {
+                if (!canOpenArtistProfile) {
+                  event.preventDefault();
+                }
+              }}
+              className="wave-track-artist-link"
+            >
               <div
-                style={{
-                  padding: "0 5px",
-                  background: "#333",
-                  fontSize: 30,
-                  width: "fit-content",
-                  color: "white",
-                }}
+                className="wave-track-artist"
+                title={track?.description || ""}
               >
-                {track?.title}
+                {track?.description || "Unknown artist"}
               </div>
-              <Link
-                href={artistHref}
-                onClick={(event) => {
-                  if (!canOpenArtistProfile) {
-                    event.preventDefault();
-                  }
-                }}
-                style={{
-                  display: "block",
-                  textDecoration: "none",
-                  width: "fit-content",
-                }}
-              >
-                <div
-                  style={{
-                    padding: "0 5px",
-                    marginTop: 10,
-                    background: "#333",
-                    fontSize: 20,
-                    width: "fit-content",
-                    color: "white",
-                    cursor: canOpenArtistProfile ? "pointer" : "default",
-                  }}
-                >
-                  {track?.description}
-                </div>
-              </Link>
-            </div>
+            </Link>
           </div>
 
-          <div ref={containerRef} className="wave-form-container">
-            <div className="time">{time}</div>
-            <div className="duration">{duration}</div>
-            <div ref={hoverRef} className="hover-wave"></div>
-
-            <div
-              className="overlay"
-              style={{
-                position: "absolute",
-                height: "30px",
-                width: "100%",
-                bottom: "0",
-                backdropFilter: "brightness(0.5)",
-              }}
-            ></div>
+          {/* MOBILE COVER */}
+          <div className="wave-track-cover-mobile">
+            {track?.imgUrl ? (
+              <Image
+                src={getImageUrl(track.imgUrl)}
+                fill
+                sizes="96px"
+                alt={track?.title || "Track cover"}
+                style={{
+                  objectFit: "cover",
+                }}
+              />
+            ) : (
+              <div className="wave-track-cover-placeholder" />
+            )}
           </div>
         </div>
 
-        <div
-          className="right"
-          style={{
-            width: "25%",
-            padding: 15,
-            display: "flex",
-            alignItems: "center",
-          }}
-        >
-          {track?.imgUrl ? (
-            <Image
-              src={getImageUrl(track?.imgUrl)}
-              width={250}
-              height={250}
-              alt="image track"
-            />
-          ) : (
-            <div
-              style={{
-                background: "#ccc",
-                width: 250,
-                height: 250,
-              }}
-            ></div>
-          )}
+        {/* ========================================
+              WAVEFORM VISUALIZER
+          ======================================== */}
+        <div className="wave-track-wave-area">
+          <div ref={containerRef} className="wave-form-container">
+            {/* HOVER WAVE */}
+            <div ref={hoverRef} className="hover-wave" />
+
+            {/* CURRENT TIME */}
+            <div className="time">{time}</div>
+
+            {/* DURATION */}
+            <div className="duration">{duration}</div>
+
+            {/* BOTTOM WAVE OVERLAY */}
+            <div className="wave-track-overlay" />
+          </div>
+        </div>
+
+        {/* ========================================
+            DESKTOP COVER
+        ======================================== */}
+        <div className="wave-track-cover-desktop">
+          <div className="wave-track-cover-box">
+            {track?.imgUrl ? (
+              <Image
+                src={getImageUrl(track.imgUrl)}
+                fill
+                sizes="(max-width: 900px) 180px, 280px"
+                alt={track?.title || "Track cover"}
+                style={{
+                  objectFit: "cover",
+                }}
+              />
+            ) : (
+              <div className="wave-track-cover-placeholder" />
+            )}
+          </div>
         </div>
       </div>
 
-      <div>
+      {/* ========================================
+          LIKE TRACK
+      ======================================== */}
+      <div className="wave-track-actions">
         <LikeTrack track={track} />
       </div>
 
-      <div>
+      {/* ========================================
+          COMMENTS
+      ======================================== */}
+      <div className="wave-track-comments">
         <CommentTrack
           track={track}
           comments={comments}
           wavesurfer={wavesurfer}
         />
       </div>
+
+      <style jsx>{`
+        /* ========================================
+     WAVE TRACK CARD
+  ======================================== */
+
+        .wave-track-card {
+          position: relative;
+
+          display: grid;
+          grid-template-columns:
+            minmax(0, 1fr)
+            280px;
+          grid-template-rows:
+            auto
+            minmax(0, 1fr);
+
+          column-gap: 28px;
+
+          min-height: 400px;
+
+          padding: 28px;
+
+          overflow: hidden;
+
+          border-radius: 16px;
+
+          border: 1px solid rgba(255, 255, 255, 0.08);
+
+          box-shadow: 0 24px 80px rgba(0, 0, 0, 0.35);
+
+          background: radial-gradient(
+              circle at 0% 0%,
+              rgba(255, 85, 0, 0.35),
+              transparent 35%
+            ),
+            radial-gradient(
+              circle at 100% 100%,
+              rgba(0, 188, 174, 0.22),
+              transparent 40%
+            ),
+            linear-gradient(135deg, #21120d 0%, #181a1b 48%, #0d2523 100%);
+        }
+
+        /* ========================================
+     TOP INFO
+  ======================================== */
+
+        .wave-track-top {
+          grid-column: 1;
+          grid-row: 1;
+
+          display: flex;
+
+          align-items: flex-start;
+
+          gap: 18px;
+
+          min-width: 0;
+
+          position: relative;
+
+          z-index: 3;
+        }
+
+        /* ========================================
+     PLAY BUTTON
+  ======================================== */
+
+        .wave-track-play {
+          width: 52px;
+          height: 52px;
+
+          flex: 0 0 52px;
+
+          display: flex;
+
+          align-items: center;
+          justify-content: center;
+
+          padding: 0;
+
+          border: 0;
+
+          border-radius: 50%;
+
+          color: #ffffff;
+
+          background: #ff5500;
+
+          cursor: pointer;
+
+          box-shadow: 0 8px 24px rgba(255, 85, 0, 0.28);
+
+          transition: transform 0.18s ease, background-color 0.18s ease;
+        }
+
+        .wave-track-play:hover {
+          background: #ff6a1a;
+
+          transform: scale(1.04);
+        }
+
+        /* ========================================
+     TRACK META
+  ======================================== */
+
+        .wave-track-meta {
+          flex: 1;
+
+          min-width: 0;
+        }
+
+        .wave-track-title {
+          display: block;
+
+          width: fit-content;
+
+          max-width: 100%;
+
+          padding: 3px 7px;
+
+          overflow: hidden;
+
+          color: #ffffff;
+
+          background: rgba(35, 35, 35, 0.88);
+
+          font-size: 30px;
+
+          font-weight: 800;
+
+          line-height: 1.2;
+
+          white-space: nowrap;
+
+          text-overflow: ellipsis;
+        }
+
+        .wave-track-artist-link {
+          display: block;
+
+          width: fit-content;
+
+          max-width: 100%;
+
+          margin-top: 9px;
+
+          text-decoration: none;
+        }
+
+        .wave-track-artist {
+          width: fit-content;
+
+          max-width: 100%;
+
+          padding: 3px 7px;
+
+          overflow: hidden;
+
+          color: #ffffff;
+
+          background: rgba(51, 51, 51, 0.82);
+
+          font-size: 18px;
+
+          font-weight: 600;
+
+          line-height: 1.35;
+
+          white-space: nowrap;
+
+          text-overflow: ellipsis;
+
+          transition: color 0.18s ease;
+        }
+
+        .wave-track-artist:hover {
+          color: #ff7a2f;
+        }
+
+        /* ========================================
+     WAVEFORM AREA
+  ======================================== */
+
+        .wave-track-wave-area {
+          grid-column: 1;
+
+          grid-row: 2;
+
+          position: relative;
+
+          width: 100%;
+
+          min-width: 0;
+
+          min-height: 180px;
+
+          display: flex;
+
+          align-items: flex-end;
+
+          padding-top: 24px;
+
+          z-index: 2;
+        }
+
+        /* ========================================
+     WAVESURFER CONTAINER
+  ======================================== */
+
+        .wave-form-container {
+          position: relative;
+
+          display: block;
+
+          width: 100%;
+
+          height: 170px;
+
+          min-width: 0;
+
+          min-height: 170px;
+
+          overflow: visible;
+
+          isolation: isolate;
+        }
+
+        /*
+   * WaveSurfer render visualizer vào container.
+   * Container phải luôn có width + height thực.
+   */
+        .wave-form-container :global(wave) {
+          width: 100% !important;
+
+          height: 100% !important;
+        }
+
+        /* ========================================
+     WAVE TIME
+  ======================================== */
+
+        .time,
+        .duration {
+          position: absolute;
+
+          bottom: 5px;
+
+          z-index: 10;
+
+          padding: 2px 5px;
+
+          border-radius: 3px;
+
+          color: #ffffff;
+
+          background: rgba(0, 0, 0, 0.65);
+
+          font-size: 10px;
+
+          font-weight: 800;
+
+          line-height: 1.2;
+
+          pointer-events: none;
+        }
+
+        .time {
+          left: 4px;
+        }
+
+        .duration {
+          right: 4px;
+        }
+
+        /* ========================================
+     HOVER WAVE
+  ======================================== */
+
+        .hover-wave {
+          position: absolute;
+
+          top: 0;
+
+          left: 0;
+
+          width: 0;
+
+          height: 100%;
+
+          z-index: 5;
+
+          pointer-events: none;
+
+          background: rgba(255, 255, 255, 0.035);
+        }
+
+        /* ========================================
+     WAVE BOTTOM OVERLAY
+  ======================================== */
+
+        .wave-track-overlay {
+          position: absolute;
+
+          left: 0;
+          right: 0;
+          bottom: 0;
+
+          height: 25px;
+
+          z-index: 4;
+
+          pointer-events: none;
+
+          background: linear-gradient(to top, rgba(0, 0, 0, 0.38), transparent);
+        }
+
+        /* ========================================
+     DESKTOP COVER
+  ======================================== */
+
+        .wave-track-cover-desktop {
+          grid-column: 2;
+
+          grid-row: 1 / 3;
+
+          display: flex;
+
+          align-items: center;
+          justify-content: center;
+
+          min-width: 0;
+
+          position: relative;
+
+          z-index: 2;
+        }
+
+        .wave-track-cover-box {
+          position: relative;
+
+          width: min(100%, 260px);
+
+          aspect-ratio: 1 / 1;
+
+          overflow: hidden;
+
+          border-radius: 6px;
+
+          background: #111111;
+
+          box-shadow: 0 18px 45px rgba(0, 0, 0, 0.3);
+        }
+
+        /* ========================================
+     MOBILE COVER
+  ======================================== */
+
+        .wave-track-cover-mobile {
+          display: none;
+        }
+
+        .wave-track-cover-placeholder {
+          width: 100%;
+
+          height: 100%;
+
+          background: linear-gradient(135deg, #292929, #151515);
+        }
+
+        /* ========================================
+     TRACK ACTIONS
+  ======================================== */
+
+        .wave-track-actions {
+          margin-top: 0;
+        }
+
+        /* ========================================
+     TABLET
+  ======================================== */
+
+        @media (max-width: 899px) {
+          .wave-track-card {
+            grid-template-columns:
+              minmax(0, 1fr)
+              190px;
+
+            column-gap: 20px;
+
+            min-height: 340px;
+
+            padding: 22px;
+          }
+
+          .wave-track-title {
+            font-size: 24px;
+          }
+
+          .wave-track-artist {
+            font-size: 16px;
+          }
+
+          .wave-track-wave-area {
+            min-height: 155px;
+
+            padding-top: 20px;
+          }
+
+          .wave-form-container {
+            height: 145px;
+
+            min-height: 145px;
+          }
+        }
+
+        /* ========================================
+     MOBILE
+  ======================================== */
+
+        @media (max-width: 600px) {
+          .wave-track-page {
+            margin-top: 12px !important;
+          }
+
+          /* MOBILE CARD */
+          .wave-track-card {
+            display: flex;
+
+            flex-direction: column;
+
+            width: 100%;
+
+            min-height: 0;
+
+            padding: 14px;
+
+            border-radius: 13px;
+
+            overflow: hidden;
+          }
+
+          /* MOBILE TOP INFO */
+          .wave-track-top {
+            width: 100%;
+
+            display: grid;
+
+            grid-template-columns:
+              40px
+              minmax(0, 1fr)
+              82px;
+
+            align-items: start;
+
+            gap: 10px;
+          }
+
+          /* MOBILE PLAY BUTTON */
+          .wave-track-play {
+            width: 40px;
+
+            height: 40px;
+
+            flex-basis: 40px;
+
+            box-shadow: 0 6px 16px rgba(255, 85, 0, 0.28);
+          }
+
+          /* MOBILE META */
+          .wave-track-meta {
+            min-width: 0;
+
+            padding-top: 1px;
+          }
+
+          .wave-track-title {
+            display: block;
+
+            width: fit-content;
+
+            max-width: 100%;
+
+            padding: 2px 5px;
+
+            overflow: hidden;
+
+            font-size: 16px;
+
+            font-weight: 900;
+
+            line-height: 1.3;
+
+            white-space: nowrap;
+
+            text-overflow: ellipsis;
+          }
+
+          .wave-track-artist-link {
+            width: fit-content;
+
+            max-width: 100%;
+
+            margin-top: 5px;
+          }
+
+          .wave-track-artist {
+            display: -webkit-box;
+
+            width: fit-content;
+
+            max-width: 100%;
+
+            padding: 2px 5px;
+
+            overflow: hidden;
+
+            font-size: 11.5px;
+
+            font-weight: 700;
+
+            line-height: 1.35;
+
+            white-space: normal;
+
+            -webkit-line-clamp: 2;
+
+            -webkit-box-orient: vertical;
+          }
+
+          /* MOBILE COVER */
+          .wave-track-cover-mobile {
+            position: relative;
+
+            display: block;
+
+            width: 82px;
+
+            height: 82px;
+
+            flex-shrink: 0;
+
+            overflow: hidden;
+
+            border-radius: 6px;
+
+            background: #111111;
+
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+          }
+
+          .wave-track-cover-desktop {
+            display: none;
+          }
+
+          /* ========================================
+       MOBILE WAVEFORM VISUALIZER
+    ======================================== */
+
+          .wave-track-wave-area {
+            position: relative;
+
+            display: block;
+
+            width: 100%;
+
+            min-width: 0;
+
+            min-height: 110px;
+
+            margin-top: 16px;
+
+            padding-top: 0;
+
+            overflow: visible;
+          }
+
+          .wave-form-container {
+            position: relative;
+
+            display: block;
+
+            width: 100%;
+
+            height: 110px;
+
+            min-height: 110px;
+
+            overflow: visible;
+          }
+
+          /*
+     * Không dùng flex cho container WaveSurfer.
+     * Cho visualizer chiếm toàn bộ chiều ngang.
+     */
+          .wave-form-container :global(wave) {
+            display: block !important;
+
+            width: 100% !important;
+
+            height: 110px !important;
+
+            min-height: 110px !important;
+          }
+
+          .wave-track-overlay {
+            height: 21px;
+          }
+
+          .time,
+          .duration {
+            bottom: 3px;
+
+            padding: 1px 4px;
+
+            font-size: 9px;
+          }
+        }
+
+        /* ========================================
+     SMALL MOBILE
+  ======================================== */
+
+        @media (max-width: 380px) {
+          .wave-track-card {
+            padding: 12px;
+          }
+
+          .wave-track-top {
+            grid-template-columns:
+              38px
+              minmax(0, 1fr)
+              70px;
+
+            gap: 8px;
+          }
+
+          .wave-track-play {
+            width: 38px;
+
+            height: 38px;
+          }
+
+          .wave-track-cover-mobile {
+            width: 70px;
+
+            height: 70px;
+          }
+
+          .wave-track-title {
+            font-size: 15px;
+          }
+
+          .wave-track-artist {
+            font-size: 10.5px;
+          }
+
+          /* SMALL MOBILE WAVEFORM */
+          .wave-track-wave-area {
+            min-height: 95px;
+
+            margin-top: 14px;
+          }
+
+          .wave-form-container {
+            height: 95px;
+
+            min-height: 95px;
+          }
+
+          .wave-form-container :global(wave) {
+            height: 95px !important;
+
+            min-height: 95px !important;
+          }
+        }
+      `}</style>
     </div>
   );
 };

@@ -419,29 +419,41 @@ const Step2 = (props: IProps) => {
             <Box
               sx={{
                 position: "absolute",
-                bottom: 10,
-                left: 10,
+                bottom: { xs: 20, md: 10 }, // cách mép dưới nhiều hơn trên mobile
+                left: "50%",
+                transform: "translateX(-50%)",
                 display: "flex",
                 gap: 1,
+                flexDirection: { xs: "column", sm: "row" }, // mobile: stack dọc, desktop: ngang
+                alignItems: "center",
               }}
             >
               <Button
                 component="label"
                 variant="contained"
-                startIcon={<PhotoCamera />}
+                startIcon={
+                  <PhotoCamera sx={{ fontSize: { xs: 18, md: 20 } }} />
+                }
                 sx={{
                   background: "linear-gradient(90deg,#ff7a00,#ff4d4f)",
                   color: "#fff",
                   textTransform: "none",
                   fontWeight: 900,
-                  px: 2,
-                  height: 38,
-                  "&:hover": { opacity: 0.95 },
+                  borderRadius: "999px",
+                  px: { xs: 2, md: 3 },
+                  height: { xs: 38, md: 42 },
+                  fontSize: { xs: 12, md: 14 },
+                  boxShadow: "0 2px 6px rgba(0,0,0,0.25)",
+                  "&:hover": {
+                    opacity: 0.9,
+                    boxShadow: "0 4px 10px rgba(0,0,0,0.35)",
+                  },
                 }}
                 disabled={isUploading}
               >
                 Select cover
                 <VisuallyHiddenInput
+                  style={{ marginTop: 2 }}
                   type="file"
                   accept="image/png,image/jpeg,image/webp"
                   onChange={handleImageChange}
@@ -455,6 +467,8 @@ const Step2 = (props: IProps) => {
                   bgcolor: "rgba(255,255,255,0.04)",
                   color: "#fff",
                   "&:hover": { bgcolor: "rgba(255,255,255,0.06)" },
+                  width: { xs: 36, md: 40 },
+                  height: { xs: 36, md: 40 },
                 }}
                 disabled={!info.imagePreview || isUploading}
               >

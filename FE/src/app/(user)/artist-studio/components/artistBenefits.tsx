@@ -84,158 +84,158 @@ const ArtistBenefits = ({
         py: 2.5,
       }}
     >
-      <Box
-        sx={{
-          display: "flex",
+        <Box
+          sx={{
+            display: "flex",
 
-          alignItems: {
-            xs: "flex-start",
-            sm: "center",
-          },
+            alignItems: {
+              xs: "flex-start",
+              sm: "center",
+            },
 
-          justifyContent: "space-between",
+            justifyContent: "space-between",
 
-          flexDirection: {
-            xs: "column",
-            sm: "row",
-          },
+            flexDirection: {
+              xs: "column",
+              sm: "row",
+            },
 
-          gap: 2,
-          mb: 2.5,
-        }}
-      >
-        <Box>
-          <Box
-            sx={{
-              display: "flex",
-              alignItems: "center",
-              gap: 1,
-              flexWrap: "wrap",
-              mb: 0.8,
-            }}
-          >
-            <WorkspacePremiumRoundedIcon
+            gap: 2,
+            mb: 2.5,
+          }}
+        >
+          <Box>
+            <Box
               sx={{
-                color: unlocked ? "#f4c542" : "#8B949E",
-
-                fontSize: 24,
+                display: "flex",
+                alignItems: "center",
+                gap: 1,
+                flexWrap: "wrap",
+                mb: 0.8,
               }}
-            />
+            >
+              <WorkspacePremiumRoundedIcon
+                sx={{
+                  color: unlocked ? "#f4c542" : "#8B949E",
+
+                  fontSize: 24,
+                }}
+              />
+
+              <Typography
+                sx={{
+                  color: "#ffffff",
+                  fontSize: 20,
+                  fontWeight: 950,
+                }}
+              >
+                Artist Pro Membership Benefits
+              </Typography>
+
+              {unlocked ? (
+                <Box
+                  sx={{
+                    display: "inline-flex",
+
+                    alignItems: "center",
+
+                    gap: 0.4,
+                    px: 1,
+                    py: 0.4,
+
+                    borderRadius: "999px",
+
+                    color: "#f4c542",
+
+                    background: "rgba(244,197,66,0.09)",
+
+                    border: "1px solid rgba(244,197,66,0.25)",
+
+                    fontSize: 9,
+                    fontWeight: 950,
+                  }}
+                >
+                  <CheckCircleRoundedIcon
+                    sx={{
+                      fontSize: 13,
+                    }}
+                  />
+                  ACTIVE
+                </Box>
+              ) : (
+                <Box
+                  sx={{
+                    display: "inline-flex",
+
+                    alignItems: "center",
+
+                    gap: 0.4,
+                    px: 1,
+                    py: 0.4,
+
+                    borderRadius: "999px",
+
+                    color: "#9CA3AF",
+
+                    background: "rgba(255,255,255,0.045)",
+
+                    border: "1px solid rgba(255,255,255,0.09)",
+
+                    fontSize: 9,
+                    fontWeight: 950,
+                  }}
+                >
+                  <LockRoundedIcon
+                    sx={{
+                      fontSize: 12,
+                    }}
+                  />
+                  ARTIST PRO
+                </Box>
+              )}
+            </Box>
 
             <Typography
               sx={{
-                color: "#ffffff",
-                fontSize: 20,
-                fontWeight: 950,
+                color: unlocked ? "#D1D5DB" : "#8B949E",
+
+                fontSize: 13,
+                fontWeight: 750,
+                lineHeight: 1.6,
               }}
             >
-              Artist Pro Membership Benefits
+              {unlocked
+                ? "Your Artist Pro membership benefits are active."
+                : "Upgrade to Artist Pro to unlock membership benefits."}
             </Typography>
-
-            {unlocked ? (
-              <Box
-                sx={{
-                  display: "inline-flex",
-
-                  alignItems: "center",
-
-                  gap: 0.4,
-                  px: 1,
-                  py: 0.4,
-
-                  borderRadius: "999px",
-
-                  color: "#f4c542",
-
-                  background: "rgba(244,197,66,0.09)",
-
-                  border: "1px solid rgba(244,197,66,0.25)",
-
-                  fontSize: 9,
-                  fontWeight: 950,
-                }}
-              >
-                <CheckCircleRoundedIcon
-                  sx={{
-                    fontSize: 13,
-                  }}
-                />
-                ACTIVE
-              </Box>
-            ) : (
-              <Box
-                sx={{
-                  display: "inline-flex",
-
-                  alignItems: "center",
-
-                  gap: 0.4,
-                  px: 1,
-                  py: 0.4,
-
-                  borderRadius: "999px",
-
-                  color: "#9CA3AF",
-
-                  background: "rgba(255,255,255,0.045)",
-
-                  border: "1px solid rgba(255,255,255,0.09)",
-
-                  fontSize: 9,
-                  fontWeight: 950,
-                }}
-              >
-                <LockRoundedIcon
-                  sx={{
-                    fontSize: 12,
-                  }}
-                />
-                ARTIST PRO
-              </Box>
-            )}
           </Box>
 
-          <Typography
-            sx={{
-              color: unlocked ? "#D1D5DB" : "#8B949E",
+          {!isArtistPro && (
+            <Button
+              onClick={() => router.push("/plans")}
+              endIcon={<ArrowForwardRoundedIcon />}
+              sx={{
+                borderRadius: "999px",
 
-              fontSize: 13,
-              fontWeight: 750,
-              lineHeight: 1.6,
-            }}
-          >
-            {unlocked
-              ? "Your Artist Pro membership benefits are active."
-              : "Upgrade to Artist Pro to unlock membership benefits."}
-          </Typography>
+                px: 2.4,
+                minWidth: 190,
+
+                color: "#ffffff",
+
+                backgroundColor: "#FF5500",
+
+                textTransform: "none",
+                fontWeight: 950,
+
+                "&:hover": {
+                  backgroundColor: "#ff6a1a",
+                },
+              }}
+            >
+              Upgrade to Artist Pro
+            </Button>
+          )}
         </Box>
-
-        {!isArtistPro && (
-          <Button
-            onClick={() => router.push("/plans")}
-            endIcon={<ArrowForwardRoundedIcon />}
-            sx={{
-              borderRadius: "999px",
-
-              px: 2.4,
-              minWidth: 190,
-
-              color: "#ffffff",
-
-              backgroundColor: "#FF5500",
-
-              textTransform: "none",
-              fontWeight: 950,
-
-              "&:hover": {
-                backgroundColor: "#ff6a1a",
-              },
-            }}
-          >
-            Upgrade to Artist Pro
-          </Button>
-        )}
-      </Box>
 
       {error ? (
         <Box

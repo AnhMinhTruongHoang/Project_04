@@ -288,22 +288,32 @@ const AppHeader = () => {
               sx={{
                 flex: 1,
                 minWidth: 0,
+
                 px: {
-                  xs: 0.4,
+                  xs: 0.5,
                   sm: 1,
                   md: 2,
                 },
 
                 maxWidth: {
-                  xs: "calc(100vw - 125px)",
+                  xs: isAuthenticated
+                    ? "calc(100vw - 125px)"
+                    : "calc(100vw - 115px)",
+
                   sm: "calc(100vw - 160px)",
+
                   md: "none",
                 },
 
                 display: "flex",
                 alignItems: "center",
 
-                overflow: "hidden",
+                // Quan trọng:
+                // Không dùng overflow hidden vì sẽ cắt dropdown search.
+                overflow: "visible",
+
+                position: "relative",
+                zIndex: 1301,
               }}
             >
               <Box
@@ -311,7 +321,10 @@ const AppHeader = () => {
                   width: "100%",
                   minWidth: 0,
 
+                  position: "relative",
+
                   "& > *": {
+                    width: "100%",
                     maxWidth: "100%",
                   },
                 }}
@@ -377,6 +390,7 @@ const AppHeader = () => {
                 Upload
               </Box>
 
+              {/* DESKTOP AUTH ACTIONS */}
               {isSessionLoading ? (
                 <Box
                   sx={{
@@ -415,6 +429,7 @@ const AppHeader = () => {
                 </Box>
               ) : isAuthenticated ? (
                 <>
+                  {/* USER AVATAR */}
                   <Box
                     onClick={(event) => setAnchorEl(event.currentTarget)}
                     sx={{
@@ -422,6 +437,7 @@ const AppHeader = () => {
                       alignItems: "center",
 
                       gap: 0.5,
+
                       cursor: "pointer",
                     }}
                   >
@@ -450,12 +466,15 @@ const AppHeader = () => {
                     />
                   </Box>
 
+                  {/* NOTIFICATION */}
                   <NotificationBell />
 
+                  {/* MORE ACTIONS */}
                   <IconButton
                     size="small"
                     sx={{
                       color: "#b8b8b8",
+
                       p: 0.5,
 
                       "&:hover": {
@@ -467,14 +486,17 @@ const AppHeader = () => {
                   </IconButton>
                 </>
               ) : (
+                /* SIGN IN */
                 <Button
                   component={Link}
                   href="/auth/signin"
                   sx={{
                     height: 30,
+
                     px: 1.8,
 
                     color: "#ffffff",
+
                     backgroundColor: "#ff5500",
 
                     borderRadius: "4px",
@@ -483,6 +505,8 @@ const AppHeader = () => {
 
                     fontSize: 13,
                     fontWeight: 900,
+
+                    whiteSpace: "nowrap",
 
                     "&:hover": {
                       backgroundColor: "#ff6a00",
@@ -641,11 +665,46 @@ const AppHeader = () => {
           Library
         </MenuItem>
 
+        {/* MOBILE AUTH ACTIONS */}
         <Divider
           sx={{
             borderColor: "rgba(255,255,255,0.08)",
           }}
         />
+
+        {isAuthenticated ? (
+          <MenuItem
+            onClick={async () => {
+              setMobileNavAnchorEl(null);
+
+              await signOut({
+                callbackUrl: "/",
+              });
+            }}
+            sx={{
+              color: "#f2f2f2",
+            }}
+          >
+            <LogoutRoundedIcon fontSize="small" />
+            Logout
+          </MenuItem>
+        ) : (
+          <MenuItem
+            onClick={() => {
+              setMobileNavAnchorEl(null);
+
+              router.push("/auth/signin");
+            }}
+            sx={{
+              color: "#ff5500 !important",
+
+              fontWeight: "900 !important",
+            }}
+          >
+            <PersonRoundedIcon fontSize="small" />
+            Sign in
+          </MenuItem>
+        )}
 
         <MenuItem
           onClick={() => {

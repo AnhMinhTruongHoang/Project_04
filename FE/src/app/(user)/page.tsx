@@ -105,56 +105,101 @@ export default async function HomePage() {
     <Box
       sx={{
         minHeight: "100vh",
+
         color: "#ffffff",
+
         backgroundColor: "#181A1B",
+
+        pb: {
+          xs: "82px",
+          md: "72px",
+        },
       }}
     >
       <Container
         maxWidth="xl"
         sx={{
           display: "flex",
-          gap: 3,
-          py: 3,
+
+          gap: {
+            xs: 0,
+            lg: 3,
+          },
+
+          py: {
+            xs: 2.5,
+            md: 3,
+          },
+
+          px: {
+            xs: 0,
+            sm: 2,
+            md: 3,
+          },
+
           backgroundColor: "#181A1B",
         }}
       >
+        {/* MAIN CONTENT */}
         <Box
           component="main"
           sx={{
             flex: 1,
+
             minWidth: 0,
+
+            overflow: "hidden",
           }}
         >
+          {/* LISTENING HISTORY */}
           {historyTracks.length > 0 && (
             <MainSlider title={historyTitle} data={historyTracks} />
           )}
 
+          {/* BECAUSE YOU LISTENED */}
           {becauseTracks.length > 0 && (
             <MainSlider title={becauseTitle} data={becauseTracks} />
           )}
 
+          {/* HIDDEN GEMS */}
           {hiddenGems.length > 0 && (
             <MainSlider title="Hidden Gems" data={hiddenGems} />
           )}
 
+          {/* TOP NCS */}
           {ncsTracks.length > 0 && (
             <MainSlider title="Top NCS" data={ncsTracks} />
           )}
 
+          {/* TOP KPOP */}
           {kpopTracks.length > 0 && (
             <MainSlider title="Top KPOP" data={kpopTracks} />
           )}
 
+          {/* TOP POP */}
           {popTracks.length > 0 && (
             <MainSlider title="Top POP" data={popTracks} />
           )}
 
+          {/* TOP LOFI */}
           {lofiTracks.length > 0 && (
             <MainSlider title="Top LOFI" data={lofiTracks} />
           )}
         </Box>
 
-        <RightSidebar />
+        {/* DESKTOP RIGHT SIDEBAR */}
+        <Box
+          sx={{
+            display: {
+              xs: "none",
+              lg: "block",
+            },
+
+            flexShrink: 0,
+          }}
+        >
+          <RightSidebar />
+        </Box>
       </Container>
     </Box>
   );

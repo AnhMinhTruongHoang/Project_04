@@ -928,6 +928,7 @@ const AdminBenefitsTable = () => {
         <DialogTitle
           sx={{
             fontWeight: 950,
+            textAlign: "center",
           }}
         >
           {editingBenefit ? "Edit artist benefit" : "Add artist benefit"}
@@ -1000,19 +1001,19 @@ const AdminBenefitsTable = () => {
             {form.imageUrl.trim() && (
               <Box
                 component="img"
-                src={form.imageUrl.trim()}
+                src={getBenefitImageUrl(form.imageUrl.trim())}
                 alt="Benefit preview"
+                onError={(event) => {
+                  event.currentTarget.style.display = "none";
+                }}
                 sx={{
                   width: "100%",
                   height: 180,
-
                   display: "block",
-
                   objectFit: "cover",
-
                   borderRadius: "8px",
-
                   border: "1px solid rgba(255,255,255,0.1)",
+                  backgroundColor: "rgba(255,255,255,0.03)",
                 }}
               />
             )}

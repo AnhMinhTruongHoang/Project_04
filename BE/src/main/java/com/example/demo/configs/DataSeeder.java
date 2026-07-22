@@ -533,8 +533,8 @@ public class DataSeeder {
                                                         "Wonder",
                                                         "Unknown Brain",
                                                         "ncs",
-                                                        "ws.jpg",
-                                                        "ws.mp3"
+                                                        "wonders.jpg",
+                                                        "wonders.mp3"
                                         },
                                         {
                                                         "Overdrive",

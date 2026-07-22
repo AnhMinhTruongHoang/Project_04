@@ -44,13 +44,13 @@ import com.example.demo.entities.Track;
 import com.example.demo.entities.User;
 import com.example.demo.exceptions.UploadQuotaExceededException;
 import com.example.demo.helpers.AudioMetadataHelper;
-import com.example.demo.helpers.FileHelper;
 import com.example.demo.helpers.JwtHelper;
 import com.example.demo.repositories.CategoryRepository;
 import com.example.demo.repositories.CommentRepository;
 import com.example.demo.repositories.ListeningHistoryRepository;
 import com.example.demo.repositories.TrackRepository;
 import com.example.demo.repositories.UserRepository;
+import com.example.demo.services.CloudinaryService;
 
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -91,6 +91,9 @@ public class TrackController {
 
 	@Autowired
 	private NotificationService notificationService;
+
+	@Autowired
+	private CloudinaryService cloudinaryService;
 
 	@Value("${images_url}")
 	private String imagesUrl;
@@ -539,14 +542,39 @@ public class TrackController {
 
 			Category categoryEntity = findOrCreateCategory(
 					category);
+			// =====================================================
+			// UPLOAD MEDIA TO CLOUDINARY
+			// =====================================================
 
-			String imageName = FileHelper.upload(
-					image,
-					"uploads/images");
+			String imageUrl = null;
+			String audioUrl = null;
 
-			String audioName = FileHelper.upload(
-					audio,
-					"uploads/audio");
+			try {
+
+				imageUrl = cloudinaryService
+						.uploadImage(image);
+
+				audioUrl = cloudinaryService
+						.uploadAudio(audio);
+
+			} catch (Exception uploadError) {
+
+				/*
+				 * Nếu image upload thành công nhưng audio lỗi,
+				 * xóa asset đã upload để tránh file rác.
+				 */
+				if (imageUrl != null) {
+					cloudinaryService
+							.deleteImage(imageUrl);
+				}
+
+				if (audioUrl != null) {
+					cloudinaryService
+							.deleteAudio(audioUrl);
+				}
+
+				throw uploadError;
+			}
 
 			LocalDateTime now = LocalDateTime.now();
 
@@ -569,10 +597,10 @@ public class TrackController {
 					categoryEntity.getId());
 
 			track.setImgUrl(
-					imageName);
+					imageUrl);
 
 			track.setTrackUrl(
-					audioName);
+					audioUrl);
 
 			track.setAudioHash(
 					audioHash);
@@ -622,6 +650,7 @@ public class TrackController {
 			Track savedTrack;
 
 			try {
+
 				savedTrack = trackUploadService
 						.saveTrackWithQuota(
 								track,
@@ -629,17 +658,24 @@ public class TrackController {
 
 			} catch (UploadQuotaExceededException e) {
 
-				/*
-				 * Database đã rollback.
-				 * Xóa file vật lý vừa upload.
-				 */
-				FileHelper.deleteIfExists(
-						imageName,
-						"uploads/images");
+				// =====================================================
+				// QUOTA EXCEEDED - CLEANUP CLOUDINARY MEDIA
+				// =====================================================
 
-				FileHelper.deleteIfExists(
-						audioName,
-						"uploads/audio");
+				/*
+				 * Database transaction đã rollback.
+				 *
+				 * Xóa image + audio vừa upload lên Cloudinary
+				 * để tránh tạo asset rác.
+				 */
+
+				cloudinaryService
+						.deleteImage(
+								imageUrl);
+
+				cloudinaryService
+						.deleteAudio(
+								audioUrl);
 
 				Map<String, Object> quotaData = new LinkedHashMap<>();
 
@@ -668,39 +704,47 @@ public class TrackController {
 
 				return ResponseEntity
 						.status(403)
-						.body(new ApiResponse<>(
-								403,
-								e.getMessage(),
-								quotaData));
+						.body(
+								new ApiResponse<>(
+										403,
+										e.getMessage(),
+										quotaData));
 
 			} catch (Exception e) {
 
-				/*
-				 * Track hoặc transaction lỗi:
-				 * dọn file tránh file rác.
-				 */
-				FileHelper.deleteIfExists(
-						imageName,
-						"uploads/images");
+				// =====================================================
+				// DATABASE / TRANSACTION ERROR - CLEANUP CLOUDINARY
+				// =====================================================
 
-				FileHelper.deleteIfExists(
-						audioName,
-						"uploads/audio");
+				/*
+				 * Track save hoặc transaction lỗi.
+				 *
+				 * Xóa media mới vừa upload trên Cloudinary
+				 * để không để lại asset rác.
+				 */
+
+				cloudinaryService
+						.deleteImage(
+								imageUrl);
+
+				cloudinaryService
+						.deleteAudio(
+								audioUrl);
 
 				throw e;
 			}
 
-			///
+			// =====================================================
+			// UPLOAD SUCCESS RESPONSE
+			// =====================================================
 
 			return ResponseEntity.ok(
 					new ApiResponse<>(
 							200,
 							"Track uploaded and waiting for processing",
-							toTrackDTO(savedTrack)));
-
-		} catch (
-
-		Exception e) {
+							toTrackDTO(
+									savedTrack)));
+		} catch (Exception e) {
 			e.printStackTrace();
 
 			return ResponseEntity
@@ -795,8 +839,10 @@ public class TrackController {
 		}
 	}
 
-	@RequestMapping(value = { "{id}", "update/{id}" }, method = { RequestMethod.PUT,
-			RequestMethod.PATCH }, consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+	@RequestMapping(value = { "{id}", "update/{id}" }, method = {
+			RequestMethod.PUT,
+			RequestMethod.PATCH
+	}, consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
 	public ResponseEntity<?> update(
 			@PathVariable String id,
 			@RequestParam("title") String title,
@@ -807,57 +853,262 @@ public class TrackController {
 			HttpServletRequest request) {
 
 		try {
+
+			// =====================================================
+			// AUTHENTICATION
+			// =====================================================
+
 			User user = getCurrentUser(request);
 
 			if (user == null) {
-				return ResponseEntity.status(401).body(new ApiResponse<>(401, "Unauthorized", null));
+				return ResponseEntity
+						.status(401)
+						.body(
+								new ApiResponse<>(
+										401,
+										"Unauthorized",
+										null));
 			}
 
-			Track track = trackRepository.findById(id).orElse(null);
+			// =====================================================
+			// FIND TRACK
+			// =====================================================
 
-			if (track == null || Boolean.TRUE.equals(track.getIsDeleted())) {
-				return ResponseEntity.status(404).body(new ApiResponse<>(404, "Track not found", null));
+			Track track = trackRepository
+					.findById(id)
+					.orElse(null);
+
+			if (track == null
+					|| Boolean.TRUE.equals(
+							track.getIsDeleted())) {
+
+				return ResponseEntity
+						.status(404)
+						.body(
+								new ApiResponse<>(
+										404,
+										"Track not found",
+										null));
 			}
 
-			if (!isOwnerOrAdmin(user, track)) {
-				return ResponseEntity.status(403).body(new ApiResponse<>(403, "Access denied", null));
+			// =====================================================
+			// AUTHORIZATION
+			// =====================================================
+
+			if (!isOwnerOrAdmin(
+					user,
+					track)) {
+
+				return ResponseEntity
+						.status(403)
+						.body(
+								new ApiResponse<>(
+										403,
+										"Access denied",
+										null));
 			}
+
+			// =====================================================
+			// VALIDATION
+			// =====================================================
+
+			if (title == null
+					|| title.trim().isEmpty()) {
+
+				return ResponseEntity
+						.badRequest()
+						.body(
+								new ApiResponse<>(
+										400,
+										"Title is required",
+										null));
+			}
+
+			if (category == null
+					|| category.trim().isEmpty()) {
+
+				return ResponseEntity
+						.badRequest()
+						.body(
+								new ApiResponse<>(
+										400,
+										"Category is required",
+										null));
+			}
+
+			// =====================================================
+			// UPDATE TRACK INFO
+			// =====================================================
 
 			String cleanTitle = title.trim();
-			String cleanDescription = description.trim();
-			Category categoryEntity = findOrCreateCategory(category);
 
-			track.setTitle(cleanTitle);
-			track.setSlug(createSlug(cleanTitle, track.getId()));
-			track.setDescription(cleanDescription);
-			track.setCategoryId(categoryEntity.getId());
+			String cleanDescription = description == null
+					? ""
+					: description.trim();
 
+			Category categoryEntity = findOrCreateCategory(
+					category);
+
+			track.setTitle(
+					cleanTitle);
+
+			track.setSlug(
+					createSlug(
+							cleanTitle,
+							track.getId()));
+
+			track.setDescription(
+					cleanDescription);
+
+			track.setCategoryId(
+					categoryEntity.getId());
+
+			/*
+			 * User thường sửa track thì đưa lại về trạng thái
+			 * chờ admin duyệt.
+			 *
+			 * Admin sửa thì giữ trạng thái hiện tại.
+			 */
 			if (!isAdmin(user)) {
+
 				track.setApprovalStatus(
 						TRACK_PENDING);
 
-				track.setRejectionReason(null);
+				track.setRejectionReason(
+						null);
 			}
 
-			if (image != null && !image.isEmpty()) {
-				String imageName = FileHelper.upload(image, "uploads/images");
-				track.setImgUrl(imageName);
+			// =====================================================
+			// PREPARE CLOUDINARY MEDIA UPDATE
+			// =====================================================
+
+			String oldImageUrl = track.getImgUrl();
+
+			String oldAudioUrl = track.getTrackUrl();
+
+			String newImageUrl = null;
+
+			String newAudioUrl = null;
+
+			try {
+
+				// =================================================
+				// UPLOAD NEW IMAGE
+				// =================================================
+
+				if (image != null
+						&& !image.isEmpty()) {
+
+					newImageUrl = cloudinaryService
+							.uploadImage(
+									image);
+
+					track.setImgUrl(
+							newImageUrl);
+				}
+
+				// =================================================
+				// UPLOAD NEW AUDIO
+				// =================================================
+
+				if (audio != null
+						&& !audio.isEmpty()) {
+
+					newAudioUrl = cloudinaryService
+							.uploadAudio(
+									audio);
+
+					track.setTrackUrl(
+							newAudioUrl);
+				}
+
+				// =================================================
+				// SAVE DATABASE
+				// =================================================
+
+				track.setUpdatedAt(
+						LocalDateTime.now());
+
+				Track savedTrack = trackRepository.save(
+						track);
+
+				// =================================================
+				// DELETE OLD CLOUDINARY ASSETS AFTER DB SUCCESS
+				// =================================================
+
+				/*
+				 * Chỉ xóa media cũ sau khi database save thành công.
+				 *
+				 * Nếu URL cũ là filename local hoặc localhost,
+				 * CloudinaryService.delete...() sẽ tự bỏ qua.
+				 */
+
+				if (newImageUrl != null) {
+
+					cloudinaryService
+							.deleteImage(
+									oldImageUrl);
+				}
+
+				if (newAudioUrl != null) {
+
+					cloudinaryService
+							.deleteAudio(
+									oldAudioUrl);
+				}
+
+				// =================================================
+				// RESPONSE
+				// =================================================
+
+				return ResponseEntity.ok(
+						new ApiResponse<>(
+								200,
+								"Update track success",
+								toTrackDTO(
+										savedTrack)));
+
+			} catch (Exception updateError) {
+
+				// =================================================
+				// CLEANUP NEW CLOUDINARY ASSETS ON ERROR
+				// =================================================
+
+				/*
+				 * Nếu upload hoặc database update lỗi:
+				 *
+				 * - Xóa media mới vừa upload.
+				 * - Giữ nguyên media cũ.
+				 */
+
+				if (newImageUrl != null) {
+
+					cloudinaryService
+							.deleteImage(
+									newImageUrl);
+				}
+
+				if (newAudioUrl != null) {
+
+					cloudinaryService
+							.deleteAudio(
+									newAudioUrl);
+				}
+
+				throw updateError;
 			}
-
-			if (audio != null && !audio.isEmpty()) {
-				String audioName = FileHelper.upload(audio, "uploads/audio");
-				track.setTrackUrl(audioName);
-			}
-
-			track.setUpdatedAt(LocalDateTime.now());
-
-			trackRepository.save(track);
-
-			return ResponseEntity.ok(new ApiResponse<>(200, "Update track success", toTrackDTO(track)));
 
 		} catch (Exception e) {
+
 			e.printStackTrace();
-			return ResponseEntity.internalServerError().body(new ApiResponse<>(500, e.getMessage(), null));
+
+			return ResponseEntity
+					.internalServerError()
+					.body(
+							new ApiResponse<>(
+									500,
+									e.getMessage(),
+									null));
 		}
 	}
 

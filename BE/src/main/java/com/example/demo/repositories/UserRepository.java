@@ -6,13 +6,9 @@ import java.util.Optional;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
-
 import com.example.demo.entities.User;
-
-import jakarta.persistence.LockModeType;
 
 public interface UserRepository extends JpaRepository<User, String> {
 
@@ -43,12 +39,12 @@ public interface UserRepository extends JpaRepository<User, String> {
 	 * =========================
 	 */
 
-	@Lock(LockModeType.PESSIMISTIC_WRITE)
-	@Query("""
-			    SELECT user
-			    FROM User user
-			    WHERE user.id = :userId
-			""")
+	@Query(value = """
+			SELECT *
+			FROM users
+			WHERE id = :userId
+			FOR UPDATE
+			""", nativeQuery = true)
 	Optional<User> findByIdForUpdate(
 			@Param("userId") String userId);
 	///

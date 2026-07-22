@@ -270,17 +270,6 @@ const AppHeader = () => {
                   }}
                 />
               )}
-
-              {isAdmin && (
-                <MenuItem
-                  onClick={() => {
-                    setMobileNavAnchorEl(null);
-                    router.push("/dashboard");
-                  }}
-                >
-                  Dashboard
-                </MenuItem>
-              )}
             </Box>
 
             {/* SEARCH */}

@@ -79,9 +79,9 @@ export default async function HomePage() {
   const historyTitle =
     continueListening.length > 0 ? "Continue Listening" : "Recently Played";
 
-  const becauseTracks = Array.isArray(becauseResponse?.data?.result)
-    ? becauseResponse.data.result
-    : [];
+  const becauseResult = becauseResponse?.data?.result;
+
+  const becauseTracks = Array.isArray(becauseResult) ? becauseResult : [];
 
   const basedOnTrack = becauseResponse?.data?.basedOn;
 

@@ -311,12 +311,7 @@ const ProfileMain = ({ user, tracks }: Props) => {
         );
 
       case "Support":
-        return (
-          <ProfileSupportTab
-            upgradeHref="/upgrade"
-            learnMoreHref="/artist-studio"
-          />
-        );
+        return <ProfileSupportTab />;
 
       default:
         return null;

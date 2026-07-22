@@ -11,8 +11,7 @@ import com.example.demo.entities.ArtistBenefit;
 import com.example.demo.repositories.ArtistBenefitRepository;
 
 @Component
-public class ArtistBenefitSeeder
-                implements CommandLineRunner {
+public class ArtistBenefitSeeder implements CommandLineRunner {
 
         private final ArtistBenefitRepository artistBenefitRepository;
 
@@ -56,8 +55,7 @@ public class ArtistBenefitSeeder
                                                 "artist-benefit-4",
                                                 "Get 3 free months of Output's Arcade plug-in and samples",
                                                 "Experiment with creative instruments and sample libraries.",
-                                                "Save $ plug-in and samples",
-                                                "Experiment with creative instruments39",
+                                                "Save $39",
                                                 "https://res.cloudinary.com/eybmkz9z/image/upload/v1784716524/benefit4_auyq1w.png",
                                                 4));
 

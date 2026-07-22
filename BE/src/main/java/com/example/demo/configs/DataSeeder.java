@@ -446,13 +446,6 @@ public class DataSeeder {
                         String[][] seedTracks = {
                                         // ===== NCS =====
                                         {
-                                                        "Wonder",
-                                                        "Unknown Brain",
-                                                        "ncs",
-                                                        "wonder.jpg",
-                                                        "wonder.mp3"
-                                        },
-                                        {
                                                         "Back To You",
                                                         "DJSM & Ima Sobé",
                                                         "ncs",

@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
@@ -190,7 +190,7 @@ const ListeningHistory = () => {
           src={getTrackImageUrl(latestTrack.imgUrl ?? "")}
           alt={latestTrack.title}
           onError={(e) => {
-            e.currentTarget.src = "/audio/SC.png";
+            e.currentTarget.src = "https://res.cloudinary.com/eybmkz9z/image/upload/v1784726300/default_djtlyj.png";
           }}
           sx={{
             width: 44,
@@ -267,3 +267,4 @@ const ListeningHistory = () => {
 };
 
 export default ListeningHistory;
+

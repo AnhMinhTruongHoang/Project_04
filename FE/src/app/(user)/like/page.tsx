@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+﻿import type { Metadata } from "next";
 import Container from "@mui/material/Container";
 import Divider from "@mui/material/Divider";
 import Box from "@mui/material/Box";
@@ -20,11 +20,11 @@ import Link from "next/link";
 
 export const metadata: Metadata = {
   title: "Tracks you liked",
-  description: "miêu tả thôi mà",
+  description: "miÃªu táº£ thÃ´i mÃ ",
 };
 
 const getTrackImage = (imgUrl?: string | null) => {
-  if (!imgUrl) return "/audio/SC.png";
+  if (!imgUrl) return "https://res.cloudinary.com/eybmkz9z/image/upload/v1784726300/default_djtlyj.png";
 
   return getImageUrl(imgUrl);
 };
@@ -131,7 +131,7 @@ const LikePage = async () => {
                 mb: 0.8,
               }}
             >
-              You haven’t liked any songs yet !.
+              You havenâ€™t liked any songs yet !.
             </Typography>
 
             <Typography
@@ -318,3 +318,4 @@ const LikePage = async () => {
 };
 
 export default LikePage;
+

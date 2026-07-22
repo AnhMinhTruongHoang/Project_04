@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { convertSlugUrl, sendRequest } from "@/utils/api";
 import { useEffect, useState } from "react";
@@ -18,7 +18,7 @@ type Props = {
   query?: string;
 };
 
-const DEFAULT_IMAGE = "/audio/SC.png";
+const DEFAULT_IMAGE = "https://res.cloudinary.com/eybmkz9z/image/upload/v1784726300/default_djtlyj.png";
 const DEFAULT_AUDIO = "/audio/DemoS.mp3";
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "";
 
@@ -84,7 +84,7 @@ const ClientSearch = ({ query = "" }: Props) => {
         setLoading(true);
         console.log("[ClientSearch] Fetching with keyword:", keyword);
 
-        // Dùng GET như dropdown thay vì POST
+        // DÃ¹ng GET nhÆ° dropdown thay vÃ¬ POST
         const res = await sendRequest<
           IBackendRes<IModelPaginate<ITrackTop> | ITrackTop[]>
         >({
@@ -479,3 +479,4 @@ const ClientSearch = ({ query = "" }: Props) => {
 };
 
 export default ClientSearch;
+

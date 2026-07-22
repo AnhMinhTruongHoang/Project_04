@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import "react-h5-audio-player/lib/styles.css";
 
@@ -62,8 +62,8 @@ const AppFooter = () => {
   });
 
   /*
-   * Mỗi track detail chỉ tự bỏ mute một lần.
-   * Nhờ vậy user vẫn có thể mute lại ngay trong trang.
+   * Má»—i track detail chá»‰ tá»± bá» mute má»™t láº§n.
+   * Nhá» váº­y user váº«n cÃ³ thá»ƒ mute láº¡i ngay trong trang.
    */
   const detailVolumeResetRef = useRef<string>("");
 
@@ -103,7 +103,7 @@ const AppFooter = () => {
   };
 
   const getImageUrl = (imgUrl?: string | null) => {
-    if (!imgUrl) return "/audio/SC.png";
+    if (!imgUrl) return "https://res.cloudinary.com/eybmkz9z/image/upload/v1784726300/default_djtlyj.png";
 
     if (imgUrl.startsWith("http")) {
       return imgUrl;
@@ -455,18 +455,18 @@ const AppFooter = () => {
   };
 
   /*
-   * Luôn giữ snapshot mới nhất của track.
+   * LuÃ´n giá»¯ snapshot má»›i nháº¥t cá»§a track.
    */
   useEffect(() => {
     currentTrackRef.current = currentTrack;
   }, [currentTrack]);
 
   /*
-   * Cứ mỗi 15 giây khi đang phát sẽ lưu lên backend.
+   * Cá»© má»—i 15 giÃ¢y khi Ä‘ang phÃ¡t sáº½ lÆ°u lÃªn backend.
    *
-   * Hoạt động cho cả:
-   * - AudioPlayer ở footer
-   * - WaveSurfer ở trang track detail
+   * Hoáº¡t Ä‘á»™ng cho cáº£:
+   * - AudioPlayer á»Ÿ footer
+   * - WaveSurfer á»Ÿ trang track detail
    */
   useEffect(() => {
     if (!accessToken) {
@@ -489,7 +489,7 @@ const AppFooter = () => {
   }, [accessToken, persistListeningProgress]);
 
   /*
-   * Lưu ngay khi pause hoặc bài kết thúc.
+   * LÆ°u ngay khi pause hoáº·c bÃ i káº¿t thÃºc.
    */
   useEffect(() => {
     if (!currentTrack) {
@@ -519,8 +519,8 @@ const AppFooter = () => {
   ]);
 
   /*
-   * Lưu track cũ khi user đổi sang track khác
-   * hoặc AppFooter bị unmount.
+   * LÆ°u track cÅ© khi user Ä‘á»•i sang track khÃ¡c
+   * hoáº·c AppFooter bá»‹ unmount.
    */
   useEffect(() => {
     return () => {
@@ -539,7 +539,7 @@ const AppFooter = () => {
   ]);
 
   /*
-   * Lưu lịch sử nghe.
+   * LÆ°u lá»‹ch sá»­ nghe.
    */
   useEffect(() => {
     const trackId = getTrackId(currentTrack);
@@ -556,7 +556,7 @@ const AppFooter = () => {
   ]);
 
   /*
-   * Đọc volume đã lưu trước đó.
+   * Äá»c volume Ä‘Ã£ lÆ°u trÆ°á»›c Ä‘Ã³.
    */
   useEffect(() => {
     if (!hasMounted) return;
@@ -590,14 +590,14 @@ const AppFooter = () => {
   }, [hasMounted]);
 
   /*
-   * Khi vừa đi từ trang khác vào /track/{slug},
-   * nếu app đang mute thì tự khôi phục âm lượng trước đó.
+   * Khi vá»«a Ä‘i tá»« trang khÃ¡c vÃ o /track/{slug},
+   * náº¿u app Ä‘ang mute thÃ¬ tá»± khÃ´i phá»¥c Ã¢m lÆ°á»£ng trÆ°á»›c Ä‘Ã³.
    *
-   * Kết quả:
-   * - WaveSurfer phát có tiếng.
-   * - Icon footer đổi sang VolumeUp.
-   * - Nếu user mute lại ngay trong trang track,
-   *   effect không tự bật tiếng lần thứ hai.
+   * Káº¿t quáº£:
+   * - WaveSurfer phÃ¡t cÃ³ tiáº¿ng.
+   * - Icon footer Ä‘á»•i sang VolumeUp.
+   * - Náº¿u user mute láº¡i ngay trong trang track,
+   *   effect khÃ´ng tá»± báº­t tiáº¿ng láº§n thá»© hai.
    */
   useEffect(() => {
     if (!hasMounted) return;
@@ -677,7 +677,7 @@ const AppFooter = () => {
   ]);
 
   /*
-   * Đồng bộ volume state với audio element footer.
+   * Äá»“ng bá»™ volume state vá»›i audio element footer.
    */
   useEffect(() => {
     if (!hasMounted) return;
@@ -699,8 +699,8 @@ const AppFooter = () => {
   }, [hasMounted]);
 
   /*
-   * Ngoài trang detail: AudioPlayer footer phát nhạc.
-   * Trong trang detail: dừng audio footer để WaveSurfer làm nguồn phát duy nhất.
+   * NgoÃ i trang detail: AudioPlayer footer phÃ¡t nháº¡c.
+   * Trong trang detail: dá»«ng audio footer Ä‘á»ƒ WaveSurfer lÃ m nguá»“n phÃ¡t duy nháº¥t.
    */
   useEffect(() => {
     const audio = playerRef.current?.audio?.current;
@@ -746,7 +746,7 @@ const AppFooter = () => {
   ]);
 
   /*
-   * Mọi hook phải nằm trước các return có điều kiện.
+   * Má»i hook pháº£i náº±m trÆ°á»›c cÃ¡c return cÃ³ Ä‘iá»u kiá»‡n.
    */
   if (!hasMounted) {
     return <></>;
@@ -860,7 +860,7 @@ const AppFooter = () => {
                 src={getTrackImage()}
                 alt={currentTrack?.title || "track image"}
                 onError={(event: any) => {
-                  event.currentTarget.src = "/audio/SC.png";
+                  event.currentTarget.src = "https://res.cloudinary.com/eybmkz9z/image/upload/v1784726300/default_djtlyj.png";
                 }}
                 sx={{
                   width: "100%",
@@ -1617,7 +1617,7 @@ const AppFooter = () => {
                   src={getTrackImage()}
                   alt={currentTrack.title || "track image"}
                   onError={(event: any) => {
-                    event.currentTarget.src = "/audio/SC.png";
+                    event.currentTarget.src = "https://res.cloudinary.com/eybmkz9z/image/upload/v1784726300/default_djtlyj.png";
                   }}
                   sx={{
                     width: "100%",
@@ -1745,3 +1745,4 @@ const AppFooter = () => {
 };
 
 export default AppFooter;
+

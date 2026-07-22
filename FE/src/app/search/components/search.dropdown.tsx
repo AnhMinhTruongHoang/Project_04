@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -21,7 +21,7 @@ type SearchDropdownProps = {
 };
 
 const SearchDropdown = ({ onEmptySearch }: SearchDropdownProps) => {
-  const DEFAULT_IMAGE = "/audio/SC.png";
+  const DEFAULT_IMAGE = "https://res.cloudinary.com/eybmkz9z/image/upload/v1784726300/default_djtlyj.png";
   const DEFAULT_AUDIO = "/audio/DemoS.mp3";
   const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "";
 
@@ -321,7 +321,7 @@ const SearchDropdown = ({ onEmptySearch }: SearchDropdownProps) => {
           <Box
             sx={{
               // Mobile:
-              // bung dropdown rộng theo viewport.
+              // bung dropdown rá»™ng theo viewport.
               position: {
                 xs: "fixed",
                 md: "absolute",
@@ -424,7 +424,7 @@ const SearchDropdown = ({ onEmptySearch }: SearchDropdownProps) => {
                   fontWeight: 900,
                 }}
               >
-                “{searchValue}”
+                â€œ{searchValue}â€
               </Box>
             </Box>
 
@@ -692,3 +692,4 @@ const SearchDropdown = ({ onEmptySearch }: SearchDropdownProps) => {
 };
 
 export default SearchDropdown;
+

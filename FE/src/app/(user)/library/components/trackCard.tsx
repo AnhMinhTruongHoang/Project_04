@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import Box from "@mui/material/Box";
 import Typography from "@mui/material/Typography";
@@ -69,7 +69,7 @@ const TrackCard = ({ track }: Props) => {
           alt={title}
           onError={(e) => {
             const target = e.currentTarget as HTMLImageElement;
-            target.src = "/audio/SC.png";
+            target.src = "https://res.cloudinary.com/eybmkz9z/image/upload/v1784726300/default_djtlyj.png";
           }}
           sx={{
             width: "100%",
@@ -130,3 +130,4 @@ const TrackCard = ({ track }: Props) => {
 };
 
 export default TrackCard;
+

@@ -1,4 +1,4 @@
-import { getTrackId } from "@/utils/api";
+﻿import { getTrackId } from "@/utils/api";
 
 export const getTrackTitle = (track?: any) => {
   return track?.title || track?.name || "Untitled track";
@@ -25,7 +25,7 @@ export const getTrackImage = (track?: any) => {
     track?.coverUrl ||
     "";
 
-  if (!image) return "/audio/SC.png";
+  if (!image) return "https://res.cloudinary.com/eybmkz9z/image/upload/v1784726300/default_djtlyj.png";
 
   if (image.startsWith("http")) return image;
   if (image.startsWith("/")) return image;
@@ -53,3 +53,4 @@ export const getPlaylistCover = (playlist?: any) => {
 export const getSafeTrackId = (track?: any) => {
   return getTrackId(track) || track?._id || track?.id || "";
 };
+

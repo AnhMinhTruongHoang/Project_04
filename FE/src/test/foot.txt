@@ -39,7 +39,7 @@ const AppFooter = () => {
   const getTrackImage = () => {
     const imgUrl = currentTrack?.imgUrl;
 
-    if (!imgUrl) return "/audio/SC.png";
+    if (!imgUrl) return "https://res.cloudinary.com/eybmkz9z/image/upload/v1784726300/default_djtlyj.png";
     if (imgUrl.startsWith("http")) return imgUrl;
     if (imgUrl.startsWith("/")) return imgUrl;
 
@@ -312,7 +312,7 @@ const AppFooter = () => {
               src={getTrackImage()}
               alt={currentTrack.title}
               onError={(e) => {
-                e.currentTarget.src = "/audio/SC.png";
+                e.currentTarget.src = "https://res.cloudinary.com/eybmkz9z/image/upload/v1784726300/default_djtlyj.png";
               }}
               style={{
                 width: "38px",

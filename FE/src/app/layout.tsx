@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+﻿import type { Metadata } from "next";
 import ThemeRegistry from "@/components/theme-registry/theme.registry";
 import NextAuthWrapper from "@/lib/next.auth.wrapper";
 import NProgressWrapper from "@/lib/nprogress.wrapper";
@@ -17,7 +17,7 @@ export const metadata: Metadata = {
     title: "SoundClone",
     description: "SoundClone",
     type: "website",
-    images: ["/audio/SC.png"],
+    images: ["https://res.cloudinary.com/eybmkz9z/image/upload/v1784726300/default_djtlyj.png"],
   },
 };
 
@@ -46,3 +46,4 @@ export default function RootLayout({
     </html>
   );
 }
+

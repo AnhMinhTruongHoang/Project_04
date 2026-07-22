@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import Box from "@mui/material/Box";
 import Popover from "@mui/material/Popover";
@@ -30,7 +30,7 @@ type FooterQueuePopoverProps = {
 const getTrackImage = (track?: Partial<ITrackTop> | null) => {
   const imgUrl = track?.imgUrl;
 
-  if (!imgUrl) return "/audio/SC.png";
+  if (!imgUrl) return "https://res.cloudinary.com/eybmkz9z/image/upload/v1784726300/default_djtlyj.png";
   if (imgUrl.startsWith("http")) return imgUrl;
   if (imgUrl.startsWith("/")) return imgUrl;
 
@@ -239,7 +239,7 @@ const FooterQueuePopover = ({
                       src={getTrackImage(track)}
                       alt={track.title}
                       onError={(e) => {
-                        e.currentTarget.src = "/audio/SC.png";
+                        e.currentTarget.src = "https://res.cloudinary.com/eybmkz9z/image/upload/v1784726300/default_djtlyj.png";
                       }}
                       sx={{
                         width: "100%",
@@ -390,7 +390,7 @@ const FooterQueuePopover = ({
                   lineHeight: 1.4,
                 }}
               >
-                Hear related tracks based on what’s playing now.
+                Hear related tracks based on whatâ€™s playing now.
               </Typography>
             </Box>
 
@@ -415,3 +415,4 @@ const FooterQueuePopover = ({
 };
 
 export default FooterQueuePopover;
+

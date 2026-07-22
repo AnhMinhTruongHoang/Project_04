@@ -1,27 +1,75 @@
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "";
 
 /**
- * Build full image url.
+ * Normalize legacy localhost media URLs.
+ *
+ * Examples:
+ * http://localhost:8000/uploads/images/a.jpg
+ * -> https://your-backend.com/uploads/images/a.jpg
+ */
+const normalizeLegacyBackendUrl = (url: string) => {
+  if (
+    url.startsWith("http://localhost:8000") ||
+    url.startsWith("http://127.0.0.1:8000") ||
+    url.startsWith("http://localhost:8080") ||
+    url.startsWith("http://127.0.0.1:8080")
+  ) {
+    const path = url.replace(
+      /^http:\/\/(localhost|127\.0\.0\.1):(8000|8080)/,
+      ""
+    );
+
+    return `${BACKEND_URL}${path}`;
+  }
+
+  return url;
+};
+
+/**
+ * Build full image URL.
  */
 export const getImageUrl = (
   path?: string | null,
   fallback = "/images/logo/Sc.png"
 ) => {
-  if (!path) return fallback;
-
-  if (path.startsWith("http://") || path.startsWith("https://")) {
-    return path;
+  if (!path) {
+    return fallback;
   }
 
-  if (path.startsWith("/uploads")) {
-    return `${BACKEND_URL}${path}`;
+  const normalizedPath = path.trim();
+
+  if (!normalizedPath) {
+    return fallback;
   }
 
-  if (path.startsWith("/")) {
-    return path;
+  // Legacy localhost URL
+  if (
+    normalizedPath.startsWith("http://localhost:") ||
+    normalizedPath.startsWith("http://127.0.0.1:")
+  ) {
+    return normalizeLegacyBackendUrl(normalizedPath);
   }
 
-  return `${BACKEND_URL}/uploads/images/${path}`;
+  // Cloudinary / external URL
+  if (
+    normalizedPath.startsWith("http://") ||
+    normalizedPath.startsWith("https://")
+  ) {
+    return normalizedPath;
+  }
+
+  // Legacy backend upload path
+  if (normalizedPath.startsWith("/uploads")) {
+    return `${BACKEND_URL}${normalizedPath}`;
+  }
+
+  // Frontend public asset
+  if (normalizedPath.startsWith("/")) {
+    return normalizedPath;
+  }
+
+  // Legacy image filename only
+  return `${BACKEND_URL}/uploads/images/${normalizedPath}`;
 };
 
 /**
@@ -41,19 +89,13 @@ export const getUserAvatarUrl = (user?: Partial<IUser> | null) => {
  * User cover
  */
 export const getUserCoverUrl = (user?: any) => {
-  const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "";
-
   const cover = user?.coverUrl || "";
 
-  if (!cover) return "/images/default-cover.jpg";
-
-  if (cover.startsWith("http")) return cover;
-
-  if (cover.startsWith("/uploads/images")) {
-    return `${BACKEND_URL}${cover}`;
+  if (!cover) {
+    return "/images/default-cover.jpg";
   }
 
-  return `${BACKEND_URL}/uploads/images/${cover}`;
+  return getImageUrl(cover, "/images/default-cover.jpg");
 };
 
 /**
@@ -120,18 +162,10 @@ export const isArtistPro = (user?: Partial<IUser> | null) => {
 /**
  * Benefit image
  */
-
 export const getBenefitImageUrl = (imageUrl?: string | null) => {
   if (!imageUrl) {
     return "";
   }
 
-  if (imageUrl.startsWith("http://") || imageUrl.startsWith("https://")) {
-    return imageUrl;
-  }
-
-  const backendUrl =
-    process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8080";
-
-  return `${backendUrl}${imageUrl}`;
+  return getImageUrl(imageUrl, "");
 };

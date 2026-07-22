@@ -246,8 +246,9 @@ const NotificationsPage = () => {
           throw new Error(response?.message || "Cannot load notifications");
         }
 
-        const items = Array.isArray(response?.data?.content)
-          ? response.data.content
+        const responseData = response?.data;
+        const items = Array.isArray(responseData?.content)
+          ? responseData.content
           : [];
 
         setNotifications((current) =>

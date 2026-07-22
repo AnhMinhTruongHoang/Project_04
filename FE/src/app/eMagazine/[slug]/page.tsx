@@ -2,8 +2,7 @@ import { notFound } from "next/navigation";
 import SonTungMagazine from "../sontung/sontung";
 import NcsMagazine from "../ncs/ncs";
 import WeekndMagazine from "../weeknd/weeknd";
-import BlackpinkMagazine from "../blackpink/blackpink";
-
+import BlackpinkMagazine from "../blackPink/blackPink";
 
 const magazineMap = {
   sontung: SonTungMagazine,

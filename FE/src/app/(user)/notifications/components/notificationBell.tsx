@@ -211,8 +211,10 @@ const NotificationBell = () => {
         return;
       }
 
+      const notificationContent = response?.data?.content;
+
       setNotifications(
-        Array.isArray(response?.data?.content) ? response.data.content : []
+        Array.isArray(notificationContent) ? notificationContent : []
       );
     } catch (error) {
       console.error("Cannot load notifications:", error);

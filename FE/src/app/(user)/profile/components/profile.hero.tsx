@@ -79,6 +79,7 @@ const ProfileHero = ({ user }: Props) => {
       return;
     }
 
+    ///no token return
     if (!accessToken) {
       toast.error("Please login first.");
       event.target.value = "";

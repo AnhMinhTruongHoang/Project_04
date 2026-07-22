@@ -4,6 +4,7 @@ import NcsMagazine from "../ncs/ncs";
 import WeekndMagazine from "../weeknd/weeknd";
 import BlackpinkMagazine from "../blackpink/blackpink";
 
+
 const magazineMap = {
   sontung: SonTungMagazine,
   ncs: NcsMagazine,

@@ -247,6 +247,7 @@ const NotificationsPage = () => {
         }
 
         const responseData = response?.data;
+
         const items = Array.isArray(responseData?.content)
           ? responseData.content
           : [];
@@ -267,7 +268,7 @@ const NotificationsPage = () => {
 
         setPage(requestedPage);
 
-        setLastPage(Boolean(response?.data?.last));
+        setLastPage(Boolean(responseData?.last));
       } catch (error) {
         console.error("Cannot load notifications:", error);
 

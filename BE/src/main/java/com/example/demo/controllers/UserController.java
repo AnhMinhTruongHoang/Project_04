@@ -335,8 +335,10 @@ public class UserController {
 
 		user.setFollowers(
 				safeCount(userFollowRepository.countByFollowing_Id(userId)));
+
 		user.setFollowing(
 				safeCount(userFollowRepository.countByFollower_Id(userId)));
+
 		user.setUpdatedAt(new Date());
 
 		userRepository.save(user);
@@ -360,12 +362,18 @@ public class UserController {
 
 		data.put("isFollowing", isFollowing);
 		data.put("user", toDTO(targetUser));
+
 		data.put(
 				"currentUserFollowing",
-				currentUser == null ? 0 : safeNumber(currentUser.getFollowing()));
+				currentUser == null
+						? 0
+						: safeNumber(currentUser.getFollowing()));
+
 		data.put(
 				"targetFollowers",
-				targetUser == null ? 0 : safeNumber(targetUser.getFollowers()));
+				targetUser == null
+						? 0
+						: safeNumber(targetUser.getFollowers()));
 
 		return data;
 	}
@@ -388,6 +396,7 @@ public class UserController {
 			List<UserDTO> users = toDTOList(userRepository.findAll());
 
 			Map<String, Object> data = new LinkedHashMap<>();
+
 			data.put("result", users);
 			data.put("total", users.size());
 
@@ -417,6 +426,7 @@ public class UserController {
 			}
 
 			int safeCurrent = Math.max(current, 1);
+
 			int safePageSize = Math.min(
 					Math.max(pageSize, 1),
 					MAX_PAGE_SIZE);
@@ -430,12 +440,14 @@ public class UserController {
 			List<UserDTO> users = toDTOList(page.getContent());
 
 			Map<String, Object> meta = new LinkedHashMap<>();
+
 			meta.put("current", safeCurrent);
 			meta.put("pageSize", safePageSize);
 			meta.put("pages", page.getTotalPages());
 			meta.put("total", page.getTotalElements());
 
 			Map<String, Object> data = new LinkedHashMap<>();
+
 			data.put("meta", meta);
 			data.put("result", users);
 
@@ -488,27 +500,36 @@ public class UserController {
 
 			User user = new User();
 
-			user.setId(UUID.randomUUID()
-					.toString()
-					.replace("-", "")
-					.substring(0, 24));
+			user.setId(
+					UUID.randomUUID()
+							.toString()
+							.replace("-", "")
+							.substring(0, 24));
 
 			user.setEmail(email);
+
 			user.setUsername(
 					getString(body, "username") != null
 							? getString(body, "username")
 							: email);
 
 			user.setPassword(
-					BCrypt.hashpw(password, BCrypt.gensalt()));
+					BCrypt.hashpw(
+							password,
+							BCrypt.gensalt()));
 
-			user.setName(name != null ? name : email);
+			user.setName(
+					name != null
+							? name
+							: email);
+
 			user.setRole(
 					getString(body, "role") != null
 							? getString(body, "role").toUpperCase()
 							: "USER");
 
-			user.setAge(getInteger(body, "age"));
+			user.setAge(
+					getInteger(body, "age"));
 
 			user.setGender(
 					getString(body, "gender") != null
@@ -521,13 +542,26 @@ public class UserController {
 							: "SYSTEM");
 
 			user.setAvatarUrl(
-					getString(body, "avatarUrl", "avatar", "image"));
+					getString(
+							body,
+							"avatarUrl",
+							"avatar",
+							"image"));
 
-			user.setCoverUrl(getString(body, "coverUrl"));
-			user.setBio(getString(body, "bio"));
-			user.setWebsite(getString(body, "website"));
-			user.setCity(getString(body, "city"));
-			user.setCountry(getString(body, "country"));
+			user.setCoverUrl(
+					getString(body, "coverUrl"));
+
+			user.setBio(
+					getString(body, "bio"));
+
+			user.setWebsite(
+					getString(body, "website"));
+
+			user.setCity(
+					getString(body, "city"));
+
+			user.setCountry(
+					getString(body, "country"));
 
 			user.setVerified(
 					getBoolean(body, "verified") != null
@@ -548,40 +582,60 @@ public class UserController {
 			user.setFollowing(0);
 			user.setCode("");
 			user.setRefreshToken("");
+
 			user.setCreatedAt(new Date());
 			user.setUpdatedAt(new Date());
 
 			userRepository.save(user);
 
 			return new ResponseEntity<>(
-					new ApiResponse<>(201, "Create user success", toDTO(user)),
+					new ApiResponse<>(
+							201,
+							"Create user success",
+							toDTO(user)),
 					HttpStatus.CREATED);
 
 		} catch (Exception e) {
 			return new ResponseEntity<>(
-					new ApiResponse<>(500, e.getMessage(), null),
+					new ApiResponse<>(
+							500,
+							e.getMessage(),
+							null),
 					HttpStatus.INTERNAL_SERVER_ERROR);
 		}
 	}
 
 	@GetMapping({ "/{id}", "/search/{id}" })
-	public ResponseEntity<?> findById(@PathVariable String id) {
+	public ResponseEntity<?> findById(
+			@PathVariable String id) {
+
 		try {
-			User user = userRepository.findById(id).orElse(null);
+			User user = userRepository
+					.findById(id)
+					.orElse(null);
 
 			if (user == null) {
 				return new ResponseEntity<>(
-						new ApiResponse<>(404, "User not found", null),
+						new ApiResponse<>(
+								404,
+								"User not found",
+								null),
 						HttpStatus.NOT_FOUND);
 			}
 
 			return new ResponseEntity<>(
-					new ApiResponse<>(200, "Fetch user by id", toDTO(user)),
+					new ApiResponse<>(
+							200,
+							"Fetch user by id",
+							toDTO(user)),
 					HttpStatus.OK);
 
 		} catch (Exception e) {
 			return new ResponseEntity<>(
-					new ApiResponse<>(500, e.getMessage(), null),
+					new ApiResponse<>(
+							500,
+							e.getMessage(),
+							null),
 					HttpStatus.INTERNAL_SERVER_ERROR);
 		}
 	}
@@ -595,7 +649,10 @@ public class UserController {
 
 			if (currentUser == null) {
 				return new ResponseEntity<>(
-						new ApiResponse<>(401, "Unauthorized", null),
+						new ApiResponse<>(
+								401,
+								"Unauthorized",
+								null),
 						HttpStatus.UNAUTHORIZED);
 			}
 
@@ -609,7 +666,8 @@ public class UserController {
 
 			for (UserFollow follow : follows) {
 				if (follow.getFollowing() != null) {
-					users.add(follow.getFollowing());
+					users.add(
+							follow.getFollowing());
 				}
 			}
 
@@ -622,7 +680,10 @@ public class UserController {
 
 		} catch (Exception e) {
 			return new ResponseEntity<>(
-					new ApiResponse<>(500, e.getMessage(), null),
+					new ApiResponse<>(
+							500,
+							e.getMessage(),
+							null),
 					HttpStatus.INTERNAL_SERVER_ERROR);
 		}
 	}
@@ -636,7 +697,10 @@ public class UserController {
 
 			if (currentUser == null) {
 				return new ResponseEntity<>(
-						new ApiResponse<>(401, "Unauthorized", null),
+						new ApiResponse<>(
+								401,
+								"Unauthorized",
+								null),
 						HttpStatus.UNAUTHORIZED);
 			}
 
@@ -650,7 +714,8 @@ public class UserController {
 
 			for (UserFollow follow : follows) {
 				if (follow.getFollower() != null) {
-					users.add(follow.getFollower());
+					users.add(
+							follow.getFollower());
 				}
 			}
 
@@ -663,132 +728,18 @@ public class UserController {
 
 		} catch (Exception e) {
 			return new ResponseEntity<>(
-					new ApiResponse<>(500, e.getMessage(), null),
-					HttpStatus.INTERNAL_SERVER_ERROR);
-		}
-	}
-
-	@GetMapping("/{id}/following")
-	public ResponseEntity<?> getUserFollowing(@PathVariable String id) {
-		try {
-			User user = userRepository.findById(id).orElse(null);
-
-			if (user == null) {
-				return new ResponseEntity<>(
-						new ApiResponse<>(404, "User not found", null),
-						HttpStatus.NOT_FOUND);
-			}
-
-			List<UserFollow> follows = userFollowRepository
-					.findByFollower_IdOrderByCreatedAtDesc(
-							id,
-							Pageable.unpaged())
-					.getContent();
-
-			List<User> users = new ArrayList<>();
-
-			for (UserFollow follow : follows) {
-				if (follow.getFollowing() != null) {
-					users.add(follow.getFollowing());
-				}
-			}
-
-			return new ResponseEntity<>(
 					new ApiResponse<>(
-							200,
-							"Fetch user following list",
-							buildUserListResponse(users)),
-					HttpStatus.OK);
-
-		} catch (Exception e) {
-			return new ResponseEntity<>(
-					new ApiResponse<>(500, e.getMessage(), null),
+							500,
+							e.getMessage(),
+							null),
 					HttpStatus.INTERNAL_SERVER_ERROR);
 		}
 	}
 
-	@GetMapping("/{id}/followers")
-	public ResponseEntity<?> getUserFollowers(@PathVariable String id) {
-		try {
-			User user = userRepository.findById(id).orElse(null);
-
-			if (user == null) {
-				return new ResponseEntity<>(
-						new ApiResponse<>(404, "User not found", null),
-						HttpStatus.NOT_FOUND);
-			}
-
-			List<UserFollow> follows = userFollowRepository
-					.findByFollowing_IdOrderByCreatedAtDesc(
-							id,
-							Pageable.unpaged())
-					.getContent();
-
-			List<User> users = new ArrayList<>();
-
-			for (UserFollow follow : follows) {
-				if (follow.getFollower() != null) {
-					users.add(follow.getFollower());
-				}
-			}
-
-			return new ResponseEntity<>(
-					new ApiResponse<>(
-							200,
-							"Fetch user followers list",
-							buildUserListResponse(users)),
-					HttpStatus.OK);
-
-		} catch (Exception e) {
-			return new ResponseEntity<>(
-					new ApiResponse<>(500, e.getMessage(), null),
-					HttpStatus.INTERNAL_SERVER_ERROR);
-		}
-	}
-
-	@GetMapping("/{id}/follow-status")
-	public ResponseEntity<?> getFollowStatus(
-			@PathVariable String id,
-			@RequestHeader(value = "Authorization", required = false) String authorization) {
-
-		try {
-			User currentUser = getCurrentUser(authorization);
-
-			if (currentUser == null) {
-				return new ResponseEntity<>(
-						new ApiResponse<>(401, "Unauthorized", null),
-						HttpStatus.UNAUTHORIZED);
-			}
-
-			User targetUser = userRepository.findById(id).orElse(null);
-
-			if (targetUser == null) {
-				return new ResponseEntity<>(
-						new ApiResponse<>(404, "User not found", null),
-						HttpStatus.NOT_FOUND);
-			}
-
-			boolean isFollowing = userFollowRepository.existsByFollower_IdAndFollowing_Id(
-					currentUser.getId(),
-					targetUser.getId());
-
-			Map<String, Object> data = buildFollowResponse(
-					currentUser,
-					targetUser,
-					isFollowing);
-
-			return new ResponseEntity<>(
-					new ApiResponse<>(200, "Fetch follow status", data),
-					HttpStatus.OK);
-
-		} catch (Exception e) {
-			return new ResponseEntity<>(
-					new ApiResponse<>(500, e.getMessage(), null),
-					HttpStatus.INTERNAL_SERVER_ERROR);
-		}
-	}
-
-	@RequestMapping(value = { "", "/update/{id}" }, method = { RequestMethod.PATCH, RequestMethod.PUT })
+	@RequestMapping(value = { "", "/update/{id}" }, method = {
+			RequestMethod.PATCH,
+			RequestMethod.PUT
+	})
 	public ResponseEntity<?> update(
 			@PathVariable(required = false) String id,
 			@RequestBody Map<String, Object> body,
@@ -797,52 +748,86 @@ public class UserController {
 		try {
 			if (!isAdminRequest(authorization)) {
 				return new ResponseEntity<>(
-						new ApiResponse<>(403, "Access denied", null),
+						new ApiResponse<>(
+								403,
+								"Access denied",
+								null),
 						HttpStatus.FORBIDDEN);
 			}
 
 			String userId = id != null
 					? id
-					: getString(body, "id", "_id");
+					: getString(
+							body,
+							"id",
+							"_id");
 
 			if (userId == null) {
 				return new ResponseEntity<>(
-						new ApiResponse<>(400, "User id is required", null),
+						new ApiResponse<>(
+								400,
+								"User id is required",
+								null),
 						HttpStatus.BAD_REQUEST);
 			}
 
-			User user = userRepository.findById(userId).orElse(null);
+			User user = userRepository
+					.findById(userId)
+					.orElse(null);
 
 			if (user == null) {
 				return new ResponseEntity<>(
-						new ApiResponse<>(404, "User not found", null),
+						new ApiResponse<>(
+								404,
+								"User not found",
+								null),
 						HttpStatus.NOT_FOUND);
 			}
 
-			String newEmail = getString(body, "email");
+			String newEmail = getString(
+					body,
+					"email");
 
-			if (newEmail != null && !newEmail.equalsIgnoreCase(user.getEmail())) {
-				User checkEmail = userRepository.findByEmail(newEmail);
+			if (newEmail != null
+					&& !newEmail.equalsIgnoreCase(
+							user.getEmail())) {
+
+				User checkEmail = userRepository.findByEmail(
+						newEmail);
 
 				if (checkEmail != null) {
 					return new ResponseEntity<>(
-							new ApiResponse<>(400, "Email already exists", null),
+							new ApiResponse<>(
+									400,
+									"Email already exists",
+									null),
 							HttpStatus.BAD_REQUEST);
 				}
 			}
 
-			applyUserFields(user, body);
-			user.setUpdatedAt(new Date());
+			applyUserFields(
+					user,
+					body);
 
-			userRepository.save(user);
+			user.setUpdatedAt(
+					new Date());
+
+			userRepository.save(
+					user);
 
 			return new ResponseEntity<>(
-					new ApiResponse<>(200, "Update user success", toDTO(user)),
+					new ApiResponse<>(
+							200,
+							"Update user success",
+							toDTO(user)),
 					HttpStatus.OK);
 
 		} catch (Exception e) {
 			return new ResponseEntity<>(
-					new ApiResponse<>(500, e.getMessage(), null),
+					new ApiResponse<>(
+							500,
+							e.getMessage(),
+							null),
 					HttpStatus.INTERNAL_SERVER_ERROR);
 		}
 	}
@@ -856,15 +841,23 @@ public class UserController {
 		try {
 			if (!isAdminRequest(authorization)) {
 				return new ResponseEntity<>(
-						new ApiResponse<>(403, "Access denied", null),
+						new ApiResponse<>(
+								403,
+								"Access denied",
+								null),
 						HttpStatus.FORBIDDEN);
 			}
 
-			User user = userRepository.findById(id).orElse(null);
+			User user = userRepository
+					.findById(id)
+					.orElse(null);
 
 			if (user == null) {
 				return new ResponseEntity<>(
-						new ApiResponse<>(404, "User not found", null),
+						new ApiResponse<>(
+								404,
+								"User not found",
+								null),
 						HttpStatus.NOT_FOUND);
 			}
 
@@ -885,25 +878,33 @@ public class UserController {
 			for (UserFollow follow : outgoingFollows) {
 				if (follow.getFollowing() != null) {
 					affectedUserIds.add(
-							follow.getFollowing().getId());
+							follow
+									.getFollowing()
+									.getId());
 				}
 			}
 
 			for (UserFollow follow : incomingFollows) {
 				if (follow.getFollower() != null) {
 					affectedUserIds.add(
-							follow.getFollower().getId());
+							follow
+									.getFollower()
+									.getId());
 				}
 			}
 
-			userFollowRepository.deleteAllByFollower_Id(id);
-			userFollowRepository.deleteAllByFollowing_Id(id);
+			userFollowRepository
+					.deleteAllByFollower_Id(id);
+
+			userFollowRepository
+					.deleteAllByFollowing_Id(id);
 
 			userFollowRepository.flush();
 
 			for (String affectedUserId : affectedUserIds) {
 				if (!id.equals(affectedUserId)) {
-					refreshUserCountersById(affectedUserId);
+					refreshUserCountersById(
+							affectedUserId);
 				}
 			}
 
@@ -915,12 +916,18 @@ public class UserController {
 			userRepository.delete(user);
 
 			return new ResponseEntity<>(
-					new ApiResponse<>(200, "Delete user success", null),
+					new ApiResponse<>(
+							200,
+							"Delete user success",
+							null),
 					HttpStatus.OK);
 
 		} catch (Exception e) {
 			return new ResponseEntity<>(
-					new ApiResponse<>(500, e.getMessage(), null),
+					new ApiResponse<>(
+							500,
+							e.getMessage(),
+							null),
 					HttpStatus.INTERNAL_SERVER_ERROR);
 		}
 	}
@@ -937,20 +944,28 @@ public class UserController {
 			PageRequest pageable = PageRequest.of(
 					0,
 					safeLimit,
-					Sort.by(Sort.Direction.DESC, "followers"));
+					Sort.by(
+							Sort.Direction.DESC,
+							"followers"));
 
-			Page<User> page = userRepository.findByType("ARTIST", pageable);
+			Page<User> page = userRepository.findByType(
+					"ARTIST",
+					pageable);
 
 			return new ResponseEntity<>(
 					new ApiResponse<>(
 							200,
 							"Fetch artist leaderboard",
-							toDTOList(page.getContent())),
+							toDTOList(
+									page.getContent())),
 					HttpStatus.OK);
 
 		} catch (Exception e) {
 			return new ResponseEntity<>(
-					new ApiResponse<>(500, e.getMessage(), null),
+					new ApiResponse<>(
+							500,
+							e.getMessage(),
+							null),
 					HttpStatus.INTERNAL_SERVER_ERROR);
 		}
 	}
@@ -959,25 +974,42 @@ public class UserController {
 	@GetMapping("/who-to-follow")
 	public ResponseEntity<?> getWhoToFollow(
 			@RequestParam(defaultValue = "12") int limit) {
+
 		try {
 			int safeLimit = Math.min(
 					Math.max(limit, 1),
 					24);
 
 			List<User> users = userRepository.findWhoToFollow(
-					PageRequest.of(0, safeLimit));
+					PageRequest.of(
+							0,
+							safeLimit));
 
 			List<Map<String, Object>> result = users
 					.stream()
 					.map(user -> {
+
 						Map<String, Object> item = new LinkedHashMap<>();
 
-						item.put("id", user.getId());
-						item.put("_id", user.getId());
+						item.put(
+								"id",
+								user.getId());
 
-						item.put("name", user.getName());
-						item.put("username", user.getUsername());
-						item.put("email", user.getEmail());
+						item.put(
+								"_id",
+								user.getId());
+
+						item.put(
+								"name",
+								user.getName());
+
+						item.put(
+								"username",
+								user.getUsername());
+
+						item.put(
+								"email",
+								user.getEmail());
 
 						item.put(
 								"avatarUrl",
@@ -1005,12 +1037,18 @@ public class UserController {
 								Boolean.TRUE.equals(
 										user.getIsVerify()));
 
-						item.put("type", user.getType());
-						item.put("role", user.getRole());
+						item.put(
+								"type",
+								user.getType());
+
+						item.put(
+								"role",
+								user.getRole());
 
 						return item;
 					})
-					.collect(Collectors.toList());
+					.collect(
+							Collectors.toList());
 
 			return ResponseEntity.ok(
 					new ApiResponse<>(
@@ -1030,5 +1068,6 @@ public class UserController {
 									null));
 		}
 	}
+
 	///
 }

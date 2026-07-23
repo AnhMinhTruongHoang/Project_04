@@ -30,6 +30,7 @@ import { PlaylistPlaySharp } from "@mui/icons-material";
 import SearchDropdown from "@/app/search/components/search.dropdown";
 import NotificationBell from "../../app/(user)/notifications/components/notificationBell";
 import MenuRoundedIcon from "@mui/icons-material/MenuRounded";
+import { Typography } from "@mui/material";
 
 const AppHeader = () => {
   const router = useRouter();
@@ -600,151 +601,346 @@ const AppHeader = () => {
         slotProps={{
           paper: {
             sx: {
-              mt: 1,
-              width: 245,
+              mt: 1.2,
+              width: 270,
               maxWidth: "calc(100vw - 20px)",
 
-              backgroundColor: "#111111",
+              overflow: "hidden",
+
+              background:
+                "linear-gradient(180deg, rgba(24,24,24,0.98) 0%, rgba(13,13,13,0.99) 100%)",
+
               color: "#ffffff",
 
               border: "1px solid rgba(255,255,255,0.09)",
+              borderRadius: "16px",
 
-              borderRadius: "10px",
+              boxShadow:
+                "0 24px 70px rgba(0,0,0,0.62), 0 4px 18px rgba(0,0,0,0.35)",
 
-              boxShadow: "0 18px 45px rgba(0,0,0,0.5)",
+              backdropFilter: "blur(18px)",
+
+              "& .MuiMenu-list": {
+                p: 1,
+              },
 
               "& .MuiMenuItem-root": {
                 minHeight: 46,
-                px: 2,
-                fontSize: 14,
+
+                px: 1.6,
+                my: 0.35,
+
+                borderRadius: "10px",
+
+                color: "#D7D7D7",
+
+                fontSize: 13.5,
                 fontWeight: 800,
 
+                transition:
+                  "background-color 0.18s ease, color 0.18s ease, transform 0.18s ease",
+
                 "&:hover": {
-                  backgroundColor: "#202020",
+                  color: "#ffffff",
+                  backgroundColor: "rgba(255,255,255,0.075)",
+                  transform: "translateX(2px)",
+                },
+
+                "& .MuiSvgIcon-root": {
+                  mr: 1.3,
+                  fontSize: 20,
                 },
               },
             },
           },
         }}
       >
-        <MenuItem
-          onClick={() => {
-            setMobileNavAnchorEl(null);
-            router.push("/");
+        {/* MOBILE PRIMARY NAV */}
+        <Box
+          sx={{
+            px: 1.2,
+            pt: 1,
+            pb: 0.7,
           }}
         >
-          Home
-        </MenuItem>
+          <Typography
+            sx={{
+              px: 1.4,
+              mb: 0.7,
 
-        <MenuItem
-          onClick={() => {
-            setMobileNavAnchorEl(null);
-            router.push("/blog");
-          }}
-        >
-          Feed
-        </MenuItem>
+              color: "#676D75",
 
-        <MenuItem
-          onClick={() => {
-            setMobileNavAnchorEl(null);
-            router.push("/library");
-          }}
-        >
-          Library
-        </MenuItem>
+              fontSize: 9.5,
+              fontWeight: 950,
 
-        {/* MOBILE AUTH ACTIONS */}
+              letterSpacing: "0.11em",
+              textTransform: "uppercase",
+            }}
+          >
+            Navigation
+          </Typography>
+
+          <MenuItem
+            onClick={() => {
+              setMobileNavAnchorEl(null);
+              router.push("/");
+            }}
+          >
+            Home
+          </MenuItem>
+
+          <MenuItem
+            onClick={() => {
+              setMobileNavAnchorEl(null);
+              router.push("/blog");
+            }}
+          >
+            Feed
+          </MenuItem>
+
+          <MenuItem
+            onClick={() => {
+              setMobileNavAnchorEl(null);
+              router.push("/library");
+            }}
+          >
+            Library
+          </MenuItem>
+        </Box>
+
         <Divider
           sx={{
-            borderColor: "rgba(255,255,255,0.08)",
+            mx: 1.5,
+            my: 0.7,
+            borderColor: "rgba(255,255,255,0.07)",
           }}
         />
 
-        {isAuthenticated ? (
-          <MenuItem
-            onClick={async () => {
-              setMobileNavAnchorEl(null);
-
-              await signOut({
-                callbackUrl: "/",
-              });
-            }}
-            sx={{
-              color: "#f2f2f2",
-            }}
-          >
-            <LogoutRoundedIcon fontSize="small" />
-            Logout
-          </MenuItem>
-        ) : (
-          <MenuItem
-            onClick={() => {
-              setMobileNavAnchorEl(null);
-
-              router.push("/auth/signin");
-            }}
-            sx={{
-              color: "#ff5500 !important",
-
-              fontWeight: "900 !important",
-            }}
-          >
-            <PersonRoundedIcon fontSize="small" />
-            Sign in
-          </MenuItem>
-        )}
-
-        <MenuItem
-          onClick={() => {
-            setMobileNavAnchorEl(null);
-            router.push("/plans");
-          }}
+        {/* MOBILE CREATOR NAV */}
+        <Box
           sx={{
-            color: "#ff5500 !important",
+            px: 1.2,
+            py: 0.7,
           }}
         >
-          Upgrade plan
-        </MenuItem>
-
-        <MenuItem
-          onClick={() => {
-            setMobileNavAnchorEl(null);
-            router.push("/artist-studio");
-          }}
-        >
-          Artist Studio
-        </MenuItem>
-
-        <MenuItem
-          onClick={() => {
-            setMobileNavAnchorEl(null);
-            router.push("/track/upload");
-          }}
-        >
-          Upload
-        </MenuItem>
-
-        {isAdmin && (
-          <Divider
+          <Typography
             sx={{
-              borderColor: "rgba(255,255,255,0.08)",
-            }}
-          />
-        )}
+              px: 1.4,
+              mb: 0.7,
 
-        {isAdmin && (
+              color: "#676D75",
+
+              fontSize: 9.5,
+              fontWeight: 950,
+
+              letterSpacing: "0.11em",
+              textTransform: "uppercase",
+            }}
+          >
+            Creator
+          </Typography>
+
           <MenuItem
             onClick={() => {
               setMobileNavAnchorEl(null);
-              router.push("/dashboard");
+              router.push("/artist-studio");
             }}
           >
-            Dashboard
+            Artist Studio
           </MenuItem>
-        )}
-      </Menu>
 
+          <MenuItem
+            onClick={() => {
+              setMobileNavAnchorEl(null);
+              router.push("/track/upload");
+            }}
+          >
+            Upload
+          </MenuItem>
+
+          {isAdmin && (
+            <MenuItem
+              onClick={() => {
+                setMobileNavAnchorEl(null);
+                router.push("/dashboard");
+              }}
+            >
+              Dashboard
+            </MenuItem>
+          )}
+        </Box>
+
+        <Divider
+          sx={{
+            mx: 1.5,
+            my: 0.7,
+            borderColor: "rgba(255,255,255,0.07)",
+          }}
+        />
+
+        {/* MOBILE PLAN ACTION */}
+        <Box
+          sx={{
+            px: 1.2,
+            py: 0.7,
+          }}
+        >
+          <MenuItem
+            onClick={() => {
+              setMobileNavAnchorEl(null);
+              router.push("/plans");
+            }}
+            sx={{
+              minHeight: "48px !important",
+
+              color: "#ffffff !important",
+
+              background:
+                "linear-gradient(135deg, rgba(255,85,0,0.95), rgba(255,119,38,0.95))",
+
+              border: "1px solid rgba(255,140,80,0.32)",
+
+              boxShadow: "0 8px 24px rgba(255,85,0,0.18)",
+
+              "&:hover": {
+                background:
+                  "linear-gradient(135deg, #ff6514, #ff8538) !important",
+
+                transform: "translateY(-1px) !important",
+
+                boxShadow: "0 10px 30px rgba(255,85,0,0.28)",
+              },
+            }}
+          >
+            <Box
+              sx={{
+                flex: 1,
+              }}
+            >
+              <Typography
+                sx={{
+                  color: "#ffffff",
+
+                  fontSize: 13.5,
+                  fontWeight: 950,
+                }}
+              >
+                Upgrade plan
+              </Typography>
+
+              <Typography
+                sx={{
+                  mt: 0.1,
+
+                  color: "rgba(255,255,255,0.72)",
+
+                  fontSize: 9.5,
+                  fontWeight: 700,
+                }}
+              >
+                Unlock more creator features
+              </Typography>
+            </Box>
+
+            <Box
+              sx={{
+                width: 7,
+                height: 7,
+
+                flexShrink: 0,
+
+                borderRadius: "50%",
+
+                backgroundColor: "#ffffff",
+
+                boxShadow: "0 0 12px rgba(255,255,255,0.8)",
+              }}
+            />
+          </MenuItem>
+        </Box>
+
+        <Divider
+          sx={{
+            mx: 1.5,
+            my: 0.7,
+            borderColor: "rgba(255,255,255,0.07)",
+          }}
+        />
+
+        {/* MOBILE AUTH ACTIONS */}
+        <Box
+          sx={{
+            px: 1.2,
+            pt: 0.7,
+            pb: 1,
+          }}
+        >
+          {isAuthenticated ? (
+            <MenuItem
+              onClick={async () => {
+                setMobileNavAnchorEl(null);
+
+                await signOut({
+                  callbackUrl: "/",
+                });
+              }}
+              sx={{
+                color: "#FF7A85 !important",
+
+                "&:hover": {
+                  color: "#ffffff !important",
+
+                  backgroundColor: "rgba(255,70,85,0.11) !important",
+                },
+              }}
+            >
+              <LogoutRoundedIcon />
+
+              <Typography
+                sx={{
+                  fontSize: 13.5,
+                  fontWeight: 850,
+                }}
+              >
+                Logout
+              </Typography>
+            </MenuItem>
+          ) : (
+            <MenuItem
+              onClick={() => {
+                setMobileNavAnchorEl(null);
+                router.push("/auth/signin");
+              }}
+              sx={{
+                color: "#FF6A1A !important",
+
+                backgroundColor: "rgba(255,85,0,0.06)",
+
+                border: "1px solid rgba(255,85,0,0.12)",
+
+                "&:hover": {
+                  color: "#ffffff !important",
+
+                  backgroundColor: "rgba(255,85,0,0.14) !important",
+
+                  borderColor: "rgba(255,85,0,0.26) !important",
+                },
+              }}
+            >
+              <PersonRoundedIcon />
+
+              <Typography
+                sx={{
+                  fontSize: 13.5,
+                  fontWeight: 950,
+                }}
+              >
+                Sign in
+              </Typography>
+            </MenuItem>
+          )}
+        </Box>
+      </Menu>
       <Menu
         anchorEl={anchorEl}
         open={open}

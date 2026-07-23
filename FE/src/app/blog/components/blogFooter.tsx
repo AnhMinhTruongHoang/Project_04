@@ -29,247 +29,605 @@ function Copyright() {
 export default function BlogFooter() {
   return (
     <React.Fragment>
-      {/* FOOTER DIVIDER */}
-      <Divider
+      {/* FOOTER */}
+      <Box
+        component="footer"
         sx={{
-          borderColor: "rgba(255,255,255,0.08)",
-        }}
-      />
-
-      {/* FOOTER CONTAINER */}
-      <Container
-        sx={{
-          display: "flex",
-          flexDirection: "column",
-
-          gap: {
-            xs: 4,
-            sm: 6,
-            md: 8,
-          },
-
-          py: {
-            xs: 5,
-            sm: 7,
-            md: 10,
-          },
-
-          px: {
-            xs: 2,
-            sm: 3,
-          },
-
-          textAlign: {
-            xs: "left",
-            sm: "left",
-          },
+          width: "100%",
+          background:
+            "linear-gradient(180deg, #121415 0%, #0b0c0d 55%, #080909 100%)",
+          borderTop: "1px solid rgba(255,255,255,0.07)",
         }}
       >
-        {/* FOOTER TOP */}
-        <Box
+        <Container
           sx={{
-            display: "grid",
-
-            gridTemplateColumns: {
-              xs: "1fr",
-              sm: "1.5fr 1fr 1fr",
-              md: "2fr 1fr 1fr 1fr",
+            py: {
+              xs: 3.5,
+              sm: 5,
+              md: 7,
             },
 
-            gap: {
-              xs: 4,
-              sm: 4,
-              md: 6,
+            px: {
+              xs: 2,
+              sm: 3,
             },
-
-            width: "100%",
           }}
         >
           {/* NEWSLETTER */}
           <Box
             sx={{
-              minWidth: 0,
+              position: "relative",
+              overflow: "hidden",
+
+              mb: {
+                xs: 3,
+                sm: 5,
+              },
+
+              p: {
+                xs: 2,
+                sm: 2.8,
+                md: 3.2,
+              },
+
+              borderRadius: {
+                xs: "16px",
+                sm: "18px",
+              },
+
+              border: "1px solid rgba(255,255,255,0.09)",
+
+              background:
+                "linear-gradient(135deg, rgba(255,85,0,0.10) 0%, rgba(255,255,255,0.025) 45%, rgba(255,255,255,0.015) 100%)",
+
+              boxShadow: {
+                xs: "0 14px 35px rgba(0,0,0,0.26)",
+                md: "0 20px 55px rgba(0,0,0,0.3)",
+              },
+
+              "&::before": {
+                content: '""',
+                position: "absolute",
+
+                width: 170,
+                height: 170,
+
+                top: -90,
+                right: -70,
+
+                borderRadius: "50%",
+
+                background: "rgba(255,85,0,0.12)",
+                filter: "blur(30px)",
+
+                pointerEvents: "none",
+              },
             }}
           >
-            <Typography
-              variant="body2"
+            <Box
               sx={{
-                mb: 1,
+                position: "relative",
+                zIndex: 1,
 
-                color: "#ffffff",
-
-                fontSize: {
-                  xs: 15,
-                  md: 16,
+                display: {
+                  xs: "block",
+                  md: "flex",
                 },
 
-                fontWeight: 800,
+                alignItems: "center",
+                justifyContent: "space-between",
+
+                gap: 4,
               }}
             >
-              Join the newsletter
-            </Typography>
-
-            <Typography
-              variant="body2"
-              sx={{
-                maxWidth: 420,
-
-                mb: 2,
-
-                color: "#a7a7a7",
-
-                fontSize: {
-                  xs: 12.5,
-                  sm: 13,
-                },
-
-                lineHeight: "21px",
-              }}
-            >
-              Subscribe for weekly updates. No spams ever!
-            </Typography>
-
-            {/* NEWSLETTER FORM */}
-            <Stack
-              direction={{
-                xs: "column",
-                sm: "row",
-              }}
-              spacing={1}
-              useFlexGap
-              sx={{
-                width: "100%",
-
-                maxWidth: 430,
-              }}
-            >
-              <TextField
-                id="email-newsletter"
-                hiddenLabel
-                size="small"
-                variant="outlined"
-                fullWidth
-                placeholder="Your email address"
-                inputProps={{
-                  autoComplete: "off",
-                  "aria-label": "Enter your email address",
-                }}
+              <Box
                 sx={{
-                  flex: 1,
+                  mb: {
+                    xs: 2,
+                    md: 0,
+                  },
 
-                  minWidth: 0,
-
-                  "& .MuiOutlinedInput-root": {
-                    height: 40,
-
-                    bgcolor: "#111318",
-
+                  maxWidth: 470,
+                }}
+              >
+                <Typography
+                  sx={{
                     color: "#ffffff",
 
-                    borderRadius: "10px",
-
-                    "& fieldset": {
-                      borderColor: "rgba(255,255,255,0.18)",
+                    fontSize: {
+                      xs: 17,
+                      sm: 19,
                     },
 
-                    "&:hover fieldset": {
-                      borderColor: "rgba(255,255,255,0.35)",
+                    fontWeight: 950,
+                    letterSpacing: "-0.02em",
+                  }}
+                >
+                  Join the newsletter
+                </Typography>
+
+                <Typography
+                  sx={{
+                    mt: 0.7,
+
+                    color: "#8B949E",
+
+                    fontSize: {
+                      xs: 11.5,
+                      sm: 12.5,
                     },
 
-                    "&.Mui-focused fieldset": {
-                      borderColor: "#00ffe0",
-                    },
-                  },
+                    lineHeight: 1.6,
+                    fontWeight: 650,
+                  }}
+                >
+                  Get the latest SoundClone updates, creator news and platform
+                  highlights.
+                </Typography>
+              </Box>
 
-                  "& input": {
-                    fontSize: 13,
-                  },
-
-                  "& input::placeholder": {
-                    color: "#8b949e",
-                    opacity: 1,
-                  },
+              {/* NEWSLETTER FORM */}
+              <Stack
+                direction={{
+                  xs: "column",
+                  sm: "row",
                 }}
-              />
-
-              <Button
-                variant="contained"
-                color="primary"
-                size="small"
+                spacing={1}
+                useFlexGap
                 sx={{
-                  height: 40,
-
-                  px: 2.5,
-
-                  flexShrink: 0,
-
-                  borderRadius: "10px",
-
-                  textTransform: "none",
-
-                  fontWeight: 800,
-
-                  whiteSpace: "nowrap",
-
-                  width: {
+                  width: "100%",
+                  maxWidth: {
                     xs: "100%",
-                    sm: "auto",
+                    md: 500,
                   },
                 }}
               >
-                Subscribe
-              </Button>
-            </Stack>
+                <TextField
+                  id="email-newsletter"
+                  hiddenLabel
+                  size="small"
+                  variant="outlined"
+                  fullWidth
+                  placeholder="Enter your email"
+                  inputProps={{
+                    autoComplete: "off",
+                    "aria-label": "Enter your email address",
+                  }}
+                  sx={{
+                    flex: 1,
+                    minWidth: 0,
+
+                    "& .MuiOutlinedInput-root": {
+                      height: {
+                        xs: 44,
+                        sm: 46,
+                      },
+
+                      px: 0.4,
+
+                      color: "#ffffff",
+
+                      backgroundColor: "rgba(5,6,7,0.72)",
+
+                      borderRadius: "10px",
+
+                      "& fieldset": {
+                        borderColor: "rgba(255,255,255,0.11)",
+                      },
+
+                      "&:hover fieldset": {
+                        borderColor: "rgba(255,255,255,0.24)",
+                      },
+
+                      "&.Mui-focused fieldset": {
+                        borderColor: "#FF5500",
+                        borderWidth: "1px",
+                      },
+                    },
+
+                    "& input": {
+                      fontSize: 12.5,
+                      fontWeight: 650,
+                    },
+
+                    "& input::placeholder": {
+                      color: "#626A74",
+                      opacity: 1,
+                    },
+                  }}
+                />
+
+                <Button
+                  variant="contained"
+                  sx={{
+                    height: {
+                      xs: 44,
+                      sm: 46,
+                    },
+
+                    px: 3,
+
+                    width: {
+                      xs: "100%",
+                      sm: "auto",
+                    },
+
+                    minWidth: {
+                      sm: 125,
+                    },
+
+                    flexShrink: 0,
+
+                    borderRadius: "10px",
+
+                    color: "#ffffff",
+                    backgroundColor: "#FF5500",
+
+                    boxShadow: "none",
+
+                    textTransform: "none",
+
+                    fontSize: 12,
+                    fontWeight: 950,
+
+                    "&:hover": {
+                      backgroundColor: "#ff681f",
+                      boxShadow: "0 8px 24px rgba(255,85,0,0.22)",
+                    },
+                  }}
+                >
+                  Subscribe
+                </Button>
+              </Stack>
+            </Box>
           </Box>
 
-          {/* PRODUCT */}
+          {/* FOOTER LINKS */}
           <Box
             sx={{
-              display: {
-                xs: "grid",
-                sm: "flex",
-              },
+              display: "grid",
 
               gridTemplateColumns: {
-                xs: "1fr 1fr",
+                xs: "1fr",
+                sm: "repeat(3, 1fr)",
               },
 
-              flexDirection: "column",
-
               gap: {
-                xs: 1,
-                sm: 1,
+                xs: 1.4,
+                sm: 4,
+                md: 7,
               },
             }}
           >
-            <Typography
-              variant="body2"
+            {/* PRODUCT */}
+            <Box
               sx={{
-                gridColumn: {
-                  xs: "1 / -1",
-                  sm: "auto",
+                p: {
+                  xs: 1.8,
+                  sm: 0,
                 },
 
-                mb: 0.5,
+                borderRadius: {
+                  xs: "12px",
+                  sm: 0,
+                },
 
-                color: "#ffffff",
+                border: {
+                  xs: "1px solid rgba(255,255,255,0.06)",
+                  sm: "none",
+                },
 
-                fontWeight: 800,
+                backgroundColor: {
+                  xs: "rgba(255,255,255,0.018)",
+                  sm: "transparent",
+                },
               }}
             >
-              Product
-            </Typography>
+              <Typography
+                sx={{
+                  mb: 1.4,
 
-            {["Features", "Testimonials", "Highlights", "Pricing", "FAQs"].map(
-              (item) => (
+                  color: "#ffffff",
+
+                  fontSize: {
+                    xs: 12,
+                    sm: 13,
+                  },
+
+                  fontWeight: 950,
+                }}
+              >
+                Product
+              </Typography>
+
+              <Box
+                sx={{
+                  display: "grid",
+
+                  gridTemplateColumns: {
+                    xs: "1fr 1fr",
+                    sm: "1fr",
+                  },
+
+                  rowGap: 1.1,
+                  columnGap: 2,
+                }}
+              >
+                {[
+                  "Features",
+                  "Testimonials",
+                  "Highlights",
+                  "Pricing",
+                  "FAQs",
+                ].map((item) => (
+                  <Link
+                    key={item}
+                    href="#"
+                    sx={{
+                      width: "fit-content",
+
+                      color: "#858C95",
+
+                      fontSize: {
+                        xs: 11.5,
+                        sm: 12.5,
+                      },
+
+                      fontWeight: 650,
+
+                      textDecoration: "none",
+
+                      transition: "color 0.18s ease",
+
+                      "&:hover": {
+                        color: "#FF6A1A",
+                      },
+                    }}
+                  >
+                    {item}
+                  </Link>
+                ))}
+              </Box>
+            </Box>
+
+            {/* COMPANY */}
+            <Box
+              sx={{
+                p: {
+                  xs: 1.8,
+                  sm: 0,
+                },
+
+                borderRadius: {
+                  xs: "12px",
+                  sm: 0,
+                },
+
+                border: {
+                  xs: "1px solid rgba(255,255,255,0.06)",
+                  sm: "none",
+                },
+
+                backgroundColor: {
+                  xs: "rgba(255,255,255,0.018)",
+                  sm: "transparent",
+                },
+              }}
+            >
+              <Typography
+                sx={{
+                  mb: 1.4,
+
+                  color: "#ffffff",
+
+                  fontSize: {
+                    xs: 12,
+                    sm: 13,
+                  },
+
+                  fontWeight: 950,
+                }}
+              >
+                Company
+              </Typography>
+
+              <Box
+                sx={{
+                  display: "grid",
+
+                  gridTemplateColumns: {
+                    xs: "1fr 1fr",
+                    sm: "1fr",
+                  },
+
+                  rowGap: 1.1,
+                  columnGap: 2,
+                }}
+              >
+                {["About us", "Careers", "Press"].map((item) => (
+                  <Link
+                    key={item}
+                    href="#"
+                    sx={{
+                      width: "fit-content",
+
+                      color: "#858C95",
+
+                      fontSize: {
+                        xs: 11.5,
+                        sm: 12.5,
+                      },
+
+                      fontWeight: 650,
+
+                      textDecoration: "none",
+
+                      transition: "color 0.18s ease",
+
+                      "&:hover": {
+                        color: "#FF6A1A",
+                      },
+                    }}
+                  >
+                    {item}
+                  </Link>
+                ))}
+              </Box>
+            </Box>
+
+            {/* LEGAL */}
+            <Box
+              sx={{
+                p: {
+                  xs: 1.8,
+                  sm: 0,
+                },
+
+                borderRadius: {
+                  xs: "12px",
+                  sm: 0,
+                },
+
+                border: {
+                  xs: "1px solid rgba(255,255,255,0.06)",
+                  sm: "none",
+                },
+
+                backgroundColor: {
+                  xs: "rgba(255,255,255,0.018)",
+                  sm: "transparent",
+                },
+              }}
+            >
+              <Typography
+                sx={{
+                  mb: 1.4,
+
+                  color: "#ffffff",
+
+                  fontSize: {
+                    xs: 12,
+                    sm: 13,
+                  },
+
+                  fontWeight: 950,
+                }}
+              >
+                Legal
+              </Typography>
+
+              <Box
+                sx={{
+                  display: "grid",
+
+                  gridTemplateColumns: {
+                    xs: "1fr 1fr",
+                    sm: "1fr",
+                  },
+
+                  rowGap: 1.1,
+                  columnGap: 2,
+                }}
+              >
+                {["Terms", "Privacy", "Contact"].map((item) => (
+                  <Link
+                    key={item}
+                    href="#"
+                    sx={{
+                      width: "fit-content",
+
+                      color: "#858C95",
+
+                      fontSize: {
+                        xs: 11.5,
+                        sm: 12.5,
+                      },
+
+                      fontWeight: 650,
+
+                      textDecoration: "none",
+
+                      transition: "color 0.18s ease",
+
+                      "&:hover": {
+                        color: "#FF6A1A",
+                      },
+                    }}
+                  >
+                    {item}
+                  </Link>
+                ))}
+              </Box>
+            </Box>
+          </Box>
+
+          {/* FOOTER BOTTOM */}
+          <Box
+            sx={{
+              mt: {
+                xs: 3,
+                sm: 5,
+              },
+
+              pt: {
+                xs: 2.3,
+                sm: 3,
+              },
+
+              display: "flex",
+
+              flexDirection: {
+                xs: "column",
+                sm: "row",
+              },
+
+              alignItems: {
+                xs: "center",
+                sm: "center",
+              },
+
+              justifyContent: "space-between",
+
+              gap: 2,
+
+              borderTop: "1px solid rgba(255,255,255,0.07)",
+            }}
+          >
+            {/* COPYRIGHT + LEGAL */}
+            <Box
+              sx={{
+                textAlign: {
+                  xs: "center",
+                  sm: "left",
+                },
+              }}
+            >
+              <Box
+                sx={{
+                  display: "flex",
+
+                  justifyContent: {
+                    xs: "center",
+                    sm: "flex-start",
+                  },
+
+                  alignItems: "center",
+                  flexWrap: "wrap",
+
+                  gap: 0.8,
+                }}
+              >
                 <Link
-                  key={item}
-                  variant="body2"
                   href="#"
                   sx={{
-                    color: "#a7a7a7",
+                    color: "#6F767F",
 
-                    fontSize: 13,
+                    fontSize: {
+                      xs: 10.5,
+                      sm: 11.5,
+                    },
+
+                    fontWeight: 650,
 
                     textDecoration: "none",
 
@@ -278,311 +636,147 @@ export default function BlogFooter() {
                     },
                   }}
                 >
-                  {item}
+                  Privacy Policy
                 </Link>
-              )
-            )}
-          </Box>
 
-          {/* COMPANY */}
-          <Box
-            sx={{
-              display: {
-                xs: "grid",
-                sm: "flex",
-              },
+                <Box
+                  component="span"
+                  sx={{
+                    width: 3,
+                    height: 3,
 
-              gridTemplateColumns: {
-                xs: "1fr 1fr",
-              },
+                    borderRadius: "50%",
 
-              flexDirection: "column",
+                    backgroundColor: "#454A50",
+                  }}
+                />
 
-              gap: 1,
-            }}
-          >
-            <Typography
-              variant="body2"
-              sx={{
-                gridColumn: {
-                  xs: "1 / -1",
-                  sm: "auto",
-                },
+                <Link
+                  href="#"
+                  sx={{
+                    color: "#6F767F",
 
-                mb: 0.5,
+                    fontSize: {
+                      xs: 10.5,
+                      sm: 11.5,
+                    },
 
-                color: "#ffffff",
+                    fontWeight: 650,
 
-                fontWeight: 800,
-              }}
-            >
-              Company
-            </Typography>
+                    textDecoration: "none",
 
-            {["About us", "Careers", "Press"].map((item) => (
-              <Link
-                key={item}
-                variant="body2"
-                href="#"
+                    "&:hover": {
+                      color: "#ffffff",
+                    },
+                  }}
+                >
+                  Terms of Service
+                </Link>
+              </Box>
+
+              <Box
                 sx={{
-                  color: "#a7a7a7",
+                  mt: 0.8,
 
-                  fontSize: 13,
+                  color: "#535960",
 
-                  textDecoration: "none",
-
-                  "&:hover": {
-                    color: "#ffffff",
+                  fontSize: {
+                    xs: 10,
+                    sm: 11,
                   },
                 }}
               >
-                {item}
-              </Link>
-            ))}
-          </Box>
+                <Copyright />
+              </Box>
+            </Box>
 
-          {/* LEGAL */}
-          <Box
-            sx={{
-              display: {
-                xs: "grid",
-                sm: "flex",
-              },
-
-              gridTemplateColumns: {
-                xs: "1fr 1fr",
-              },
-
-              flexDirection: "column",
-
-              gap: 1,
-            }}
-          >
-            <Typography
-              variant="body2"
-              sx={{
-                gridColumn: {
-                  xs: "1 / -1",
-                  sm: "auto",
-                },
-
-                mb: 0.5,
-
-                color: "#ffffff",
-
-                fontWeight: 800,
-              }}
-            >
-              Legal
-            </Typography>
-
-            {["Terms", "Privacy", "Contact"].map((item) => (
-              <Link
-                key={item}
-                variant="body2"
-                href="#"
-                sx={{
-                  color: "#a7a7a7",
-
-                  fontSize: 13,
-
-                  textDecoration: "none",
-
-                  "&:hover": {
-                    color: "#ffffff",
-                  },
-                }}
-              >
-                {item}
-              </Link>
-            ))}
-          </Box>
-        </Box>
-
-        {/* FOOTER BOTTOM */}
-        <Box
-          sx={{
-            display: "flex",
-
-            flexDirection: {
-              xs: "column",
-              sm: "row",
-            },
-
-            alignItems: {
-              xs: "flex-start",
-              sm: "center",
-            },
-
-            justifyContent: "space-between",
-
-            gap: {
-              xs: 2,
-              sm: 3,
-            },
-
-            pt: {
-              xs: 3,
-              sm: 4,
-              md: 5,
-            },
-
-            width: "100%",
-
-            borderTop: "1px solid rgba(255,255,255,0.08)",
-          }}
-        >
-          {/* LEGAL BOTTOM */}
-          <Box>
+            {/* SOCIAL */}
             <Box
               sx={{
                 display: "flex",
-
-                flexWrap: "wrap",
-
                 alignItems: "center",
 
-                gap: 0.8,
+                p: 0.5,
+
+                borderRadius: "999px",
+
+                border: "1px solid rgba(255,255,255,0.07)",
+
+                backgroundColor: "rgba(255,255,255,0.025)",
               }}
             >
-              <Link
-                variant="body2"
-                href="#"
+              <IconButton
+                size="small"
+                href="https://github.com/mui"
+                aria-label="GitHub"
                 sx={{
-                  color: "#a7a7a7",
+                  width: 34,
+                  height: 34,
 
-                  fontSize: {
-                    xs: 11.5,
-                    sm: 13,
-                  },
-
-                  textDecoration: "none",
+                  color: "#747B84",
 
                   "&:hover": {
                     color: "#ffffff",
+                    backgroundColor: "rgba(255,255,255,0.07)",
                   },
                 }}
               >
-                Privacy Policy
-              </Link>
+                <GitHubIcon
+                  sx={{
+                    fontSize: 18,
+                  }}
+                />
+              </IconButton>
 
-              <Typography
+              <IconButton
+                size="small"
+                href="https://x.com/MaterialUI"
+                aria-label="X"
                 sx={{
-                  color: "#666",
+                  width: 34,
+                  height: 34,
 
-                  fontSize: 12,
-                }}
-              >
-                •
-              </Typography>
-
-              <Link
-                variant="body2"
-                href="#"
-                sx={{
-                  color: "#a7a7a7",
-
-                  fontSize: {
-                    xs: 11.5,
-                    sm: 13,
-                  },
-
-                  textDecoration: "none",
+                  color: "#747B84",
 
                   "&:hover": {
                     color: "#ffffff",
+                    backgroundColor: "rgba(255,255,255,0.07)",
                   },
                 }}
               >
-                Terms of Service
-              </Link>
-            </Box>
+                <TwitterIcon
+                  sx={{
+                    fontSize: 18,
+                  }}
+                />
+              </IconButton>
 
-            {/* COPYRIGHT */}
-            <Box
-              sx={{
-                mt: 1,
+              <IconButton
+                size="small"
+                href="https://www.linkedin.com/company/mui/"
+                aria-label="LinkedIn"
+                sx={{
+                  width: 34,
+                  height: 34,
 
-                color: "#777",
+                  color: "#747B84",
 
-                fontSize: {
-                  xs: 11,
-                  sm: 12,
-                },
-              }}
-            >
-              <Copyright />
+                  "&:hover": {
+                    color: "#ffffff",
+                    backgroundColor: "rgba(255,255,255,0.07)",
+                  },
+                }}
+              >
+                <LinkedInIcon
+                  sx={{
+                    fontSize: 18,
+                  }}
+                />
+              </IconButton>
             </Box>
           </Box>
-
-          {/* SOCIAL LINKS */}
-          <Stack
-            direction="row"
-            spacing={0.5}
-            useFlexGap
-            sx={{
-              color: "#a7a7a7",
-            }}
-          >
-            <IconButton
-              color="inherit"
-              size="small"
-              href="https://github.com/mui"
-              aria-label="GitHub"
-              sx={{
-                width: 36,
-                height: 36,
-
-                "&:hover": {
-                  color: "#ffffff",
-
-                  backgroundColor: "rgba(255,255,255,0.06)",
-                },
-              }}
-            >
-              <GitHubIcon />
-            </IconButton>
-
-            <IconButton
-              color="inherit"
-              size="small"
-              href="https://x.com/MaterialUI"
-              aria-label="X"
-              sx={{
-                width: 36,
-                height: 36,
-
-                "&:hover": {
-                  color: "#ffffff",
-
-                  backgroundColor: "rgba(255,255,255,0.06)",
-                },
-              }}
-            >
-              <TwitterIcon />
-            </IconButton>
-
-            <IconButton
-              color="inherit"
-              size="small"
-              href="https://www.linkedin.com/company/mui/"
-              aria-label="LinkedIn"
-              sx={{
-                width: 36,
-                height: 36,
-
-                "&:hover": {
-                  color: "#ffffff",
-
-                  backgroundColor: "rgba(255,255,255,0.06)",
-                },
-              }}
-            >
-              <LinkedInIcon />
-            </IconButton>
-          </Stack>
-        </Box>
-      </Container>
+        </Container>
+      </Box>
     </React.Fragment>
   );
 }

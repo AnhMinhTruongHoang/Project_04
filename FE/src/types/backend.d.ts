@@ -385,6 +385,20 @@ declare global {
     track?: string;
   };
 
+  type EditUserState = {
+    _id: string;
+    name: string;
+    email: string;
+    age: string | number;
+    gender: string;
+    address: string;
+    role: string;
+    avatarUrl?: string;
+    avatar?: string;
+    image?: string;
+    picture?: string;
+  };
+
   type ICreateCommentPayload = CreateCommentPayload;
 
   interface ITrackLike {

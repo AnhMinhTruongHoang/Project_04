@@ -55,6 +55,11 @@ public class User implements java.io.Serializable {
 	private Set<Comment> comments = new HashSet<Comment>(0);
 	private Set<Track> likedTracks = new HashSet<Track>(0);
 
+	private String accountStatus = "ACTIVE";
+	private String statusReason;
+	private Date suspendedUntil;
+	private Date statusUpdatedAt;
+
 	public String getSubscriptionTier() {
 		return subscriptionTier;
 	}
@@ -345,5 +350,50 @@ public class User implements java.io.Serializable {
 
 	public void setLikedTracks(Set<Track> likedTracks) {
 		this.likedTracks = likedTracks;
+	}
+
+	@Column(name = "account_status", length = 20)
+	public String getAccountStatus() {
+		if (accountStatus == null || accountStatus.isBlank()) {
+			return "ACTIVE";
+		}
+
+		return accountStatus;
+	}
+
+	public void setAccountStatus(String accountStatus) {
+		if (accountStatus == null || accountStatus.isBlank()) {
+			this.accountStatus = "ACTIVE";
+			return;
+		}
+
+		this.accountStatus = accountStatus.trim().toUpperCase();
+	}
+
+	@Column(name = "status_reason", length = 500)
+	public String getStatusReason() {
+		return statusReason;
+	}
+
+	public void setStatusReason(String statusReason) {
+		this.statusReason = statusReason;
+	}
+
+	@Column(name = "suspended_until")
+	public Date getSuspendedUntil() {
+		return suspendedUntil;
+	}
+
+	public void setSuspendedUntil(Date suspendedUntil) {
+		this.suspendedUntil = suspendedUntil;
+	}
+
+	@Column(name = "status_updated_at")
+	public Date getStatusUpdatedAt() {
+		return statusUpdatedAt;
+	}
+
+	public void setStatusUpdatedAt(Date statusUpdatedAt) {
+		this.statusUpdatedAt = statusUpdatedAt;
 	}
 }

@@ -16,35 +16,25 @@ import DialogActions from "@mui/material/DialogActions";
 import Button from "@mui/material/Button";
 import TextField from "@mui/material/TextField";
 import MenuItem from "@mui/material/MenuItem";
-import DeleteRoundedIcon from "@mui/icons-material/DeleteRounded";
 import EditRoundedIcon from "@mui/icons-material/EditRounded";
 import { DataGrid, GridColDef } from "@mui/x-data-grid";
 import { sendRequest } from "@/utils/api";
 import DashboardTableToolbar from "@/components/dashboard/components/DashboardTableToolbar";
 import { useToast } from "@/utils/toast";
 import { getInitials, getUserAvatarUrl } from "@/utils/actions/getImages";
+import BlockRoundedIcon from "@mui/icons-material/BlockRounded";
 
 type Props = {
   users: IUser[];
   accessToken?: string;
 };
 
-type EditUserState = {
-  _id: string;
-  name: string;
-  email: string;
-  age: string | number;
-  gender: string;
-  address: string;
-  role: string;
-  avatarUrl?: string;
-  avatar?: string;
-  image?: string;
-  picture?: string;
-};
-
 const getItemId = (item?: any) => {
   return item?._id || item?.id || "";
+};
+
+const getAccountStatus = (user?: any) => {
+  return String(user?.accountStatus || "ACTIVE").toUpperCase();
 };
 
 const UsersTable = ({ users, accessToken }: Props) => {
@@ -178,17 +168,22 @@ const UsersTable = ({ users, accessToken }: Props) => {
 
     setDeletingId("");
 
-    if (res?.data || res?.statusCode === 200) {
-      toast.success("Delete user successfully.");
+    if (res?.statusCode === 200) {
+      toast.success(
+        res?.message ||
+          "User account deactivated successfully. Account data has been preserved."
+      );
 
       await revalidateUsers();
       router.refresh();
       return;
     }
 
-    toast.error(res?.message || "Delete user failed.");
+    toast.error(
+      res?.message ||
+        "Unable to deactivate this user account. Please try again."
+    );
   };
-
   const handleDeleteUser = (user: IUser) => {
     const userId = getItemId(user);
 
@@ -307,6 +302,62 @@ const UsersTable = ({ users, accessToken }: Props) => {
       ),
     },
     {
+      field: "accountStatus",
+      headerName: "Status",
+      width: 145,
+      sortable: true,
+      valueGetter: (params) => getAccountStatus(params.row),
+      renderCell: (params) => {
+        const status = getAccountStatus(params.row);
+
+        const statusStyle: Record<
+          string,
+          {
+            color: string;
+            backgroundColor: string;
+          }
+        > = {
+          ACTIVE: {
+            color: "#63e6a6",
+            backgroundColor: "rgba(99,230,166,0.12)",
+          },
+          SUSPENDED: {
+            color: "#ffd166",
+            backgroundColor: "rgba(255,209,102,0.12)",
+          },
+          BANNED: {
+            color: "#ff7b7b",
+            backgroundColor: "rgba(255,90,90,0.14)",
+          },
+          DELETED: {
+            color: "#b5b5b5",
+            backgroundColor: "rgba(255,255,255,0.08)",
+          },
+        };
+
+        const style = statusStyle[status] || statusStyle.ACTIVE;
+
+        return (
+          <Tooltip
+            title={
+              (params.row as any)?.statusReason || `Account status: ${status}`
+            }
+          >
+            <Chip
+              label={status}
+              size="small"
+              sx={{
+                color: style.color,
+                backgroundColor: style.backgroundColor,
+                fontWeight: 900,
+                border: `1px solid ${style.color}33`,
+              }}
+            />
+          </Tooltip>
+        );
+      },
+    },
+    {
       field: "gender",
       headerName: "Gender",
       width: 120,
@@ -333,19 +384,24 @@ const UsersTable = ({ users, accessToken }: Props) => {
     {
       field: "actions",
       headerName: "Actions",
-      width: 120,
+      width: 170,
       align: "center",
       headerAlign: "center",
       sortable: false,
       filterable: false,
       renderCell: (params) => {
         const user = params.row;
+        const userId = getItemId(user);
+        const accountStatus = getAccountStatus(user);
+        const isDeactivated = accountStatus === "DELETED";
+        const isAdmin = String(user.role || "").toUpperCase() === "ADMIN";
 
         return (
           <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
             <Tooltip title="Edit user">
               <IconButton
                 onClick={() => handleOpenEdit(user)}
+                disabled={isDeactivated}
                 size="small"
                 sx={{
                   color: "#9a9a9a",
@@ -353,26 +409,42 @@ const UsersTable = ({ users, accessToken }: Props) => {
                     color: "#ffffff",
                     backgroundColor: "rgba(255,255,255,0.08)",
                   },
+                  "&.Mui-disabled": {
+                    color: "rgba(255,255,255,0.2)",
+                  },
                 }}
               >
                 <EditRoundedIcon fontSize="small" />
               </IconButton>
             </Tooltip>
 
-            <Tooltip title="Delete user">
-              <IconButton
-                onClick={() => handleDeleteUser(user)}
-                disabled={deletingId === getItemId(user)}
-                size="small"
-                sx={{
-                  color: "#ff5a5a",
-                  "&:hover": {
-                    backgroundColor: "rgba(255,90,90,0.12)",
-                  },
-                }}
-              >
-                <DeleteRoundedIcon fontSize="small" />
-              </IconButton>
+            <Tooltip
+              title={
+                isDeactivated
+                  ? "Account already deactivated"
+                  : isAdmin
+                  ? "Administrator accounts cannot be deactivated here"
+                  : "Deactivate account"
+              }
+            >
+              <span>
+                <IconButton
+                  onClick={() => handleDeleteUser(user)}
+                  disabled={deletingId === userId || isDeactivated || isAdmin}
+                  size="small"
+                  sx={{
+                    color: "#ff5a5a",
+                    "&:hover": {
+                      backgroundColor: "rgba(255,90,90,0.12)",
+                    },
+                    "&.Mui-disabled": {
+                      color: "rgba(255,90,90,0.25)",
+                    },
+                  }}
+                >
+                  <BlockRoundedIcon fontSize="small" />
+                </IconButton>
+              </span>
             </Tooltip>
           </Box>
         );
@@ -692,15 +764,27 @@ const UsersTable = ({ users, accessToken }: Props) => {
           },
         }}
       >
-        <DialogTitle sx={{ fontWeight: 900 }}>Delete user?</DialogTitle>
+        <DialogTitle sx={{ fontWeight: 900 }}>Deactivate account?</DialogTitle>
 
         <DialogContent>
-          <Typography sx={{ color: "#bdbdbd", fontSize: 14 }}>
-            Are you sure you want to delete{" "}
+          <Typography sx={{ color: "#d7d7d7", fontSize: 14 }}>
+            Are you sure you want to deactivate{" "}
             <Box component="span" sx={{ color: "#ffffff", fontWeight: 900 }}>
               {confirmUser?.name || confirmUser?.email}
             </Box>
             ?
+          </Typography>
+
+          <Typography
+            sx={{
+              mt: 1.5,
+              color: "#9a9a9a",
+              fontSize: 13,
+              lineHeight: 1.6,
+            }}
+          >
+            The user will no longer be able to sign in. Tracks, playlists,
+            comments, followers and other account data will be preserved.
           </Typography>
         </DialogContent>
 
@@ -717,25 +801,33 @@ const UsersTable = ({ users, accessToken }: Props) => {
 
           <Button
             variant="contained"
+            disabled={!!deletingId}
             onClick={async () => {
               const selectedUser = confirmUser;
-              setConfirmUser(null);
 
-              if (selectedUser) {
-                await deleteUser(selectedUser);
-              }
+              if (!selectedUser) return;
+
+              setConfirmUser(null);
+              await deleteUser(selectedUser);
             }}
             sx={{
+              minWidth: 120,
               backgroundColor: "#ff4d4f",
               color: "#ffffff",
               fontWeight: 900,
+              textTransform: "none",
 
               "&:hover": {
                 backgroundColor: "#ff2f32",
               },
+
+              "&.Mui-disabled": {
+                color: "rgba(255,255,255,0.55)",
+                backgroundColor: "rgba(255,77,79,0.3)",
+              },
             }}
           >
-            Delete
+            {deletingId ? "Deactivating..." : "Deactivate"}
           </Button>
         </DialogActions>
       </Dialog>

@@ -831,6 +831,7 @@ public class UserController {
 		}
 	}
 
+	/// delete
 	@Transactional
 	@DeleteMapping({ "/{id}", "/delete/{id}" })
 	public ResponseEntity<?> delete(
@@ -842,9 +843,20 @@ public class UserController {
 				return new ResponseEntity<>(
 						new ApiResponse<>(
 								403,
-								"Access denied",
+								"You do not have permission to manage user accounts.",
 								null),
 						HttpStatus.FORBIDDEN);
+			}
+
+			User currentAdmin = getCurrentUser(authorization);
+
+			if (currentAdmin == null) {
+				return new ResponseEntity<>(
+						new ApiResponse<>(
+								401,
+								"Your administrator session is invalid or has expired.",
+								null),
+						HttpStatus.UNAUTHORIZED);
 			}
 
 			User user = userRepository
@@ -855,81 +867,68 @@ public class UserController {
 				return new ResponseEntity<>(
 						new ApiResponse<>(
 								404,
-								"User not found",
+								"The requested user account was not found.",
 								null),
 						HttpStatus.NOT_FOUND);
 			}
 
-			List<UserFollow> outgoingFollows = userFollowRepository
-					.findByFollower_IdOrderByCreatedAtDesc(
-							id,
-							Pageable.unpaged())
-					.getContent();
-
-			List<UserFollow> incomingFollows = userFollowRepository
-					.findByFollowing_IdOrderByCreatedAtDesc(
-							id,
-							Pageable.unpaged())
-					.getContent();
-
-			Set<String> affectedUserIds = new HashSet<>();
-
-			for (UserFollow follow : outgoingFollows) {
-				if (follow.getFollowing() != null) {
-					affectedUserIds.add(
-							follow
-									.getFollowing()
-									.getId());
-				}
+			if (currentAdmin.getId().equals(user.getId())) {
+				return new ResponseEntity<>(
+						new ApiResponse<>(
+								400,
+								"You cannot deactivate your own administrator account.",
+								null),
+						HttpStatus.BAD_REQUEST);
 			}
 
-			for (UserFollow follow : incomingFollows) {
-				if (follow.getFollower() != null) {
-					affectedUserIds.add(
-							follow
-									.getFollower()
-									.getId());
-				}
+			if ("ADMIN".equalsIgnoreCase(user.getRole())) {
+				return new ResponseEntity<>(
+						new ApiResponse<>(
+								403,
+								"Administrator accounts cannot be deactivated from this action.",
+								null),
+						HttpStatus.FORBIDDEN);
 			}
 
-			userFollowRepository
-					.deleteAllByFollower_Id(id);
-
-			userFollowRepository
-					.deleteAllByFollowing_Id(id);
-
-			userFollowRepository.flush();
-
-			for (String affectedUserId : affectedUserIds) {
-				if (!id.equals(affectedUserId)) {
-					refreshUserCountersById(
-							affectedUserId);
-				}
+			if ("DELETED".equalsIgnoreCase(user.getAccountStatus())) {
+				return new ResponseEntity<>(
+						new ApiResponse<>(
+								200,
+								"This user account has already been deactivated.",
+								toDTO(user)),
+						HttpStatus.OK);
 			}
 
-			if (user.getLikedTracks() != null) {
-				user.getLikedTracks().clear();
-				userRepository.save(user);
-			}
+			Date now = new Date();
 
-			userRepository.delete(user);
+			user.setAccountStatus("DELETED");
+			user.setStatusReason("Account deactivated by administrator.");
+			user.setSuspendedUntil(null);
+			user.setStatusUpdatedAt(now);
+			user.setRefreshToken(null);
+			user.setUpdatedAt(now);
+
+			userRepository.save(user);
 
 			return new ResponseEntity<>(
 					new ApiResponse<>(
 							200,
-							"Delete user success",
-							null),
+							"User account deactivated successfully. Tracks, playlists, comments and other account data have been preserved.",
+							toDTO(user)),
 					HttpStatus.OK);
 
 		} catch (Exception e) {
+			e.printStackTrace();
+
 			return new ResponseEntity<>(
 					new ApiResponse<>(
 							500,
-							e.getMessage(),
+							"Unable to deactivate this user account due to an internal server error.",
 							null),
 					HttpStatus.INTERNAL_SERVER_ERROR);
 		}
 	}
+	///
 
 	@GetMapping("/leaderboard/artists")
 	public ResponseEntity<?> getArtistLeaderboard(

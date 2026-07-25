@@ -26,6 +26,10 @@ public class UserResponseDTO {
 	private String country;
 	private Boolean verified;
 	private String spotlightTrackId;
+	private String accountStatus;
+	private String statusReason;
+	private Date suspendedUntil;
+	private Date statusUpdatedAt;
 	private Date createdAt;
 	private Date updatedAt;
 
@@ -101,8 +105,42 @@ public class UserResponseDTO {
 		this.id = id;
 	}
 
+	public String getAccountStatus() {
+		return accountStatus == null || accountStatus.isBlank()
+				? "ACTIVE"
+				: accountStatus;
+	}
+
+	public void setAccountStatus(String accountStatus) {
+		this.accountStatus = accountStatus;
+	}
+
+	public String getStatusReason() {
+		return statusReason;
+	}
+
+	public void setStatusReason(String statusReason) {
+		this.statusReason = statusReason;
+	}
+
+	public Date getSuspendedUntil() {
+		return suspendedUntil;
+	}
+
+	public void setSuspendedUntil(Date suspendedUntil) {
+		this.suspendedUntil = suspendedUntil;
+	}
+
+	public Date getStatusUpdatedAt() {
+		return statusUpdatedAt;
+	}
+
+	public void setStatusUpdatedAt(Date statusUpdatedAt) {
+		this.statusUpdatedAt = statusUpdatedAt;
+	}
+
 	public Boolean getIsDeleted() {
-		return false;
+		return "DELETED".equalsIgnoreCase(accountStatus);
 	}
 
 	public String getEmail() {

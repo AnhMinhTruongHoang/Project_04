@@ -115,6 +115,57 @@ public class AuthController {
 				return new ResponseEntity<>(new ApiResponse<>(400, "Login Failed", null), HttpStatus.BAD_REQUEST);
 			}
 
+			/// BAN LOGIC
+			String accountStatus = user.getAccountStatus();
+
+			if ("DELETED".equalsIgnoreCase(accountStatus)) {
+				return new ResponseEntity<>(
+						new ApiResponse<>(
+								403,
+								"This account has been deactivated by an administrator.",
+								null),
+						HttpStatus.FORBIDDEN);
+			}
+
+			if ("BANNED".equalsIgnoreCase(accountStatus)) {
+				String reason = user.getStatusReason();
+
+				return new ResponseEntity<>(
+						new ApiResponse<>(
+								403,
+								reason == null || reason.isBlank()
+										? "This account has been banned by an administrator."
+										: "This account has been banned. Reason: " + reason,
+								null),
+						HttpStatus.FORBIDDEN);
+			}
+
+			if ("SUSPENDED".equalsIgnoreCase(accountStatus)) {
+				Date suspendedUntil = user.getSuspendedUntil();
+
+				if (suspendedUntil == null || suspendedUntil.after(new Date())) {
+					String reason = user.getStatusReason();
+
+					return new ResponseEntity<>(
+							new ApiResponse<>(
+									403,
+									reason == null || reason.isBlank()
+											? "This account is temporarily suspended."
+											: "This account is temporarily suspended. Reason: " + reason,
+									null),
+							HttpStatus.FORBIDDEN);
+				}
+
+				user.setAccountStatus("ACTIVE");
+				user.setStatusReason(null);
+				user.setSuspendedUntil(null);
+				user.setStatusUpdatedAt(new Date());
+				user.setUpdatedAt(new Date());
+
+				userService.save(user);
+			}
+			///
+
 			String accessToken = JwtHelper.generateToken(user.getEmail(), user.getRole());
 			String refreshToken = JwtHelper.generateToken(user.getEmail(), user.getRole());
 
@@ -329,9 +380,56 @@ public class AuthController {
 
 			User user = userService.findByEmail(email);
 
-			if (user == null) {
-				return new ResponseEntity<>(new ApiResponse<>(404, "User Not Found", null), HttpStatus.NOT_FOUND);
+			//// stop if user is banned or deleted
+			String accountStatus = user.getAccountStatus();
+
+			if ("DELETED".equalsIgnoreCase(accountStatus)) {
+				return new ResponseEntity<>(
+						new ApiResponse<>(
+								403,
+								"This account has been deactivated by an administrator.",
+								null),
+						HttpStatus.FORBIDDEN);
 			}
+
+			if ("BANNED".equalsIgnoreCase(accountStatus)) {
+				String reason = user.getStatusReason();
+
+				return new ResponseEntity<>(
+						new ApiResponse<>(
+								403,
+								reason == null || reason.isBlank()
+										? "This account has been banned by an administrator."
+										: "This account has been banned. Reason: " + reason,
+								null),
+						HttpStatus.FORBIDDEN);
+			}
+
+			if ("SUSPENDED".equalsIgnoreCase(accountStatus)) {
+				Date suspendedUntil = user.getSuspendedUntil();
+
+				if (suspendedUntil == null || suspendedUntil.after(new Date())) {
+					String reason = user.getStatusReason();
+
+					return new ResponseEntity<>(
+							new ApiResponse<>(
+									403,
+									reason == null || reason.isBlank()
+											? "This account is temporarily suspended."
+											: "This account is temporarily suspended. Reason: " + reason,
+									null),
+							HttpStatus.FORBIDDEN);
+				}
+
+				user.setAccountStatus("ACTIVE");
+				user.setStatusReason(null);
+				user.setSuspendedUntil(null);
+				user.setStatusUpdatedAt(new Date());
+				user.setUpdatedAt(new Date());
+
+				userService.save(user);
+			}
+			///
 
 			Map<String, Object> data = new LinkedHashMap<>();
 			data.put("user", toUserResponseDTO(user));

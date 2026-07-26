@@ -23,6 +23,9 @@ import DashboardTableToolbar from "@/components/dashboard/components/DashboardTa
 import { useToast } from "@/utils/toast";
 import { getInitials, getUserAvatarUrl } from "@/utils/actions/getImages";
 import BlockRoundedIcon from "@mui/icons-material/BlockRounded";
+import LockOpenRoundedIcon from "@mui/icons-material/LockOpenRounded";
+import DeleteForeverRoundedIcon from "@mui/icons-material/DeleteForeverRounded";
+import CommentsDisabledRoundedIcon from "@mui/icons-material/CommentsDisabledRounded";
 
 type Props = {
   users: IUser[];
@@ -34,7 +37,15 @@ const getItemId = (item?: any) => {
 };
 
 const getAccountStatus = (user?: any) => {
-  return String(user?.accountStatus || "ACTIVE").toUpperCase();
+  return String(user?.accountStatus || "ACTIVE")
+    .trim()
+    .toUpperCase();
+};
+
+const getChatStatus = (user?: IUser) => {
+  return String(user?.chatStatus || "ACTIVE")
+    .trim()
+    .toUpperCase();
 };
 
 const UsersTable = ({ users, accessToken }: Props) => {
@@ -42,6 +53,7 @@ const UsersTable = ({ users, accessToken }: Props) => {
   const toast = useToast();
 
   const [confirmUser, setConfirmUser] = useState<IUser | null>(null);
+  const [confirmAction, setConfirmAction] = useState<UserAction | null>(null);
   const [searchValue, setSearchValue] = useState("");
   const [deletingId, setDeletingId] = useState("");
   const [saving, setSaving] = useState(false);
@@ -54,6 +66,8 @@ const UsersTable = ({ users, accessToken }: Props) => {
     if (!keyword) return users;
 
     return users.filter((user) => {
+      const userAny = user as any;
+
       return [
         user.name,
         user.email,
@@ -63,6 +77,8 @@ const UsersTable = ({ users, accessToken }: Props) => {
         user.address,
         user.following,
         user.followers,
+        userAny.accountStatus,
+        userAny.statusReason,
       ]
         .filter(Boolean)
         .some((item) => String(item).toLowerCase().includes(keyword));
@@ -79,6 +95,24 @@ const UsersTable = ({ users, accessToken }: Props) => {
       },
     });
   };
+
+  /* =========================
+   OPEN USER PROFILE
+========================= */
+  const handleOpenUserProfile = (user: IUser) => {
+    const userId = getItemId(user);
+
+    if (!userId) {
+      toast.error("User profile not found.");
+      return;
+    }
+
+    router.push(`/profile/${encodeURIComponent(userId)}`);
+  };
+
+  /* =========================
+     EDIT USER
+  ========================= */
 
   const handleOpenEdit = (user: IUser) => {
     const userAny = user as any;
@@ -114,77 +148,57 @@ const UsersTable = ({ users, accessToken }: Props) => {
     }
 
     if (!accessToken) {
-      toast.error("Please login first.");
+      toast.error("Please sign in as an administrator first.");
       return;
     }
 
     setSaving(true);
 
-    const res = await sendRequest<IBackendRes<IUser>>({
-      url: `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/v1/users`,
-      method: "PATCH",
-      body: {
-        id: editUser._id,
-        _id: editUser._id,
-        name: editUser.name,
-        email: editUser.email,
-        age: editUser.age ? Number(editUser.age) : undefined,
-        gender: editUser.gender,
-        address: editUser.address,
-        role: editUser.role,
-      },
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-      },
-    });
+    try {
+      const res = await sendRequest<IBackendRes<IUser>>({
+        url: `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/v1/users`,
+        method: "PATCH",
+        body: {
+          id: editUser._id,
+          _id: editUser._id,
+          name: editUser.name.trim(),
+          email: editUser.email.trim().toLowerCase(),
+          age: editUser.age ? Number(editUser.age) : undefined,
+          gender: editUser.gender,
+          address: editUser.address.trim(),
+          role: editUser.role,
+        },
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      });
 
-    setSaving(false);
+      if (Number(res?.statusCode) === 200) {
+        toast.success(res?.message || "User updated successfully.");
 
-    if (res?.data || res?.statusCode === 200) {
-      toast.success("Update user successfully.");
+        await revalidateUsers();
 
-      await revalidateUsers();
-      setOpenEdit(false);
-      setEditUser(null);
-      router.refresh();
-      return;
-    }
+        setOpenEdit(false);
+        setEditUser(null);
+        router.refresh();
+        return;
+      }
 
-    toast.error(res?.message || "Update user failed.");
-  };
-
-  const deleteUser = async (user: IUser) => {
-    const userId = getItemId(user);
-
-    setDeletingId(userId);
-
-    const res = await sendRequest<IBackendRes<any>>({
-      url: `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/v1/users/${userId}`,
-      method: "DELETE",
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-      },
-    });
-
-    setDeletingId("");
-
-    if (res?.statusCode === 200) {
-      toast.success(
-        res?.message ||
-          "User account deactivated successfully. Account data has been preserved."
+      toast.error(res?.message || "Unable to update this user.");
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Unable to update this user."
       );
-
-      await revalidateUsers();
-      router.refresh();
-      return;
+    } finally {
+      setSaving(false);
     }
-
-    toast.error(
-      res?.message ||
-        "Unable to deactivate this user account. Please try again."
-    );
   };
-  const handleDeleteUser = (user: IUser) => {
+
+  /* =========================
+     SUSPEND USER FOR 7 DAYS
+  ========================= */
+
+  const suspendUser = async (user: IUser) => {
     const userId = getItemId(user);
 
     if (!userId) {
@@ -193,12 +207,259 @@ const UsersTable = ({ users, accessToken }: Props) => {
     }
 
     if (!accessToken) {
-      toast.error("Please login first.");
+      toast.error("Please sign in as an administrator first.");
+      return;
+    }
+
+    setDeletingId(userId);
+
+    try {
+      const res = await sendRequest<IBackendRes<any>>({
+        url: `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/v1/users/${userId}/suspend`,
+        method: "PATCH",
+        body: {
+          reason: "Temporary 7-day suspension issued by an administrator.",
+        },
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      });
+
+      if (Number(res?.statusCode) === 200) {
+        toast.success(res?.message || "User account suspended for 7 days.");
+
+        setConfirmUser(null);
+        setConfirmAction(null);
+
+        await revalidateUsers();
+        router.refresh();
+        return;
+      }
+
+      toast.error(res?.message || "Unable to suspend this user account.");
+    } catch (error) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Unable to suspend this user account."
+      );
+    } finally {
+      setDeletingId("");
+    }
+  };
+
+  /* =========================
+     REACTIVATE USER
+  ========================= */
+
+  const activateUser = async (user: IUser) => {
+    const userId = getItemId(user);
+
+    if (!userId) {
+      toast.error("User not found.");
+      return;
+    }
+
+    if (!accessToken) {
+      toast.error("Please sign in as an administrator first.");
+      return;
+    }
+
+    setDeletingId(userId);
+
+    try {
+      const res = await sendRequest<IBackendRes<any>>({
+        url: `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/v1/users/${userId}/activate`,
+        method: "PATCH",
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      });
+
+      if (Number(res?.statusCode) === 200) {
+        toast.success(res?.message || "User account reactivated successfully.");
+
+        setConfirmUser(null);
+        setConfirmAction(null);
+
+        await revalidateUsers();
+        router.refresh();
+        return;
+      }
+
+      toast.error(res?.message || "Unable to reactivate this user account.");
+    } catch (error) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Unable to reactivate this user account."
+      );
+    } finally {
+      setDeletingId("");
+    }
+  };
+
+  /* =========================
+   DEACTIVATE USER FOREVER
+========================= */
+  const deactivateUser = async (user: IUser) => {
+    const userId = getItemId(user);
+
+    if (!userId || !accessToken) return;
+
+    setDeletingId(userId);
+
+    try {
+      const res = await sendRequest<IBackendRes<any>>({
+        url: `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/v1/users/${userId}`,
+        method: "DELETE",
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      });
+
+      if (Number(res?.statusCode) === 200) {
+        toast.success(res?.message || "User account disabled indefinitely.");
+
+        setConfirmUser(null);
+        setConfirmAction(null);
+
+        await revalidateUsers();
+        router.refresh();
+        return;
+      }
+
+      toast.error(res?.message || "Unable to disable this user account.");
+    } catch (error) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Unable to disable this user account."
+      );
+    } finally {
+      setDeletingId("");
+    }
+  };
+
+  /* =========================
+   BAN USER CHAT
+========================= */
+  const banUserChat = async (user: IUser) => {
+    const userId = getItemId(user);
+
+    if (!userId || !accessToken) return;
+
+    setDeletingId(userId);
+
+    try {
+      const res = await sendRequest<IBackendRes<any>>({
+        url: `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/v1/users/${userId}/ban-chat`,
+        method: "PATCH",
+        body: {
+          reason: "Commenting access disabled by an administrator.",
+        },
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      });
+
+      if (Number(res?.statusCode) === 200) {
+        toast.success(res?.message || "User commenting access disabled.");
+
+        setConfirmUser(null);
+        setConfirmAction(null);
+
+        await revalidateUsers();
+        router.refresh();
+        return;
+      }
+
+      toast.error(res?.message || "Unable to disable this user's chat access.");
+    } catch (error) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Unable to disable this user's chat access."
+      );
+    } finally {
+      setDeletingId("");
+    }
+  };
+
+  /* =========================
+   ENABLE USER CHAT
+========================= */
+  const enableUserChat = async (user: IUser) => {
+    const userId = getItemId(user);
+
+    if (!userId || !accessToken) return;
+
+    setDeletingId(userId);
+
+    try {
+      const res = await sendRequest<IBackendRes<any>>({
+        url: `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/v1/users/${userId}/enable-chat`,
+        method: "PATCH",
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      });
+
+      if (Number(res?.statusCode) === 200) {
+        toast.success(res?.message || "User commenting access enabled.");
+
+        setConfirmUser(null);
+        setConfirmAction(null);
+
+        await revalidateUsers();
+        router.refresh();
+        return;
+      }
+
+      toast.error(res?.message || "Unable to enable this user's chat access.");
+    } catch (error) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Unable to enable this user's chat access."
+      );
+    } finally {
+      setDeletingId("");
+    }
+  };
+
+  /* =========================
+   OPEN USER ACTION DIALOG
+    ======================== */
+
+  const handleUserAction = (user: IUser, action: UserAction) => {
+    const userId = getItemId(user);
+    const isAdmin = String(user.role || "").toUpperCase() === "ADMIN";
+
+    if (!userId) {
+      toast.error("User not found.");
+      return;
+    }
+
+    if (!accessToken) {
+      toast.error("Please sign in as an administrator first.");
+      return;
+    }
+
+    if (isAdmin) {
+      toast.error(
+        "Administrator accounts cannot be restricted from this action."
+      );
       return;
     }
 
     setConfirmUser(user);
+    setConfirmAction(action);
   };
+
+  /* =========================
+     TABLE COLUMNS
+  ========================= */
 
   const columns: GridColDef<IUser>[] = [
     {
@@ -214,37 +475,82 @@ const UsersTable = ({ users, accessToken }: Props) => {
         const userAvatarUrl = getUserAvatarUrl(user);
 
         return (
-          <Box sx={{ display: "flex", alignItems: "center", gap: 1.4 }}>
-            <Avatar
-              src={userAvatarUrl}
-              alt={userName}
-              sx={{
-                width: 42,
-                height: 42,
-                bgcolor: "#ff5500",
-                color: "#ffffff",
-                fontWeight: 900,
-                fontSize: 14,
-                flexShrink: 0,
-              }}
-            >
-              {getInitials(userName, userEmail)}
-            </Avatar>
+          <Box
+            sx={{
+              display: "flex",
+              alignItems: "center",
+              gap: 1.4,
+            }}
+          >
+            <Tooltip title="View user profile">
+              <IconButton
+                onClick={() => handleOpenUserProfile(user)}
+                size="small"
+                aria-label={`View ${userName} profile`}
+                sx={{
+                  p: 0,
+                  flexShrink: 0,
+                  borderRadius: "50%",
+                }}
+              >
+                <Avatar
+                  src={userAvatarUrl}
+                  alt={userName}
+                  sx={{
+                    width: 42,
+                    height: 42,
+                    bgcolor: "#ff5500",
+                    color: "#ffffff",
+                    fontWeight: 900,
+                    fontSize: 14,
+                    border: "1px solid rgba(255,255,255,0.1)",
+                    transition: "0.18s ease",
+
+                    "&:hover": {
+                      borderColor: "#ff5500",
+                      transform: "scale(1.04)",
+                    },
+                  }}
+                >
+                  {getInitials(userName, userEmail)}
+                </Avatar>
+              </IconButton>
+            </Tooltip>
 
             <Box sx={{ minWidth: 0 }}>
               <Typography
-                title={userName}
+                component="button"
+                type="button"
+                title={`View ${userName} profile`}
+                onClick={() => handleOpenUserProfile(user)}
                 sx={{
+                  display: "block",
+                  width: "100%",
+                  p: 0,
+                  m: 0,
+                  border: "none",
+                  outline: "none",
+                  background: "transparent",
+                  textAlign: "left",
+                  cursor: "pointer",
+
                   color: "#ffffff",
                   fontSize: 14,
                   fontWeight: 900,
                   overflow: "hidden",
                   textOverflow: "ellipsis",
                   whiteSpace: "nowrap",
+
+                  "&:hover": {
+                    color: "#ff5500",
+                    textDecoration: "underline",
+                  },
                 }}
               >
                 {user.name || (
-                  <span style={{ color: "green" }}>Social user</span>
+                  <Box component="span" sx={{ color: "#63e6a6" }}>
+                    Social user
+                  </Box>
                 )}
               </Typography>
 
@@ -270,20 +576,24 @@ const UsersTable = ({ users, accessToken }: Props) => {
       field: "role",
       headerName: "Role",
       width: 130,
-      renderCell: (params) => (
-        <Chip
-          label={params.row.role || "USER"}
-          size="small"
-          sx={{
-            color: params.row.role === "ADMIN" ? "#ffffff" : "#d7d7d7",
-            backgroundColor:
-              params.row.role === "ADMIN"
-                ? "rgba(255,85,0,0.3)"
-                : "rgba(255,255,255,0.08)",
-            fontWeight: 900,
-          }}
-        />
-      ),
+      renderCell: (params) => {
+        const role = String(params.row.role || "USER").toUpperCase();
+
+        return (
+          <Chip
+            label={role}
+            size="small"
+            sx={{
+              color: role === "ADMIN" ? "#ffffff" : "#d7d7d7",
+              backgroundColor:
+                role === "ADMIN"
+                  ? "rgba(255,85,0,0.3)"
+                  : "rgba(255,255,255,0.08)",
+              fontWeight: 900,
+            }}
+          />
+        );
+      },
     },
     {
       field: "type",
@@ -304,10 +614,11 @@ const UsersTable = ({ users, accessToken }: Props) => {
     {
       field: "accountStatus",
       headerName: "Status",
-      width: 145,
+      width: 150,
       sortable: true,
       valueGetter: (params) => getAccountStatus(params.row),
       renderCell: (params) => {
+        const userAny = params.row as any;
         const status = getAccountStatus(params.row);
 
         const statusStyle: Record<
@@ -337,12 +648,20 @@ const UsersTable = ({ users, accessToken }: Props) => {
 
         const style = statusStyle[status] || statusStyle.ACTIVE;
 
+        const suspendedUntil =
+          userAny?.suspendedUntil && dayjs(userAny.suspendedUntil).isValid()
+            ? dayjs(userAny.suspendedUntil).format("DD/MM/YYYY HH:mm")
+            : "";
+
+        const tooltipText =
+          status === "SUSPENDED" && suspendedUntil
+            ? `${
+                userAny?.statusReason || "Account temporarily suspended."
+              } Suspended until ${suspendedUntil}.`
+            : userAny?.statusReason || `Account status: ${status}`;
+
         return (
-          <Tooltip
-            title={
-              (params.row as any)?.statusReason || `Account status: ${status}`
-            }
-          >
+          <Tooltip title={tooltipText}>
             <Chip
               label={status}
               size="small"
@@ -363,16 +682,61 @@ const UsersTable = ({ users, accessToken }: Props) => {
       width: 120,
     },
     {
-      field: "address",
-      headerName: "Address",
-      flex: 1,
-      minWidth: 180,
+      field: "subscriptionTier",
+      headerName: "Subscription",
+      width: 160,
+      sortable: true,
+      valueGetter: (params) =>
+        String(params.row.subscriptionTier || "FREE").toUpperCase(),
+
+      renderCell: (params) => {
+        const tier = String(
+          params.row.subscriptionTier || "FREE"
+        ).toUpperCase();
+
+        const tierStyle: Record<
+          string,
+          {
+            color: string;
+            backgroundColor: string;
+          }
+        > = {
+          FREE: {
+            color: "#b5b5b5",
+            backgroundColor: "rgba(255,255,255,0.08)",
+          },
+
+          ARTIST: {
+            color: "#ffd166",
+            backgroundColor: "rgba(255,209,102,0.12)",
+          },
+
+          ARTIST_PRO: {
+            color: "#63e6a6",
+            backgroundColor: "rgba(99,230,166,0.12)",
+          },
+        };
+
+        const style = tierStyle[tier] || tierStyle.FREE;
+
+        return (
+          <Chip
+            label={tier.replace("_", " ")}
+            size="small"
+            sx={{
+              color: style.color,
+              backgroundColor: style.backgroundColor,
+              border: `1px solid ${style.color}33`,
+              fontWeight: 900,
+            }}
+          />
+        );
+      },
     },
     {
-      field: "following",
-      headerName: "following",
-      flex: 1,
-      minWidth: 180,
+      field: "followers",
+      headerName: "Followers",
+      width: 120,
     },
     {
       field: "createdAt",
@@ -384,65 +748,171 @@ const UsersTable = ({ users, accessToken }: Props) => {
     {
       field: "actions",
       headerName: "Actions",
-      width: 170,
+      width: 220,
       align: "center",
       headerAlign: "center",
       sortable: false,
       filterable: false,
+
       renderCell: (params) => {
         const user = params.row;
         const userId = getItemId(user);
+
         const accountStatus = getAccountStatus(user);
-        const isDeactivated = accountStatus === "DELETED";
+        const chatStatus = getChatStatus(user);
+
         const isAdmin = String(user.role || "").toUpperCase() === "ADMIN";
 
+        const isSuspended = accountStatus === "SUSPENDED";
+
+        const isDeactivated = accountStatus === "DELETED";
+
+        const isChatBanned = chatStatus === "BANNED";
+
+        const isLoading = deletingId === userId;
+
         return (
-          <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
+          <Box
+            sx={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 0.4,
+            }}
+          >
+            {/* EDIT USER */}
             <Tooltip title="Edit user">
-              <IconButton
-                onClick={() => handleOpenEdit(user)}
-                disabled={isDeactivated}
-                size="small"
-                sx={{
-                  color: "#9a9a9a",
-                  "&:hover": {
-                    color: "#ffffff",
-                    backgroundColor: "rgba(255,255,255,0.08)",
-                  },
-                  "&.Mui-disabled": {
-                    color: "rgba(255,255,255,0.2)",
-                  },
-                }}
-              >
-                <EditRoundedIcon fontSize="small" />
-              </IconButton>
+              <span>
+                <IconButton
+                  onClick={() => handleOpenEdit(user)}
+                  disabled={isLoading || isDeactivated}
+                  size="small"
+                  sx={{
+                    color: "#9a9a9a",
+                    "&:hover": {
+                      color: "#ffffff",
+                      backgroundColor: "rgba(255,255,255,0.08)",
+                    },
+                    "&.Mui-disabled": {
+                      color: "rgba(255,255,255,0.2)",
+                    },
+                  }}
+                >
+                  <EditRoundedIcon fontSize="small" />
+                </IconButton>
+              </span>
             </Tooltip>
 
+            {/* SUSPEND 7 DAYS / REACTIVATE */}
             <Tooltip
               title={
                 isDeactivated
-                  ? "Account already deactivated"
-                  : isAdmin
-                  ? "Administrator accounts cannot be deactivated here"
-                  : "Deactivate account"
+                  ? "Reactivate the account using the permanent-disable button"
+                  : isSuspended
+                  ? "Reactivate account"
+                  : "Suspend account for 7 days"
               }
             >
               <span>
                 <IconButton
-                  onClick={() => handleDeleteUser(user)}
-                  disabled={deletingId === userId || isDeactivated || isAdmin}
+                  onClick={() =>
+                    handleUserAction(user, isSuspended ? "ACTIVATE" : "SUSPEND")
+                  }
+                  disabled={isLoading || isAdmin || isDeactivated}
                   size="small"
                   sx={{
-                    color: "#ff5a5a",
+                    color: isSuspended ? "#63e6a6" : "#ff5a5a",
+
                     "&:hover": {
-                      backgroundColor: "rgba(255,90,90,0.12)",
+                      backgroundColor: isSuspended
+                        ? "rgba(99,230,166,0.12)"
+                        : "rgba(255,90,90,0.12)",
                     },
+
                     "&.Mui-disabled": {
-                      color: "rgba(255,90,90,0.25)",
+                      color: "rgba(255,255,255,0.2)",
                     },
                   }}
                 >
-                  <BlockRoundedIcon fontSize="small" />
+                  {isSuspended ? (
+                    <LockOpenRoundedIcon fontSize="small" />
+                  ) : (
+                    <BlockRoundedIcon fontSize="small" />
+                  )}
+                </IconButton>
+              </span>
+            </Tooltip>
+
+            {/* DISABLE FOREVER / REACTIVATE */}
+            <Tooltip
+              title={
+                isDeactivated
+                  ? "Reactivate account"
+                  : "Disable account indefinitely"
+              }
+            >
+              <span>
+                <IconButton
+                  onClick={() =>
+                    handleUserAction(
+                      user,
+                      isDeactivated ? "ACTIVATE" : "DEACTIVATE"
+                    )
+                  }
+                  disabled={isLoading || isAdmin}
+                  size="small"
+                  sx={{
+                    color: isDeactivated ? "#63e6a6" : "#b5b5b5",
+
+                    "&:hover": {
+                      backgroundColor: isDeactivated
+                        ? "rgba(99,230,166,0.12)"
+                        : "rgba(255,255,255,0.1)",
+                    },
+
+                    "&.Mui-disabled": {
+                      color: "rgba(255,255,255,0.2)",
+                    },
+                  }}
+                >
+                  {isDeactivated ? (
+                    <LockOpenRoundedIcon fontSize="small" />
+                  ) : (
+                    <DeleteForeverRoundedIcon fontSize="small" />
+                  )}
+                </IconButton>
+              </span>
+            </Tooltip>
+
+            {/* BAN CHAT / ENABLE CHAT */}
+            <Tooltip
+              title={isChatBanned ? "Enable comments" : "Disable comments"}
+            >
+              <span>
+                <IconButton
+                  onClick={() =>
+                    handleUserAction(
+                      user,
+                      isChatBanned ? "ENABLE_CHAT" : "BAN_CHAT"
+                    )
+                  }
+                  disabled={isLoading || isAdmin}
+                  size="small"
+                  sx={{
+                    color: isChatBanned ? "#63e6a6" : "#ffd166",
+
+                    "&:hover": {
+                      backgroundColor: isChatBanned
+                        ? "rgba(99,230,166,0.12)"
+                        : "rgba(255,209,102,0.12)",
+                    },
+
+                    "&.Mui-disabled": {
+                      color: "rgba(255,255,255,0.2)",
+                    },
+                  }}
+                >
+                  <CommentsDisabledRoundedIcon fontSize="small" />
                 </IconButton>
               </span>
             </Tooltip>
@@ -452,6 +922,70 @@ const UsersTable = ({ users, accessToken }: Props) => {
     },
   ];
 
+  const actionConfig: Record<
+    UserAction,
+    {
+      title: string;
+      description: string;
+      buttonLabel: string;
+      loadingLabel: string;
+      backgroundColor: string;
+      hoverColor: string;
+    }
+  > = {
+    SUSPEND: {
+      title: "Suspend account for 7 days?",
+      description:
+        "The user will be unable to sign in for 7 days. Account data will be preserved.",
+      buttonLabel: "Suspend 7 days",
+      loadingLabel: "Suspending...",
+      backgroundColor: "#ff4d4f",
+      hoverColor: "#ff2f32",
+    },
+
+    ACTIVATE: {
+      title: "Reactivate account?",
+      description: "The user will immediately be allowed to sign in again.",
+      buttonLabel: "Reactivate",
+      loadingLabel: "Reactivating...",
+      backgroundColor: "#2f9e68",
+      hoverColor: "#27865a",
+    },
+
+    DEACTIVATE: {
+      title: "Disable account indefinitely?",
+      description:
+        "The user will remain unable to sign in until an administrator reactivates the account. All account data will be preserved.",
+      buttonLabel: "Disable account",
+      loadingLabel: "Disabling...",
+      backgroundColor: "#646464",
+      hoverColor: "#505050",
+    },
+
+    BAN_CHAT: {
+      title: "Disable comments?",
+      description:
+        "The user can still sign in and listen to music, but cannot post comments until an administrator enables chat again.",
+      buttonLabel: "Disable comments",
+      loadingLabel: "Disabling...",
+      backgroundColor: "#c79500",
+      hoverColor: "#a97e00",
+    },
+
+    ENABLE_CHAT: {
+      title: "Enable comments?",
+      description: "The user will be allowed to post comments again.",
+      buttonLabel: "Enable comments",
+      loadingLabel: "Enabling...",
+      backgroundColor: "#2f9e68",
+      hoverColor: "#27865a",
+    },
+  };
+
+  const currentActionConfig = confirmAction
+    ? actionConfig[confirmAction]
+    : null;
+
   return (
     <Box>
       <DashboardTableToolbar
@@ -459,6 +993,7 @@ const UsersTable = ({ users, accessToken }: Props) => {
         onSearchChange={setSearchValue}
       />
 
+      {/* USERS TABLE */}
       <Box
         sx={{
           width: "100%",
@@ -557,6 +1092,7 @@ const UsersTable = ({ users, accessToken }: Props) => {
         />
       </Box>
 
+      {/* EDIT USER DIALOG */}
       <Dialog
         open={openEdit}
         onClose={handleCloseEdit}
@@ -618,11 +1154,21 @@ const UsersTable = ({ users, accessToken }: Props) => {
             </Avatar>
 
             <Box>
-              <Typography sx={{ color: "#ffffff", fontWeight: 900 }}>
+              <Typography
+                sx={{
+                  color: "#ffffff",
+                  fontWeight: 900,
+                }}
+              >
                 {editUser?.name || "Social user"}
               </Typography>
 
-              <Typography sx={{ color: "#9a9a9a", fontSize: 13 }}>
+              <Typography
+                sx={{
+                  color: "#9a9a9a",
+                  fontSize: 13,
+                }}
+              >
                 {editUser?.email}
               </Typography>
             </Box>
@@ -632,9 +1178,14 @@ const UsersTable = ({ users, accessToken }: Props) => {
             <TextField
               label="Name"
               value={editUser?.name || ""}
-              onChange={(e) =>
-                setEditUser((prev) =>
-                  prev ? { ...prev, name: e.target.value } : prev
+              onChange={(event) =>
+                setEditUser((previous) =>
+                  previous
+                    ? {
+                        ...previous,
+                        name: event.target.value,
+                      }
+                    : previous
                 )
               }
               fullWidth
@@ -644,9 +1195,14 @@ const UsersTable = ({ users, accessToken }: Props) => {
             <TextField
               label="Email"
               value={editUser?.email || ""}
-              onChange={(e) =>
-                setEditUser((prev) =>
-                  prev ? { ...prev, email: e.target.value } : prev
+              onChange={(event) =>
+                setEditUser((previous) =>
+                  previous
+                    ? {
+                        ...previous,
+                        email: event.target.value,
+                      }
+                    : previous
                 )
               }
               fullWidth
@@ -655,10 +1211,16 @@ const UsersTable = ({ users, accessToken }: Props) => {
 
             <TextField
               label="Age"
+              type="number"
               value={editUser?.age || ""}
-              onChange={(e) =>
-                setEditUser((prev) =>
-                  prev ? { ...prev, age: e.target.value } : prev
+              onChange={(event) =>
+                setEditUser((previous) =>
+                  previous
+                    ? {
+                        ...previous,
+                        age: event.target.value,
+                      }
+                    : previous
                 )
               }
               fullWidth
@@ -669,9 +1231,14 @@ const UsersTable = ({ users, accessToken }: Props) => {
               select
               label="Gender"
               value={editUser?.gender || ""}
-              onChange={(e) =>
-                setEditUser((prev) =>
-                  prev ? { ...prev, gender: e.target.value } : prev
+              onChange={(event) =>
+                setEditUser((previous) =>
+                  previous
+                    ? {
+                        ...previous,
+                        gender: event.target.value,
+                      }
+                    : previous
                 )
               }
               fullWidth
@@ -685,9 +1252,14 @@ const UsersTable = ({ users, accessToken }: Props) => {
             <TextField
               label="Address"
               value={editUser?.address || ""}
-              onChange={(e) =>
-                setEditUser((prev) =>
-                  prev ? { ...prev, address: e.target.value } : prev
+              onChange={(event) =>
+                setEditUser((previous) =>
+                  previous
+                    ? {
+                        ...previous,
+                        address: event.target.value,
+                      }
+                    : previous
                 )
               }
               fullWidth
@@ -698,9 +1270,14 @@ const UsersTable = ({ users, accessToken }: Props) => {
               select
               label="Role"
               value={editUser?.role || "USER"}
-              onChange={(e) =>
-                setEditUser((prev) =>
-                  prev ? { ...prev, role: e.target.value } : prev
+              onChange={(event) =>
+                setEditUser((previous) =>
+                  previous
+                    ? {
+                        ...previous,
+                        role: event.target.value,
+                      }
+                    : previous
                 )
               }
               fullWidth
@@ -741,8 +1318,14 @@ const UsersTable = ({ users, accessToken }: Props) => {
               color: "#ffffff",
               textTransform: "none",
               fontWeight: 900,
+
               "&:hover": {
                 backgroundColor: "#ff6a1a",
+              },
+
+              "&.Mui-disabled": {
+                color: "rgba(255,255,255,0.55)",
+                backgroundColor: "rgba(255,85,0,0.3)",
               },
             }}
           >
@@ -750,29 +1333,53 @@ const UsersTable = ({ users, accessToken }: Props) => {
           </Button>
         </DialogActions>
       </Dialog>
-
+      {/* USER ACTION CONFIRMATION DIALOG */}
       <Dialog
-        open={!!confirmUser}
-        onClose={() => setConfirmUser(null)}
+        open={!!confirmUser && !!confirmAction}
+        onClose={() => {
+          if (deletingId) return;
+
+          setConfirmUser(null);
+          setConfirmAction(null);
+        }}
         PaperProps={{
           sx: {
             backgroundColor: "#181A1B",
             color: "#ffffff",
             borderRadius: 3,
             border: "1px solid rgba(255,255,255,0.12)",
-            minWidth: 380,
+            width: "calc(100% - 32px)",
+            maxWidth: 460,
           },
         }}
       >
-        <DialogTitle sx={{ fontWeight: 900 }}>Deactivate account?</DialogTitle>
+        <DialogTitle
+          sx={{
+            fontWeight: 900,
+            textAlign: "center",
+          }}
+        >
+          {currentActionConfig?.title}
+        </DialogTitle>
 
         <DialogContent>
-          <Typography sx={{ color: "#d7d7d7", fontSize: 14 }}>
-            Are you sure you want to deactivate{" "}
-            <Box component="span" sx={{ color: "#ffffff", fontWeight: 900 }}>
+          <Typography
+            sx={{
+              color: "#d7d7d7",
+              fontSize: 14,
+              textAlign: "center",
+            }}
+          >
+            User:{" "}
+            <Box
+              component="span"
+              sx={{
+                color: "#ffffff",
+                fontWeight: 900,
+              }}
+            >
               {confirmUser?.name || confirmUser?.email}
             </Box>
-            ?
           </Typography>
 
           <Typography
@@ -781,19 +1388,24 @@ const UsersTable = ({ users, accessToken }: Props) => {
               color: "#9a9a9a",
               fontSize: 13,
               lineHeight: 1.6,
+              textAlign: "center",
             }}
           >
-            The user will no longer be able to sign in. Tracks, playlists,
-            comments, followers and other account data will be preserved.
+            {currentActionConfig?.description}
           </Typography>
         </DialogContent>
 
         <DialogActions sx={{ px: 3, pb: 2 }}>
           <Button
-            onClick={() => setConfirmUser(null)}
+            onClick={() => {
+              setConfirmUser(null);
+              setConfirmAction(null);
+            }}
+            disabled={!!deletingId}
             sx={{
               color: "#cfcfcf",
               fontWeight: 800,
+              textTransform: "none",
             }}
           >
             Cancel
@@ -801,33 +1413,57 @@ const UsersTable = ({ users, accessToken }: Props) => {
 
           <Button
             variant="contained"
-            disabled={!!deletingId}
+            disabled={!!deletingId || !confirmUser || !confirmAction}
             onClick={async () => {
               const selectedUser = confirmUser;
 
-              if (!selectedUser) return;
+              if (!selectedUser || !confirmAction) {
+                return;
+              }
 
-              setConfirmUser(null);
-              await deleteUser(selectedUser);
+              switch (confirmAction) {
+                case "SUSPEND":
+                  await suspendUser(selectedUser);
+                  break;
+
+                case "ACTIVATE":
+                  await activateUser(selectedUser);
+                  break;
+
+                case "DEACTIVATE":
+                  await deactivateUser(selectedUser);
+                  break;
+
+                case "BAN_CHAT":
+                  await banUserChat(selectedUser);
+                  break;
+
+                case "ENABLE_CHAT":
+                  await enableUserChat(selectedUser);
+                  break;
+              }
             }}
             sx={{
-              minWidth: 120,
-              backgroundColor: "#ff4d4f",
+              minWidth: 140,
+              backgroundColor:
+                currentActionConfig?.backgroundColor || "#ff5500",
               color: "#ffffff",
               fontWeight: 900,
               textTransform: "none",
 
               "&:hover": {
-                backgroundColor: "#ff2f32",
+                backgroundColor: currentActionConfig?.hoverColor || "#ff6a1a",
               },
 
               "&.Mui-disabled": {
                 color: "rgba(255,255,255,0.55)",
-                backgroundColor: "rgba(255,77,79,0.3)",
+                backgroundColor: "rgba(255,255,255,0.12)",
               },
             }}
           >
-            {deletingId ? "Deactivating..." : "Deactivate"}
+            {deletingId
+              ? currentActionConfig?.loadingLabel
+              : currentActionConfig?.buttonLabel}
           </Button>
         </DialogActions>
       </Dialog>

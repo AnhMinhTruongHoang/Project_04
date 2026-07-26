@@ -106,19 +106,115 @@ public class AuthController {
 		playlistRepository.save(playlist);
 	}
 
+	/// stop duplicate email registration
+	private String normalizeAccountType(String type) {
+		if (type == null || type.isBlank()) {
+			return "SYSTEM";
+		}
+
+		return type.trim().toUpperCase();
+	}
+
+	private String getProviderName(String type) {
+		String normalizedType = normalizeAccountType(type);
+
+		return switch (normalizedType) {
+			case "GOOGLE" -> "Google";
+			case "GITHUB" -> "GitHub";
+			case "SYSTEM" -> "email and password";
+			default -> normalizedType;
+		};
+	}
+
+	private ResponseEntity<?> validateAccountStatus(User user) {
+		String accountStatus = user.getAccountStatus();
+
+		if ("DELETED".equalsIgnoreCase(accountStatus)) {
+			return new ResponseEntity<>(
+					new ApiResponse<>(
+							403,
+							"This account has been deactivated by an administrator.",
+							null),
+					HttpStatus.FORBIDDEN);
+		}
+
+		if ("BANNED".equalsIgnoreCase(accountStatus)) {
+			String reason = user.getStatusReason();
+
+			return new ResponseEntity<>(
+					new ApiResponse<>(
+							403,
+							reason == null || reason.isBlank()
+									? "This account has been banned by an administrator."
+									: "This account has been banned. Reason: " + reason,
+							null),
+					HttpStatus.FORBIDDEN);
+		}
+
+		if ("SUSPENDED".equalsIgnoreCase(accountStatus)) {
+			Date suspendedUntil = user.getSuspendedUntil();
+
+			if (suspendedUntil == null || suspendedUntil.after(new Date())) {
+				String reason = user.getStatusReason();
+
+				return new ResponseEntity<>(
+						new ApiResponse<>(
+								403,
+								reason == null || reason.isBlank()
+										? "This account is temporarily suspended."
+										: "This account is temporarily suspended. Reason: " + reason,
+								null),
+						HttpStatus.FORBIDDEN);
+			}
+
+			Date now = new Date();
+
+			user.setAccountStatus("ACTIVE");
+			user.setStatusReason(null);
+			user.setSuspendedUntil(null);
+			user.setStatusUpdatedAt(now);
+			user.setUpdatedAt(now);
+
+			userService.save(user);
+		}
+
+		return null;
+	}
+
+	///
 	@PostMapping("login")
 	public ResponseEntity<?> login(@RequestBody LoginDTO dto) {
 		try {
-			User user = userService.findByEmail(dto.getEmail());
+			String email = dto.getEmail() == null
+					? null
+					: dto.getEmail().trim().toLowerCase();
 
-			if (user == null || user.getPassword() == null || !BCrypt.checkpw(dto.getPassword(), user.getPassword())) {
-				return new ResponseEntity<>(new ApiResponse<>(400, "Login Failed", null), HttpStatus.BAD_REQUEST);
+			if (email == null || email.isBlank()) {
+				return new ResponseEntity<>(
+						new ApiResponse<>(
+								400,
+								"Email is required.",
+								null),
+						HttpStatus.BAD_REQUEST);
 			}
 
-			/// BAN LOGIC
-			String accountStatus = user.getAccountStatus();
+			User user = userService.findByEmail(email);
 
-			if ("DELETED".equalsIgnoreCase(accountStatus)) {
+			if (user == null) {
+				return new ResponseEntity<>(
+						new ApiResponse<>(
+								400,
+								"Email or password is incorrect.",
+								null),
+						HttpStatus.BAD_REQUEST);
+			}
+
+			/* ACCOUNT STATUS */
+			String accountStatus = user.getAccountStatus() == null
+					? "ACTIVE"
+					: user.getAccountStatus().trim().toUpperCase();
+
+			if ("DELETED".equals(accountStatus)) {
 				return new ResponseEntity<>(
 						new ApiResponse<>(
 								403,
@@ -127,7 +223,7 @@ public class AuthController {
 						HttpStatus.FORBIDDEN);
 			}
 
-			if ("BANNED".equalsIgnoreCase(accountStatus)) {
+			if ("BANNED".equals(accountStatus)) {
 				String reason = user.getStatusReason();
 
 				return new ResponseEntity<>(
@@ -140,7 +236,7 @@ public class AuthController {
 						HttpStatus.FORBIDDEN);
 			}
 
-			if ("SUSPENDED".equalsIgnoreCase(accountStatus)) {
+			if ("SUSPENDED".equals(accountStatus)) {
 				Date suspendedUntil = user.getSuspendedUntil();
 
 				if (suspendedUntil == null || suspendedUntil.after(new Date())) {
@@ -156,65 +252,226 @@ public class AuthController {
 							HttpStatus.FORBIDDEN);
 				}
 
+				Date now = new Date();
+
 				user.setAccountStatus("ACTIVE");
 				user.setStatusReason(null);
 				user.setSuspendedUntil(null);
-				user.setStatusUpdatedAt(new Date());
-				user.setUpdatedAt(new Date());
+				user.setStatusUpdatedAt(now);
+				user.setUpdatedAt(now);
 
 				userService.save(user);
 			}
-			///
 
-			String accessToken = JwtHelper.generateToken(user.getEmail(), user.getRole());
-			String refreshToken = JwtHelper.generateToken(user.getEmail(), user.getRole());
+			/* LOGIN PROVIDER */
+			String accountType = user.getType() == null || user.getType().isBlank()
+					? "SYSTEM"
+					: user.getType().trim().toUpperCase();
+
+			if (!"SYSTEM".equals(accountType)) {
+				String providerName = switch (accountType) {
+					case "GOOGLE" -> "Google";
+					case "GITHUB" -> "GitHub";
+					default -> accountType;
+				};
+
+				return new ResponseEntity<>(
+						new ApiResponse<>(
+								409,
+								"This email is registered with "
+										+ providerName
+										+ ". Please continue with "
+										+ providerName
+										+ ".",
+								null),
+						HttpStatus.CONFLICT);
+			}
+
+			if (user.getPassword() == null
+					|| !BCrypt.checkpw(dto.getPassword(), user.getPassword())) {
+
+				return new ResponseEntity<>(
+						new ApiResponse<>(
+								400,
+								"Email or password is incorrect.",
+								null),
+						HttpStatus.BAD_REQUEST);
+			}
+
+			String accessToken = JwtHelper.generateToken(
+					user.getEmail(),
+					user.getRole());
+
+			String refreshToken = JwtHelper.generateToken(
+					user.getEmail(),
+					user.getRole());
 
 			user.setRefreshToken(refreshToken);
 			user.setUpdatedAt(new Date());
 
 			userService.save(user);
 
-			LoginResponseDTO loginResponse = buildLoginResponse(user, accessToken, refreshToken);
+			LoginResponseDTO loginResponse = buildLoginResponse(
+					user,
+					accessToken,
+					refreshToken);
 
-			return new ResponseEntity<>(new ApiResponse<>(201, "Login success", loginResponse), HttpStatus.CREATED);
+			return new ResponseEntity<>(
+					new ApiResponse<>(
+							201,
+							"Login success",
+							loginResponse),
+					HttpStatus.CREATED);
 
 		} catch (Exception e) {
 			e.printStackTrace();
-			return new ResponseEntity<>(new ApiResponse<>(500, e.getMessage(), null), HttpStatus.INTERNAL_SERVER_ERROR);
+
+			return new ResponseEntity<>(
+					new ApiResponse<>(
+							500,
+							"Unable to sign in due to an internal server error.",
+							null),
+					HttpStatus.INTERNAL_SERVER_ERROR);
 		}
 	}
 
-	/// register
+	/// REGISTER
 	@PostMapping("register")
 	public ResponseEntity<?> register(@RequestBody RegisterDTO dto) {
 		try {
-			User checkUser = userService.findByEmail(dto.getEmail());
+			String email = dto.getEmail() == null
+					? null
+					: dto.getEmail().trim().toLowerCase();
 
-			if (checkUser != null) {
-				return new ResponseEntity<>(new ApiResponse<>(400, "Email already exists", null),
+			if (email == null || email.isBlank()) {
+				return new ResponseEntity<>(
+						new ApiResponse<>(
+								400,
+								"Email is required.",
+								null),
 						HttpStatus.BAD_REQUEST);
 			}
 
+			if (dto.getPassword() == null || dto.getPassword().isBlank()) {
+				return new ResponseEntity<>(
+						new ApiResponse<>(
+								400,
+								"Password is required.",
+								null),
+						HttpStatus.BAD_REQUEST);
+			}
+
+			User checkUser = userService.findByEmail(email);
+
+			if (checkUser != null) {
+				String accountStatus = checkUser.getAccountStatus() == null
+						? "ACTIVE"
+						: checkUser.getAccountStatus().trim().toUpperCase();
+
+				if ("DELETED".equals(accountStatus)) {
+					return new ResponseEntity<>(
+							new ApiResponse<>(
+									403,
+									"This email belongs to an account that has been deactivated by an administrator.",
+									null),
+							HttpStatus.FORBIDDEN);
+				}
+
+				if ("BANNED".equals(accountStatus)) {
+					return new ResponseEntity<>(
+							new ApiResponse<>(
+									403,
+									"This email belongs to an account that has been banned.",
+									null),
+							HttpStatus.FORBIDDEN);
+				}
+
+				if ("SUSPENDED".equals(accountStatus)) {
+					Date suspendedUntil = checkUser.getSuspendedUntil();
+
+					if (suspendedUntil == null || suspendedUntil.after(new Date())) {
+						return new ResponseEntity<>(
+								new ApiResponse<>(
+										403,
+										"This email belongs to an account that is temporarily suspended.",
+										null),
+								HttpStatus.FORBIDDEN);
+					}
+				}
+
+				String existingType = checkUser.getType() == null
+						|| checkUser.getType().isBlank()
+								? "SYSTEM"
+								: checkUser.getType().trim().toUpperCase();
+
+				if (!"SYSTEM".equals(existingType)) {
+					String providerName = switch (existingType) {
+						case "GOOGLE" -> "Google";
+						case "GITHUB" -> "GitHub";
+						default -> existingType;
+					};
+
+					return new ResponseEntity<>(
+							new ApiResponse<>(
+									409,
+									"This email is already registered with "
+											+ providerName
+											+ ". Please continue with "
+											+ providerName
+											+ ".",
+									null),
+							HttpStatus.CONFLICT);
+				}
+
+				if (Boolean.TRUE.equals(checkUser.getIsVerify())) {
+					return new ResponseEntity<>(
+							new ApiResponse<>(
+									409,
+									"This email is already registered. Please sign in or reset your password.",
+									null),
+							HttpStatus.CONFLICT);
+				}
+
+				return new ResponseEntity<>(
+						new ApiResponse<>(
+								409,
+								"This email is already registered but has not been verified. Please verify your OTP or request a new OTP.",
+								null),
+						HttpStatus.CONFLICT);
+			}
+
 			String otp = generateOtp();
+			Date now = new Date();
 
 			User user = new User();
 
 			user.setId(generateId());
-			user.setEmail(dto.getEmail());
-			user.setPassword(BCrypt.hashpw(dto.getPassword(), BCrypt.gensalt()));
+			user.setEmail(email);
+			user.setPassword(
+					BCrypt.hashpw(
+							dto.getPassword(),
+							BCrypt.gensalt()));
+
 			user.setName(dto.getName());
 			user.setAge(dto.getAge());
 			user.setGender(dto.getGender());
-			user.setUsername("");
+			user.setUsername(email);
 			user.setRole("USER");
 			user.setType("SYSTEM");
 			user.setIsVerify(false);
+			user.setVerified(false);
 			user.setCode(otp);
 			user.setRefreshToken("");
 			user.setFollowers(0);
 			user.setFollowing(0);
-			user.setCreatedAt(new Date());
-			user.setUpdatedAt(new Date());
+
+			user.setAccountStatus("ACTIVE");
+			user.setStatusReason(null);
+			user.setSuspendedUntil(null);
+			user.setStatusUpdatedAt(now);
+
+			user.setCreatedAt(now);
+			user.setUpdatedAt(now);
 
 			userService.save(user);
 			createDefaultPlaylist(user);
@@ -226,13 +483,21 @@ public class AuthController {
 					5);
 
 			return new ResponseEntity<>(
-					new ApiResponse<>(201, "Register success. Please check your email for OTP.",
+					new ApiResponse<>(
+							201,
+							"Registration successful. Please check your email for the verification code.",
 							toUserResponseDTO(user)),
 					HttpStatus.CREATED);
 
 		} catch (Exception e) {
 			e.printStackTrace();
-			return new ResponseEntity<>(new ApiResponse<>(500, e.getMessage(), null), HttpStatus.INTERNAL_SERVER_ERROR);
+
+			return new ResponseEntity<>(
+					new ApiResponse<>(
+							500,
+							"Unable to register this account due to an internal server error.",
+							null),
+					HttpStatus.INTERNAL_SERVER_ERROR);
 		}
 	}
 
@@ -474,6 +739,54 @@ public class AuthController {
 			String email = claims.getSubject();
 
 			User user = userService.findByEmail(email);
+			String accountStatus = user.getAccountStatus();
+
+			if ("DELETED".equalsIgnoreCase(accountStatus)) {
+				return new ResponseEntity<>(
+						new ApiResponse<>(
+								403,
+								"This account has been deactivated by an administrator.",
+								null),
+						HttpStatus.FORBIDDEN);
+			}
+
+			if ("BANNED".equalsIgnoreCase(accountStatus)) {
+				String reason = user.getStatusReason();
+
+				return new ResponseEntity<>(
+						new ApiResponse<>(
+								403,
+								reason == null || reason.isBlank()
+										? "This account has been banned by an administrator."
+										: "This account has been banned. Reason: " + reason,
+								null),
+						HttpStatus.FORBIDDEN);
+			}
+
+			if ("SUSPENDED".equalsIgnoreCase(accountStatus)) {
+				Date suspendedUntil = user.getSuspendedUntil();
+
+				if (suspendedUntil == null || suspendedUntil.after(new Date())) {
+					String reason = user.getStatusReason();
+
+					return new ResponseEntity<>(
+							new ApiResponse<>(
+									403,
+									reason == null || reason.isBlank()
+											? "This account is temporarily suspended."
+											: "This account is temporarily suspended. Reason: " + reason,
+									null),
+							HttpStatus.FORBIDDEN);
+				}
+
+				user.setAccountStatus("ACTIVE");
+				user.setStatusReason(null);
+				user.setSuspendedUntil(null);
+				user.setStatusUpdatedAt(new Date());
+				user.setUpdatedAt(new Date());
+
+				userService.save(user);
+			}
 
 			if (user == null) {
 				return new ResponseEntity<>(new ApiResponse<>(404, "User Not Found", null), HttpStatus.NOT_FOUND);
@@ -531,72 +844,256 @@ public class AuthController {
 		}
 	}
 
+	//// social login
 	@PostMapping("social-media")
-	public ResponseEntity<?> socialMedia(@RequestBody(required = false) Map<String, Object> body) {
+	public ResponseEntity<?> socialMedia(
+			@RequestBody(required = false) Map<String, Object> body) {
+
 		try {
-			String type = body != null && body.get("type") != null ? body.get("type").toString() : null;
-			String username = body != null && body.get("username") != null ? body.get("username").toString() : null;
-			String email = body != null && body.get("email") != null ? body.get("email").toString() : null;
-			String name = body != null && body.get("name") != null ? body.get("name").toString() : null;
-			String avatarUrl = body != null && body.get("avatarUrl") != null ? body.get("avatarUrl").toString() : null;
+			String type = body != null && body.get("type") != null
+					? body.get("type").toString().trim()
+					: null;
 
-			String loginEmail = email != null && !email.trim().isEmpty() ? email : username;
+			String username = body != null && body.get("username") != null
+					? body.get("username").toString().trim()
+					: null;
 
-			if (loginEmail == null || loginEmail.trim().isEmpty()) {
-				return new ResponseEntity<>(new ApiResponse<>(400, "Missing email", null), HttpStatus.BAD_REQUEST);
+			String email = body != null && body.get("email") != null
+					? body.get("email").toString().trim()
+					: null;
+
+			String name = body != null && body.get("name") != null
+					? body.get("name").toString().trim()
+					: null;
+
+			String avatarUrl = body != null && body.get("avatarUrl") != null
+					? body.get("avatarUrl").toString().trim()
+					: null;
+
+			String loginEmail = email != null && !email.isBlank()
+					? email.toLowerCase()
+					: username != null
+							? username.toLowerCase()
+							: null;
+
+			if (loginEmail == null || loginEmail.isBlank()) {
+				return new ResponseEntity<>(
+						new ApiResponse<>(
+								400,
+								"Email is required for social login.",
+								null),
+						HttpStatus.BAD_REQUEST);
 			}
+
+			String requestedProvider = type == null
+					? ""
+					: type.toUpperCase();
+
+			if (!"GOOGLE".equals(requestedProvider)
+					&& !"GITHUB".equals(requestedProvider)) {
+
+				return new ResponseEntity<>(
+						new ApiResponse<>(
+								400,
+								"A valid social login provider is required.",
+								null),
+						HttpStatus.BAD_REQUEST);
+			}
+
+			String requestedProviderName = "GOOGLE".equals(requestedProvider)
+					? "Google"
+					: "GitHub";
 
 			User user = userRepository.findByEmail(loginEmail);
 
 			if (user == null) {
+				Date now = new Date();
+
 				user = new User();
 
 				user.setId(generateId());
 				user.setEmail(loginEmail);
 				user.setUsername(loginEmail);
-				user.setName(name != null && !name.trim().isEmpty() ? name : loginEmail);
+				user.setName(
+						name != null && !name.isBlank()
+								? name
+								: loginEmail);
+
 				user.setRole("USER");
-				user.setType(type != null ? type.toUpperCase() : "SOCIAL");
+				user.setType(requestedProvider);
 				user.setIsVerify(true);
+				user.setVerified(true);
 				user.setPassword("");
 				user.setCode("");
 				user.setRefreshToken("");
 				user.setAvatarUrl(avatarUrl);
 				user.setFollowers(0);
 				user.setFollowing(0);
-				user.setCreatedAt(new Date());
-				user.setUpdatedAt(new Date());
+
+				user.setAccountStatus("ACTIVE");
+				user.setStatusReason(null);
+				user.setSuspendedUntil(null);
+				user.setStatusUpdatedAt(now);
+
+				user.setCreatedAt(now);
+				user.setUpdatedAt(now);
 
 				userRepository.save(user);
 				createDefaultPlaylist(user);
+
 			} else {
-				if (name != null && !name.trim().isEmpty()) {
+				/* ACCOUNT STATUS */
+				String accountStatus = user.getAccountStatus() == null
+						? "ACTIVE"
+						: user.getAccountStatus().trim().toUpperCase();
+
+				if ("DELETED".equals(accountStatus)) {
+					return new ResponseEntity<>(
+							new ApiResponse<>(
+									403,
+									"This account has been deactivated by an administrator.",
+									null),
+							HttpStatus.FORBIDDEN);
+				}
+
+				if ("BANNED".equals(accountStatus)) {
+					String reason = user.getStatusReason();
+
+					return new ResponseEntity<>(
+							new ApiResponse<>(
+									403,
+									reason == null || reason.isBlank()
+											? "This account has been banned by an administrator."
+											: "This account has been banned. Reason: " + reason,
+									null),
+							HttpStatus.FORBIDDEN);
+				}
+
+				if ("SUSPENDED".equals(accountStatus)) {
+					Date suspendedUntil = user.getSuspendedUntil();
+
+					if (suspendedUntil == null
+							|| suspendedUntil.after(new Date())) {
+
+						String reason = user.getStatusReason();
+
+						return new ResponseEntity<>(
+								new ApiResponse<>(
+										403,
+										reason == null || reason.isBlank()
+												? "This account is temporarily suspended."
+												: "This account is temporarily suspended. Reason: "
+														+ reason,
+										null),
+								HttpStatus.FORBIDDEN);
+					}
+
+					Date now = new Date();
+
+					user.setAccountStatus("ACTIVE");
+					user.setStatusReason(null);
+					user.setSuspendedUntil(null);
+					user.setStatusUpdatedAt(now);
+					user.setUpdatedAt(now);
+				}
+
+				/* LOGIN PROVIDER */
+				String existingType = user.getType() == null
+						|| user.getType().isBlank()
+								? "SYSTEM"
+								: user.getType().trim().toUpperCase();
+
+				if ("SYSTEM".equals(existingType)) {
+					return new ResponseEntity<>(
+							new ApiResponse<>(
+									409,
+									"This email is already registered with email and password. Please sign in using your password.",
+									null),
+							HttpStatus.CONFLICT);
+				}
+
+				/*
+				 * Hỗ trợ tài khoản social cũ chưa lưu rõ GOOGLE/GITHUB.
+				 * Sau lần đăng nhập hợp lệ đầu tiên sẽ chuẩn hóa provider.
+				 */
+				if ("SOCIAL".equals(existingType)) {
+					user.setType(requestedProvider);
+					existingType = requestedProvider;
+				}
+
+				if (!existingType.equals(requestedProvider)) {
+					String existingProviderName;
+
+					if ("GOOGLE".equals(existingType)) {
+						existingProviderName = "Google";
+					} else if ("GITHUB".equals(existingType)) {
+						existingProviderName = "GitHub";
+					} else {
+						existingProviderName = existingType;
+					}
+
+					return new ResponseEntity<>(
+							new ApiResponse<>(
+									409,
+									"This email is already registered with "
+											+ existingProviderName
+											+ ". Please continue with "
+											+ existingProviderName
+											+ ".",
+									null),
+							HttpStatus.CONFLICT);
+				}
+
+				if (name != null && !name.isBlank()) {
 					user.setName(name);
 				}
 
-				if (avatarUrl != null && !avatarUrl.trim().isEmpty()) {
+				if (avatarUrl != null && !avatarUrl.isBlank()) {
 					user.setAvatarUrl(avatarUrl);
 				}
 
-				user.setType(type != null ? type.toUpperCase() : user.getType());
+				user.setIsVerify(true);
+				user.setVerified(true);
 				user.setUpdatedAt(new Date());
+
+				userRepository.save(user);
 			}
 
-			String accessToken = JwtHelper.generateToken(user.getEmail(), user.getRole());
-			String refreshToken = JwtHelper.generateToken(user.getEmail(), user.getRole());
+			String accessToken = JwtHelper.generateToken(
+					user.getEmail(),
+					user.getRole());
+
+			String refreshToken = JwtHelper.generateToken(
+					user.getEmail(),
+					user.getRole());
 
 			user.setRefreshToken(refreshToken);
+			user.setUpdatedAt(new Date());
+
 			userRepository.save(user);
 
-			LoginResponseDTO loginResponse = buildLoginResponse(user, accessToken, refreshToken);
+			LoginResponseDTO loginResponse = buildLoginResponse(
+					user,
+					accessToken,
+					refreshToken);
 
 			return new ResponseEntity<>(
-					new ApiResponse<>(201, "Fetch tokens for user login with social media account", loginResponse),
+					new ApiResponse<>(
+							201,
+							"Login with " + requestedProviderName + " successful.",
+							loginResponse),
 					HttpStatus.CREATED);
 
 		} catch (Exception e) {
 			e.printStackTrace();
-			return new ResponseEntity<>(new ApiResponse<>(500, e.getMessage(), null), HttpStatus.INTERNAL_SERVER_ERROR);
+
+			return new ResponseEntity<>(
+					new ApiResponse<>(
+							500,
+							"Unable to complete social login due to an internal server error.",
+							null),
+					HttpStatus.INTERNAL_SERVER_ERROR);
 		}
 	}
+	///
 }

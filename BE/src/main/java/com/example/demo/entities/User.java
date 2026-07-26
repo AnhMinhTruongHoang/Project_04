@@ -59,6 +59,14 @@ public class User implements java.io.Serializable {
 	private String statusReason;
 	private Date suspendedUntil;
 	private Date statusUpdatedAt;
+	/*
+	 * =========================
+	 * CHAT STATUS
+	 * =========================
+	 */
+	private String chatStatus = "ACTIVE";
+	private String chatBanReason;
+	private Date chatStatusUpdatedAt;
 
 	public String getSubscriptionTier() {
 		return subscriptionTier;
@@ -395,5 +403,41 @@ public class User implements java.io.Serializable {
 
 	public void setStatusUpdatedAt(Date statusUpdatedAt) {
 		this.statusUpdatedAt = statusUpdatedAt;
+	}
+
+	@Column(name = "chat_status", length = 20)
+	public String getChatStatus() {
+		if (chatStatus == null || chatStatus.isBlank()) {
+			return "ACTIVE";
+		}
+
+		return chatStatus;
+	}
+
+	public void setChatStatus(String chatStatus) {
+		if (chatStatus == null || chatStatus.isBlank()) {
+			this.chatStatus = "ACTIVE";
+			return;
+		}
+
+		this.chatStatus = chatStatus.trim().toUpperCase();
+	}
+
+	@Column(name = "chat_ban_reason", length = 500)
+	public String getChatBanReason() {
+		return chatBanReason;
+	}
+
+	public void setChatBanReason(String chatBanReason) {
+		this.chatBanReason = chatBanReason;
+	}
+
+	@Column(name = "chat_status_updated_at")
+	public Date getChatStatusUpdatedAt() {
+		return chatStatusUpdatedAt;
+	}
+
+	public void setChatStatusUpdatedAt(Date chatStatusUpdatedAt) {
+		this.chatStatusUpdatedAt = chatStatusUpdatedAt;
 	}
 }

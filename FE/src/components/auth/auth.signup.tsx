@@ -25,7 +25,7 @@ import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import Visibility from "@mui/icons-material/Visibility";
 import VisibilityOff from "@mui/icons-material/VisibilityOff";
 import { sendRequest } from "@/utils/api";
-import { Checkbox, FormControlLabel } from "@mui/material";
+import { Alert, Checkbox, FormControlLabel, Snackbar } from "@mui/material";
 import TermsModal from "./termsModal";
 
 const Card = styled(MuiCard)(({ theme }) => ({
@@ -165,6 +165,7 @@ const AuthSignUp = () => {
     return Object.keys(nextError).length === 0;
   };
 
+  ///
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
@@ -173,12 +174,14 @@ const AuthSignUp = () => {
     try {
       setLoading(true);
 
+      const normalizedEmail = email.trim().toLowerCase();
+
       const res = await sendRequest<IBackendRes<any>>({
         url: `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/v1/auth/register`,
         method: "POST",
         body: {
           name: name.trim(),
-          email: email.trim(),
+          email: normalizedEmail,
           password,
           age: Number(age),
           gender,
@@ -186,37 +189,61 @@ const AuthSignUp = () => {
         },
       });
 
-      if (res?.statusCode === 201 || res?.statusCode === 200) {
+      const statusCode = Number(res?.statusCode);
+
+      const responseMessage = Array.isArray(res?.message)
+        ? res.message.filter(Boolean).join(", ")
+        : String(res?.message || "").trim();
+
+      if (statusCode === 200 || statusCode === 201) {
         setSeverity("success");
         setResMessage(
-          res?.message || "Register success. Please check your email for OTP."
+          responseMessage ||
+            "Registration successful. Please check your email for the verification code."
         );
-
         setOpenMessage(true);
 
         setTimeout(() => {
           router.push(
-            `/auth/verify-otp?email=${encodeURIComponent(email.trim())}`
+            `/auth/verify-otp?email=${encodeURIComponent(normalizedEmail)}`
           );
         }, 800);
-      } else {
-        setSeverity("error");
-        setResMessage(
-          Array.isArray(res?.message)
-            ? res.message[0]
-            : res?.message || "Register failed."
-        );
-        setOpenMessage(true);
+
+        return;
       }
-    } catch (err: any) {
+
       setSeverity("error");
-      setResMessage(err?.message || "Register failed. Please try again.");
+
+      if (statusCode === 409) {
+        setResMessage(
+          responseMessage ||
+            "This email is already registered. Please use the correct sign-in method."
+        );
+      } else if (statusCode === 403) {
+        setResMessage(
+          responseMessage ||
+            "This account is currently unavailable. Please contact support."
+        );
+      } else {
+        setResMessage(
+          responseMessage || "Registration failed. Please try again."
+        );
+      }
+
+      setOpenMessage(true);
+    } catch (err: unknown) {
+      setSeverity("error");
+      setResMessage(
+        err instanceof Error
+          ? err.message
+          : "Registration failed. Please try again."
+      );
       setOpenMessage(true);
     } finally {
       setLoading(false);
     }
   };
-
+  ///
   return (
     <>
       <CssBaseline />
@@ -662,6 +689,32 @@ const AuthSignUp = () => {
         setIsModalOpen={setIsModalOpen}
         onAgree={() => setAgree(true)}
       />
+
+      <Snackbar
+        open={openMessage}
+        autoHideDuration={6000}
+        onClose={(_, reason) => {
+          if (reason === "clickaway") return;
+          setOpenMessage(false);
+        }}
+        anchorOrigin={{
+          vertical: "top",
+          horizontal: "center",
+        }}
+      >
+        <Alert
+          severity={severity}
+          variant="filled"
+          onClose={() => setOpenMessage(false)}
+          sx={{
+            width: "100%",
+            fontWeight: 700,
+            color: "#ffffff",
+          }}
+        >
+          {resMessage}
+        </Alert>
+      </Snackbar>
     </>
   );
 };

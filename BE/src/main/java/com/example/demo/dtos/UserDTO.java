@@ -31,6 +31,14 @@ public class UserDTO {
 	private String statusReason;
 	private Date suspendedUntil;
 	private Date statusUpdatedAt;
+	/*
+	 * =========================
+	 * CHAT STATUS
+	 * =========================
+	 */
+	private String chatStatus;
+	private String chatBanReason;
+	private Date chatStatusUpdatedAt;
 
 	public String getSpotlightTrackId() {
 		return spotlightTrackId;
@@ -272,5 +280,36 @@ public class UserDTO {
 
 	public void setStatusUpdatedAt(Date statusUpdatedAt) {
 		this.statusUpdatedAt = statusUpdatedAt;
+	}
+
+	public String getChatStatus() {
+		return chatStatus == null || chatStatus.isBlank()
+				? "ACTIVE"
+				: chatStatus;
+	}
+
+	public void setChatStatus(String chatStatus) {
+		if (chatStatus == null || chatStatus.isBlank()) {
+			this.chatStatus = "ACTIVE";
+			return;
+		}
+
+		this.chatStatus = chatStatus.trim().toUpperCase();
+	}
+
+	public String getChatBanReason() {
+		return chatBanReason;
+	}
+
+	public void setChatBanReason(String chatBanReason) {
+		this.chatBanReason = chatBanReason;
+	}
+
+	public Date getChatStatusUpdatedAt() {
+		return chatStatusUpdatedAt;
+	}
+
+	public void setChatStatusUpdatedAt(Date chatStatusUpdatedAt) {
+		this.chatStatusUpdatedAt = chatStatusUpdatedAt;
 	}
 }

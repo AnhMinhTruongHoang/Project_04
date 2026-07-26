@@ -16,6 +16,10 @@ declare global {
 
   type SubscriptionTier = "FREE" | "ARTIST" | "ARTIST_PRO" | string;
 
+  type AccountStatus = "ACTIVE" | "SUSPENDED" | "DELETED";
+
+  type ChatStatus = "ACTIVE" | "BANNED";
+
   type ApprovalStatus = "PENDING" | "APPROVED" | "REJECTED" | string;
 
   type TrackCategory =
@@ -120,6 +124,25 @@ declare global {
     followers?: number;
     following?: number;
 
+    /* =========================
+       ACCOUNT STATUS
+    ========================= */
+    accountStatus?: AccountStatus;
+    statusReason?: string | null;
+    suspendedUntil?: string | null;
+    statusUpdatedAt?: string | null;
+
+    /* =========================
+       CHAT STATUS
+    ========================= */
+    chatStatus?: ChatStatus;
+    chatBanReason?: string | null;
+    chatStatusUpdatedAt?: string | null;
+
+    /**
+     * Alias do Backend trả về.
+     * true khi accountStatus === "DELETED".
+     */
     isDeleted?: boolean;
 
     createdAt?: string;
@@ -398,6 +421,13 @@ declare global {
     image?: string;
     picture?: string;
   };
+
+  type UserAction =
+    | "SUSPEND"
+    | "ACTIVATE"
+    | "DEACTIVATE"
+    | "BAN_CHAT"
+    | "ENABLE_CHAT";
 
   type ICreateCommentPayload = CreateCommentPayload;
 

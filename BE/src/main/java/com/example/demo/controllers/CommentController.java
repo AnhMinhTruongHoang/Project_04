@@ -8,11 +8,9 @@ import java.util.stream.Collectors;
 
 import io.jsonwebtoken.Claims;
 import jakarta.servlet.http.HttpServletRequest;
-
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-
 import com.example.demo.entities.Comment;
 import com.example.demo.entities.Track;
 import com.example.demo.entities.User;
@@ -21,7 +19,6 @@ import com.example.demo.repositories.CommentRepository;
 import com.example.demo.repositories.TrackRepository;
 import com.example.demo.repositories.UserRepository;
 import com.example.demo.responses.ApiResponse;
-import com.example.demo.services.NotificationService;
 
 @RestController
 @RequestMapping({ "/api/comments", "/api/v1/comments" })
@@ -63,6 +60,11 @@ public class CommentController {
         return user != null && "ADMIN".equalsIgnoreCase(user.getRole());
     }
 
+    private boolean isChatBanned(User user) {
+        return user != null
+                && "BANNED".equalsIgnoreCase(user.getChatStatus());
+    }
+
     private Map<String, Object> toUserMap(User user) {
         Map<String, Object> map = new LinkedHashMap<>();
 
@@ -78,6 +80,9 @@ public class CommentController {
         map.put("avatarUrl", user.getAvatarUrl());
         map.put("followers", user.getFollowers() == null ? 0 : user.getFollowers());
         map.put("following", user.getFollowing() == null ? 0 : user.getFollowing());
+        map.put("chatStatus", user.getChatStatus());
+        map.put("chatBanReason", user.getChatBanReason());
+        map.put("chatStatusUpdatedAt", user.getChatStatusUpdatedAt());
 
         return map;
     }

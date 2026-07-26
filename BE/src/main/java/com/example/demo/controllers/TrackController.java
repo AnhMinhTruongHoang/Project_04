@@ -1238,6 +1238,23 @@ public class TrackController {
 				return ResponseEntity.status(401).body(new ApiResponse<>(401, "Unauthorized", null));
 			}
 
+			/*
+			 * =========================
+			 * CHECK CHAT BAN
+			 * =========================
+			 */
+			if ("BANNED".equalsIgnoreCase(user.getChatStatus())) {
+				String reason = user.getChatBanReason();
+
+				return ResponseEntity.status(403)
+						.body(new ApiResponse<>(
+								403,
+								reason == null || reason.isBlank()
+										? "Your commenting access has been disabled by an administrator."
+										: "Your commenting access has been disabled. Reason: " + reason,
+								null));
+			}
+
 			Track track = trackRepository.findById(trackId).orElse(null);
 
 			if (track == null || Boolean.TRUE.equals(track.getIsDeleted()) || !isApproved(track)) {

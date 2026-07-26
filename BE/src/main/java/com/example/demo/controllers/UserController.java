@@ -1,8 +1,9 @@
 package com.example.demo.controllers;
 
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Date;
-import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -576,11 +577,29 @@ public class UserController {
 					getString(body, "subscriptionTier") != null
 							? getString(body, "subscriptionTier").toUpperCase()
 							: "FREE");
-
 			user.setFollowers(0);
 			user.setFollowing(0);
 			user.setCode("");
 			user.setRefreshToken("");
+
+			/*
+			 * =========================
+			 * DEFAULT ACCOUNT STATUS
+			 * =========================
+			 */
+			user.setAccountStatus("ACTIVE");
+			user.setStatusReason(null);
+			user.setSuspendedUntil(null);
+			user.setStatusUpdatedAt(null);
+
+			/*
+			 * =========================
+			 * DEFAULT CHAT STATUS
+			 * =========================
+			 */
+			user.setChatStatus("ACTIVE");
+			user.setChatBanReason(null);
+			user.setChatStatusUpdatedAt(null);
 
 			user.setCreatedAt(new Date());
 			user.setUpdatedAt(new Date());
@@ -928,6 +947,410 @@ public class UserController {
 					HttpStatus.INTERNAL_SERVER_ERROR);
 		}
 	}
+
+	///
+	/*
+	 * =========================
+	 * SUSPEND USER FOR 7 DAYS
+	 * =========================
+	 */
+	@Transactional
+	@PatchMapping("/{id}/suspend")
+	public ResponseEntity<?> suspendUser(
+			@PathVariable String id,
+			@RequestBody(required = false) Map<String, Object> body,
+			@RequestHeader(value = "Authorization", required = false) String authorization) {
+
+		try {
+			if (!isAdminRequest(authorization)) {
+				return new ResponseEntity<>(
+						new ApiResponse<>(
+								403,
+								"You do not have permission to suspend user accounts.",
+								null),
+						HttpStatus.FORBIDDEN);
+			}
+
+			User currentAdmin = getCurrentUser(authorization);
+
+			if (currentAdmin == null) {
+				return new ResponseEntity<>(
+						new ApiResponse<>(
+								401,
+								"Your administrator session is invalid or has expired.",
+								null),
+						HttpStatus.UNAUTHORIZED);
+			}
+
+			User user = userRepository.findById(id).orElse(null);
+
+			if (user == null) {
+				return new ResponseEntity<>(
+						new ApiResponse<>(
+								404,
+								"The requested user account was not found.",
+								null),
+						HttpStatus.NOT_FOUND);
+			}
+
+			if (currentAdmin.getId().equals(user.getId())) {
+				return new ResponseEntity<>(
+						new ApiResponse<>(
+								400,
+								"You cannot suspend your own administrator account.",
+								null),
+						HttpStatus.BAD_REQUEST);
+			}
+
+			if ("ADMIN".equalsIgnoreCase(user.getRole())) {
+				return new ResponseEntity<>(
+						new ApiResponse<>(
+								403,
+								"Administrator accounts cannot be suspended from this action.",
+								null),
+						HttpStatus.FORBIDDEN);
+			}
+
+			String currentStatus = user.getAccountStatus();
+
+			if ("DELETED".equalsIgnoreCase(currentStatus)) {
+				return new ResponseEntity<>(
+						new ApiResponse<>(
+								409,
+								"This account has already been deactivated and cannot be suspended.",
+								null),
+						HttpStatus.CONFLICT);
+			}
+
+			Date now = new Date();
+
+			if ("SUSPENDED".equalsIgnoreCase(currentStatus)
+					&& user.getSuspendedUntil() != null
+					&& user.getSuspendedUntil().after(now)) {
+
+				return new ResponseEntity<>(
+						new ApiResponse<>(
+								409,
+								"This account is already suspended until "
+										+ user.getSuspendedUntil()
+										+ ".",
+								toDTO(user)),
+						HttpStatus.CONFLICT);
+			}
+
+			String reason = getString(body, "reason");
+
+			if (reason == null) {
+				reason = "Temporary suspension issued by an administrator.";
+			}
+
+			Date suspendedUntil = Date.from(
+					Instant.now().plus(7, ChronoUnit.DAYS));
+
+			user.setAccountStatus("SUSPENDED");
+			user.setStatusReason(reason);
+			user.setSuspendedUntil(suspendedUntil);
+			user.setStatusUpdatedAt(now);
+			user.setRefreshToken(null);
+			user.setUpdatedAt(now);
+
+			userRepository.save(user);
+
+			return new ResponseEntity<>(
+					new ApiResponse<>(
+							200,
+							"User account suspended for 7 days. The account will be automatically reactivated after the suspension expires.",
+							toDTO(user)),
+					HttpStatus.OK);
+
+		} catch (Exception e) {
+			e.printStackTrace();
+
+			return new ResponseEntity<>(
+					new ApiResponse<>(
+							500,
+							"Unable to suspend this user account due to an internal server error.",
+							null),
+					HttpStatus.INTERNAL_SERVER_ERROR);
+		}
+	}
+
+	/*
+	 * =========================
+	 * REACTIVATE USER
+	 * =========================
+	 */
+	@Transactional
+	@PatchMapping("/{id}/activate")
+	public ResponseEntity<?> activateUser(
+			@PathVariable String id,
+			@RequestHeader(value = "Authorization", required = false) String authorization) {
+
+		try {
+			if (!isAdminRequest(authorization)) {
+				return new ResponseEntity<>(
+						new ApiResponse<>(
+								403,
+								"You do not have permission to reactivate user accounts.",
+								null),
+						HttpStatus.FORBIDDEN);
+			}
+
+			User user = userRepository.findById(id).orElse(null);
+
+			if (user == null) {
+				return new ResponseEntity<>(
+						new ApiResponse<>(
+								404,
+								"The requested user account was not found.",
+								null),
+						HttpStatus.NOT_FOUND);
+			}
+
+			String currentStatus = user.getAccountStatus();
+
+			if ("ACTIVE".equalsIgnoreCase(currentStatus)) {
+				return new ResponseEntity<>(
+						new ApiResponse<>(
+								200,
+								"This user account is already active.",
+								toDTO(user)),
+						HttpStatus.OK);
+			}
+
+			Date now = new Date();
+
+			user.setAccountStatus("ACTIVE");
+			user.setStatusReason(null);
+			user.setSuspendedUntil(null);
+			user.setStatusUpdatedAt(now);
+			user.setRefreshToken(null);
+			user.setUpdatedAt(now);
+
+			userRepository.save(user);
+
+			return new ResponseEntity<>(
+					new ApiResponse<>(
+							200,
+							"User account reactivated successfully. The user can now sign in again.",
+							toDTO(user)),
+					HttpStatus.OK);
+
+		} catch (Exception e) {
+			e.printStackTrace();
+
+			return new ResponseEntity<>(
+					new ApiResponse<>(
+							500,
+							"Unable to reactivate this user account due to an internal server error.",
+							null),
+					HttpStatus.INTERNAL_SERVER_ERROR);
+		}
+	}
+
+	/*
+	 * =========================
+	 * BAN USER CHAT
+	 * =========================
+	 */
+	@Transactional
+	@PatchMapping("/{id}/ban-chat")
+	public ResponseEntity<?> banUserChat(
+			@PathVariable String id,
+			@RequestBody(required = false) Map<String, Object> body,
+			@RequestHeader(value = "Authorization", required = false) String authorization) {
+
+		try {
+			if (!isAdminRequest(authorization)) {
+				return new ResponseEntity<>(
+						new ApiResponse<>(
+								403,
+								"You do not have permission to manage chat access.",
+								null),
+						HttpStatus.FORBIDDEN);
+			}
+
+			User currentAdmin = getCurrentUser(authorization);
+
+			if (currentAdmin == null) {
+				return new ResponseEntity<>(
+						new ApiResponse<>(
+								401,
+								"Your administrator session is invalid or has expired.",
+								null),
+						HttpStatus.UNAUTHORIZED);
+			}
+
+			User user = userRepository
+					.findById(id)
+					.orElse(null);
+
+			if (user == null) {
+				return new ResponseEntity<>(
+						new ApiResponse<>(
+								404,
+								"The requested user account was not found.",
+								null),
+						HttpStatus.NOT_FOUND);
+			}
+
+			if (currentAdmin.getId().equals(user.getId())) {
+				return new ResponseEntity<>(
+						new ApiResponse<>(
+								400,
+								"You cannot disable your own chat access.",
+								null),
+						HttpStatus.BAD_REQUEST);
+			}
+
+			if ("ADMIN".equalsIgnoreCase(user.getRole())) {
+				return new ResponseEntity<>(
+						new ApiResponse<>(
+								403,
+								"Administrator chat access cannot be disabled.",
+								null),
+						HttpStatus.FORBIDDEN);
+			}
+
+			if ("BANNED".equalsIgnoreCase(user.getChatStatus())) {
+				return new ResponseEntity<>(
+						new ApiResponse<>(
+								200,
+								"This user's chat access is already disabled.",
+								toDTO(user)),
+						HttpStatus.OK);
+			}
+
+			String reason = getString(body, "reason");
+
+			if (reason == null) {
+				reason = "Chat access disabled by an administrator.";
+			}
+
+			Date now = new Date();
+
+			user.setChatStatus("BANNED");
+			user.setChatBanReason(reason);
+			user.setChatStatusUpdatedAt(now);
+			user.setUpdatedAt(now);
+
+			/*
+			 * Không xóa refresh token.
+			 * User vẫn được đăng nhập, nghe nhạc và sử dụng tài khoản.
+			 * Chỉ bị chặn comment/chat.
+			 */
+			userRepository.save(user);
+
+			return new ResponseEntity<>(
+					new ApiResponse<>(
+							200,
+							"User chat access disabled successfully. The restriction will remain until an administrator enables chat again.",
+							toDTO(user)),
+					HttpStatus.OK);
+
+		} catch (Exception e) {
+			e.printStackTrace();
+
+			return new ResponseEntity<>(
+					new ApiResponse<>(
+							500,
+							"Unable to disable this user's chat access due to an internal server error.",
+							null),
+					HttpStatus.INTERNAL_SERVER_ERROR);
+		}
+	}
+
+	/*
+	 * =========================
+	 * ENABLE USER CHAT
+	 * =========================
+	 */
+	@Transactional
+	@PatchMapping("/{id}/enable-chat")
+	public ResponseEntity<?> enableUserChat(
+			@PathVariable String id,
+			@RequestHeader(value = "Authorization", required = false) String authorization) {
+
+		try {
+			if (!isAdminRequest(authorization)) {
+				return new ResponseEntity<>(
+						new ApiResponse<>(
+								403,
+								"You do not have permission to manage chat access.",
+								null),
+						HttpStatus.FORBIDDEN);
+			}
+
+			User currentAdmin = getCurrentUser(authorization);
+
+			if (currentAdmin == null) {
+				return new ResponseEntity<>(
+						new ApiResponse<>(
+								401,
+								"Your administrator session is invalid or has expired.",
+								null),
+						HttpStatus.UNAUTHORIZED);
+			}
+
+			User user = userRepository
+					.findById(id)
+					.orElse(null);
+
+			if (user == null) {
+				return new ResponseEntity<>(
+						new ApiResponse<>(
+								404,
+								"The requested user account was not found.",
+								null),
+						HttpStatus.NOT_FOUND);
+			}
+
+			if ("ADMIN".equalsIgnoreCase(user.getRole())) {
+				return new ResponseEntity<>(
+						new ApiResponse<>(
+								403,
+								"Administrator chat access cannot be modified from this action.",
+								null),
+						HttpStatus.FORBIDDEN);
+			}
+
+			if ("ACTIVE".equalsIgnoreCase(user.getChatStatus())) {
+				return new ResponseEntity<>(
+						new ApiResponse<>(
+								200,
+								"This user's chat access is already active.",
+								toDTO(user)),
+						HttpStatus.OK);
+			}
+
+			Date now = new Date();
+
+			user.setChatStatus("ACTIVE");
+			user.setChatBanReason(null);
+			user.setChatStatusUpdatedAt(now);
+			user.setUpdatedAt(now);
+
+			userRepository.save(user);
+
+			return new ResponseEntity<>(
+					new ApiResponse<>(
+							200,
+							"User chat access enabled successfully. The user can now post comments again.",
+							toDTO(user)),
+					HttpStatus.OK);
+
+		} catch (Exception e) {
+			e.printStackTrace();
+
+			return new ResponseEntity<>(
+					new ApiResponse<>(
+							500,
+							"Unable to enable this user's chat access due to an internal server error.",
+							null),
+					HttpStatus.INTERNAL_SERVER_ERROR);
+		}
+	}
+
 	///
 
 	@GetMapping("/leaderboard/artists")

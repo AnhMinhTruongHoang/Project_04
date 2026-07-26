@@ -30,6 +30,15 @@ public class UserResponseDTO {
 	private String statusReason;
 	private Date suspendedUntil;
 	private Date statusUpdatedAt;
+	/*
+	 * =========================
+	 * CHAT STATUS
+	 * =========================
+	 */
+	private String chatStatus;
+	private String chatBanReason;
+	private Date chatStatusUpdatedAt;
+
 	private Date createdAt;
 	private Date updatedAt;
 
@@ -261,5 +270,36 @@ public class UserResponseDTO {
 
 	public void setUpdatedAt(Date updatedAt) {
 		this.updatedAt = updatedAt;
+	}
+
+	public String getChatStatus() {
+		return chatStatus == null || chatStatus.isBlank()
+				? "ACTIVE"
+				: chatStatus;
+	}
+
+	public void setChatStatus(String chatStatus) {
+		if (chatStatus == null || chatStatus.isBlank()) {
+			this.chatStatus = "ACTIVE";
+			return;
+		}
+
+		this.chatStatus = chatStatus.trim().toUpperCase();
+	}
+
+	public String getChatBanReason() {
+		return chatBanReason;
+	}
+
+	public void setChatBanReason(String chatBanReason) {
+		this.chatBanReason = chatBanReason;
+	}
+
+	public Date getChatStatusUpdatedAt() {
+		return chatStatusUpdatedAt;
+	}
+
+	public void setChatStatusUpdatedAt(Date chatStatusUpdatedAt) {
+		this.chatStatusUpdatedAt = chatStatusUpdatedAt;
 	}
 }

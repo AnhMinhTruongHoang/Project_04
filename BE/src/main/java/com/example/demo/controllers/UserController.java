@@ -855,6 +855,7 @@ public class UserController {
 	@DeleteMapping({ "/{id}", "/delete/{id}" })
 	public ResponseEntity<?> delete(
 			@PathVariable String id,
+			@RequestBody(required = false) Map<String, Object> body,
 			@RequestHeader(value = "Authorization", required = false) String authorization) {
 
 		try {
@@ -918,10 +919,30 @@ public class UserController {
 						HttpStatus.OK);
 			}
 
+			String reason = getString(body, "reason");
+
+			if (reason == null) {
+				return new ResponseEntity<>(
+						new ApiResponse<>(
+								400,
+								"Account restriction reason is required.",
+								null),
+						HttpStatus.BAD_REQUEST);
+			}
+
+			if (reason.length() > 500) {
+				return new ResponseEntity<>(
+						new ApiResponse<>(
+								400,
+								"Account restriction reason cannot exceed 500 characters.",
+								null),
+						HttpStatus.BAD_REQUEST);
+			}
+
 			Date now = new Date();
 
 			user.setAccountStatus("DELETED");
-			user.setStatusReason("Account deactivated by administrator.");
+			user.setStatusReason(reason);
 			user.setSuspendedUntil(null);
 			user.setStatusUpdatedAt(now);
 			user.setRefreshToken(null);

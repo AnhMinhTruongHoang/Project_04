@@ -54,11 +54,17 @@ const UsersTable = ({ users, accessToken }: Props) => {
 
   const [confirmUser, setConfirmUser] = useState<IUser | null>(null);
   const [confirmAction, setConfirmAction] = useState<UserAction | null>(null);
+  const [actionReason, setActionReason] = useState("");
   const [searchValue, setSearchValue] = useState("");
   const [deletingId, setDeletingId] = useState("");
   const [saving, setSaving] = useState(false);
   const [openEdit, setOpenEdit] = useState(false);
   const [editUser, setEditUser] = useState<EditUserState | null>(null);
+  const resetActionDialog = () => {
+    setConfirmUser(null);
+    setConfirmAction(null);
+    setActionReason("");
+  };
 
   const filteredUsers = useMemo(() => {
     const keyword = searchValue.trim().toLowerCase();
@@ -66,19 +72,19 @@ const UsersTable = ({ users, accessToken }: Props) => {
     if (!keyword) return users;
 
     return users.filter((user) => {
-      const userAny = user as any;
-
       return [
         user.name,
         user.email,
         user.role,
         user.type,
         user.gender,
-        user.address,
+        user.subscriptionTier,
         user.following,
         user.followers,
-        userAny.accountStatus,
-        userAny.statusReason,
+        user.accountStatus,
+        user.statusReason,
+        user.chatStatus,
+        user.chatBanReason,
       ]
         .filter(Boolean)
         .some((item) => String(item).toLowerCase().includes(keyword));
@@ -218,7 +224,7 @@ const UsersTable = ({ users, accessToken }: Props) => {
         url: `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/v1/users/${userId}/suspend`,
         method: "PATCH",
         body: {
-          reason: "Temporary 7-day suspension issued by an administrator.",
+          reason: actionReason.trim(),
         },
         headers: {
           Authorization: `Bearer ${accessToken}`,
@@ -228,8 +234,7 @@ const UsersTable = ({ users, accessToken }: Props) => {
       if (Number(res?.statusCode) === 200) {
         toast.success(res?.message || "User account suspended for 7 days.");
 
-        setConfirmUser(null);
-        setConfirmAction(null);
+        resetActionDialog();
 
         await revalidateUsers();
         router.refresh();
@@ -279,8 +284,7 @@ const UsersTable = ({ users, accessToken }: Props) => {
       if (Number(res?.statusCode) === 200) {
         toast.success(res?.message || "User account reactivated successfully.");
 
-        setConfirmUser(null);
-        setConfirmAction(null);
+        resetActionDialog();
 
         await revalidateUsers();
         router.refresh();
@@ -313,6 +317,9 @@ const UsersTable = ({ users, accessToken }: Props) => {
       const res = await sendRequest<IBackendRes<any>>({
         url: `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/v1/users/${userId}`,
         method: "DELETE",
+        body: {
+          reason: actionReason.trim(),
+        },
         headers: {
           Authorization: `Bearer ${accessToken}`,
         },
@@ -321,8 +328,7 @@ const UsersTable = ({ users, accessToken }: Props) => {
       if (Number(res?.statusCode) === 200) {
         toast.success(res?.message || "User account disabled indefinitely.");
 
-        setConfirmUser(null);
-        setConfirmAction(null);
+        resetActionDialog();
 
         await revalidateUsers();
         router.refresh();
@@ -356,7 +362,7 @@ const UsersTable = ({ users, accessToken }: Props) => {
         url: `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/v1/users/${userId}/ban-chat`,
         method: "PATCH",
         body: {
-          reason: "Commenting access disabled by an administrator.",
+          reason: actionReason.trim(),
         },
         headers: {
           Authorization: `Bearer ${accessToken}`,
@@ -366,8 +372,7 @@ const UsersTable = ({ users, accessToken }: Props) => {
       if (Number(res?.statusCode) === 200) {
         toast.success(res?.message || "User commenting access disabled.");
 
-        setConfirmUser(null);
-        setConfirmAction(null);
+        resetActionDialog();
 
         await revalidateUsers();
         router.refresh();
@@ -408,8 +413,7 @@ const UsersTable = ({ users, accessToken }: Props) => {
       if (Number(res?.statusCode) === 200) {
         toast.success(res?.message || "User commenting access enabled.");
 
-        setConfirmUser(null);
-        setConfirmAction(null);
+        resetActionDialog();
 
         await revalidateUsers();
         router.refresh();
@@ -430,10 +434,10 @@ const UsersTable = ({ users, accessToken }: Props) => {
 
   /* =========================
    OPEN USER ACTION DIALOG
-    ======================== */
-
+========================= */
   const handleUserAction = (user: IUser, action: UserAction) => {
     const userId = getItemId(user);
+
     const isAdmin = String(user.role || "").toUpperCase() === "ADMIN";
 
     if (!userId) {
@@ -453,6 +457,7 @@ const UsersTable = ({ users, accessToken }: Props) => {
       return;
     }
 
+    setActionReason("");
     setConfirmUser(user);
     setConfirmAction(action);
   };
@@ -633,11 +638,11 @@ const UsersTable = ({ users, accessToken }: Props) => {
             backgroundColor: "rgba(99,230,166,0.12)",
           },
           SUSPENDED: {
-            color: "#ffd166",
-            backgroundColor: "rgba(255,209,102,0.12)",
+            color: "#ff7b7b",
+            backgroundColor: "rgba(255,90,90,0.14)",
           },
           BANNED: {
-            color: "#ff7b7b",
+            color: "#FF0000",
             backgroundColor: "rgba(255,90,90,0.14)",
           },
           DELETED: {
@@ -931,6 +936,9 @@ const UsersTable = ({ users, accessToken }: Props) => {
       loadingLabel: string;
       backgroundColor: string;
       hoverColor: string;
+      requiresReason: boolean;
+      reasonLabel?: string;
+      reasonPlaceholder?: string;
     }
   > = {
     SUSPEND: {
@@ -941,6 +949,10 @@ const UsersTable = ({ users, accessToken }: Props) => {
       loadingLabel: "Suspending...",
       backgroundColor: "#ff4d4f",
       hoverColor: "#ff2f32",
+      requiresReason: true,
+      reasonLabel: "Suspension reason",
+      reasonPlaceholder:
+        "Example: Repeated spam activity or community guideline violations.",
     },
 
     ACTIVATE: {
@@ -950,6 +962,7 @@ const UsersTable = ({ users, accessToken }: Props) => {
       loadingLabel: "Reactivating...",
       backgroundColor: "#2f9e68",
       hoverColor: "#27865a",
+      requiresReason: false,
     },
 
     DEACTIVATE: {
@@ -960,6 +973,10 @@ const UsersTable = ({ users, accessToken }: Props) => {
       loadingLabel: "Disabling...",
       backgroundColor: "#646464",
       hoverColor: "#505050",
+      requiresReason: true,
+      reasonLabel: "Account restriction reason",
+      reasonPlaceholder:
+        "Explain why this account is being disabled indefinitely.",
     },
 
     BAN_CHAT: {
@@ -970,6 +987,10 @@ const UsersTable = ({ users, accessToken }: Props) => {
       loadingLabel: "Disabling...",
       backgroundColor: "#c79500",
       hoverColor: "#a97e00",
+      requiresReason: true,
+      reasonLabel: "Comment restriction reason",
+      reasonPlaceholder:
+        "Example: Spam, abusive comments or repeated policy violations.",
     },
 
     ENABLE_CHAT: {
@@ -979,6 +1000,7 @@ const UsersTable = ({ users, accessToken }: Props) => {
       loadingLabel: "Enabling...",
       backgroundColor: "#2f9e68",
       hoverColor: "#27865a",
+      requiresReason: false,
     },
   };
 
@@ -1339,8 +1361,7 @@ const UsersTable = ({ users, accessToken }: Props) => {
         onClose={() => {
           if (deletingId) return;
 
-          setConfirmUser(null);
-          setConfirmAction(null);
+          resetActionDialog();
         }}
         PaperProps={{
           sx: {
@@ -1393,14 +1414,43 @@ const UsersTable = ({ users, accessToken }: Props) => {
           >
             {currentActionConfig?.description}
           </Typography>
+
+          {/* ADMIN RESTRICTION REASON */}
+          {currentActionConfig?.requiresReason && (
+            <TextField
+              autoFocus
+              required
+              fullWidth
+              multiline
+              minRows={3}
+              maxRows={6}
+              label={currentActionConfig.reasonLabel || "Reason"}
+              placeholder={
+                currentActionConfig.reasonPlaceholder ||
+                "Enter the reason for this action."
+              }
+              value={actionReason}
+              onChange={(event) => {
+                setActionReason(event.target.value.slice(0, 500));
+              }}
+              helperText={`Required • ${actionReason.length}/500 characters`}
+              sx={{
+                ...darkTextFieldSx,
+                mt: 2.5,
+
+                "& .MuiFormHelperText-root": {
+                  color: actionReason.trim() ? "#8f8f8f" : "#ffd166",
+                  fontWeight: 700,
+                  marginLeft: 0,
+                },
+              }}
+            />
+          )}
         </DialogContent>
 
         <DialogActions sx={{ px: 3, pb: 2 }}>
           <Button
-            onClick={() => {
-              setConfirmUser(null);
-              setConfirmAction(null);
-            }}
+            onClick={resetActionDialog}
             disabled={!!deletingId}
             sx={{
               color: "#cfcfcf",
@@ -1413,15 +1463,30 @@ const UsersTable = ({ users, accessToken }: Props) => {
 
           <Button
             variant="contained"
-            disabled={!!deletingId || !confirmUser || !confirmAction}
+            disabled={
+              !!deletingId ||
+              !confirmUser ||
+              !confirmAction ||
+              Boolean(
+                currentActionConfig?.requiresReason && !actionReason.trim()
+              )
+            }
             onClick={async () => {
               const selectedUser = confirmUser;
+              const selectedAction = confirmAction;
 
-              if (!selectedUser || !confirmAction) {
+              if (!selectedUser || !selectedAction) {
                 return;
               }
 
-              switch (confirmAction) {
+              const selectedConfig = actionConfig[selectedAction];
+
+              if (selectedConfig.requiresReason && !actionReason.trim()) {
+                toast.error("Please enter a reason before continuing.");
+                return;
+              }
+
+              switch (selectedAction) {
                 case "SUSPEND":
                   await suspendUser(selectedUser);
                   break;

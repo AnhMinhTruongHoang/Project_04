@@ -164,57 +164,70 @@ public class SubscriptionController {
                 }
         }
 
+        /*
+         * =========================
+         * LEGACY SUBSCRIPTION ENDPOINT
+         * =========================
+         */
         @PostMapping({
                         "/subscribe",
                         "/change-plan"
         })
         public ResponseEntity<?> subscribe(
-                        @RequestBody SubscribePlanDTO dto,
+                        @RequestBody(required = false) SubscribePlanDTO dto,
                         HttpServletRequest request) {
 
-                try {
-                        User user = getCurrentUser(request);
+                User user = getCurrentUser(request);
 
-                        if (user == null) {
-                                return ResponseEntity
-                                                .status(401)
-                                                .body(new ApiResponse<>(
-                                                                401,
-                                                                "Unauthorized",
-                                                                null));
-                        }
+                if (user == null) {
+                        return ResponseEntity
+                                        .status(401)
+                                        .body(
+                                                        new ApiResponse<>(
+                                                                        401,
+                                                                        "Unauthorized",
+                                                                        null));
+                }
 
-                        Map<String, Object> data = subscriptionService
-                                        .subscribe(
-                                                        user.getId(),
-                                                        dto.getPlanCode());
+                String planCode = dto == null
+                                || dto.getPlanCode() == null
+                                                ? ""
+                                                : dto.getPlanCode()
+                                                                .trim()
+                                                                .toUpperCase();
 
-                        return ResponseEntity.ok(
-                                        new ApiResponse<>(
-                                                        200,
-                                                        "Subscription updated",
-                                                        data));
-
-                } catch (IllegalArgumentException e) {
-
+                /*
+                 * BASIC được hệ thống tự tạo.
+                 * User đang dùng gói trả phí phải dùng /cancel
+                 * để hủy vào cuối chu kỳ.
+                 */
+                if ("BASIC".equals(planCode)) {
                         return ResponseEntity
                                         .badRequest()
-                                        .body(new ApiResponse<>(
-                                                        400,
-                                                        e.getMessage(),
-                                                        null));
-
-                } catch (Exception e) {
-                        e.printStackTrace();
-
-                        return ResponseEntity
-                                        .status(500)
-                                        .body(new ApiResponse<>(
-                                                        500,
-                                                        e.getMessage(),
-                                                        null));
+                                        .body(
+                                                        new ApiResponse<>(
+                                                                        400,
+                                                                        "Basic plan is assigned automatically. Use /api/v1/subscriptions/cancel to cancel a paid subscription.",
+                                                                        null));
                 }
+
+                /*
+                 * Không cho kích hoạt ARTIST hoặc ARTIST_PRO
+                 * trực tiếp từ endpoint subscription cũ.
+                 */
+                return ResponseEntity
+                                .status(409)
+                                .body(
+                                                new ApiResponse<>(
+                                                                409,
+                                                                "Paid subscription plans must be purchased through VNPAY.",
+                                                                Map.of(
+                                                                                "paymentEndpoint",
+                                                                                "/api/v1/payments/vnpay/create",
+                                                                                "requestedPlan",
+                                                                                planCode)));
         }
+        ///
 
         @PostMapping("/cancel")
         public ResponseEntity<?> cancel(

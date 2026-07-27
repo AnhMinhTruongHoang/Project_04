@@ -15,7 +15,6 @@ import DialogContent from "@mui/material/DialogContent";
 import DialogActions from "@mui/material/DialogActions";
 import Button from "@mui/material/Button";
 import TextField from "@mui/material/TextField";
-import MenuItem from "@mui/material/MenuItem";
 import EditRoundedIcon from "@mui/icons-material/EditRounded";
 import { DataGrid, GridColDef } from "@mui/x-data-grid";
 import { sendRequest } from "@/utils/api";
@@ -26,6 +25,7 @@ import BlockRoundedIcon from "@mui/icons-material/BlockRounded";
 import LockOpenRoundedIcon from "@mui/icons-material/LockOpenRounded";
 import DeleteForeverRoundedIcon from "@mui/icons-material/DeleteForeverRounded";
 import CommentsDisabledRoundedIcon from "@mui/icons-material/CommentsDisabledRounded";
+import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 
 type Props = {
   users: IUser[];
@@ -129,7 +129,7 @@ const UsersTable = ({ users, accessToken }: Props) => {
       email: user.email || "",
       age: user.age || "",
       gender: user.gender || "",
-      address: user.address || "",
+      bio: user.bio || "",
       role: user.role || "USER",
       avatarUrl: userAny.avatarUrl || "",
       avatar: userAny.avatar || "",
@@ -167,12 +167,7 @@ const UsersTable = ({ users, accessToken }: Props) => {
         body: {
           id: editUser._id,
           _id: editUser._id,
-          name: editUser.name.trim(),
-          email: editUser.email.trim().toLowerCase(),
-          age: editUser.age ? Number(editUser.age) : undefined,
-          gender: editUser.gender,
-          address: editUser.address.trim(),
-          role: editUser.role,
+          bio: editUser.bio.trim(),
         },
         headers: {
           Authorization: `Bearer ${accessToken}`,
@@ -180,7 +175,7 @@ const UsersTable = ({ users, accessToken }: Props) => {
       });
 
       if (Number(res?.statusCode) === 200) {
-        toast.success(res?.message || "User updated successfully.");
+        toast.success(res?.message || "User bio updated successfully.");
 
         await revalidateUsers();
 
@@ -190,10 +185,12 @@ const UsersTable = ({ users, accessToken }: Props) => {
         return;
       }
 
-      toast.error(res?.message || "Unable to update this user.");
+      toast.error(res?.message || "Unable to update this user's bio.");
     } catch (error) {
       toast.error(
-        error instanceof Error ? error.message : "Unable to update this user."
+        error instanceof Error
+          ? error.message
+          : "Unable to update this user's bio."
       );
     } finally {
       setSaving(false);
@@ -753,7 +750,7 @@ const UsersTable = ({ users, accessToken }: Props) => {
     {
       field: "actions",
       headerName: "Actions",
-      width: 220,
+      width: 255,
       align: "center",
       headerAlign: "center",
       sortable: false,
@@ -775,6 +772,10 @@ const UsersTable = ({ users, accessToken }: Props) => {
         const isChatBanned = chatStatus === "BANNED";
 
         const isLoading = deletingId === userId;
+
+        const accountReason = String(user.statusReason || "").trim();
+        const chatBanReason = String(user.chatBanReason || "").trim();
+        const hasRestrictionReason = Boolean(accountReason || chatBanReason);
 
         return (
           <Box
@@ -921,6 +922,109 @@ const UsersTable = ({ users, accessToken }: Props) => {
                 </IconButton>
               </span>
             </Tooltip>
+
+            {/* RESTRICTION REASON */}
+            {hasRestrictionReason && (
+              <Tooltip
+                arrow
+                placement="top"
+                title={
+                  <Box
+                    sx={{
+                      maxWidth: 320,
+                      py: 0.5,
+                    }}
+                  >
+                    {accountReason && (
+                      <Box sx={{ mb: chatBanReason ? 1.2 : 0 }}>
+                        <Typography
+                          sx={{
+                            color: "#ff9b9b",
+                            fontSize: 12,
+                            fontWeight: 900,
+                          }}
+                        >
+                          Account restriction
+                        </Typography>
+
+                        <Typography
+                          sx={{
+                            mt: 0.3,
+                            color: "#ffffff",
+                            fontSize: 12,
+                            lineHeight: 1.5,
+                            whiteSpace: "pre-wrap",
+                            wordBreak: "break-word",
+                          }}
+                        >
+                          {accountReason}
+                        </Typography>
+
+                        {accountStatus === "SUSPENDED" &&
+                          user.suspendedUntil &&
+                          dayjs(user.suspendedUntil).isValid() && (
+                            <Typography
+                              sx={{
+                                mt: 0.5,
+                                color: "#cfcfcf",
+                                fontSize: 11,
+                                fontWeight: 700,
+                              }}
+                            >
+                              Until:{" "}
+                              {dayjs(user.suspendedUntil).format(
+                                "DD/MM/YYYY HH:mm"
+                              )}
+                            </Typography>
+                          )}
+                      </Box>
+                    )}
+
+                    {chatBanReason && (
+                      <Box>
+                        <Typography
+                          sx={{
+                            color: "#ffd166",
+                            fontSize: 12,
+                            fontWeight: 900,
+                          }}
+                        >
+                          Comment restriction
+                        </Typography>
+
+                        <Typography
+                          sx={{
+                            mt: 0.3,
+                            color: "#ffffff",
+                            fontSize: 12,
+                            lineHeight: 1.5,
+                            whiteSpace: "pre-wrap",
+                            wordBreak: "break-word",
+                          }}
+                        >
+                          {chatBanReason}
+                        </Typography>
+                      </Box>
+                    )}
+                  </Box>
+                }
+              >
+                <IconButton
+                  size="small"
+                  aria-label="View restriction reason"
+                  sx={{
+                    color: "#70b7ff",
+
+                    "&:hover": {
+                      color: "#9bceff",
+                      backgroundColor: "rgba(112,183,255,0.12)",
+                    },
+                  }}
+                >
+                  <InfoOutlinedIcon fontSize="small" />
+                </IconButton>
+              </Tooltip>
+            )}
           </Box>
         );
       },
@@ -1137,7 +1241,7 @@ const UsersTable = ({ users, accessToken }: Props) => {
             textAlign: "center",
           }}
         >
-          Edit user
+          User details
         </DialogTitle>
 
         <DialogContent sx={{ pt: 2.5 }}>
@@ -1197,117 +1301,91 @@ const UsersTable = ({ users, accessToken }: Props) => {
           </Box>
 
           <Box sx={{ display: "grid", gap: 2 }}>
+            {/* READ-ONLY USER NAME */}
             <TextField
               label="Name"
               value={editUser?.name || ""}
-              onChange={(event) =>
-                setEditUser((previous) =>
-                  previous
-                    ? {
-                        ...previous,
-                        name: event.target.value,
-                      }
-                    : previous
-                )
-              }
               fullWidth
-              sx={darkTextFieldSx}
+              InputProps={{
+                readOnly: true,
+              }}
+              sx={readOnlyTextFieldSx}
             />
 
+            {/* READ-ONLY USER EMAIL */}
             <TextField
               label="Email"
               value={editUser?.email || ""}
-              onChange={(event) =>
-                setEditUser((previous) =>
-                  previous
-                    ? {
-                        ...previous,
-                        email: event.target.value,
-                      }
-                    : previous
-                )
-              }
               fullWidth
-              sx={darkTextFieldSx}
+              InputProps={{
+                readOnly: true,
+              }}
+              sx={readOnlyTextFieldSx}
             />
 
+            {/* READ-ONLY USER AGE */}
             <TextField
               label="Age"
-              type="number"
-              value={editUser?.age || ""}
-              onChange={(event) =>
-                setEditUser((previous) =>
-                  previous
-                    ? {
-                        ...previous,
-                        age: event.target.value,
-                      }
-                    : previous
-                )
-              }
+              value={editUser?.age || "Not provided"}
               fullWidth
-              sx={darkTextFieldSx}
+              InputProps={{
+                readOnly: true,
+              }}
+              sx={readOnlyTextFieldSx}
             />
 
+            {/* READ-ONLY USER GENDER */}
             <TextField
-              select
               label="Gender"
-              value={editUser?.gender || ""}
-              onChange={(event) =>
-                setEditUser((previous) =>
-                  previous
-                    ? {
-                        ...previous,
-                        gender: event.target.value,
-                      }
-                    : previous
-                )
-              }
+              value={editUser?.gender || "Not provided"}
               fullWidth
-              sx={darkTextFieldSx}
-            >
-              <MenuItem value="MALE">Male</MenuItem>
-              <MenuItem value="FEMALE">Female</MenuItem>
-              <MenuItem value="OTHER">Other</MenuItem>
-            </TextField>
-
-            <TextField
-              label="Address"
-              value={editUser?.address || ""}
-              onChange={(event) =>
-                setEditUser((previous) =>
-                  previous
-                    ? {
-                        ...previous,
-                        address: event.target.value,
-                      }
-                    : previous
-                )
-              }
-              fullWidth
-              sx={darkTextFieldSx}
+              InputProps={{
+                readOnly: true,
+              }}
+              sx={readOnlyTextFieldSx}
             />
 
+            {/* EDITABLE USER BIO */}
             <TextField
-              select
+              label="Bio"
+              value={editUser?.bio || ""}
+              onChange={(event) =>
+                setEditUser((previous) =>
+                  previous
+                    ? {
+                        ...previous,
+                        bio: event.target.value.slice(0, 500),
+                      }
+                    : previous
+                )
+              }
+              placeholder="Enter the user's profile bio."
+              multiline
+              minRows={4}
+              maxRows={8}
+              fullWidth
+              helperText={`${editUser?.bio?.length || 0}/500 characters`}
+              sx={{
+                ...darkTextFieldSx,
+
+                "& .MuiFormHelperText-root": {
+                  color: "#8f8f8f",
+                  fontWeight: 700,
+                  marginLeft: 0,
+                },
+              }}
+            />
+
+            {/* READ-ONLY USER ROLE */}
+            <TextField
               label="Role"
               value={editUser?.role || "USER"}
-              onChange={(event) =>
-                setEditUser((previous) =>
-                  previous
-                    ? {
-                        ...previous,
-                        role: event.target.value,
-                      }
-                    : previous
-                )
-              }
               fullWidth
-              sx={darkTextFieldSx}
-            >
-              <MenuItem value="USER">USER</MenuItem>
-              <MenuItem value="ADMIN">ADMIN</MenuItem>
-            </TextField>
+              InputProps={{
+                readOnly: true,
+              }}
+              sx={readOnlyTextFieldSx}
+            />
           </Box>
         </DialogContent>
 
@@ -1351,7 +1429,7 @@ const UsersTable = ({ users, accessToken }: Props) => {
               },
             }}
           >
-            {saving ? "Saving..." : "Save changes"}
+            {saving ? "Saving..." : "Save bio"}
           </Button>
         </DialogActions>
       </Dialog>
@@ -1534,6 +1612,37 @@ const UsersTable = ({ users, accessToken }: Props) => {
       </Dialog>
     </Box>
   );
+};
+
+const readOnlyTextFieldSx = {
+  "& .MuiInputLabel-root": {
+    color: "#8f8f8f",
+    fontWeight: 700,
+  },
+
+  "& .MuiOutlinedInput-root": {
+    color: "#cfcfcf",
+    backgroundColor: "rgba(255,255,255,0.035)",
+    borderRadius: 2,
+    fontWeight: 700,
+    cursor: "default",
+
+    "& fieldset": {
+      borderColor: "rgba(255,255,255,0.08)",
+    },
+
+    "&:hover fieldset": {
+      borderColor: "rgba(255,255,255,0.08)",
+    },
+
+    "&.Mui-focused fieldset": {
+      borderColor: "rgba(255,255,255,0.12)",
+    },
+  },
+
+  "& .MuiInputBase-input": {
+    cursor: "default",
+  },
 };
 
 const darkTextFieldSx = {

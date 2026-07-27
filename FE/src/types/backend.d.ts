@@ -414,7 +414,7 @@ declare global {
     email: string;
     age: string | number;
     gender: string;
-    address: string;
+    bio: string;
     role: string;
     avatarUrl?: string;
     avatar?: string;

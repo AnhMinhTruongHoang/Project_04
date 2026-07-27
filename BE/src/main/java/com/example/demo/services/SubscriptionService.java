@@ -27,6 +27,7 @@ import com.example.demo.repositories.SubscriptionPlanRepository;
 import com.example.demo.repositories.SubscriptionUsageRepository;
 import com.example.demo.repositories.UserRepository;
 import com.example.demo.repositories.UserSubscriptionRepository;
+import java.util.Date;
 
 @Service
 public class SubscriptionService {
@@ -344,112 +345,41 @@ public class SubscriptionService {
                 return buckets;
         }
 
-        ///
-        @Transactional
+        /*
+         * =========================
+         * LEGACY DIRECT SUBSCRIPTION
+         * =========================
+         */
+        @Deprecated(forRemoval = true)
+        @Transactional(readOnly = true)
         public Map<String, Object> subscribe(
                         String userId,
                         String planCode) {
 
                 String normalizedPlanCode = planCode == null
                                 ? ""
-                                : planCode
-                                                .trim()
-                                                .toUpperCase();
+                                : planCode.trim().toUpperCase();
 
-                if (normalizedPlanCode.isEmpty()) {
+                if (userId == null || userId.isBlank()) {
+                        throw new IllegalArgumentException(
+                                        "User ID is required");
+                }
+
+                if (normalizedPlanCode.isBlank()) {
                         throw new IllegalArgumentException(
                                         "Plan code is required");
                 }
 
-                SubscriptionPlan newPlan = subscriptionPlanRepository
-                                .findByCodeAndIsActiveTrue(
-                                                normalizedPlanCode);
-
-                if (newPlan == null) {
-                        throw new IllegalArgumentException(
-                                        "Subscription plan not found");
-                }
-
                 /*
-                 * Chống upload và đổi gói
-                 * đồng thời cho cùng một user.
+                 * Không cho bất kỳ controller/service nào
+                 * kích hoạt subscription trực tiếp.
+                 *
+                 * BASIC được hệ thống tự tạo.
+                 * ARTIST và ARTIST_PRO phải qua VNPAY.
                  */
-                lockUser(userId);
-
-                /*
-                 * Đảm bảo user luôn có một
-                 * subscription ACTIVE hợp lệ.
-                 */
-                UserSubscription currentSubscription = getOrCreateCurrentSubscription(
-                                userId);
-
-                SubscriptionPlan currentPlan = getPlan(
-                                currentSubscription.getPlanId());
-
-                SubscriptionUsage currentUsage = getOrCreateUsage(
-                                currentSubscription);
-
-                /*
-                 * Đang sử dụng đúng gói thì
-                 * không tạo subscription mới.
-                 */
-                if (newPlan.getId().equals(
-                                currentPlan.getId())) {
-                        return buildSubscriptionResponse(
-                                        currentSubscription,
-                                        currentPlan,
-                                        currentUsage);
-                }
-
-                LocalDateTime now = LocalDateTime.now();
-
-                long carriedUploadedSeconds = currentUsage.getUploadedSeconds() == null
-                                ? 0
-                                : currentUsage.getUploadedSeconds();
-
-                LocalDateTime currentPeriodStart = currentSubscription
-                                .getCurrentPeriodStart();
-
-                LocalDateTime currentPeriodEnd = currentSubscription
-                                .getCurrentPeriodEnd();
-
-                /*
-                 * Subscription cũ giữ lại
-                 * làm lịch sử.
-                 */
-                currentSubscription.setStatus(
-                                STATUS_EXPIRED);
-
-                currentSubscription.setUpdatedAt(
-                                now);
-
-                userSubscriptionRepository.save(
-                                currentSubscription);
-
-                /*
-                 * Subscription mới dùng đúng
-                 * chu kỳ hiện tại, không tạo
-                 * chu kỳ một tháng mới.
-                 */
-                UserSubscription newSubscription = createSubscriptionForPeriod(
-                                userId,
-                                newPlan,
-                                now,
-                                currentPeriodStart,
-                                currentPeriodEnd);
-
-                /*
-                 * Chuyển toàn bộ usage đã dùng
-                 * sang subscription mới.
-                 */
-                SubscriptionUsage newUsage = createUsage(
-                                newSubscription,
-                                carriedUploadedSeconds);
-
-                return buildSubscriptionResponse(
-                                newSubscription,
-                                newPlan,
-                                newUsage);
+                throw new IllegalStateException(
+                                "Direct subscription activation is disabled. "
+                                                + "Paid plans must be activated through a verified VNPAY IPN.");
         }
 
         ///
@@ -1107,5 +1037,130 @@ public class SubscriptionService {
                 }
         }
 
+        ///
+        /*
+         * =========================
+         * ACTIVATE PAID SUBSCRIPTION
+         * =========================
+         */
+        @Transactional
+        public Map<String, Object> activatePaidPlan(
+                        String userId,
+                        String planCode,
+                        LocalDateTime paidAt) {
+
+                String normalizedPlanCode = planCode == null
+                                ? ""
+                                : planCode.trim().toUpperCase();
+
+                if (userId == null || userId.isBlank()) {
+                        throw new IllegalArgumentException(
+                                        "User ID is required");
+                }
+
+                if (normalizedPlanCode.isBlank()) {
+                        throw new IllegalArgumentException(
+                                        "Plan code is required");
+                }
+
+                if (PLAN_BASIC.equals(normalizedPlanCode)) {
+                        throw new IllegalArgumentException(
+                                        "Basic plan does not require payment");
+                }
+
+                if (!PLAN_ARTIST.equals(normalizedPlanCode)
+                                && !PLAN_ARTIST_PRO.equals(normalizedPlanCode)) {
+
+                        throw new IllegalArgumentException(
+                                        "Paid subscription plan is invalid");
+                }
+
+                SubscriptionPlan paidPlan = subscriptionPlanRepository
+                                .findByCodeAndIsActiveTrue(
+                                                normalizedPlanCode);
+
+                if (paidPlan == null) {
+                        throw new IllegalArgumentException(
+                                        "Subscription plan not found");
+                }
+
+                /*
+                 * Khóa user để ngăn:
+                 *
+                 * - IPN thanh toán chạy đồng thời
+                 * - upload đồng thời
+                 * - đổi plan đồng thời
+                 * - hủy subscription đồng thời
+                 */
+                User user = lockUser(userId);
+
+                LocalDateTime now = LocalDateTime.now();
+
+                LocalDateTime activationTime = paidAt == null
+                                ? now
+                                : paidAt;
+
+                /*
+                 * Hết hạn subscription ACTIVE hiện tại.
+                 *
+                 * Kể cả user đang dùng cùng một plan,
+                 * giao dịch thanh toán mới vẫn tạo một
+                 * chu kỳ subscription mới.
+                 */
+                UserSubscription currentSubscription = userSubscriptionRepository
+                                .findFirstByUserIdAndStatusOrderByCreatedAtDesc(
+                                                userId,
+                                                STATUS_ACTIVE)
+                                .orElse(null);
+
+                if (currentSubscription != null) {
+                        currentSubscription.setStatus(
+                                        STATUS_EXPIRED);
+
+                        currentSubscription.setCancelAtPeriodEnd(
+                                        false);
+
+                        currentSubscription.setUpdatedAt(
+                                        now);
+
+                        userSubscriptionRepository.save(
+                                        currentSubscription);
+                }
+
+                /*
+                 * Tạo chu kỳ trả phí mới:
+                 *
+                 * currentPeriodStart = thời điểm thanh toán
+                 * currentPeriodEnd = sau một tháng
+                 */
+                UserSubscription paidSubscription = createSubscription(
+                                userId,
+                                paidPlan,
+                                activationTime);
+
+                /*
+                 * Chu kỳ thanh toán mới có quota upload mới.
+                 * Không chuyển usage của subscription cũ sang.
+                 */
+                SubscriptionUsage paidUsage = createUsage(
+                                paidSubscription,
+                                0L);
+
+                /*
+                 * Đồng bộ field dùng cho danh sách user FE.
+                 */
+                user.setSubscriptionTier(
+                                normalizedPlanCode);
+
+                user.setUpdatedAt(
+                                new Date());
+
+                userRepository.save(user);
+
+                return buildSubscriptionResponse(
+                                paidSubscription,
+                                paidPlan,
+                                paidUsage);
+        }
         ///
 }

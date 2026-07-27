@@ -513,6 +513,7 @@ public class SubscriptionService {
                                 usage);
         }
 
+        ///
         private UserSubscription getOrCreateCurrentSubscription(
                         String userId) {
 
@@ -524,7 +525,12 @@ public class SubscriptionService {
                                                 STATUS_ACTIVE)
                                 .orElse(null);
 
+                /*
+                 * User chưa có subscription:
+                 * tự tạo gói BASIC/FREE.
+                 */
                 if (subscription == null) {
+
                         SubscriptionPlan basicPlan = subscriptionPlanRepository
                                         .findByCodeAndIsActiveTrue(
                                                         PLAN_BASIC);
@@ -534,41 +540,37 @@ public class SubscriptionService {
                                                 "Basic subscription plan is missing");
                         }
 
-                        return createSubscription(
+                        UserSubscription basicSubscription = createSubscription(
                                         userId,
                                         basicPlan,
                                         now);
+
+                        syncUserSubscriptionTier(
+                                        userId,
+                                        PLAN_BASIC);
+
+                        return basicSubscription;
                 }
 
-                if (subscription.getCurrentPeriodEnd() != null
-                                && !now.isBefore(
+                /*
+                 * Subscription vẫn còn hạn.
+                 */
+                if (subscription.getCurrentPeriodEnd() == null
+                                || now.isBefore(
                                                 subscription.getCurrentPeriodEnd())) {
 
-                        if (Boolean.TRUE.equals(
-                                        subscription.getCancelAtPeriodEnd())) {
+                        return subscription;
+                }
 
-                                subscription.setStatus(
-                                                STATUS_EXPIRED);
+                SubscriptionPlan currentPlan = getPlan(
+                                subscription.getPlanId());
 
-                                subscription.setUpdatedAt(now);
-
-                                userSubscriptionRepository.save(
-                                                subscription);
-
-                                SubscriptionPlan basicPlan = subscriptionPlanRepository
-                                                .findByCodeAndIsActiveTrue(
-                                                                PLAN_BASIC);
-
-                                if (basicPlan == null) {
-                                        throw new IllegalStateException(
-                                                        "Basic subscription plan is missing");
-                                }
-
-                                return createSubscription(
-                                                userId,
-                                                basicPlan,
-                                                now);
-                        }
+                /*
+                 * BASIC là gói miễn phí:
+                 * được tạo chu kỳ usage mới mỗi tháng.
+                 */
+                if (PLAN_BASIC.equals(
+                                currentPlan.getCode())) {
 
                         subscription.setCurrentPeriodStart(
                                         now);
@@ -576,14 +578,89 @@ public class SubscriptionService {
                         subscription.setCurrentPeriodEnd(
                                         now.plusMonths(1));
 
-                        subscription.setUpdatedAt(now);
+                        subscription.setCancelAtPeriodEnd(
+                                        false);
 
-                        userSubscriptionRepository.save(
-                                        subscription);
+                        subscription.setUpdatedAt(
+                                        now);
+
+                        UserSubscription renewedBasic = userSubscriptionRepository
+                                        .save(subscription);
+
+                        syncUserSubscriptionTier(
+                                        userId,
+                                        PLAN_BASIC);
+
+                        return renewedBasic;
                 }
 
-                return subscription;
+                /*
+                 * ARTIST / ARTIST_PRO hết hạn:
+                 * tuyệt đối không tự gia hạn miễn phí.
+                 */
+                subscription.setStatus(
+                                STATUS_EXPIRED);
+
+                subscription.setUpdatedAt(
+                                now);
+
+                userSubscriptionRepository.save(
+                                subscription);
+
+                SubscriptionPlan basicPlan = subscriptionPlanRepository
+                                .findByCodeAndIsActiveTrue(
+                                                PLAN_BASIC);
+
+                if (basicPlan == null) {
+                        throw new IllegalStateException(
+                                        "Basic subscription plan is missing");
+                }
+
+                UserSubscription basicSubscription = createSubscription(
+                                userId,
+                                basicPlan,
+                                now);
+
+                syncUserSubscriptionTier(
+                                userId,
+                                PLAN_BASIC);
+
+                return basicSubscription;
         }
+
+        //// helper
+        private void syncUserSubscriptionTier(
+                        String userId,
+                        String planCode) {
+
+                User user = userRepository
+                                .findById(userId)
+                                .orElseThrow(
+                                                () -> new IllegalStateException(
+                                                                "User not found"));
+
+                String subscriptionTier = PLAN_BASIC.equals(
+                                planCode)
+                                                ? "FREE"
+                                                : planCode;
+
+                if (subscriptionTier.equalsIgnoreCase(
+                                String.valueOf(
+                                                user.getSubscriptionTier()))) {
+                        return;
+                }
+
+                user.setSubscriptionTier(
+                                subscriptionTier);
+
+                user.setUpdatedAt(
+                                new Date());
+
+                userRepository.save(
+                                user);
+        }
+
+        ///
 
         private UserSubscription createSubscription(
 

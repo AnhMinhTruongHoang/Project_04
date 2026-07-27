@@ -1,0 +1,311 @@
+HƯỚNG DẪN ĐĂNG KÝ VNPAY SANDBOX MỚI CHO SOUNDCLONE
+
+==================================================
+1. THÔNG TIN DỰ ÁN SOUNDCLONE
+==================================================
+
+Tên website:
+SoundClone Music
+
+Website URL:
+https://soundclone-music.vercel.app
+
+Backend URL:
+https://soundclone-backend.onrender.com
+
+Return URL:
+https://soundclone-backend.onrender.com/api/v1/payments/vnpay/return
+
+IPN URL:
+https://soundclone-backend.onrender.com/api/v1/payments/vnpay/ipn
+
+API Version:
+2.1.0
+
+Môi trường:
+Sandbox
+
+
+==================================================
+2. ĐĂNG KÝ VNPAY SANDBOX
+==================================================
+
+Truy cập:
+https://sandbox.vnpayment.vn/devreg/
+
+Điền thông tin:
+
+Tên website:
+SoundClone Music
+
+Địa chỉ website:
+https://soundclone-music.vercel.app
+
+Email:
+Dùng email mới hoặc email riêng cho dự án SoundClone.
+
+Mật khẩu:
+Tạo mật khẩu riêng, không dùng mật khẩu database, GitHub hoặc tài khoản dự án khác.
+
+Sau đó:
+- Xác nhận đăng ký.
+- Kiểm tra Inbox.
+- Kiểm tra Spam/Junk/Promotions nếu chưa thấy email.
+
+
+==================================================
+3. THÔNG TIN CẦN LẤY TỪ EMAIL VNPAY
+==================================================
+
+Sau khi đăng ký thành công, lấy các thông tin:
+
+vnp_TmnCode=TMN_CODE_SOUNDCLONE_MOI
+
+vnp_HashSecret=HASH_SECRET_SOUNDCLONE_MOI
+
+vnp_Url=https://sandbox.vnpayment.vn/paymentv2/vpcpay.html
+
+Lưu ý:
+- Không gửi HashSecret cho người khác.
+- Không commit HashSecret lên GitHub.
+- Không đặt HashSecret trong biến NEXT_PUBLIC của Vercel.
+- Không thay cấu hình VNPAY của dự án cũ.
+
+
+==================================================
+4. GỬI YÊU CẦU ĐĂNG KÝ IPN URL
+==================================================
+
+Gửi email tới:
+hotro@vnpay.vn
+
+Tiêu đề:
+Đăng ký IPN URL Sandbox cho TmnCode [TMN_CODE_MỚI] - SoundClone Music
+
+Nội dung email:
+
+Kính gửi bộ phận hỗ trợ VNPAY,
+
+Tôi đã đăng ký môi trường VNPAY Sandbox mới cho dự án SoundClone Music.
+
+Thông tin tích hợp:
+
+- Tên website: SoundClone Music
+- Website URL: https://soundclone-music.vercel.app
+- TmnCode: [ĐIỀN_TMN_CODE_MỚI]
+- Môi trường: Sandbox
+- API Version: 2.1.0
+
+Return URL:
+https://soundclone-backend.onrender.com/api/v1/payments/vnpay/return
+
+IPN URL:
+https://soundclone-backend.onrender.com/api/v1/payments/vnpay/ipn
+
+Nhờ VNPAY hỗ trợ thiết lập IPN URL trên cho TmnCode Sandbox mới.
+
+Xin cảm ơn.
+
+
+==================================================
+5. CẬP NHẬT ENVIRONMENT TRÊN RENDER
+==================================================
+
+Vào:
+
+Render Dashboard
+→ SoundClone Backend
+→ Environment
+→ Add Environment Variable
+
+Thêm hoặc cập nhật:
+
+VNPAY_PAY_URL=https://sandbox.vnpayment.vn/paymentv2/vpcpay.html
+
+VNPAY_TMN_CODE=TMN_CODE_SOUNDCLONE_MOI
+
+VNPAY_HASH_SECRET=HASH_SECRET_SOUNDCLONE_MOI
+
+VNPAY_RETURN_URL=https://soundclone-backend.onrender.com/api/v1/payments/vnpay/return
+
+VNPAY_IPN_URL=https://soundclone-backend.onrender.com/api/v1/payments/vnpay/ipn
+
+VNPAY_EXPIRE_MINUTES=15
+
+PAYMENT_EXPIRE_DELAY_MS=60000
+
+FRONTEND_URL=https://soundclone-music.vercel.app
+
+Lưu ý:
+- Không đặt dấu nháy quanh giá trị.
+- Không để khoảng trắng ở đầu hoặc cuối.
+- Nhấn Save Changes.
+- Chờ Render redeploy hoàn tất.
+
+
+==================================================
+6. BIẾN TRÊN VERCEL FRONTEND
+==================================================
+
+Vào:
+
+Vercel
+→ Project SoundClone
+→ Settings
+→ Environment Variables
+
+Giữ hoặc thêm:
+
+NEXT_PUBLIC_BACKEND_URL=https://soundclone-backend.onrender.com
+
+Không đặt trên Vercel:
+
+VNPAY_HASH_SECRET
+
+VNPAY_TMN_CODE
+
+DB_PASSWORD
+
+JWT_SECRET
+
+CLOUDINARY_API_SECRET
+
+
+==================================================
+7. KIỂM TRA IPN ENDPOINT
+==================================================
+
+Mở trên trình duyệt:
+
+https://soundclone-backend.onrender.com/api/v1/payments/vnpay/ipn
+
+Có thể nhận:
+
+{
+  "RspCode": "97",
+  "Message": "Invalid signature"
+}
+
+Đây là kết quả bình thường vì request mở trực tiếp không có chữ ký VNPAY.
+
+Điều cần xác nhận:
+- Endpoint truy cập được.
+- Không bị 404.
+- Không bị 500.
+- Render đang hoạt động.
+
+
+==================================================
+8. TEST TẠO PAYMENT
+==================================================
+
+Dùng Postman:
+
+POST
+https://soundclone-backend.onrender.com/api/v1/payments/vnpay/create
+
+Headers:
+
+Authorization: Bearer <ACCESS_TOKEN>
+
+Content-Type: application/json
+
+Body:
+
+{
+  "planCode": "ARTIST_PRO",
+  "locale": "vn"
+}
+
+Response cần có:
+
+- statusCode = 200
+- status = PENDING
+- paymentUrl không rỗng
+- orderCode bắt đầu bằng SC
+- amount đúng giá gói
+- currency = VND
+
+
+==================================================
+9. HOÀN TẤT THANH TOÁN SANDBOX
+==================================================
+
+- Copy paymentUrl từ response.
+- Mở paymentUrl bằng trình duyệt.
+- Thanh toán trước 15 phút.
+- Không mở paymentUrl bằng Postman.
+- Chờ VNPAY gọi IPN về Render.
+
+
+==================================================
+10. KIỂM TRA PAYMENT SAU KHI THANH TOÁN
+==================================================
+
+GET
+https://soundclone-backend.onrender.com/api/v1/payments/<ORDER_CODE>
+
+Headers:
+
+Authorization: Bearer <ACCESS_TOKEN>
+
+Kết quả thành công phải có:
+
+status = PAID
+
+responseCode = 00
+
+transactionStatus = 00
+
+providerTransactionId khác null và khác 0
+
+subscriptionId khác null
+
+paidAt khác null
+
+
+==================================================
+11. KIỂM TRA SUBSCRIPTION
+==================================================
+
+GET
+https://soundclone-backend.onrender.com/api/v1/subscriptions/me
+
+Headers:
+
+Authorization: Bearer <ACCESS_TOKEN>
+
+Kết quả cần có:
+
+plan.code = ARTIST_PRO
+
+subscription.status = ACTIVE
+
+currentPeriodStart = thời điểm thanh toán mới
+
+currentPeriodEnd = sau khoảng 1 tháng
+
+usage.uploadedSeconds = 0
+
+Trong bảng users:
+
+subscriptionTier = ARTIST_PRO
+
+
+==================================================
+12. GIỮ RIÊNG HAI DỰ ÁN
+==================================================
+
+Dự án cũ:
+- TmnCode cũ
+- HashSecret cũ
+- Return URL cũ
+- IPN URL cũ
+
+SoundClone:
+- TmnCode mới
+- HashSecret mới
+- Return URL SoundClone
+- IPN URL Backend Render SoundClone
+
+Không dùng chung TmnCode giữa hai dự án vì VNPAY có thể gửi IPN nhầm Backend.

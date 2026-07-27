@@ -24,6 +24,7 @@ import WorkspacePremiumRoundedIcon from "@mui/icons-material/WorkspacePremiumRou
 import MenuRoundedIcon from "@mui/icons-material/MenuRounded";
 import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
 import ArticleOutlinedIcon from "@mui/icons-material/ArticleOutlined";
+import PaymentsRoundedIcon from "@mui/icons-material/PaymentsRounded";
 
 type Props = {
   collapsed: boolean;
@@ -60,6 +61,11 @@ const menuItems = [
     label: "Comments",
     href: "/dashboard/comments",
     icon: <CommentRoundedIcon />,
+  },
+  {
+    label: "Artist Payouts",
+    href: "/dashboard/payouts",
+    icon: <PaymentsRoundedIcon />,
   },
   {
     label: "Artist Benefits",

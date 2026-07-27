@@ -39,6 +39,17 @@ const formatTime = (seconds = 0) => {
   return `${minutes}:${String(secondsRemainder).padStart(2, "0")}`;
 };
 
+const createListeningSessionId = (): string => {
+  if (
+    typeof crypto !== "undefined" &&
+    typeof crypto.randomUUID === "function"
+  ) {
+    return crypto.randomUUID();
+  }
+
+  return `ls_${Date.now()}_${Math.random().toString(36).slice(2, 18)}`;
+};
+
 const AppFooter = () => {
   const router = useRouter();
   const pathname = usePathname();
@@ -50,13 +61,24 @@ const AppFooter = () => {
   const previousVolumeRef = useRef(0.5);
   const suppressFooterAudioEventRef = useRef(false);
   const currentTrackRef = useRef<any>(null);
+  const initialHeartbeatSentRef = useRef("");
+
+  const listeningSessionRef = useRef<{
+    trackId: string;
+    sessionId: string;
+  }>({
+    trackId: "",
+    sessionId: "",
+  });
 
   const lastProgressSaveRef = useRef<{
     trackId: string;
+    sessionId: string;
     second: number;
     completed: boolean;
   }>({
     trackId: "",
+    sessionId: "",
     second: -1,
     completed: false,
   });
@@ -102,8 +124,48 @@ const AppFooter = () => {
     return track?.id || track?._id || "";
   };
 
+  const getOrCreateListeningSessionId = useCallback(
+    (trackId: string, forceNew = false): string => {
+      const activeSession = listeningSessionRef.current;
+
+      if (
+        !forceNew &&
+        activeSession.trackId === trackId &&
+        activeSession.sessionId
+      ) {
+        return activeSession.sessionId;
+      }
+
+      const sessionId = createListeningSessionId();
+
+      listeningSessionRef.current = {
+        trackId,
+        sessionId,
+      };
+
+      initialHeartbeatSentRef.current = "";
+
+      return sessionId;
+    },
+    []
+  );
+
+  const closeListeningSession = useCallback((trackId: string) => {
+    if (listeningSessionRef.current.trackId !== trackId) {
+      return;
+    }
+
+    listeningSessionRef.current = {
+      trackId: "",
+      sessionId: "",
+    };
+
+    initialHeartbeatSentRef.current = "";
+  }, []);
+
   const getImageUrl = (imgUrl?: string | null) => {
-    if (!imgUrl) return "https://res.cloudinary.com/eybmkz9z/image/upload/v1784726300/default_djtlyj.png";
+    if (!imgUrl)
+      return "https://res.cloudinary.com/eybmkz9z/image/upload/v1784726300/default_djtlyj.png";
 
     if (imgUrl.startsWith("http")) {
       return imgUrl;
@@ -216,7 +278,11 @@ const AppFooter = () => {
         return;
       }
 
+      const sessionId = getOrCreateListeningSessionId(trackId);
+
       const completed = completedOverride ?? position / duration >= 0.95;
+
+      const playing = Boolean(trackSnapshot.isPlaying) && !completed;
 
       const second = Math.floor(position);
 
@@ -224,6 +290,7 @@ const AppFooter = () => {
 
       if (
         previous.trackId === trackId &&
+        previous.sessionId === sessionId &&
         previous.second === second &&
         previous.completed === completed
       ) {
@@ -232,6 +299,7 @@ const AppFooter = () => {
 
       lastProgressSaveRef.current = {
         trackId,
+        sessionId,
         second,
         completed,
       };
@@ -240,9 +308,11 @@ const AppFooter = () => {
         await saveListeningProgressApi(
           trackId,
           {
+            sessionId,
             position,
             duration,
             completed,
+            playing,
           },
           accessToken
         );
@@ -250,9 +320,8 @@ const AppFooter = () => {
         console.error("Cannot save listening progress:", error);
       }
     },
-    [accessToken]
+    [accessToken, getOrCreateListeningSessionId]
   );
-
   const handleOpenQueue = async (event: React.MouseEvent<HTMLElement>) => {
     setQueueAnchorEl(event.currentTarget);
     await loadQueueTracks();
@@ -264,6 +333,12 @@ const AppFooter = () => {
 
   const handlePlayQueueTrack = (track: ITrackTop) => {
     handleCloseQueue();
+
+    const selectedTrackId = getTrackId(track);
+
+    if (selectedTrackId) {
+      getOrCreateListeningSessionId(selectedTrackId, true);
+    }
 
     if (isTrackDetailPage) {
       setCurrentTrack({
@@ -385,6 +460,12 @@ const AppFooter = () => {
 
     await persistListeningProgress(completedTrack, true);
 
+    const completedTrackId = getTrackId(completedTrack);
+
+    if (completedTrackId) {
+      closeListeningSession(completedTrackId);
+    }
+
     if (!autoplayStation) {
       return;
     }
@@ -460,6 +541,39 @@ const AppFooter = () => {
   useEffect(() => {
     currentTrackRef.current = currentTrack;
   }, [currentTrack]);
+
+  /*
+   * Gửi heartbeat đầu tiên ngay khi bắt đầu phát.
+   * Heartbeat đầu tiên chỉ khởi tạo session,
+   * Backend chưa cộng thời gian.
+   */
+  useEffect(() => {
+    const trackId = getTrackId(currentTrack);
+
+    const duration = Math.max(Number((currentTrack as any)?.duration) || 0, 0);
+
+    if (!accessToken || !trackId || !currentTrack?.isPlaying || duration <= 0) {
+      return;
+    }
+
+    const sessionId = getOrCreateListeningSessionId(trackId);
+
+    if (initialHeartbeatSentRef.current === sessionId) {
+      return;
+    }
+
+    initialHeartbeatSentRef.current = sessionId;
+
+    void persistListeningProgress(currentTrack);
+  }, [
+    accessToken,
+    currentTrack?._id,
+    (currentTrack as any)?.id,
+    currentTrack?.isPlaying,
+    (currentTrack as any)?.duration,
+    getOrCreateListeningSessionId,
+    persistListeningProgress,
+  ]);
 
   /*
    * Cá»© má»—i 15 giÃ¢y khi Ä‘ang phÃ¡t sáº½ lÆ°u lÃªn backend.
@@ -860,7 +974,8 @@ const AppFooter = () => {
                 src={getTrackImage()}
                 alt={currentTrack?.title || "track image"}
                 onError={(event: any) => {
-                  event.currentTarget.src = "https://res.cloudinary.com/eybmkz9z/image/upload/v1784726300/default_djtlyj.png";
+                  event.currentTarget.src =
+                    "https://res.cloudinary.com/eybmkz9z/image/upload/v1784726300/default_djtlyj.png";
                 }}
                 sx={{
                   width: "100%",
@@ -1617,7 +1732,8 @@ const AppFooter = () => {
                   src={getTrackImage()}
                   alt={currentTrack.title || "track image"}
                   onError={(event: any) => {
-                    event.currentTarget.src = "https://res.cloudinary.com/eybmkz9z/image/upload/v1784726300/default_djtlyj.png";
+                    event.currentTarget.src =
+                      "https://res.cloudinary.com/eybmkz9z/image/upload/v1784726300/default_djtlyj.png";
                   }}
                   sx={{
                     width: "100%",
@@ -1745,4 +1861,3 @@ const AppFooter = () => {
 };
 
 export default AppFooter;
-

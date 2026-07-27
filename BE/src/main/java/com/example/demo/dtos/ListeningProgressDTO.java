@@ -5,6 +5,8 @@ public class ListeningProgressDTO {
     private Double position;
     private Double duration;
     private Boolean completed;
+    private String sessionId;
+    private Boolean playing;
 
     public Double getPosition() {
         return position;
@@ -13,6 +15,23 @@ public class ListeningProgressDTO {
     public void setPosition(
             Double position) {
         this.position = position;
+    }
+
+    public String getSessionId() {
+        return sessionId;
+    }
+
+    public void setSessionId(
+            String sessionId) {
+        this.sessionId = sessionId;
+    }
+
+    public Boolean getPlaying() {
+        return playing;
+    }
+
+    public void setPlaying(Boolean playing) {
+        this.playing = playing;
     }
 
     public Double getDuration() {

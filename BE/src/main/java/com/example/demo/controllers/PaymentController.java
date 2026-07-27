@@ -1,10 +1,13 @@
 package com.example.demo.controllers;
 
+import java.net.URI;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.util.UriComponentsBuilder;
 
 import com.example.demo.dtos.CreatePaymentDTO;
 import com.example.demo.entities.User;
@@ -26,6 +29,9 @@ public class PaymentController {
         private final PaymentService paymentService;
 
         private final UserRepository userRepository;
+
+        @Value("${app.frontend-url}")
+        private String frontendUrl;;
 
         public PaymentController(
                         PaymentService paymentService,
@@ -152,7 +158,7 @@ public class PaymentController {
          * =========================
          */
         @GetMapping("/vnpay/return")
-        public ResponseEntity<?> handleReturn(
+        public ResponseEntity<Void> handleReturn(
                         HttpServletRequest request) {
 
                 try {
@@ -162,55 +168,140 @@ public class PaymentController {
                         Map<String, Object> data = paymentService.handleReturn(
                                         parameters);
 
-                        boolean signatureValid = Boolean.TRUE.equals(
-                                        data.get(
-                                                        "signatureValid"));
+                        URI redirectUri = buildPaymentResultRedirect(
+                                        data);
 
-                        boolean orderFound = Boolean.TRUE.equals(
-                                        data.get(
-                                                        "orderFound"));
-
-                        boolean amountValid = Boolean.TRUE.equals(
-                                        data.get(
-                                                        "amountValid"));
-
-                        if (!signatureValid
-                                        || !orderFound
-                                        || !amountValid) {
-
-                                return ResponseEntity
-                                                .badRequest()
-                                                .body(
-                                                                new ApiResponse<>(
-                                                                                400,
-                                                                                "Invalid VNPAY return data",
-                                                                                data));
-                        }
-
-                        /*
-                         * Lưu ý:
-                         * paymentConfirmed chỉ true sau khi IPN
-                         * đã xác nhận giao dịch thành công.
-                         */
-                        return ResponseEntity.ok(
-                                        new ApiResponse<>(
-                                                        200,
-                                                        "VNPAY payment result received",
-                                                        data));
+                        return ResponseEntity
+                                        .status(302)
+                                        .location(redirectUri)
+                                        .build();
 
                 } catch (Exception e) {
 
                         e.printStackTrace();
 
+                        URI redirectUri = UriComponentsBuilder
+                                        .fromUriString(normalizeFrontendUrl())
+                                        .path("/payment/result")
+                                        .queryParam(
+                                                        "status",
+                                                        "ERROR")
+                                        .build()
+                                        .encode()
+                                        .toUri();
+
                         return ResponseEntity
-                                        .internalServerError()
-                                        .body(
-                                                        new ApiResponse<>(
-                                                                        500,
-                                                                        "Unable to process VNPAY return",
-                                                                        null));
+                                        .status(302)
+                                        .location(redirectUri)
+                                        .build();
                 }
         }
+
+        private URI buildPaymentResultRedirect(
+                        Map<String, Object> data) {
+
+                boolean signatureValid = Boolean.TRUE.equals(
+                                data.get(
+                                                "signatureValid"));
+
+                boolean orderFound = Boolean.TRUE.equals(
+                                data.get(
+                                                "orderFound"));
+
+                boolean amountValid = Boolean.TRUE.equals(
+                                data.get(
+                                                "amountValid"));
+
+                boolean paymentConfirmed = Boolean.TRUE.equals(
+                                data.get(
+                                                "paymentConfirmed"));
+
+                String status;
+
+                if (!signatureValid
+                                || !orderFound
+                                || !amountValid) {
+
+                        status = "INVALID";
+
+                } else {
+
+                        status = getStringValue(
+                                        data,
+                                        "status",
+                                        "PENDING");
+                }
+
+                return UriComponentsBuilder
+                                .fromUriString(normalizeFrontendUrl())
+                                .path("/payment/result")
+                                .queryParam(
+                                                "orderCode",
+                                                getStringValue(
+                                                                data,
+                                                                "orderCode",
+                                                                ""))
+                                .queryParam(
+                                                "status",
+                                                status)
+                                .queryParam(
+                                                "signatureValid",
+                                                signatureValid)
+                                .queryParam(
+                                                "paymentConfirmed",
+                                                paymentConfirmed)
+                                .queryParam(
+                                                "responseCode",
+                                                getStringValue(
+                                                                data,
+                                                                "responseCode",
+                                                                ""))
+                                .queryParam(
+                                                "transactionStatus",
+                                                getStringValue(
+                                                                data,
+                                                                "transactionStatus",
+                                                                ""))
+                                .build()
+                                .encode()
+                                .toUri();
+        }
+
+        private String normalizeFrontendUrl() {
+
+                if (frontendUrl == null
+                                || frontendUrl.isBlank()) {
+
+                        return "http://localhost:3000";
+                }
+
+                return frontendUrl
+                                .trim()
+                                .replaceAll(
+                                                "/+$",
+                                                "");
+        }
+
+        private String getStringValue(
+                        Map<String, Object> data,
+                        String key,
+                        String defaultValue) {
+
+                Object value = data.get(
+                                key);
+
+                if (value == null) {
+                        return defaultValue;
+                }
+
+                String text = String.valueOf(
+                                value);
+
+                return text.isBlank()
+                                ? defaultValue
+                                : text;
+        }
+        ////
 
         /*
          * =========================

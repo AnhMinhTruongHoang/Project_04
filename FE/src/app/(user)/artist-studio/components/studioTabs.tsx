@@ -33,6 +33,10 @@ export const studioTabs: {
     value: "comments",
   },
   {
+    label: "Earnings",
+    value: "earnings",
+  },
+  {
     label: "Benefits",
     value: "benefits",
   },

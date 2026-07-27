@@ -51,6 +51,7 @@ import com.example.demo.repositories.ListeningHistoryRepository;
 import com.example.demo.repositories.TrackRepository;
 import com.example.demo.repositories.UserRepository;
 import com.example.demo.services.CloudinaryService;
+import com.example.demo.services.ListeningSessionService;
 
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -94,6 +95,9 @@ public class TrackController {
 
 	@Autowired
 	private CloudinaryService cloudinaryService;
+
+	@Autowired
+	private ListeningSessionService listeningSessionService;
 
 	@Value("${images_url}")
 	private String imagesUrl;
@@ -1944,15 +1948,17 @@ public class TrackController {
 			HttpServletRequest request) {
 
 		try {
-			User user = getCurrentUser(request);
+			User user = getCurrentUser(
+					request);
 
 			if (user == null) {
 				return ResponseEntity
 						.status(401)
-						.body(new ApiResponse<>(
-								401,
-								"Unauthorized",
-								null));
+						.body(
+								new ApiResponse<>(
+										401,
+										"Unauthorized",
+										null));
 			}
 
 			Track track = trackRepository
@@ -1960,39 +1966,57 @@ public class TrackController {
 					.orElse(null);
 
 			if (track == null
-					|| Boolean.TRUE.equals(track.getIsDeleted())
+					|| Boolean.TRUE.equals(
+							track.getIsDeleted())
 					|| !isApproved(track)) {
+
 				return ResponseEntity
 						.status(404)
-						.body(new ApiResponse<>(
-								404,
-								"Track not found",
-								null));
+						.body(
+								new ApiResponse<>(
+										404,
+										"Track not found",
+										null));
 			}
 
-			double position = dto == null || dto.getPosition() == null
-					? 0
-					: Math.max(dto.getPosition(), 0);
+			double position = dto == null
+					|| dto.getPosition() == null
+							? 0D
+							: Math.max(
+									dto.getPosition(),
+									0D);
 
-			double duration = dto == null || dto.getDuration() == null
-					? 0
-					: Math.max(dto.getDuration(), 0);
+			double duration = dto == null
+					|| dto.getDuration() == null
+							? 0D
+							: Math.max(
+									dto.getDuration(),
+									0D);
 
-			if (duration > 0) {
-				position = Math.min(position, duration);
+			if (duration > 0D) {
+				position = Math.min(
+						position,
+						duration);
 			}
 
 			boolean completed = dto != null
-					&& Boolean.TRUE.equals(dto.getCompleted());
+					&& Boolean.TRUE.equals(
+							dto.getCompleted());
 
 			if (!completed
-					&& duration > 0
-					&& position / duration >= 0.95) {
+					&& duration > 0D
+					&& position / duration >= 0.95D) {
+
 				completed = true;
 			}
 
 			LocalDateTime now = LocalDateTime.now();
 
+			/*
+			 * =========================
+			 * SAVE HISTORY SNAPSHOT
+			 * =========================
+			 */
 			ListeningHistory history = listeningHistoryRepository
 					.findByUserIdAndTrackId(
 							user.getId(),
@@ -2002,36 +2026,102 @@ public class TrackController {
 			if (history == null) {
 				history = new ListeningHistory();
 
-				history.setUserId(user.getId());
-				history.setTrackId(trackId);
-				history.setCreatedAt(now);
+				history.setUserId(
+						user.getId());
+
+				history.setTrackId(
+						trackId);
+
+				history.setCreatedAt(
+						now);
 			}
 
-			history.setLastPosition(position);
-			history.setDuration(duration);
-			history.setCompleted(completed);
-			history.setLastPlayedAt(now);
-			history.setUpdatedAt(now);
+			history.setLastPosition(
+					position);
 
-			ListeningHistory saved = listeningHistoryRepository.save(history);
+			history.setDuration(
+					duration);
+
+			history.setCompleted(
+					completed);
+
+			history.setLastPlayedAt(
+					now);
+
+			history.setUpdatedAt(
+					now);
+
+			ListeningHistory savedHistory = listeningHistoryRepository.save(
+					history);
+
+			/*
+			 * =========================
+			 * PROCESS EARNING HEARTBEAT
+			 * =========================
+			 *
+			 * Giữ tương thích với FE cũ:
+			 * request chưa có sessionId vẫn lưu history bình thường.
+			 */
+			Map<String, Object> listeningSessionData = null;
+
+			if (dto != null
+					&& dto.getSessionId() != null
+					&& !dto.getSessionId()
+							.trim()
+							.isEmpty()) {
+
+				listeningSessionData = listeningSessionService
+						.processHeartbeat(
+								user.getId(),
+								trackId,
+								dto);
+			}
+
+			/*
+			 * Giữ nguyên response history cũ,
+			 * chỉ thêm field listeningSession.
+			 */
+			Map<String, Object> responseData = toListeningHistoryResponse(
+					savedHistory);
+
+			if (responseData == null) {
+				responseData = new LinkedHashMap<>();
+			}
+
+			responseData.put(
+					"listeningSession",
+					listeningSessionData);
 
 			return ResponseEntity.ok(
 					new ApiResponse<>(
 							200,
 							"Listening history saved",
-							toListeningHistoryResponse(saved)));
+							responseData));
+
+		} catch (IllegalArgumentException e) {
+
+			return ResponseEntity
+					.badRequest()
+					.body(
+							new ApiResponse<>(
+									400,
+									e.getMessage(),
+									null));
 
 		} catch (Exception e) {
+
 			e.printStackTrace();
 
 			return ResponseEntity
 					.status(500)
-					.body(new ApiResponse<>(
-							500,
-							e.getMessage(),
-							null));
+					.body(
+							new ApiResponse<>(
+									500,
+									e.getMessage(),
+									null));
 		}
 	}
+
 	///
 
 }

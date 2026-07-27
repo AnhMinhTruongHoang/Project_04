@@ -14,6 +14,14 @@ declare global {
     | "SOCIAL"
     | string;
 
+  type StudioTab =
+    | "tracks"
+    | "distribution"
+    | "vinyl"
+    | "comments"
+    | "earnings"
+    | "benefits";
+
   type SubscriptionTier = "FREE" | "ARTIST" | "ARTIST_PRO" | string;
 
   type AccountStatus = "ACTIVE" | "SUSPENDED" | "DELETED";
@@ -329,6 +337,8 @@ declare global {
     position: number;
     duration: number;
     completed?: boolean;
+    sessionId?: string;
+    playing?: boolean;
   };
 
   type CreateTrackPayload = {
@@ -841,6 +851,185 @@ declare global {
 
   interface IUnreadNotificationCount {
     unreadCount: number;
+  }
+
+  /* =========================
+   ARTIST EARNINGS & PAYOUT APIs
+========================= */
+
+  type ArtistEarningStatus = "PENDING" | "AVAILABLE" | "REJECTED" | "REVERSED";
+
+  type ArtistPayoutStatus =
+    | "PENDING"
+    | "APPROVED"
+    | "PAID"
+    | "REJECTED"
+    | "CANCELED";
+
+  interface ArtistWalletData {
+    id?: string;
+    walletId?: string;
+    artistId?: string;
+    pendingBalance: number;
+    availableBalance: number;
+    reservedBalance: number;
+    withdrawnBalance: number;
+    lifetimeEarnings: number;
+    currency: string;
+    status: string;
+  }
+
+  interface ArtistEarningItem {
+    id: string;
+    listeningSessionId: string;
+    listenerId: string;
+    artistId: string;
+    trackId: string;
+    artistPlanCode: string;
+    sourceType: string;
+    amount: number;
+    currency: string;
+    status: ArtistEarningStatus;
+    earningDate: string;
+    qualifiedAt: string | null;
+    availableAt: string | null;
+    rejectionReason: string | null;
+    releasedAt: string | null;
+    reversedAt: string | null;
+    createdAt: string;
+    updatedAt: string;
+  }
+
+  interface ArtistEarningHistoryData {
+    current: number;
+    pageSize: number;
+    totalPages: number;
+    totalItems: number;
+    status: ArtistEarningStatus | null;
+    result: ArtistEarningItem[];
+  }
+
+  interface ArtistEarningSummaryData {
+    wallet?: ArtistWalletData;
+    pendingBalance?: number;
+    availableBalance?: number;
+    reservedBalance?: number;
+    withdrawnBalance?: number;
+    lifetimeEarnings?: number;
+    pendingCount?: number;
+    availableCount?: number;
+    rejectedCount?: number;
+    reversedCount?: number;
+    totalItems?: number;
+    currency?: string;
+    [key: string]: unknown;
+  }
+
+  interface ArtistPayoutItem {
+    id: string;
+    artistId: string;
+    walletId: string;
+    amount: number;
+    currency: string;
+    payoutMethod: string;
+    status: ArtistPayoutStatus;
+    bankCode: string;
+    bankName: string;
+    accountNumber: string;
+    accountHolderName: string;
+    artistNote: string | null;
+    adminNote: string | null;
+    transactionReference: string | null;
+    reviewedBy: string | null;
+    requestedAt: string;
+    reviewedAt: string | null;
+    approvedAt: string | null;
+    paidAt: string | null;
+    rejectedAt: string | null;
+    canceledAt: string | null;
+    createdAt: string;
+    updatedAt: string;
+  }
+
+  interface ArtistPayoutHistoryData {
+    current: number;
+    pageSize: number;
+    totalPages: number;
+    totalItems: number;
+    status: ArtistPayoutStatus | null;
+    result: ArtistPayoutItem[];
+  }
+
+  interface ArtistPayoutActionData {
+    payoutRequest: ArtistPayoutItem;
+    walletId?: string;
+    availableBalance: number | null;
+    reservedBalance: number | null;
+    withdrawnBalance: number | null;
+    currency: string;
+  }
+
+  interface CreateArtistPayoutPayload {
+    amount: number;
+    bankCode: string;
+    bankName: string;
+    accountNumber: string;
+    accountHolderName: string;
+    artistNote?: string;
+  }
+
+  interface ApproveArtistPayoutPayload {
+    adminNote?: string;
+  }
+
+  interface RejectArtistPayoutPayload {
+    adminNote: string;
+  }
+
+  interface MarkArtistPayoutPaidPayload {
+    adminNote?: string;
+    transactionReference: string;
+  }
+
+  interface ArtistEarningQueryParams {
+    status?: ArtistEarningStatus;
+    current?: number;
+    pageSize?: number;
+  }
+
+  interface ArtistPayoutQueryParams {
+    status?: ArtistPayoutStatus;
+    current?: number;
+    pageSize?: number;
+  }
+
+  type WalletCard = {
+    key: string;
+    label: string;
+    description: string;
+    amount: number;
+    icon: React.ReactNode;
+  };
+
+  /* =========================
+   ADMIN ARTIST PAYOUT
+========================= */
+
+  interface IAdminArtistPayoutDialogProps {
+    open: boolean;
+    payout: ArtistPayoutItem | null;
+    accessToken: string;
+
+    onClose: () => void;
+
+    onSuccess: (data: ArtistPayoutActionData) => void;
+  }
+
+  type AdminArtistPayoutAction = "APPROVE" | "REJECT" | "PAID";
+
+  interface IAdminArtistPayoutFormData {
+    adminNote: string;
+    transactionReference: string;
   }
   ///
 }

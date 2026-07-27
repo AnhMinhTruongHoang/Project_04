@@ -800,13 +800,6 @@ export const getTracksByUserApi = async (
   } as IBackendRes<IModelPaginate<ITrackTop>>;
 };
 
-export const increaseTrackViewApi = (trackId: string) => {
-  return sendRequest<IBackendRes<ITrackTop>>({
-    url: `/api/v1/tracks/${encodeURIComponent(trackId)}/play`,
-    method: "POST",
-  });
-};
-
 export const searchTracksApi = (keyword: string) => {
   return sendRequest<IBackendRes<ITrackTop[]>>({
     url: "/api/v1/tracks/search",
@@ -1240,9 +1233,11 @@ export const saveListeningProgressApi = (
     url: `/api/v1/tracks/${encodeURIComponent(trackId)}/history`,
     method: "POST",
     body: {
+      sessionId: payload.sessionId?.trim() || undefined,
       position: Math.max(Number(payload.position) || 0, 0),
       duration: Math.max(Number(payload.duration) || 0, 0),
       completed: Boolean(payload.completed),
+      playing: Boolean(payload.playing),
     },
     headers: authHeaders(accessToken),
   });
@@ -1570,6 +1565,195 @@ export const clearReadNotificationsApi = (accessToken?: string) => {
     url: "/api/v1/notifications/clear-read",
     method: "DELETE",
 
+    headers: authHeaders(accessToken),
+  });
+};
+
+/* =========================
+   ARTIST WALLET
+========================= */
+
+export const getArtistWalletApi = (accessToken?: string) => {
+  return sendRequest<IBackendRes<ArtistWalletData>>({
+    url: "/api/v1/artist/earnings/wallet",
+    method: "GET",
+    headers: authHeaders(accessToken),
+  });
+};
+
+/* =========================
+   ARTIST EARNING HISTORY
+========================= */
+
+export const getArtistEarningHistoryApi = (
+  accessToken?: string,
+  params: ArtistEarningQueryParams = {}
+) => {
+  return sendRequest<IBackendRes<ArtistEarningHistoryData>>({
+    url: "/api/v1/artist/earnings/history",
+    method: "GET",
+    queryParams: {
+      status: params.status,
+      current: params.current ?? 1,
+      pageSize: params.pageSize ?? 10,
+    },
+    headers: authHeaders(accessToken),
+  });
+};
+
+/* =========================
+   ARTIST EARNING SUMMARY
+========================= */
+
+export const getArtistEarningSummaryApi = (accessToken?: string) => {
+  return sendRequest<IBackendRes<ArtistEarningSummaryData>>({
+    url: "/api/v1/artist/earnings/summary",
+    method: "GET",
+    headers: authHeaders(accessToken),
+  });
+};
+
+/* =========================
+   ARTIST CREATE PAYOUT
+========================= */
+
+export const createArtistPayoutRequestApi = (
+  payload: CreateArtistPayoutPayload,
+  accessToken?: string
+) => {
+  return sendRequest<IBackendRes<ArtistPayoutActionData>>({
+    url: "/api/v1/artist/earnings/payouts",
+    method: "POST",
+    body: payload,
+    headers: authHeaders(accessToken),
+  });
+};
+
+/* =========================
+   ARTIST PAYOUT HISTORY
+========================= */
+
+export const getArtistPayoutHistoryApi = (
+  accessToken?: string,
+  params: ArtistPayoutQueryParams = {}
+) => {
+  return sendRequest<IBackendRes<ArtistPayoutHistoryData>>({
+    url: "/api/v1/artist/earnings/payouts",
+    method: "GET",
+    queryParams: {
+      status: params.status,
+      current: params.current ?? 1,
+      pageSize: params.pageSize ?? 10,
+    },
+    headers: authHeaders(accessToken),
+  });
+};
+
+/* =========================
+   ARTIST CANCEL PAYOUT
+========================= */
+
+export const cancelArtistPayoutRequestApi = (
+  payoutRequestId: string,
+  accessToken?: string
+) => {
+  return sendRequest<IBackendRes<ArtistPayoutActionData>>({
+    url: `/api/v1/artist/earnings/payouts/${encodeURIComponent(
+      payoutRequestId
+    )}/cancel`,
+    method: "POST",
+    headers: authHeaders(accessToken),
+  });
+};
+
+/* =========================
+   ADMIN GET PAYOUT LIST
+========================= */
+
+export const getAdminArtistPayoutsApi = (
+  accessToken?: string,
+  params: ArtistPayoutQueryParams = {}
+) => {
+  return sendRequest<IBackendRes<ArtistPayoutHistoryData>>({
+    url: "/api/v1/admin/artist-payouts",
+    method: "GET",
+    queryParams: {
+      status: params.status,
+      current: params.current ?? 1,
+      pageSize: params.pageSize ?? 10,
+    },
+    headers: authHeaders(accessToken),
+  });
+};
+
+/* =========================
+   ADMIN GET PAYOUT DETAIL
+========================= */
+
+export const getAdminArtistPayoutDetailApi = (
+  payoutRequestId: string,
+  accessToken?: string
+) => {
+  return sendRequest<IBackendRes<ArtistPayoutActionData>>({
+    url: `/api/v1/admin/artist-payouts/${encodeURIComponent(payoutRequestId)}`,
+    method: "GET",
+    headers: authHeaders(accessToken),
+  });
+};
+
+/* =========================
+   ADMIN APPROVE PAYOUT
+========================= */
+
+export const approveAdminArtistPayoutApi = (
+  payoutRequestId: string,
+  payload: ApproveArtistPayoutPayload = {},
+  accessToken?: string
+) => {
+  return sendRequest<IBackendRes<ArtistPayoutActionData>>({
+    url: `/api/v1/admin/artist-payouts/${encodeURIComponent(
+      payoutRequestId
+    )}/approve`,
+    method: "PATCH",
+    body: payload,
+    headers: authHeaders(accessToken),
+  });
+};
+
+/* =========================
+   ADMIN REJECT PAYOUT
+========================= */
+
+export const rejectAdminArtistPayoutApi = (
+  payoutRequestId: string,
+  payload: RejectArtistPayoutPayload,
+  accessToken?: string
+) => {
+  return sendRequest<IBackendRes<ArtistPayoutActionData>>({
+    url: `/api/v1/admin/artist-payouts/${encodeURIComponent(
+      payoutRequestId
+    )}/reject`,
+    method: "PATCH",
+    body: payload,
+    headers: authHeaders(accessToken),
+  });
+};
+
+/* =========================
+   ADMIN MARK PAYOUT PAID
+========================= */
+
+export const markAdminArtistPayoutPaidApi = (
+  payoutRequestId: string,
+  payload: MarkArtistPayoutPaidPayload,
+  accessToken?: string
+) => {
+  return sendRequest<IBackendRes<ArtistPayoutActionData>>({
+    url: `/api/v1/admin/artist-payouts/${encodeURIComponent(
+      payoutRequestId
+    )}/paid`,
+    method: "PATCH",
+    body: payload,
     headers: authHeaders(accessToken),
   });
 };

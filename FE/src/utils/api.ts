@@ -1759,5 +1759,23 @@ export const markAdminArtistPayoutPaidApi = (
 };
 
 /* =========================
+   CREATE VNPAY PAYMENT
+========================= */
+
+export const createVnPayPaymentApi = (
+  planCode: SubscriptionPlanCode,
+  accessToken?: string
+) => {
+  return sendRequest<IBackendRes<Record<string, any>>>({
+    url: "/api/v1/payments/vnpay/create",
+    method: "POST",
+    body: {
+      planCode,
+    },
+    headers: authHeaders(accessToken),
+  });
+};
+
+/* =========================
 
 ========================= */

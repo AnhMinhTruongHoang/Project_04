@@ -37,6 +37,10 @@ export const studioTabs: {
     value: "earnings",
   },
   {
+    value: "subscription",
+    label: "Subscription",
+  },
+  {
     label: "Benefits",
     value: "benefits",
   },

@@ -20,6 +20,7 @@ declare global {
     | "vinyl"
     | "comments"
     | "earnings"
+    | "subscription"
     | "benefits";
 
   type SubscriptionTier = "FREE" | "ARTIST" | "ARTIST_PRO" | string;
@@ -1030,6 +1031,19 @@ declare global {
   interface IAdminArtistPayoutFormData {
     adminNote: string;
     transactionReference: string;
+  }
+
+  interface IArtistSubscriptionManagerProps {
+    data: IMySubscriptionData | null;
+    accessToken: string;
+    loading?: boolean;
+    error?: string;
+    onUpdated: (data: IMySubscriptionData) => void;
+  }
+
+  interface ISubscriptionInfoCardProps {
+    label: string;
+    value: string;
   }
   ///
 }

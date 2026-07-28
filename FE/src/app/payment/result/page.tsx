@@ -91,21 +91,20 @@ const getAccessToken = (session: unknown): string | null => {
 
   const sessionData = session as Record<string, unknown>;
 
-  if (
-    typeof sessionData.accessToken === "string" &&
-    sessionData.accessToken.trim()
-  ) {
-    return sessionData.accessToken;
+  const sessionAccessToken =
+    sessionData.accessToken ?? sessionData.access_token;
+
+  if (typeof sessionAccessToken === "string" && sessionAccessToken.trim()) {
+    return sessionAccessToken.trim();
   }
 
   if (sessionData.user && typeof sessionData.user === "object") {
     const userData = sessionData.user as Record<string, unknown>;
 
-    if (
-      typeof userData.accessToken === "string" &&
-      userData.accessToken.trim()
-    ) {
-      return userData.accessToken;
+    const userAccessToken = userData.accessToken ?? userData.access_token;
+
+    if (typeof userAccessToken === "string" && userAccessToken.trim()) {
+      return userAccessToken.trim();
     }
   }
 

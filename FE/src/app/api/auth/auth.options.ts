@@ -426,7 +426,11 @@ export const authOptions: AuthOptions = {
       const tokenUser = (token.user || {}) as any;
       const defaultUser = (session.user || {}) as any;
 
-      (session as any).access_token = token.access_token as string;
+      const accessToken = String(token.access_token || "");
+
+      (session as any).access_token = accessToken;
+
+      (session as any).accessToken = accessToken;
 
       (session as any).refresh_token = token.refresh_token as string;
 

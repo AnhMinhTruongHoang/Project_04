@@ -155,6 +155,8 @@ export default function PaymentResultPage() {
 
   const [refreshing, setRefreshing] = useState(false);
 
+  const [pollingTimedOut, setPollingTimedOut] = useState(false);
+
   const [error, setError] = useState<string | null>(null);
 
   const backendUrl = (
@@ -271,15 +273,24 @@ export default function PaymentResultPage() {
       try {
         const currentStatus = await fetchPaymentStatus();
 
+        setPollingTimedOut(
+          currentStatus === "PENDING" || currentStatus === "PROCESSING"
+        );
+
         if (disposed) {
           return;
         }
 
         setLoading(false);
 
-        if (!FINAL_STATUSES.has(currentStatus) && attempt < maxAttempts) {
-          attempt += 1;
+        if (!FINAL_STATUSES.has(currentStatus)) {
+          if (attempt >= maxAttempts) {
+            setPollingTimedOut(true);
+            setLoading(false);
+            return;
+          }
 
+          attempt += 1;
           timer = setTimeout(pollPayment, 2000);
         }
       } catch (fetchError) {
@@ -443,8 +454,9 @@ export default function PaymentResultPage() {
         {/* PAYMENT STATUS HEADER */}
         <Stack spacing={2} alignItems="center" textAlign="center">
           {(loading ||
-            paymentStatus === "PENDING" ||
-            paymentStatus === "PROCESSING") && (
+            (!pollingTimedOut &&
+              (paymentStatus === "PENDING" ||
+                paymentStatus === "PROCESSING"))) && (
             <CircularProgress size={46} thickness={4} />
           )}
 
@@ -477,6 +489,27 @@ export default function PaymentResultPage() {
             {statusContent.description}
           </Typography>
         </Stack>
+
+        {pollingTimedOut &&
+          !error &&
+          (paymentStatus === "PENDING" || paymentStatus === "PROCESSING") && (
+            <Alert
+              severity="warning"
+              sx={{
+                mt: 3,
+                bgcolor: "rgba(237, 108, 2, 0.14)",
+                color: "#ffffff",
+                border: "1px solid rgba(255, 167, 38, 0.45)",
+                "& .MuiAlert-icon": {
+                  color: "#ffa726",
+                },
+              }}
+            >
+              "No confirmation has been received from VNPAY. The transaction was
+              unsuccessful and the subscription package has not been activated.
+              You may return to the package page to create a new transaction."
+            </Alert>
+          )}
 
         {error && (
           <Alert

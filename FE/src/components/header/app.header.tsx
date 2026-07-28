@@ -30,6 +30,7 @@ import { PlaylistPlaySharp } from "@mui/icons-material";
 import SearchDropdown from "@/app/search/components/search.dropdown";
 import NotificationBell from "../../app/(user)/notifications/components/notificationBell";
 import MenuRoundedIcon from "@mui/icons-material/MenuRounded";
+import useMediaQuery from "@mui/material/useMediaQuery";
 import { Typography } from "@mui/material";
 
 const AppHeader = () => {
@@ -40,6 +41,9 @@ const AppHeader = () => {
   const isSessionLoading = status === "loading";
   const isAuthenticated = status === "authenticated" && Boolean(session);
   const isAdmin = isAuthenticated && user?.role === "ADMIN";
+  const isMobileViewport = useMediaQuery("(max-width:899.95px)", {
+    noSsr: true,
+  });
   const [anchorEl, setAnchorEl] = React.useState<null | HTMLElement>(null);
   const open = Boolean(anchorEl);
   const [mobileNavAnchorEl, setMobileNavAnchorEl] =
@@ -456,8 +460,8 @@ const AppHeader = () => {
                     />
                   </Box>
 
-                  {/* NOTIFICATION */}
-                  <NotificationBell />
+                  {/* DESKTOP NOTIFICATION */}
+                  {!isMobileViewport && <NotificationBell />}
 
                   {/* MORE ACTIONS */}
                   <IconButton
@@ -562,6 +566,28 @@ const AppHeader = () => {
                     p: 0.25,
                   }}
                 >
+                  {/* MOBILE NOTIFICATION */}
+                  {isAuthenticated && isMobileViewport && (
+                    <Box
+                      sx={{
+                        display: "flex",
+                        alignItems: "center",
+
+                        "& .MuiIconButton-root": {
+                          width: 36,
+                          height: 36,
+                          p: 0.5,
+                        },
+
+                        "& .MuiSvgIcon-root": {
+                          fontSize: 23,
+                        },
+                      }}
+                    >
+                      <NotificationBell />
+                    </Box>
+                  )}
+
                   <Avatar
                     src={user?.avatarUrl || user?.avatar || ""}
                     alt={user?.name || "User"}

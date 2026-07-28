@@ -31,6 +31,13 @@ import DeleteOutlineRoundedIcon from "@mui/icons-material/DeleteOutlineRounded";
 import DoneAllRoundedIcon from "@mui/icons-material/DoneAllRounded";
 import RefreshRoundedIcon from "@mui/icons-material/RefreshRounded";
 import CleaningServicesRoundedIcon from "@mui/icons-material/CleaningServicesRounded";
+import PaymentRoundedIcon from "@mui/icons-material/PaymentRounded";
+import ErrorOutlineRoundedIcon from "@mui/icons-material/ErrorOutlineRounded";
+import CancelRoundedIcon from "@mui/icons-material/CancelRounded";
+import ScheduleRoundedIcon from "@mui/icons-material/ScheduleRounded";
+import PaidRoundedIcon from "@mui/icons-material/PaidRounded";
+import AccountBalanceWalletRoundedIcon from "@mui/icons-material/AccountBalanceWalletRounded";
+import CheckCircleRoundedIcon from "@mui/icons-material/CheckCircleRounded";
 
 import {
   clearReadNotificationsApi,
@@ -47,6 +54,9 @@ const PAGE_SIZE = 15;
 
 const getNotificationIcon = (type: INotification["type"]) => {
   switch (type) {
+    /* =========================
+       SOCIAL
+    ========================= */
     case "TRACK_LIKE":
       return (
         <FavoriteRoundedIcon
@@ -74,6 +84,9 @@ const getNotificationIcon = (type: INotification["type"]) => {
         />
       );
 
+    /* =========================
+       TRACK
+    ========================= */
     case "TRACK_APPROVED":
     case "TRACK_REJECTED":
     case "COPYRIGHT_APPROVED":
@@ -87,14 +100,102 @@ const getNotificationIcon = (type: INotification["type"]) => {
         />
       );
 
+    /* =========================
+       PAYMENT
+    ========================= */
+    case "PAYMENT_PAID":
+      return (
+        <PaymentRoundedIcon
+          sx={{
+            fontSize: 22,
+          }}
+        />
+      );
+
+    case "PAYMENT_FAILED":
+      return (
+        <ErrorOutlineRoundedIcon
+          sx={{
+            fontSize: 22,
+          }}
+        />
+      );
+
+    case "PAYMENT_CANCELED":
+      return (
+        <CancelRoundedIcon
+          sx={{
+            fontSize: 22,
+          }}
+        />
+      );
+
+    case "PAYMENT_EXPIRED":
+      return (
+        <ScheduleRoundedIcon
+          sx={{
+            fontSize: 22,
+          }}
+        />
+      );
+
+    /* =========================
+       SUBSCRIPTION
+    ========================= */
+    case "SUBSCRIPTION_ACTIVATED":
     case "SUBSCRIPTION_CHANGED":
     case "SUBSCRIPTION_CANCEL_SCHEDULED":
     case "SUBSCRIPTION_RENEWED":
     case "SUBSCRIPTION_EXPIRING":
+    case "SUBSCRIPTION_EXPIRED":
     case "UPLOAD_QUOTA_WARNING":
     case "UPLOAD_QUOTA_EXCEEDED":
       return (
         <WorkspacePremiumRoundedIcon
+          sx={{
+            fontSize: 22,
+          }}
+        />
+      );
+
+    /* =========================
+       ARTIST EARNING
+    ========================= */
+    case "EARNING_AVAILABLE":
+      return (
+        <PaidRoundedIcon
+          sx={{
+            fontSize: 22,
+          }}
+        />
+      );
+
+    /* =========================
+       ARTIST PAYOUT
+    ========================= */
+    case "PAYOUT_REQUESTED":
+      return (
+        <AccountBalanceWalletRoundedIcon
+          sx={{
+            fontSize: 22,
+          }}
+        />
+      );
+
+    case "PAYOUT_APPROVED":
+    case "PAYOUT_PAID":
+      return (
+        <CheckCircleRoundedIcon
+          sx={{
+            fontSize: 22,
+          }}
+        />
+      );
+
+    case "PAYOUT_REJECTED":
+    case "PAYOUT_CANCELED":
+      return (
+        <CancelRoundedIcon
           sx={{
             fontSize: 22,
           }}

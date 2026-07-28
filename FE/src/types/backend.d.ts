@@ -787,48 +787,77 @@ declare global {
     fans: number;
   }
 
-  type StudioTab =
-    | "tracks"
-    | "distribution"
-    | "vinyl"
-    | "comments"
-    | "benefits";
+  /* =========================
+   NOTIFICATIONS
+========================= */
 
-  /// notifications
+  type NotificationType =
+    /* SOCIAL */
+    | "NEW_FOLLOW"
+    | "TRACK_LIKE"
+    | "TRACK_COMMENT"
+
+    /* TRACK */
+    | "TRACK_APPROVED"
+    | "TRACK_REJECTED"
+    | "COPYRIGHT_APPROVED"
+    | "COPYRIGHT_REJECTED"
+    | "TRACK_PROCESSING_COMPLETED"
+
+    /* UPLOAD QUOTA */
+    | "UPLOAD_QUOTA_WARNING"
+    | "UPLOAD_QUOTA_EXCEEDED"
+
+    /* PAYMENT */
+    | "PAYMENT_PAID"
+    | "PAYMENT_FAILED"
+    | "PAYMENT_CANCELED"
+    | "PAYMENT_EXPIRED"
+
+    /* SUBSCRIPTION */
+    | "SUBSCRIPTION_ACTIVATED"
+    | "SUBSCRIPTION_CHANGED"
+    | "SUBSCRIPTION_CANCEL_SCHEDULED"
+    | "SUBSCRIPTION_RENEWED"
+    | "SUBSCRIPTION_EXPIRING"
+    | "SUBSCRIPTION_EXPIRED"
+
+    /* ARTIST EARNING */
+    | "EARNING_AVAILABLE"
+
+    /* ARTIST PAYOUT */
+    | "PAYOUT_REQUESTED"
+    | "PAYOUT_APPROVED"
+    | "PAYOUT_REJECTED"
+    | "PAYOUT_PAID"
+    | "PAYOUT_CANCELED"
+
+    /* SYSTEM */
+    | "SYSTEM";
+
+  type NotificationEntityType =
+    | "USER"
+    | "TRACK"
+    | "COMMENT"
+    | "PAYMENT"
+    | "SUBSCRIPTION"
+    | "EARNING"
+    | "PAYOUT"
+    | "SYSTEM";
+
   interface INotification {
     id: string;
     recipientId: string;
     actorId?: string | null;
 
-    type:
-      | "NEW_FOLLOW"
-      | "TRACK_LIKE"
-      | "TRACK_COMMENT"
-      | "TRACK_APPROVED"
-      | "TRACK_REJECTED"
-      | "COPYRIGHT_APPROVED"
-      | "COPYRIGHT_REJECTED"
-      | "TRACK_PROCESSING_COMPLETED"
-      | "UPLOAD_QUOTA_WARNING"
-      | "UPLOAD_QUOTA_EXCEEDED"
-      | "SUBSCRIPTION_CHANGED"
-      | "SUBSCRIPTION_CANCEL_SCHEDULED"
-      | "SUBSCRIPTION_RENEWED"
-      | "SUBSCRIPTION_EXPIRING"
-      | "SYSTEM";
+    type: NotificationType;
 
     title: string;
     message: string;
 
-    entityType?:
-      | "USER"
-      | "TRACK"
-      | "COMMENT"
-      | "SUBSCRIPTION"
-      | "SYSTEM"
-      | null;
-
+    entityType?: NotificationEntityType | null;
     entityId?: string | null;
+
     redirectUrl?: string | null;
     metadataJson?: string | null;
 
@@ -848,6 +877,10 @@ declare global {
 
     first: boolean;
     last: boolean;
+  }
+
+  interface IUnreadNotificationCount {
+    unreadCount: number;
   }
 
   interface IUnreadNotificationCount {

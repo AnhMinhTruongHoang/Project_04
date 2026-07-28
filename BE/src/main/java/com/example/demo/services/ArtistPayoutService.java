@@ -19,6 +19,8 @@ import com.example.demo.entities.ArtistWallet;
 import com.example.demo.repositories.ArtistPayoutRequestRepository;
 import com.example.demo.repositories.ArtistWalletRepository;
 import com.example.demo.dtos.AdminArtistPayoutActionDTO;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 @Service
 public class ArtistPayoutService {
@@ -28,6 +30,8 @@ public class ArtistPayoutService {
         private final ArtistPayoutRequestRepository artistPayoutRequestRepository;
 
         private final ArtistWalletRepository artistWalletRepository;
+
+        private final NotificationService notificationService;
 
         /*
          * Mức rút tối thiểu mặc định: 100.000 VND.
@@ -43,11 +47,14 @@ public class ArtistPayoutService {
 
         public ArtistPayoutService(
                         ArtistPayoutRequestRepository artistPayoutRequestRepository,
-                        ArtistWalletRepository artistWalletRepository) {
+                        ArtistWalletRepository artistWalletRepository,
+                        NotificationService notificationService) {
 
                 this.artistPayoutRequestRepository = artistPayoutRequestRepository;
 
                 this.artistWalletRepository = artistWalletRepository;
+
+                this.notificationService = notificationService;
         }
 
         /*
@@ -182,6 +189,13 @@ public class ArtistPayoutService {
                                 .saveAndFlush(
                                                 payoutRequest);
 
+                schedulePayoutNotificationAfterCommit(
+                                () -> notificationService
+                                                .notifyPayoutRequested(
+                                                                savedRequest),
+                                savedRequest.getId(),
+                                "requested");
+
                 return buildPayoutResult(
                                 savedRequest,
                                 savedWallet);
@@ -273,6 +287,13 @@ public class ArtistPayoutService {
                 ArtistPayoutRequest savedRequest = artistPayoutRequestRepository
                                 .saveAndFlush(
                                                 payoutRequest);
+
+                schedulePayoutNotificationAfterCommit(
+                                () -> notificationService
+                                                .notifyPayoutCanceled(
+                                                                savedRequest),
+                                savedRequest.getId(),
+                                "canceled");
 
                 return buildPayoutResult(
                                 savedRequest,
@@ -416,6 +437,14 @@ public class ArtistPayoutService {
                 ArtistPayoutRequest savedRequest = artistPayoutRequestRepository
                                 .saveAndFlush(
                                                 payoutRequest);
+
+                schedulePayoutNotificationAfterCommit(
+                                () -> notificationService
+                                                .notifyPayoutApproved(
+                                                                savedRequest,
+                                                                adminId),
+                                savedRequest.getId(),
+                                "approved");
 
                 ArtistWallet wallet = artistWalletRepository
                                 .findByArtistId(
@@ -1060,6 +1089,14 @@ public class ArtistPayoutService {
                                 .saveAndFlush(
                                                 payoutRequest);
 
+                schedulePayoutNotificationAfterCommit(
+                                () -> notificationService
+                                                .notifyPayoutRejected(
+                                                                savedRequest,
+                                                                adminId),
+                                savedRequest.getId(),
+                                "rejected");
+
                 return buildAdminActionResult(
                                 savedRequest,
                                 savedWallet);
@@ -1166,8 +1203,71 @@ public class ArtistPayoutService {
                                 .saveAndFlush(
                                                 payoutRequest);
 
+                schedulePayoutNotificationAfterCommit(
+                                () -> notificationService
+                                                .notifyPayoutPaid(
+                                                                savedRequest,
+                                                                adminId),
+                                savedRequest.getId(),
+                                "paid");
+
                 return buildAdminActionResult(
                                 savedRequest,
                                 savedWallet);
         }
+
+        /*
+         * =========================
+         * PAYOUT NOTIFICATION
+         * =========================
+         */
+        private void schedulePayoutNotificationAfterCommit(
+                        Runnable notificationTask,
+                        String payoutRequestId,
+                        String eventName) {
+
+                if (notificationTask == null) {
+                        return;
+                }
+
+                Runnable safeNotificationTask = () -> {
+
+                        try {
+
+                                notificationTask.run();
+
+                        } catch (Exception notificationException) {
+
+                                System.err.println(
+                                                "Cannot create payout "
+                                                                + eventName
+                                                                + " notification for request "
+                                                                + payoutRequestId
+                                                                + ": "
+                                                                + notificationException.getMessage());
+                        }
+                };
+
+                if (TransactionSynchronizationManager
+                                .isActualTransactionActive()
+                                && TransactionSynchronizationManager
+                                                .isSynchronizationActive()) {
+
+                        TransactionSynchronizationManager
+                                        .registerSynchronization(
+                                                        new TransactionSynchronization() {
+
+                                                                @Override
+                                                                public void afterCommit() {
+
+                                                                        safeNotificationTask.run();
+                                                                }
+                                                        });
+
+                        return;
+                }
+
+                safeNotificationTask.run();
+        }
+
 }

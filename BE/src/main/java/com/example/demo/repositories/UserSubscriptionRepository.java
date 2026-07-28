@@ -21,4 +21,14 @@ public interface UserSubscriptionRepository
 
         List<UserSubscription> findByStatus(
                         String status);
+
+        /*
+         * =========================
+         * FIND EXPIRING SUBSCRIPTIONS
+         * =========================
+         */
+        List<UserSubscription> findTop100ByStatusAndCurrentPeriodEndBetweenOrderByCurrentPeriodEndAsc(
+                        String status,
+                        LocalDateTime from,
+                        LocalDateTime to);
 }

@@ -19,9 +19,14 @@ import {
 import StudioTabs, { studioTabs } from "./studioTabs";
 import ArtistEarningsOverview from "./artistEarningsOverview";
 import ArtistSubscriptionManager from "./artistSubscriptionManager";
+import { useRouter, useSearchParams } from "next/navigation";
 
 const ArtistStudioView = () => {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+
   const { data: session, status: sessionStatus } = useSession();
+
   const [statsLoading, setStatsLoading] = useState(true);
 
   const [statsError, setStatsError] = useState("");
@@ -57,6 +62,23 @@ const ArtistStudioView = () => {
     (session as any)?.user?.access_token ||
     (session as any)?.user?.accessToken ||
     "";
+
+  /* SYNC TAB FROM NOTIFICATION REDIRECT */
+  useEffect(() => {
+    const requestedTab = searchParams.get("tab");
+
+    if (!requestedTab) {
+      return;
+    }
+
+    const validTab = studioTabs.some((tab) => tab.value === requestedTab);
+
+    if (!validTab) {
+      return;
+    }
+
+    setActiveTab(requestedTab as StudioTab);
+  }, [searchParams]);
 
   ///load stats
   useEffect(() => {
@@ -252,6 +274,15 @@ const ArtistStudioView = () => {
     };
   }, [accessToken, sessionStatus]);
 
+  /* UPDATE TAB AND URL */
+  const handleTabChange = (nextTab: StudioTab) => {
+    setActiveTab(nextTab);
+
+    router.replace(`/artist-studio?tab=${encodeURIComponent(nextTab)}`, {
+      scroll: false,
+    });
+  };
+
   return (
     <Box
       sx={{
@@ -289,7 +320,7 @@ const ArtistStudioView = () => {
         <StudioTabs
           tabs={studioTabs}
           activeTab={activeTab}
-          onChange={setActiveTab}
+          onChange={handleTabChange}
         />
       </Box>
 
@@ -311,7 +342,7 @@ const ArtistStudioView = () => {
               plan={subscriptionData?.plan || null}
               loading={subscriptionLoading}
               onDistributionClick={() => {
-                setActiveTab("distribution");
+                handleTabChange("distribution");
               }}
             />
 

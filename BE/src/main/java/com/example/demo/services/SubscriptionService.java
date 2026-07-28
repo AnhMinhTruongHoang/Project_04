@@ -10,6 +10,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
+import java.util.Date;
 import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -27,7 +28,8 @@ import com.example.demo.repositories.SubscriptionPlanRepository;
 import com.example.demo.repositories.SubscriptionUsageRepository;
 import com.example.demo.repositories.UserRepository;
 import com.example.demo.repositories.UserSubscriptionRepository;
-import java.util.Date;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 @Service
 public class SubscriptionService {
@@ -53,6 +55,9 @@ public class SubscriptionService {
 
         @Autowired
         private UserRepository userRepository;
+
+        @Autowired
+        private NotificationService notificationService;
 
         private String generateId() {
                 return UUID.randomUUID()
@@ -408,6 +413,14 @@ public class SubscriptionService {
                 userSubscriptionRepository.save(
                                 subscription);
 
+                scheduleNotificationAfterCommit(
+                                () -> notificationService
+                                                .notifySubscriptionCancelScheduled(
+                                                                subscription,
+                                                                plan.getName()),
+                                subscription.getId(),
+                                "cancel scheduled");
+
                 SubscriptionUsage usage = getOrCreateUsage(subscription);
 
                 return buildSubscriptionResponse(
@@ -606,6 +619,14 @@ public class SubscriptionService {
 
                 userSubscriptionRepository.save(
                                 subscription);
+
+                scheduleNotificationAfterCommit(
+                                () -> notificationService
+                                                .notifySubscriptionExpired(
+                                                                subscription,
+                                                                currentPlan.getName()),
+                                subscription.getId(),
+                                "expired");
 
                 SubscriptionPlan basicPlan = subscriptionPlanRepository
                                 .findByCodeAndIsActiveTrue(
@@ -1234,10 +1255,72 @@ public class SubscriptionService {
 
                 userRepository.save(user);
 
+                scheduleNotificationAfterCommit(
+                                () -> notificationService
+                                                .notifySubscriptionActivated(
+                                                                paidSubscription,
+                                                                paidPlan.getName()),
+                                paidSubscription.getId(),
+                                "activated");
+
                 return buildSubscriptionResponse(
                                 paidSubscription,
                                 paidPlan,
                                 paidUsage);
+        }
+
+        /*
+         * =========================
+         * SUBSCRIPTION NOTIFICATION
+         * =========================
+         */
+        private void scheduleNotificationAfterCommit(
+                        Runnable notificationTask,
+                        String subscriptionId,
+                        String eventName) {
+
+                if (notificationTask == null) {
+                        return;
+                }
+
+                Runnable safeNotificationTask = () -> {
+
+                        try {
+
+                                notificationTask.run();
+
+                        } catch (Exception notificationException) {
+
+                                System.err.println(
+                                                "Cannot create subscription "
+                                                                + eventName
+                                                                + " notification for subscription "
+                                                                + subscriptionId
+                                                                + ": "
+                                                                + notificationException.getMessage());
+                        }
+                };
+
+                if (TransactionSynchronizationManager
+                                .isActualTransactionActive()
+                                && TransactionSynchronizationManager
+                                                .isSynchronizationActive()) {
+
+                        TransactionSynchronizationManager
+                                        .registerSynchronization(
+                                                        new TransactionSynchronization() {
+
+                                                                @Override
+                                                                public void afterCommit() {
+
+                                                                        safeNotificationTask.run();
+                                                                }
+                                                        });
+
+                        return;
+                }
+
+                safeNotificationTask.run();
         }
         ///
 }

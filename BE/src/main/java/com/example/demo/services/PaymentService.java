@@ -28,7 +28,8 @@ import com.example.demo.repositories.UserRepository;
 import jakarta.servlet.http.HttpServletRequest;
 import tools.jackson.core.JacksonException;
 import tools.jackson.databind.json.JsonMapper;
-
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
@@ -57,13 +58,16 @@ public class PaymentService {
 
         private final JsonMapper jsonMapper;
 
+        private final NotificationService notificationService;
+
         public PaymentService(
                         VNPayConfig vnPayConfig,
                         PaymentTransactionRepository paymentTransactionRepository,
                         SubscriptionPlanRepository subscriptionPlanRepository,
                         UserRepository userRepository,
                         SubscriptionService subscriptionService,
-                        JsonMapper jsonMapper) {
+                        JsonMapper jsonMapper,
+                        NotificationService notificationService) {
 
                 this.vnPayConfig = vnPayConfig;
 
@@ -76,6 +80,8 @@ public class PaymentService {
                 this.subscriptionService = subscriptionService;
 
                 this.jsonMapper = jsonMapper;
+
+                this.notificationService = notificationService;
         }
 
         /*
@@ -473,6 +479,10 @@ public class PaymentService {
                 payment.setUpdatedAt(
                                 now);
 
+                boolean paymentStatusChanged = false;
+
+                String notificationPlanName = null;
+
                 boolean paymentSuccessful = "00".equals(responseCode)
                                 && "00".equals(
                                                 transactionStatus);
@@ -504,7 +514,11 @@ public class PaymentService {
 
                         payment.setFailureReason(null);
 
+                        paymentStatusChanged = true;
+
                         payment.setPaidAt(paidAt);
+
+                        paymentStatusChanged = true;
 
                 } else if (PaymentTransaction.STATUS_PENDING.equalsIgnoreCase(
                                 payment.getStatus())
@@ -518,10 +532,19 @@ public class PaymentService {
                         payment.setFailureReason(
                                         "VNPAY payment failed. Response code: "
                                                         + responseCode);
+
+                        paymentStatusChanged = true;
                 }
 
                 paymentTransactionRepository.save(
                                 payment);
+
+                if (paymentStatusChanged) {
+
+                        schedulePaymentNotificationAfterCommit(
+                                        payment,
+                                        notificationPlanName);
+                }
 
                 return buildIpnResponse(
                                 "00",
@@ -624,6 +647,10 @@ public class PaymentService {
                 boolean vnpayReportedSuccess = "00".equals(responseCode)
                                 && "00".equals(
                                                 transactionStatus);
+
+                boolean paymentStatusChanged = false;
+
+                String notificationPlanName = null;
 
                 /*
                  * RETURN FALLBACK:
@@ -728,8 +755,18 @@ public class PaymentService {
                                                                 + responseCode);
                         }
 
+                        paymentStatusChanged = true;
+
                         paymentTransactionRepository.save(
                                         payment);
+
+                        if (paymentStatusChanged) {
+
+                                schedulePaymentNotificationAfterCommit(
+                                                payment,
+                                                notificationPlanName);
+                        }
+
                 }
 
                 Map<String, Object> result = new LinkedHashMap<>();
@@ -1375,5 +1412,94 @@ public class PaymentService {
                                 || PaymentTransaction.STATUS_CANCELED.equals(status)
                                 || PaymentTransaction.STATUS_EXPIRED.equals(status)
                                 || PaymentTransaction.STATUS_REFUNDED.equals(status);
+        }
+
+        /*
+         * =========================
+         * PAYMENT NOTIFICATION
+         * =========================
+         */
+        private void schedulePaymentNotificationAfterCommit(
+                        PaymentTransaction payment,
+                        String planName) {
+
+                if (payment == null
+                                || payment.getId() == null
+                                || payment.getId().isBlank()) {
+
+                        return;
+                }
+
+                Runnable notificationTask = () -> {
+
+                        try {
+
+                                String status = payment.getStatus();
+
+                                if (PaymentTransaction.STATUS_PAID
+                                                .equalsIgnoreCase(status)) {
+
+                                        notificationService.notifyPaymentPaid(
+                                                        payment,
+                                                        planName);
+
+                                        return;
+                                }
+
+                                if (PaymentTransaction.STATUS_CANCELED
+                                                .equalsIgnoreCase(status)) {
+
+                                        notificationService.notifyPaymentCanceled(
+                                                        payment);
+
+                                        return;
+                                }
+
+                                if (PaymentTransaction.STATUS_EXPIRED
+                                                .equalsIgnoreCase(status)) {
+
+                                        notificationService.notifyPaymentExpired(
+                                                        payment);
+
+                                        return;
+                                }
+
+                                if (PaymentTransaction.STATUS_FAILED
+                                                .equalsIgnoreCase(status)) {
+
+                                        notificationService.notifyPaymentFailed(
+                                                        payment);
+                                }
+
+                        } catch (Exception notificationException) {
+
+                                System.err.println(
+                                                "Cannot create payment notification for payment "
+                                                                + payment.getId()
+                                                                + ": "
+                                                                + notificationException.getMessage());
+                        }
+                };
+
+                if (TransactionSynchronizationManager
+                                .isActualTransactionActive()
+                                && TransactionSynchronizationManager
+                                                .isSynchronizationActive()) {
+
+                        TransactionSynchronizationManager
+                                        .registerSynchronization(
+                                                        new TransactionSynchronization() {
+
+                                                                @Override
+                                                                public void afterCommit() {
+
+                                                                        notificationTask.run();
+                                                                }
+                                                        });
+
+                        return;
+                }
+
+                notificationTask.run();
         }
 }

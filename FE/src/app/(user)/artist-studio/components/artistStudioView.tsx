@@ -18,6 +18,7 @@ import {
 } from "@/utils/api";
 import StudioTabs, { studioTabs } from "./studioTabs";
 import ArtistEarningsOverview from "./artistEarningsOverview";
+import ArtistSubscriptionManager from "./artistSubscriptionManager";
 
 const ArtistStudioView = () => {
   const { data: session, status: sessionStatus } = useSession();
@@ -294,9 +295,18 @@ const ArtistStudioView = () => {
 
       {/* ARTIST STUDIO TAB CONTENT */}
       <Box sx={{ mt: 3 }}>
-        {activeTab === "tracks" ? (
+        {activeTab === "subscription" ? (
+          <ArtistSubscriptionManager
+            data={subscriptionData}
+            accessToken={accessToken}
+            loading={subscriptionLoading}
+            error={subscriptionError}
+            onUpdated={setSubscriptionData}
+          />
+        ) : activeTab === "earnings" ? (
+          <ArtistEarningsOverview />
+        ) : activeTab === "tracks" ? (
           <>
-            {/* TRACK ACTIONS */}
             <StudioActions
               plan={subscriptionData?.plan || null}
               loading={subscriptionLoading}
@@ -305,16 +315,11 @@ const ArtistStudioView = () => {
               }}
             />
 
-            {/* ARTIST TRACKS */}
             <Box sx={{ mt: 3 }}>
               <ArtistTracksTable />
             </Box>
           </>
-        ) : activeTab === "earnings" ? (
-          /* ARTIST EARNINGS */
-          <ArtistEarningsOverview />
         ) : (
-          /* UNAVAILABLE TAB */
           <Box
             sx={{
               minHeight: 260,
@@ -331,7 +336,6 @@ const ArtistStudioView = () => {
             <Box>
               <Typography
                 sx={{
-                  color: "#ffffff",
                   fontSize: 20,
                   fontWeight: 950,
                   mb: 1,

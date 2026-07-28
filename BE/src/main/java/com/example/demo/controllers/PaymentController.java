@@ -161,10 +161,21 @@ public class PaymentController {
         public ResponseEntity<Void> handleReturn(
                         HttpServletRequest request) {
 
-                try {
-                        Map<String, String> parameters = getRequestParameters(
-                                        request);
+                Map<String, String> parameters = getRequestParameters(request);
 
+                String orderCode = parameters.getOrDefault(
+                                "vnp_TxnRef",
+                                "");
+
+                String responseCode = parameters.getOrDefault(
+                                "vnp_ResponseCode",
+                                "");
+
+                String transactionStatus = parameters.getOrDefault(
+                                "vnp_TransactionStatus",
+                                "");
+
+                try {
                         Map<String, Object> data = paymentService.handleReturn(
                                         parameters);
 
@@ -177,15 +188,24 @@ public class PaymentController {
                                         .build();
 
                 } catch (Exception e) {
-
                         e.printStackTrace();
 
                         URI redirectUri = UriComponentsBuilder
-                                        .fromUriString(normalizeFrontendUrl())
+                                        .fromUriString(
+                                                        normalizeFrontendUrl())
                                         .path("/payment/result")
+                                        .queryParam(
+                                                        "orderCode",
+                                                        orderCode)
                                         .queryParam(
                                                         "status",
                                                         "ERROR")
+                                        .queryParam(
+                                                        "responseCode",
+                                                        responseCode)
+                                        .queryParam(
+                                                        "transactionStatus",
+                                                        transactionStatus)
                                         .build()
                                         .encode()
                                         .toUri();
@@ -196,6 +216,8 @@ public class PaymentController {
                                         .build();
                 }
         }
+
+        ///
 
         private URI buildPaymentResultRedirect(
                         Map<String, Object> data) {

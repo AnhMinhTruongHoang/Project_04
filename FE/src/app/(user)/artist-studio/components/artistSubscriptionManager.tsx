@@ -694,7 +694,9 @@ export default function ArtistSubscriptionManager({
           },
         }}
       >
-        <DialogTitle fontWeight={800}>Cancel {plan.name}?</DialogTitle>
+        <DialogTitle fontWeight={800} textAlign={"center"}>
+          Cancel {plan.name}?
+        </DialogTitle>
 
         <Divider
           sx={{

@@ -1,0 +1,648 @@
+============================================================
+SOUNDCLONE — TEST NOTIFICATION PAYMENT / SUBSCRIPTION / EARNING / PAYOUT
+============================================================
+
+THÔNG TIN CẦN CHUẨN BỊ
+------------------------------------------------------------
+BASE_URL      = http://localhost:8080
+ACCESS_TOKEN  = <TOKEN_USER>
+ADMIN_TOKEN   = <TOKEN_ADMIN>
+USER_ID       = <USER_ID>
+ARTIST_ID     = <ARTIST_ID>
+SUBSCRIPTION_ID = <SUBSCRIPTION_ID>
+EARNING_ID    = <EARNING_ID>
+PAYOUT_ID     = <PAYOUT_ID>
+
+Khuyến nghị cấu hình test nhanh trong application.properties:
+
+payment.maintenance.expire-delay-ms=10000
+artist.earning.release-delay-ms=10000
+subscription.maintenance.expiring-delay-ms=10000
+subscription.maintenance.expiring-warning-days=3
+
+Sau khi sửa cấu hình:
+→ restart Backend
+→ scheduler chạy khoảng mỗi 10 giây
+
+============================================================
+0. KIỂM TRA API NOTIFICATION
+============================================================
+
+GET {{BASE_URL}}/api/v1/notifications?page=0&size=50&status=all
+Authorization: Bearer {{ACCESS_TOKEN}}
+
+GET {{BASE_URL}}/api/v1/notifications?page=0&size=50&status=unread
+Authorization: Bearer {{ACCESS_TOKEN}}
+
+GET {{BASE_URL}}/api/v1/notifications/unread-count
+Authorization: Bearer {{ACCESS_TOKEN}}
+
+Kết quả mong đợi:
+
+statusCode = 200
+data.content = danh sách notification
+data.unreadCount = số notification chưa đọc
+
+============================================================
+1. PAYMENT_PAID + SUBSCRIPTION_ACTIVATED
+============================================================
+
+Cách trigger:
+
+1. Đăng nhập user.
+2. Mở /plans.
+3. Chọn ARTIST hoặc ARTIST_PRO.
+4. Thanh toán VNPay Sandbox thành công.
+5. Chờ redirect về SoundClone.
+6. Mở chuông Notification.
+
+Kết quả mong đợi có 2 notification:
+
+PAYMENT_PAID
+Title: Payment successful
+
+SUBSCRIPTION_ACTIVATED
+Title: Subscription activated
+
+Kiểm tra:
+
+- PAYMENT_PAID redirect tới /plans
+- SUBSCRIPTION_ACTIVATED redirect tới:
+  /artist-studio?tab=subscription
+- Artist Studio mở đúng tab Subscription
+- unread count tăng 2
+- Không tạo notification trùng khi IPN và Return cùng chạy
+
+============================================================
+2. PAYMENT_CANCELED
+============================================================
+
+Cách trigger:
+
+1. Mở /plans.
+2. Chọn gói trả phí.
+3. Sang trang VNPay.
+4. Bấm hủy giao dịch hoặc quay lại merchant.
+5. VNPay trả responseCode = 24.
+6. Mở chuông Notification.
+
+Kết quả mong đợi:
+
+PAYMENT_CANCELED
+Title: Payment canceled
+
+Database payment:
+
+status = CANCELED
+responseCode = 24
+
+Notification:
+
+entityType = PAYMENT
+redirectUrl = /plans
+deduplicationKey = PAYMENT_CANCELED:<PAYMENT_ID>
+
+============================================================
+3. PAYMENT_EXPIRED
+============================================================
+
+Cách test nhanh:
+
+1. Tạo một payment mới nhưng không thanh toán.
+2. Lấy PAYMENT_ID hoặc orderCode trong database.
+3. Chạy SQL:
+
+UPDATE payment_transactions
+SET expiresAt = DATE_SUB(NOW(), INTERVAL 1 MINUTE),
+    status = 'PENDING',
+    updatedAt = NOW()
+WHERE id = '<PAYMENT_ID>';
+
+Lưu ý:
+Nếu database dùng snake_case thì chạy:
+
+UPDATE payment_transactions
+SET expires_at = DATE_SUB(NOW(), INTERVAL 1 MINUTE),
+    status = 'PENDING',
+    updated_at = NOW()
+WHERE id = '<PAYMENT_ID>';
+
+4. Chờ scheduler khoảng 10 giây.
+5. Mở chuông Notification.
+
+Kết quả mong đợi:
+
+PAYMENT_EXPIRED
+Title: Payment session expired
+
+Database payment:
+
+status = EXPIRED
+failureReason = Payment session expired.
+
+Notification:
+
+entityType = PAYMENT
+entityId = <PAYMENT_ID>
+redirectUrl = /plans
+deduplicationKey = PAYMENT_EXPIRED:<PAYMENT_ID>
+
+============================================================
+4. PAYMENT_FAILED
+============================================================
+
+Cách trigger:
+
+1. Tạo payment mới.
+2. Thực hiện giao dịch thất bại trên VNPay Sandbox.
+3. Callback phải trả:
+
+vnp_ResponseCode != 00
+
+và không phải:
+24 = CANCELED
+11 = EXPIRED
+
+4. Mở chuông Notification.
+
+Kết quả mong đợi:
+
+PAYMENT_FAILED
+Title: Payment failed
+
+Database:
+
+status = FAILED
+failureReason chứa response code VNPay
+
+Notification:
+
+deduplicationKey = PAYMENT_FAILED:<PAYMENT_ID>
+
+============================================================
+5. SUBSCRIPTION_CANCEL_SCHEDULED
+============================================================
+
+Cách trigger:
+
+1. User đang có gói ARTIST hoặc ARTIST_PRO.
+2. Mở:
+
+/artist-studio?tab=subscription
+
+3. Bấm:
+
+Cancel at period end
+
+4. Xác nhận cancellation.
+5. Mở chuông Notification.
+
+Kết quả mong đợi:
+
+SUBSCRIPTION_CANCEL_SCHEDULED
+Title: Cancellation scheduled
+
+Database subscription:
+
+status = ACTIVE
+cancelAtPeriodEnd = true
+currentPeriodEnd không thay đổi
+
+Quyền gói vẫn còn tới currentPeriodEnd.
+
+Notification redirect:
+
+/artist-studio?tab=subscription
+
+============================================================
+6. SUBSCRIPTION_EXPIRING
+============================================================
+
+Điều kiện:
+
+- Gói ARTIST hoặc ARTIST_PRO
+- status = ACTIVE
+- cancelAtPeriodEnd = false
+- currentPeriodEnd còn không quá 3 ngày
+
+Chạy SQL:
+
+UPDATE user_subscriptions
+SET current_period_end = DATE_ADD(NOW(), INTERVAL 2 DAY),
+    cancel_at_period_end = FALSE,
+    status = 'ACTIVE',
+    updated_at = NOW()
+WHERE id = '<SUBSCRIPTION_ID>';
+
+Nếu database dùng camelCase:
+
+UPDATE user_subscriptions
+SET currentPeriodEnd = DATE_ADD(NOW(), INTERVAL 2 DAY),
+    cancelAtPeriodEnd = FALSE,
+    status = 'ACTIVE',
+    updatedAt = NOW()
+WHERE id = '<SUBSCRIPTION_ID>';
+
+Chờ scheduler khoảng 10 giây.
+
+Kết quả mong đợi:
+
+SUBSCRIPTION_EXPIRING
+Title: Subscription expiring soon
+
+Notification redirect:
+
+/artist-studio?tab=subscription
+
+Khóa chống trùng:
+
+SUBSCRIPTION_EXPIRING:<SUBSCRIPTION_ID>:<CURRENT_PERIOD_END>
+
+Chờ scheduler chạy lại nhiều lần:
+
+- Không tạo bản ghi mới
+- Không chuyển notification đã đọc thành unread
+- unread count không tăng lại
+
+============================================================
+7. SUBSCRIPTION_EXPIRED
+============================================================
+
+Subscription hiện hết hạn theo cơ chế lazy check.
+Nghĩa là cần gọi chức năng lấy subscription sau khi ngày hết hạn đã qua.
+
+Chạy SQL:
+
+UPDATE user_subscriptions
+SET current_period_end = DATE_SUB(NOW(), INTERVAL 1 MINUTE),
+    status = 'ACTIVE',
+    updated_at = NOW()
+WHERE id = '<SUBSCRIPTION_ID>';
+
+Sau đó:
+
+1. Refresh trang:
+   /artist-studio?tab=subscription
+
+hoặc gọi API lấy subscription hiện tại.
+
+Kết quả mong đợi:
+
+Subscription cũ:
+
+status = EXPIRED
+
+Subscription mới:
+
+plan = BASIC
+status = ACTIVE
+
+User:
+
+subscriptionTier = FREE
+
+Notification:
+
+SUBSCRIPTION_EXPIRED
+Title: Subscription expired
+redirectUrl = /artist-studio?tab=subscription
+
+============================================================
+8. EARNING_AVAILABLE
+============================================================
+
+Chọn một ArtistEarning đang:
+
+status = PENDING
+
+và earning đó đã được cộng vào wallet.pendingBalance.
+
+Chạy SQL:
+
+UPDATE artist_earnings
+SET available_at = DATE_SUB(NOW(), INTERVAL 1 MINUTE),
+    status = 'PENDING',
+    updated_at = NOW()
+WHERE id = '<EARNING_ID>';
+
+Chờ scheduler khoảng 10 giây.
+
+Kết quả mong đợi:
+
+ArtistEarning:
+
+status = AVAILABLE
+released_at != null
+
+ArtistWallet:
+
+pendingBalance giảm đúng amount
+availableBalance tăng đúng amount
+
+Notification:
+
+EARNING_AVAILABLE
+Title: Earnings available
+redirectUrl = /artist-studio?tab=earnings
+
+Nếu nhiều earning cùng Artist được release trong một lần scheduler:
+
+- Chỉ có 1 notification
+- Message chứa tổng số tiền được release
+- metadata chứa releasedEarningCount
+
+============================================================
+9. PAYOUT_REQUESTED
+============================================================
+
+Cách trigger:
+
+1. Artist Studio → Earnings.
+2. Ví phải có availableBalance đủ mức tối thiểu.
+3. Tạo yêu cầu rút tiền.
+4. Nhập thông tin ngân hàng hợp lệ.
+5. Submit.
+
+Kết quả mong đợi:
+
+Payout:
+
+status = PENDING
+
+Wallet:
+
+availableBalance giảm
+reservedBalance tăng
+
+Notification:
+
+PAYOUT_REQUESTED
+Title: Payout request submitted
+redirectUrl = /artist-studio?tab=earnings
+
+============================================================
+10. PAYOUT_CANCELED
+============================================================
+
+Điều kiện:
+
+Payout đang PENDING.
+
+Cách trigger:
+
+1. Artist Studio → Earnings.
+2. Mở payout đang PENDING.
+3. Bấm Cancel.
+
+Kết quả mong đợi:
+
+Payout:
+
+status = CANCELED
+canceledAt != null
+
+Wallet:
+
+reservedBalance giảm
+availableBalance được hoàn lại
+
+Notification:
+
+PAYOUT_CANCELED
+Title: Payout request canceled
+
+============================================================
+11. PAYOUT_APPROVED
+============================================================
+
+Điều kiện:
+
+Payout đang PENDING.
+
+Cách trigger:
+
+1. Đăng nhập Admin.
+2. Dashboard → Payouts.
+3. Mở payout.
+4. Bấm Approve.
+
+Kết quả mong đợi:
+
+Payout:
+
+status = APPROVED
+approvedAt != null
+reviewedBy = <ADMIN_ID>
+
+Artist nhận notification:
+
+PAYOUT_APPROVED
+Title: Payout request approved
+redirectUrl = /artist-studio?tab=earnings
+
+============================================================
+12. PAYOUT_REJECTED
+============================================================
+
+Điều kiện:
+
+Payout đang PENDING hoặc APPROVED.
+
+Cách trigger:
+
+1. Admin mở payout.
+2. Bấm Reject.
+3. Nhập rejection reason.
+4. Xác nhận.
+
+Kết quả mong đợi:
+
+Payout:
+
+status = REJECTED
+rejectedAt != null
+adminNote = lý do từ chối
+
+Wallet:
+
+reservedBalance giảm
+availableBalance được hoàn lại
+
+Artist nhận notification:
+
+PAYOUT_REJECTED
+Title: Payout request rejected
+
+Message phải chứa lý do từ chối.
+
+============================================================
+13. PAYOUT_PAID
+============================================================
+
+Điều kiện:
+
+Payout đang APPROVED.
+
+Cách trigger:
+
+1. Admin mở payout APPROVED.
+2. Bấm Mark as paid.
+3. Nhập transactionReference.
+4. Xác nhận.
+
+Kết quả mong đợi:
+
+Payout:
+
+status = PAID
+paidAt != null
+transactionReference != null
+
+Wallet:
+
+reservedBalance giảm
+withdrawnBalance tăng
+
+Artist nhận notification:
+
+PAYOUT_PAID
+Title: Payout completed
+redirectUrl = /artist-studio?tab=earnings
+
+============================================================
+14. TEST MARK AS READ
+============================================================
+
+PATCH {{BASE_URL}}/api/v1/notifications/<NOTIFICATION_ID>/read
+Authorization: Bearer {{ACCESS_TOKEN}}
+
+Kết quả mong đợi:
+
+isRead = true
+readAt != null
+unread count giảm 1
+
+============================================================
+15. TEST MARK ALL AS READ
+============================================================
+
+PATCH {{BASE_URL}}/api/v1/notifications/read-all
+Authorization: Bearer {{ACCESS_TOKEN}}
+
+Kết quả mong đợi:
+
+GET /api/v1/notifications/unread-count
+
+data.unreadCount = 0
+
+============================================================
+16. TEST DELETE NOTIFICATION
+============================================================
+
+DELETE {{BASE_URL}}/api/v1/notifications/<NOTIFICATION_ID>
+Authorization: Bearer {{ACCESS_TOKEN}}
+
+Kết quả mong đợi:
+
+Notification bị xóa khỏi danh sách.
+
+============================================================
+17. TEST CLEAR READ
+============================================================
+
+DELETE {{BASE_URL}}/api/v1/notifications/clear-read
+Authorization: Bearer {{ACCESS_TOKEN}}
+
+Kết quả mong đợi:
+
+- Xóa tất cả notification đã đọc
+- Giữ nguyên notification chưa đọc
+
+============================================================
+18. KIỂM TRA DATABASE NOTIFICATION
+============================================================
+
+SELECT
+    id,
+    recipient_id,
+    actor_id,
+    type,
+    title,
+    entity_type,
+    entity_id,
+    redirect_url,
+    is_read,
+    deduplication_key,
+    created_at
+FROM notifications
+WHERE recipient_id = '<USER_ID>'
+ORDER BY created_at DESC;
+
+Kiểm tra chống trùng:
+
+SELECT
+    deduplication_key,
+    COUNT(*) AS total
+FROM notifications
+WHERE deduplication_key IS NOT NULL
+GROUP BY deduplication_key
+HAVING COUNT(*) > 1;
+
+Kết quả đúng:
+
+Không có dòng nào được trả về.
+
+============================================================
+19. DANH SÁCH NOTIFICATION PHẢI TEST
+============================================================
+
+[ ] PAYMENT_PAID
+[ ] PAYMENT_FAILED
+[ ] PAYMENT_CANCELED
+[ ] PAYMENT_EXPIRED
+
+[ ] SUBSCRIPTION_ACTIVATED
+[ ] SUBSCRIPTION_CANCEL_SCHEDULED
+[ ] SUBSCRIPTION_EXPIRING
+[ ] SUBSCRIPTION_EXPIRED
+
+[ ] EARNING_AVAILABLE
+
+[ ] PAYOUT_REQUESTED
+[ ] PAYOUT_CANCELED
+[ ] PAYOUT_APPROVED
+[ ] PAYOUT_REJECTED
+[ ] PAYOUT_PAID
+
+============================================================
+20. LƯU Ý KHI TEST LẠI
+============================================================
+
+Không dùng cùng một entity ID để test lại cùng event vì deduplicationKey
+sẽ trả về notification đã tồn tại.
+
+Ví dụ:
+
+PAYMENT_PAID:<PAYMENT_ID>
+PAYOUT_PAID:<PAYOUT_ID>
+
+Muốn test lại:
+
+- Tạo payment mới
+- Tạo subscription mới
+- Tạo earning mới
+- Tạo payout mới
+
+Hoặc xóa notification cũ trước khi trigger lại.
+
+Hiện chưa có trigger thực tế cho:
+
+SUBSCRIPTION_CHANGED
+SUBSCRIPTION_RENEWED
+
+Vì SoundClone hiện:
+
+- Thanh toán từng kỳ bằng VNPay
+- Không tự động gia hạn
+- Mỗi payment thành công tạo subscription mới
+============================================================

@@ -26,6 +26,7 @@ import InsightsRoundedIcon from "@mui/icons-material/InsightsRounded";
 
 import {
   changeSubscriptionPlanApi,
+  createVnPayPaymentApi,
   getMySubscriptionApi,
   getSubscriptionPlansApi,
 } from "@/utils/api";
@@ -446,43 +447,91 @@ const SubscriptionPlansView = () => {
 
     if (!accessToken) {
       await signIn();
-
       return;
     }
 
     try {
       setChangingPlanCode(plan.code);
 
-      const response = await changeSubscriptionPlanApi(plan.code, accessToken);
+      /* BASIC PLAN: CHANGE DIRECTLY */
+      if (plan.code === "BASIC") {
+        const response = await changeSubscriptionPlanApi(
+          plan.code,
+          accessToken
+        );
 
-      if (
-        response?.error ||
-        Number(response?.statusCode) >= 400 ||
-        !response?.data
-      ) {
+        if (
+          response?.error ||
+          Number(response?.statusCode) >= 400 ||
+          !response?.data
+        ) {
+          setNotice({
+            open: true,
+            type: "error",
+            message: response?.message || "Cannot change subscription plan.",
+          });
+
+          return;
+        }
+
+        setMySubscription(response.data);
+
         setNotice({
           open: true,
-          type: "error",
-          message: response?.message || "Cannot change subscription plan.",
+          type: "success",
+          message: `Your plan is now ${response.data.plan.name}.`,
         });
 
         return;
       }
 
-      setMySubscription(response.data);
+      /* PAID PLANS: CREATE VNPAY PAYMENT */
+      const paymentResponse = await createVnPayPaymentApi(
+        plan.code,
+        accessToken
+      );
 
-      setNotice({
-        open: true,
-        type: "success",
-        message: `Your plan is now ${response.data.plan.name}.`,
-      });
+      if (
+        paymentResponse?.error ||
+        Number(paymentResponse?.statusCode) >= 400 ||
+        !paymentResponse?.data
+      ) {
+        setNotice({
+          open: true,
+          type: "error",
+          message: paymentResponse?.message || "Cannot create VNPAY payment.",
+        });
+
+        return;
+      }
+
+      const paymentData = paymentResponse.data as Record<string, unknown>;
+
+      const paymentUrl = String(
+        paymentData.paymentUrl ||
+          paymentData.vnpayUrl ||
+          paymentData.payUrl ||
+          ""
+      ).trim();
+
+      if (!paymentUrl) {
+        setNotice({
+          open: true,
+          type: "error",
+          message: "VNPAY payment URL was not returned.",
+        });
+
+        return;
+      }
+
+      window.location.assign(paymentUrl);
     } catch (error) {
-      console.error("Cannot change plan:", error);
+      console.error("Cannot process subscription plan:", error);
 
       setNotice({
         open: true,
         type: "error",
-        message: "Cannot change subscription plan.",
+        message: "Cannot process subscription plan.",
       });
     } finally {
       setChangingPlanCode("");

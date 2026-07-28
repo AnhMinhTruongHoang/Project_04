@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { useRouter } from "next/navigation";
-import { useSession } from "next-auth/react";
+import { signIn, useSession } from "next-auth/react";
 
 import {
   Alert,
@@ -246,9 +246,16 @@ export default function PaymentResultPage() {
       return;
     }
 
-    if (!accessToken) {
+    if (sessionStatus === "unauthenticated") {
       setError("Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.");
+      setLoading(false);
+      return;
+    }
 
+    if (sessionStatus === "authenticated" && !accessToken) {
+      setError(
+        "Phiên đăng nhập không chứa access token. Vui lòng đăng nhập lại."
+      );
       setLoading(false);
       return;
     }
@@ -302,11 +309,18 @@ export default function PaymentResultPage() {
     };
   }, [accessToken, fetchPaymentStatus, orderCode, sessionStatus]);
 
+  const handleSignInAgain = async () => {
+    await signIn(undefined, {
+      callbackUrl: window.location.href,
+    });
+  };
+
   /*
    * =========================
    * MANUAL REFRESH
    * =========================
    */
+
   const handleRefresh = async () => {
     try {
       setRefreshing(true);
@@ -523,6 +537,21 @@ export default function PaymentResultPage() {
         </Stack>
 
         {/* MOBILE AND DESKTOP ACTIONS */}
+        {sessionStatus === "unauthenticated" && (
+          <Button
+            fullWidth
+            variant="contained"
+            color="error"
+            onClick={handleSignInAgain}
+            sx={{
+              minHeight: 46,
+              fontWeight: 700,
+              textTransform: "none",
+            }}
+          >
+            Đăng nhập lại
+          </Button>
+        )}
         <Stack
           direction={{
             xs: "column",

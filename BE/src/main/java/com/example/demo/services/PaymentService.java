@@ -35,1225 +35,1345 @@ import org.springframework.data.domain.Pageable;
 @Service
 public class PaymentService {
 
-    private static final String PLAN_BASIC = "BASIC";
+        private static final String PLAN_BASIC = "BASIC";
 
-    private static final String CURRENCY_VND = "VND";
+        private static final String CURRENCY_VND = "VND";
 
-    private static final ZoneId VIETNAM_ZONE = ZoneId.of(
-            "Asia/Ho_Chi_Minh");
+        private static final ZoneId VIETNAM_ZONE = ZoneId.of(
+                        "Asia/Ho_Chi_Minh");
 
-    private static final DateTimeFormatter VNPAY_DATE_FORMAT = DateTimeFormatter.ofPattern(
-            "yyyyMMddHHmmss");
+        private static final DateTimeFormatter VNPAY_DATE_FORMAT = DateTimeFormatter.ofPattern(
+                        "yyyyMMddHHmmss");
 
-    private final VNPayConfig vnPayConfig;
+        private final VNPayConfig vnPayConfig;
 
-    private final PaymentTransactionRepository paymentTransactionRepository;
+        private final PaymentTransactionRepository paymentTransactionRepository;
 
-    private final SubscriptionPlanRepository subscriptionPlanRepository;
+        private final SubscriptionPlanRepository subscriptionPlanRepository;
 
-    private final UserRepository userRepository;
+        private final UserRepository userRepository;
 
-    private final SubscriptionService subscriptionService;
+        private final SubscriptionService subscriptionService;
 
-    private final JsonMapper jsonMapper;
+        private final JsonMapper jsonMapper;
 
-    public PaymentService(
-            VNPayConfig vnPayConfig,
-            PaymentTransactionRepository paymentTransactionRepository,
-            SubscriptionPlanRepository subscriptionPlanRepository,
-            UserRepository userRepository,
-            SubscriptionService subscriptionService,
-            JsonMapper jsonMapper) {
+        public PaymentService(
+                        VNPayConfig vnPayConfig,
+                        PaymentTransactionRepository paymentTransactionRepository,
+                        SubscriptionPlanRepository subscriptionPlanRepository,
+                        UserRepository userRepository,
+                        SubscriptionService subscriptionService,
+                        JsonMapper jsonMapper) {
 
-        this.vnPayConfig = vnPayConfig;
+                this.vnPayConfig = vnPayConfig;
 
-        this.paymentTransactionRepository = paymentTransactionRepository;
+                this.paymentTransactionRepository = paymentTransactionRepository;
 
-        this.subscriptionPlanRepository = subscriptionPlanRepository;
+                this.subscriptionPlanRepository = subscriptionPlanRepository;
 
-        this.userRepository = userRepository;
+                this.userRepository = userRepository;
 
-        this.subscriptionService = subscriptionService;
+                this.subscriptionService = subscriptionService;
 
-        this.jsonMapper = jsonMapper;
-    }
-
-    /*
-     * =========================
-     * CREATE VNPAY PAYMENT
-     * =========================
-     */
-    @Transactional
-    public Map<String, Object> createPayment(
-            String userId,
-            CreatePaymentDTO dto,
-            HttpServletRequest request) {
-
-        vnPayConfig.validate();
-
-        if (userId == null
-                || userId.isBlank()) {
-
-            throw new IllegalArgumentException(
-                    "User ID is required");
+                this.jsonMapper = jsonMapper;
         }
 
-        if (dto == null) {
-            throw new IllegalArgumentException(
-                    "Payment information is required");
-        }
+        /*
+         * =========================
+         * CREATE VNPAY PAYMENT
+         * =========================
+         */
+        @Transactional
+        public Map<String, Object> createPayment(
+                        String userId,
+                        CreatePaymentDTO dto,
+                        HttpServletRequest request) {
 
-        User user = userRepository
-                .findById(userId)
-                .orElseThrow(
-                        () -> new IllegalArgumentException(
-                                "User not found"));
+                vnPayConfig.validate();
 
-        if (!"ACTIVE".equalsIgnoreCase(
-                user.getAccountStatus())) {
+                if (userId == null
+                                || userId.isBlank()) {
 
-            throw new IllegalArgumentException(
-                    "This account cannot create a payment");
-        }
+                        throw new IllegalArgumentException(
+                                        "User ID is required");
+                }
 
-        String planCode = normalizePlanCode(
-                dto.getPlanCode());
+                if (dto == null) {
+                        throw new IllegalArgumentException(
+                                        "Payment information is required");
+                }
 
-        if (planCode.isBlank()) {
-            throw new IllegalArgumentException(
-                    "Plan code is required");
-        }
+                User user = userRepository
+                                .findById(userId)
+                                .orElseThrow(
+                                                () -> new IllegalArgumentException(
+                                                                "User not found"));
 
-        if (PLAN_BASIC.equals(planCode)) {
-            throw new IllegalArgumentException(
-                    "Basic plan does not require payment");
-        }
+                if (!"ACTIVE".equalsIgnoreCase(
+                                user.getAccountStatus())) {
 
-        SubscriptionPlan plan = subscriptionPlanRepository
-                .findByCodeAndIsActiveTrue(
-                        planCode);
+                        throw new IllegalArgumentException(
+                                        "This account cannot create a payment");
+                }
 
-        if (plan == null) {
-            throw new IllegalArgumentException(
-                    "Subscription plan not found");
-        }
+                String planCode = normalizePlanCode(
+                                dto.getPlanCode());
 
-        Long amount = plan.getMonthlyPrice();
+                if (planCode.isBlank()) {
+                        throw new IllegalArgumentException(
+                                        "Plan code is required");
+                }
 
-        if (amount == null
-                || amount <= 0) {
+                if (PLAN_BASIC.equals(planCode)) {
+                        throw new IllegalArgumentException(
+                                        "Basic plan does not require payment");
+                }
 
-            throw new IllegalStateException(
-                    "Subscription plan price is invalid");
-        }
+                SubscriptionPlan plan = subscriptionPlanRepository
+                                .findByCodeAndIsActiveTrue(
+                                                planCode);
 
-        LocalDateTime now = nowInVietnam();
+                if (plan == null) {
+                        throw new IllegalArgumentException(
+                                        "Subscription plan not found");
+                }
 
-        Optional<PaymentTransaction> pendingPaymentOptional = paymentTransactionRepository
-                .findFirstByUserIdAndStatusOrderByCreatedAtDesc(
-                        userId,
-                        PaymentTransaction.STATUS_PENDING);
+                Long amount = plan.getMonthlyPrice();
 
-        if (pendingPaymentOptional.isPresent()) {
+                if (amount == null
+                                || amount <= 0) {
 
-            PaymentTransaction pendingPayment = pendingPaymentOptional.get();
+                        throw new IllegalStateException(
+                                        "Subscription plan price is invalid");
+                }
 
-            boolean samePlan = plan.getId().equals(
-                    pendingPayment.getPlanId());
+                LocalDateTime now = nowInVietnam();
 
-            boolean stillValid = pendingPayment.getExpiresAt() != null
-                    && now.isBefore(
-                            pendingPayment.getExpiresAt());
+                Optional<PaymentTransaction> pendingPaymentOptional = paymentTransactionRepository
+                                .findFirstByUserIdAndStatusOrderByCreatedAtDesc(
+                                                userId,
+                                                PaymentTransaction.STATUS_PENDING);
 
-            boolean hasPaymentUrl = pendingPayment.getPaymentUrl() != null
-                    && !pendingPayment
-                            .getPaymentUrl()
-                            .isBlank();
+                if (pendingPaymentOptional.isPresent()) {
 
-            if (samePlan
-                    && stillValid
-                    && hasPaymentUrl) {
+                        PaymentTransaction pendingPayment = pendingPaymentOptional.get();
+
+                        boolean samePlan = plan.getId().equals(
+                                        pendingPayment.getPlanId());
+
+                        boolean stillValid = pendingPayment.getExpiresAt() != null
+                                        && now.isBefore(
+                                                        pendingPayment.getExpiresAt());
+
+                        boolean hasPaymentUrl = pendingPayment.getPaymentUrl() != null
+                                        && !pendingPayment
+                                                        .getPaymentUrl()
+                                                        .isBlank();
+
+                        if (samePlan
+                                        && stillValid
+                                        && hasPaymentUrl) {
+
+                                return buildCreatePaymentResponse(
+                                                pendingPayment,
+                                                plan,
+                                                true);
+                        }
+
+                        if (!stillValid) {
+                                pendingPayment.setStatus(
+                                                PaymentTransaction.STATUS_EXPIRED);
+
+                                pendingPayment.setFailureReason(
+                                                "Payment session expired.");
+
+                                pendingPayment.setUpdatedAt(
+                                                now);
+
+                                paymentTransactionRepository.save(
+                                                pendingPayment);
+                        }
+                }
+
+                String locale = normalizeLocale(
+                                dto.getLocale());
+
+                String bankCode = normalizeBankCode(
+                                dto.getBankCode());
+
+                String paymentId = generateId();
+
+                String orderCode = generateUniqueOrderCode();
+
+                LocalDateTime expiresAt = now.plusMinutes(
+                                vnPayConfig.getExpireMinutes());
+
+                String orderInfo = VNPayHelper.normalizeOrderInfo(
+                                "Thanh toan goi "
+                                                + plan.getCode()
+                                                + " SoundClone "
+                                                + orderCode);
+
+                Map<String, String> parameters = new TreeMap<>();
+
+                parameters.put(
+                                "vnp_Version",
+                                VNPayConfig.VERSION);
+
+                parameters.put(
+                                "vnp_Command",
+                                VNPayConfig.COMMAND_PAY);
+
+                parameters.put(
+                                "vnp_TmnCode",
+                                vnPayConfig.getTmnCode());
+
+                parameters.put(
+                                "vnp_Amount",
+                                String.valueOf(
+                                                Math.multiplyExact(
+                                                                amount,
+                                                                100L)));
+
+                parameters.put(
+                                "vnp_CurrCode",
+                                VNPayConfig.CURRENCY_VND);
+
+                parameters.put(
+                                "vnp_TxnRef",
+                                orderCode);
+
+                parameters.put(
+                                "vnp_OrderInfo",
+                                orderInfo);
+
+                parameters.put(
+                                "vnp_OrderType",
+                                VNPayConfig.DEFAULT_ORDER_TYPE);
+
+                parameters.put(
+                                "vnp_Locale",
+                                locale);
+
+                parameters.put(
+                                "vnp_ReturnUrl",
+                                vnPayConfig.getReturnUrl());
+
+                parameters.put(
+                                "vnp_IpAddr",
+                                limitLength(
+                                                VNPayHelper.getClientIpAddress(
+                                                                request),
+                                                45));
+
+                parameters.put(
+                                "vnp_CreateDate",
+                                formatVNPayDate(now));
+
+                parameters.put(
+                                "vnp_ExpireDate",
+                                formatVNPayDate(expiresAt));
+
+                if (bankCode != null) {
+                        parameters.put(
+                                        "vnp_BankCode",
+                                        bankCode);
+                }
+
+                String paymentUrl = VNPayHelper.buildPaymentUrl(
+                                vnPayConfig.getPayUrl(),
+                                parameters,
+                                vnPayConfig.getHashSecret());
+
+                PaymentTransaction payment = new PaymentTransaction();
+
+                payment.setId(
+                                paymentId);
+
+                payment.setUserId(
+                                userId);
+
+                payment.setPlanId(
+                                plan.getId());
+
+                payment.setSubscriptionId(
+                                null);
+
+                payment.setProvider(
+                                PaymentTransaction.PROVIDER_VNPAY);
+
+                payment.setOrderCode(
+                                orderCode);
+
+                payment.setAmount(
+                                amount);
+
+                payment.setCurrency(
+                                CURRENCY_VND);
+
+                payment.setStatus(
+                                PaymentTransaction.STATUS_PENDING);
+
+                payment.setPaymentUrl(
+                                paymentUrl);
+
+                payment.setOrderInfo(
+                                orderInfo);
+
+                payment.setFailureReason(
+                                null);
+
+                payment.setExpiresAt(
+                                expiresAt);
+
+                payment.setCreatedAt(
+                                now);
+
+                payment.setUpdatedAt(
+                                now);
+
+                PaymentTransaction savedPayment = paymentTransactionRepository.save(
+                                payment);
 
                 return buildCreatePaymentResponse(
-                        pendingPayment,
-                        plan,
-                        true);
-            }
+                                savedPayment,
+                                plan,
+                                false);
+        }
 
-            if (!stillValid) {
-                pendingPayment.setStatus(
-                        PaymentTransaction.STATUS_EXPIRED);
+        /*
+         * =========================
+         * PROCESS VNPAY IPN
+         * =========================
+         */
+        @Transactional
+        public Map<String, String> processIpn(
+                        Map<String, String> requestParameters) {
 
-                pendingPayment.setFailureReason(
-                        "Payment session expired.");
+                vnPayConfig.validate();
 
-                pendingPayment.setUpdatedAt(
-                        now);
+                Map<String, String> parameters = normalizeVNPayParameters(
+                                requestParameters);
+
+                if (!VNPayHelper.verifySignature(
+                                parameters,
+                                vnPayConfig.getHashSecret())) {
+
+                        return buildIpnResponse(
+                                        "97",
+                                        "Invalid signature");
+                }
+
+                String receivedTmnCode = parameters.get(
+                                "vnp_TmnCode");
+
+                if (!vnPayConfig
+                                .getTmnCode()
+                                .equals(receivedTmnCode)) {
+
+                        return buildIpnResponse(
+                                        "97",
+                                        "Invalid merchant code");
+                }
+
+                String orderCode = normalize(
+                                parameters.get(
+                                                "vnp_TxnRef"));
+
+                if (orderCode.isBlank()) {
+                        return buildIpnResponse(
+                                        "01",
+                                        "Order not found");
+                }
+
+                PaymentTransaction payment = paymentTransactionRepository
+                                .findByOrderCodeForUpdate(
+                                                orderCode)
+                                .orElse(null);
+
+                if (payment == null) {
+                        return buildIpnResponse(
+                                        "01",
+                                        "Order not found");
+                }
+
+                String receivedAmount = normalize(
+                                parameters.get(
+                                                "vnp_Amount"));
+
+                String expectedAmount = String.valueOf(
+                                Math.multiplyExact(
+                                                payment.getAmount(),
+                                                100L));
+
+                if (!expectedAmount.equals(
+                                receivedAmount)) {
+
+                        return buildIpnResponse(
+                                        "04",
+                                        "Invalid amount");
+                }
+
+                /*
+                 * PAID là trạng thái thành công cuối cùng.
+                 * Callback lặp lại không được kích hoạt gói lần nữa.
+                 *
+                 * FAILED/CANCELED/EXPIRED vẫn được phép nâng lên PAID
+                 * nếu VNPay gửi IPN thành công đến muộn.
+                 */
+                if (PaymentTransaction.STATUS_PAID
+                                .equalsIgnoreCase(
+                                                payment.getStatus())) {
+
+                        return buildIpnResponse(
+                                        "02",
+                                        "Order already confirmed");
+                }
+
+                LocalDateTime now = nowInVietnam();
+
+                String responseCode = normalize(
+                                parameters.get(
+                                                "vnp_ResponseCode"));
+
+                String transactionStatus = normalize(
+                                parameters.get(
+                                                "vnp_TransactionStatus"));
+
+                payment.setProviderTransactionId(
+                                normalizeNullable(
+                                                parameters.get(
+                                                                "vnp_TransactionNo")));
+
+                payment.setResponseCode(
+                                responseCode);
+
+                payment.setTransactionStatus(
+                                transactionStatus);
+
+                payment.setBankCode(
+                                normalizeNullable(
+                                                parameters.get(
+                                                                "vnp_BankCode")));
+
+                payment.setBankTransactionNo(
+                                normalizeNullable(
+                                                parameters.get(
+                                                                "vnp_BankTranNo")));
+
+                payment.setCardType(
+                                normalizeNullable(
+                                                parameters.get(
+                                                                "vnp_CardType")));
+
+                payment.setCallbackPayload(
+                                serializePayload(
+                                                parameters));
+
+                payment.setUpdatedAt(
+                                now);
+
+                boolean paymentSuccessful = "00".equals(responseCode)
+                                && "00".equals(
+                                                transactionStatus);
+
+                if (paymentSuccessful) {
+
+                        SubscriptionPlan plan = subscriptionPlanRepository
+                                        .findById(payment.getPlanId())
+                                        .orElseThrow(
+                                                        () -> new IllegalStateException(
+                                                                        "Subscription plan not found"));
+
+                        LocalDateTime paidAt = parseVNPayDate(
+                                        parameters.get("vnp_PayDate"),
+                                        now);
+
+                        Map<String, Object> subscriptionData = subscriptionService
+                                        .activatePaidPlan(
+                                                        payment.getUserId(),
+                                                        plan.getCode(),
+                                                        paidAt);
+
+                        payment.setSubscriptionId(
+                                        extractSubscriptionId(
+                                                        subscriptionData));
+
+                        payment.setStatus(
+                                        PaymentTransaction.STATUS_PAID);
+
+                        payment.setFailureReason(null);
+
+                        payment.setPaidAt(paidAt);
+
+                } else if (PaymentTransaction.STATUS_PENDING.equalsIgnoreCase(
+                                payment.getStatus())
+                                || PaymentTransaction.STATUS_PROCESSING.equalsIgnoreCase(
+                                                payment.getStatus())) {
+
+                        payment.setStatus(
+                                        resolveFailedStatus(
+                                                        responseCode));
+
+                        payment.setFailureReason(
+                                        "VNPAY payment failed. Response code: "
+                                                        + responseCode);
+                }
 
                 paymentTransactionRepository.save(
-                        pendingPayment);
-            }
-        }
+                                payment);
 
-        String locale = normalizeLocale(
-                dto.getLocale());
-
-        String bankCode = normalizeBankCode(
-                dto.getBankCode());
-
-        String paymentId = generateId();
-
-        String orderCode = generateUniqueOrderCode();
-
-        LocalDateTime expiresAt = now.plusMinutes(
-                vnPayConfig.getExpireMinutes());
-
-        String orderInfo = VNPayHelper.normalizeOrderInfo(
-                "Thanh toan goi "
-                        + plan.getCode()
-                        + " SoundClone "
-                        + orderCode);
-
-        Map<String, String> parameters = new TreeMap<>();
-
-        parameters.put(
-                "vnp_Version",
-                VNPayConfig.VERSION);
-
-        parameters.put(
-                "vnp_Command",
-                VNPayConfig.COMMAND_PAY);
-
-        parameters.put(
-                "vnp_TmnCode",
-                vnPayConfig.getTmnCode());
-
-        parameters.put(
-                "vnp_Amount",
-                String.valueOf(
-                        Math.multiplyExact(
-                                amount,
-                                100L)));
-
-        parameters.put(
-                "vnp_CurrCode",
-                VNPayConfig.CURRENCY_VND);
-
-        parameters.put(
-                "vnp_TxnRef",
-                orderCode);
-
-        parameters.put(
-                "vnp_OrderInfo",
-                orderInfo);
-
-        parameters.put(
-                "vnp_OrderType",
-                VNPayConfig.DEFAULT_ORDER_TYPE);
-
-        parameters.put(
-                "vnp_Locale",
-                locale);
-
-        parameters.put(
-                "vnp_ReturnUrl",
-                vnPayConfig.getReturnUrl());
-
-        parameters.put(
-                "vnp_IpAddr",
-                limitLength(
-                        VNPayHelper.getClientIpAddress(
-                                request),
-                        45));
-
-        parameters.put(
-                "vnp_CreateDate",
-                formatVNPayDate(now));
-
-        parameters.put(
-                "vnp_ExpireDate",
-                formatVNPayDate(expiresAt));
-
-        if (bankCode != null) {
-            parameters.put(
-                    "vnp_BankCode",
-                    bankCode);
-        }
-
-        String paymentUrl = VNPayHelper.buildPaymentUrl(
-                vnPayConfig.getPayUrl(),
-                parameters,
-                vnPayConfig.getHashSecret());
-
-        PaymentTransaction payment = new PaymentTransaction();
-
-        payment.setId(
-                paymentId);
-
-        payment.setUserId(
-                userId);
-
-        payment.setPlanId(
-                plan.getId());
-
-        payment.setSubscriptionId(
-                null);
-
-        payment.setProvider(
-                PaymentTransaction.PROVIDER_VNPAY);
-
-        payment.setOrderCode(
-                orderCode);
-
-        payment.setAmount(
-                amount);
-
-        payment.setCurrency(
-                CURRENCY_VND);
-
-        payment.setStatus(
-                PaymentTransaction.STATUS_PENDING);
-
-        payment.setPaymentUrl(
-                paymentUrl);
-
-        payment.setOrderInfo(
-                orderInfo);
-
-        payment.setFailureReason(
-                null);
-
-        payment.setExpiresAt(
-                expiresAt);
-
-        payment.setCreatedAt(
-                now);
-
-        payment.setUpdatedAt(
-                now);
-
-        PaymentTransaction savedPayment = paymentTransactionRepository.save(
-                payment);
-
-        return buildCreatePaymentResponse(
-                savedPayment,
-                plan,
-                false);
-    }
-
-    /*
-     * =========================
-     * PROCESS VNPAY IPN
-     * =========================
-     */
-    @Transactional
-    public Map<String, String> processIpn(
-            Map<String, String> requestParameters) {
-
-        vnPayConfig.validate();
-
-        Map<String, String> parameters = normalizeVNPayParameters(
-                requestParameters);
-
-        if (!VNPayHelper.verifySignature(
-                parameters,
-                vnPayConfig.getHashSecret())) {
-
-            return buildIpnResponse(
-                    "97",
-                    "Invalid signature");
-        }
-
-        String receivedTmnCode = parameters.get(
-                "vnp_TmnCode");
-
-        if (!vnPayConfig
-                .getTmnCode()
-                .equals(receivedTmnCode)) {
-
-            return buildIpnResponse(
-                    "97",
-                    "Invalid merchant code");
-        }
-
-        String orderCode = normalize(
-                parameters.get(
-                        "vnp_TxnRef"));
-
-        if (orderCode.isBlank()) {
-            return buildIpnResponse(
-                    "01",
-                    "Order not found");
-        }
-
-        PaymentTransaction payment = paymentTransactionRepository
-                .findByOrderCodeForUpdate(
-                        orderCode)
-                .orElse(null);
-
-        if (payment == null) {
-            return buildIpnResponse(
-                    "01",
-                    "Order not found");
-        }
-
-        String receivedAmount = normalize(
-                parameters.get(
-                        "vnp_Amount"));
-
-        String expectedAmount = String.valueOf(
-                Math.multiplyExact(
-                        payment.getAmount(),
-                        100L));
-
-        if (!expectedAmount.equals(
-                receivedAmount)) {
-
-            return buildIpnResponse(
-                    "04",
-                    "Invalid amount");
+                return buildIpnResponse(
+                                "00",
+                                "Confirm Success");
         }
 
         /*
-         * VNPAY có thể retry IPN.
-         * Giao dịch đã được xác nhận thì không xử lý lại.
+         * =========================
+         * GET USER PAYMENT
+         * =========================
          */
-        if (!PaymentTransaction.STATUS_PENDING
-                .equalsIgnoreCase(
-                        payment.getStatus())) {
+        @Transactional(readOnly = true)
+        public Map<String, Object> getUserPayment(
+                        String userId,
+                        String orderCode) {
 
-            return buildIpnResponse(
-                    "02",
-                    "Order already confirmed");
+                if (userId == null || userId.isBlank()) {
+                        throw new IllegalArgumentException(
+                                        "User ID is required");
+                }
+
+                String normalizedOrderCode = normalize(
+                                orderCode);
+
+                if (normalizedOrderCode.isBlank()) {
+                        throw new IllegalArgumentException(
+                                        "Payment order code is required");
+                }
+
+                PaymentTransaction payment = paymentTransactionRepository
+                                .findByOrderCode(
+                                                normalizedOrderCode)
+                                .orElseThrow(
+                                                () -> new IllegalArgumentException(
+                                                                "Payment not found"));
+
+                if (!userId.equals(
+                                payment.getUserId())) {
+
+                        throw new IllegalArgumentException(
+                                        "Payment not found");
+                }
+
+                return toPaymentResponse(
+                                payment);
         }
 
-        LocalDateTime now = nowInVietnam();
+        /*
+         * =========================
+         * HANDLE VNPAY RETURN
+         * =========================
+         */
+        @Transactional
+        public Map<String, Object> handleReturn(
+                        Map<String, String> requestParameters) {
 
-        String responseCode = normalize(
-                parameters.get(
-                        "vnp_ResponseCode"));
+                vnPayConfig.validate();
 
-        String transactionStatus = normalize(
-                parameters.get(
-                        "vnp_TransactionStatus"));
+                Map<String, String> parameters = normalizeVNPayParameters(
+                                requestParameters);
 
-        payment.setProviderTransactionId(
-                normalizeNullable(
-                        parameters.get(
-                                "vnp_TransactionNo")));
+                boolean signatureValid = VNPayHelper.verifySignature(
+                                parameters,
+                                vnPayConfig.getHashSecret());
 
-        payment.setResponseCode(
-                responseCode);
-
-        payment.setTransactionStatus(
-                transactionStatus);
-
-        payment.setBankCode(
-                normalizeNullable(
-                        parameters.get(
-                                "vnp_BankCode")));
-
-        payment.setBankTransactionNo(
-                normalizeNullable(
-                        parameters.get(
-                                "vnp_BankTranNo")));
-
-        payment.setCardType(
-                normalizeNullable(
-                        parameters.get(
-                                "vnp_CardType")));
-
-        payment.setCallbackPayload(
-                serializePayload(
-                        parameters));
-
-        payment.setUpdatedAt(
-                now);
-
-        boolean paymentSuccessful = "00".equals(responseCode)
-                && "00".equals(
-                        transactionStatus);
-
-        if (paymentSuccessful) {
-
-            SubscriptionPlan plan = subscriptionPlanRepository
-                    .findById(
-                            payment.getPlanId())
-                    .orElseThrow(
-                            () -> new IllegalStateException(
-                                    "Subscription plan not found"));
-
-            /*
-             * Method activatePaidPlan sẽ được thêm
-             * vào SubscriptionService ở bước tiếp theo.
-             *
-             * Chỉ IPN hợp lệ và thanh toán thành công
-             * mới được kích hoạt subscription.
-             */
-            Map<String, Object> subscriptionData = subscriptionService
-                    .activatePaidPlan(
-                            payment.getUserId(),
-                            plan.getCode(),
-                            parseVNPayDate(
-                                    parameters.get(
-                                            "vnp_PayDate"),
-                                    now));
-
-            payment.setSubscriptionId(
-                    extractSubscriptionId(
-                            subscriptionData));
-
-            payment.setStatus(
-                    PaymentTransaction.STATUS_PAID);
-
-            payment.setFailureReason(
-                    null);
-
-            payment.setPaidAt(
-                    parseVNPayDate(
-                            parameters.get(
-                                    "vnp_PayDate"),
-                            now));
-
-        } else {
-
-            payment.setStatus(
-                    resolveFailedStatus(
-                            responseCode));
-
-            payment.setFailureReason(
-                    "VNPAY payment failed. Response code: "
-                            + responseCode);
-        }
-
-        paymentTransactionRepository.save(
-                payment);
-
-        return buildIpnResponse(
-                "00",
-                "Confirm Success");
-    }
-
-    /*
-     * =========================
-     * HANDLE VNPAY RETURN
-     * =========================
-     */
-    @Transactional(readOnly = true)
-    public Map<String, Object> handleReturn(
-            Map<String, String> requestParameters) {
-
-        vnPayConfig.validate();
-
-        Map<String, String> parameters = normalizeVNPayParameters(
-                requestParameters);
-
-        boolean signatureValid = VNPayHelper.verifySignature(
-                parameters,
-                vnPayConfig.getHashSecret());
-
-        String orderCode = normalize(
-                parameters.get(
-                        "vnp_TxnRef"));
-
-        PaymentTransaction payment = orderCode.isBlank()
-                ? null
-                : paymentTransactionRepository
-                        .findByOrderCode(
-                                orderCode)
-                        .orElse(null);
-
-        boolean amountValid = payment != null
-                && String.valueOf(
-                        Math.multiplyExact(
-                                payment.getAmount(),
-                                100L))
-                        .equals(
+                boolean merchantValid = vnPayConfig.getTmnCode().equals(
                                 normalize(
-                                        parameters.get(
-                                                "vnp_Amount")));
+                                                parameters.get(
+                                                                "vnp_TmnCode")));
 
-        boolean vnpayReportedSuccess = "00".equals(
-                normalize(
-                        parameters.get(
-                                "vnp_ResponseCode")))
-                && "00".equals(
-                        normalize(
+                String orderCode = normalize(
                                 parameters.get(
-                                        "vnp_TransactionStatus")));
+                                                "vnp_TxnRef"));
 
-        Map<String, Object> result = new LinkedHashMap<>();
+                PaymentTransaction payment = orderCode.isBlank()
+                                ? null
+                                : paymentTransactionRepository
+                                                .findByOrderCodeForUpdate(
+                                                                orderCode)
+                                                .orElse(null);
 
-        result.put(
-                "signatureValid",
-                signatureValid);
+                boolean amountValid = payment != null
+                                && String.valueOf(
+                                                Math.multiplyExact(
+                                                                payment.getAmount(),
+                                                                100L))
+                                                .equals(
+                                                                normalize(
+                                                                                parameters.get(
+                                                                                                "vnp_Amount")));
 
-        result.put(
-                "amountValid",
-                amountValid);
+                String responseCode = normalize(
+                                parameters.get(
+                                                "vnp_ResponseCode"));
 
-        result.put(
-                "orderFound",
-                payment != null);
+                String transactionStatus = normalize(
+                                parameters.get(
+                                                "vnp_TransactionStatus"));
 
-        result.put(
-                "orderCode",
-                orderCode);
+                boolean vnpayReportedSuccess = "00".equals(responseCode)
+                                && "00".equals(
+                                                transactionStatus);
 
-        result.put(
-                "vnpayReportedSuccess",
-                vnpayReportedSuccess);
+                /*
+                 * RETURN FALLBACK:
+                 * IPN vẫn là callback chính, nhưng Return hợp lệ
+                 * được phép đồng bộ trạng thái khi IPN đến chậm
+                 * hoặc không đến trong môi trường Sandbox.
+                 */
+                if (signatureValid
+                                && merchantValid
+                                && amountValid
+                                && payment != null) {
 
-        result.put(
-                "paymentConfirmed",
-                payment != null
-                        && PaymentTransaction.STATUS_PAID
-                                .equalsIgnoreCase(
-                                        payment.getStatus()));
+                        LocalDateTime now = nowInVietnam();
 
-        result.put(
-                "status",
-                payment == null
-                        ? null
-                        : payment.getStatus());
+                        payment.setProviderTransactionId(
+                                        normalizeNullable(
+                                                        parameters.get(
+                                                                        "vnp_TransactionNo")));
 
-        result.put(
-                "amount",
-                payment == null
-                        ? null
-                        : payment.getAmount());
+                        payment.setResponseCode(
+                                        responseCode);
 
-        result.put(
-                "currency",
-                payment == null
-                        ? CURRENCY_VND
-                        : payment.getCurrency());
+                        payment.setTransactionStatus(
+                                        transactionStatus);
 
-        result.put(
-                "responseCode",
-                parameters.get(
-                        "vnp_ResponseCode"));
+                        payment.setBankCode(
+                                        normalizeNullable(
+                                                        parameters.get(
+                                                                        "vnp_BankCode")));
 
-        result.put(
-                "transactionStatus",
-                parameters.get(
-                        "vnp_TransactionStatus"));
+                        payment.setBankTransactionNo(
+                                        normalizeNullable(
+                                                        parameters.get(
+                                                                        "vnp_BankTranNo")));
 
-        result.put(
-                "providerTransactionId",
-                parameters.get(
-                        "vnp_TransactionNo"));
+                        payment.setCardType(
+                                        normalizeNullable(
+                                                        parameters.get(
+                                                                        "vnp_CardType")));
+
+                        payment.setCallbackPayload(
+                                        serializePayload(
+                                                        parameters));
+
+                        payment.setUpdatedAt(
+                                        now);
+
+                        /*
+                         * Không kích hoạt lại nếu giao dịch
+                         * đã được IPN xử lý thành PAID.
+                         */
+                        if (vnpayReportedSuccess
+                                        && !PaymentTransaction.STATUS_PAID
+                                                        .equalsIgnoreCase(
+                                                                        payment.getStatus())) {
+
+                                SubscriptionPlan plan = subscriptionPlanRepository
+                                                .findById(
+                                                                payment.getPlanId())
+                                                .orElseThrow(
+                                                                () -> new IllegalStateException(
+                                                                                "Subscription plan not found"));
+
+                                LocalDateTime paidAt = parseVNPayDate(
+                                                parameters.get(
+                                                                "vnp_PayDate"),
+                                                now);
+
+                                Map<String, Object> subscriptionData = subscriptionService
+                                                .activatePaidPlan(
+                                                                payment.getUserId(),
+                                                                plan.getCode(),
+                                                                paidAt);
+
+                                payment.setSubscriptionId(
+                                                extractSubscriptionId(
+                                                                subscriptionData));
+
+                                payment.setStatus(
+                                                PaymentTransaction.STATUS_PAID);
+
+                                payment.setPaidAt(
+                                                paidAt);
+
+                                payment.setFailureReason(
+                                                null);
+
+                        } else if (!vnpayReportedSuccess
+                                        && (PaymentTransaction.STATUS_PENDING
+                                                        .equalsIgnoreCase(
+                                                                        payment.getStatus())
+                                                        || PaymentTransaction.STATUS_PROCESSING
+                                                                        .equalsIgnoreCase(
+                                                                                        payment.getStatus()))) {
+
+                                payment.setStatus(
+                                                resolveFailedStatus(
+                                                                responseCode));
+
+                                payment.setFailureReason(
+                                                "VNPAY payment failed. Response code: "
+                                                                + responseCode);
+                        }
+
+                        paymentTransactionRepository.save(
+                                        payment);
+                }
+
+                Map<String, Object> result = new LinkedHashMap<>();
+
+                result.put(
+                                "signatureValid",
+                                signatureValid);
+
+                result.put(
+                                "merchantValid",
+                                merchantValid);
+
+                result.put(
+                                "amountValid",
+                                amountValid);
+
+                result.put(
+                                "orderFound",
+                                payment != null);
+
+                result.put(
+                                "orderCode",
+                                orderCode);
+
+                result.put(
+                                "vnpayReportedSuccess",
+                                vnpayReportedSuccess);
+
+                result.put(
+                                "paymentConfirmed",
+                                payment != null
+                                                && PaymentTransaction.STATUS_PAID
+                                                                .equalsIgnoreCase(
+                                                                                payment.getStatus()));
+
+                result.put(
+                                "status",
+                                payment == null
+                                                ? null
+                                                : payment.getStatus());
+
+                result.put(
+                                "amount",
+                                payment == null
+                                                ? null
+                                                : payment.getAmount());
+
+                result.put(
+                                "currency",
+                                payment == null
+                                                ? CURRENCY_VND
+                                                : payment.getCurrency());
+
+                result.put(
+                                "responseCode",
+                                responseCode);
+
+                result.put(
+                                "transactionStatus",
+                                transactionStatus);
+
+                result.put(
+                                "providerTransactionId",
+                                parameters.get(
+                                                "vnp_TransactionNo"));
+
+                return result;
+        }
 
         /*
-         * Return URL tuyệt đối không cập nhật
-         * payment hoặc subscription.
+         * =========================
+         * PAYMENT RESPONSE
+         * =========================
          */
-        return result;
-    }
+        private Map<String, Object> buildCreatePaymentResponse(
+                        PaymentTransaction payment,
+                        SubscriptionPlan plan,
+                        boolean reused) {
 
-    /*
-     * =========================
-     * GET USER PAYMENT
-     * =========================
-     */
-    @Transactional(readOnly = true)
-    public Map<String, Object> getUserPayment(
-            String userId,
-            String orderCode) {
+                Map<String, Object> result = new LinkedHashMap<>();
 
-        PaymentTransaction payment = paymentTransactionRepository
-                .findByOrderCode(
-                        normalize(orderCode))
-                .orElseThrow(
-                        () -> new IllegalArgumentException(
-                                "Payment not found"));
+                result.put(
+                                "paymentId",
+                                payment.getId());
 
-        if (!payment.getUserId()
-                .equals(userId)) {
+                result.put(
+                                "orderCode",
+                                payment.getOrderCode());
 
-            throw new IllegalArgumentException(
-                    "Payment not found");
+                result.put(
+                                "provider",
+                                payment.getProvider());
+
+                result.put(
+                                "planCode",
+                                plan.getCode());
+
+                result.put(
+                                "planName",
+                                plan.getName());
+
+                result.put(
+                                "amount",
+                                payment.getAmount());
+
+                result.put(
+                                "currency",
+                                payment.getCurrency());
+
+                result.put(
+                                "status",
+                                payment.getStatus());
+
+                result.put(
+                                "paymentUrl",
+                                payment.getPaymentUrl());
+
+                result.put(
+                                "expiresAt",
+                                payment.getExpiresAt());
+
+                result.put(
+                                "reused",
+                                reused);
+
+                return result;
         }
 
-        return toPaymentResponse(
-                payment);
-    }
+        private Map<String, String> buildIpnResponse(
+                        String responseCode,
+                        String message) {
 
-    /*
-     * =========================
-     * PAYMENT RESPONSE
-     * =========================
-     */
-    private Map<String, Object> buildCreatePaymentResponse(
-            PaymentTransaction payment,
-            SubscriptionPlan plan,
-            boolean reused) {
+                Map<String, String> result = new LinkedHashMap<>();
 
-        Map<String, Object> result = new LinkedHashMap<>();
+                result.put(
+                                "RspCode",
+                                responseCode);
 
-        result.put(
-                "paymentId",
-                payment.getId());
+                result.put(
+                                "Message",
+                                message);
 
-        result.put(
-                "orderCode",
-                payment.getOrderCode());
-
-        result.put(
-                "provider",
-                payment.getProvider());
-
-        result.put(
-                "planCode",
-                plan.getCode());
-
-        result.put(
-                "planName",
-                plan.getName());
-
-        result.put(
-                "amount",
-                payment.getAmount());
-
-        result.put(
-                "currency",
-                payment.getCurrency());
-
-        result.put(
-                "status",
-                payment.getStatus());
-
-        result.put(
-                "paymentUrl",
-                payment.getPaymentUrl());
-
-        result.put(
-                "expiresAt",
-                payment.getExpiresAt());
-
-        result.put(
-                "reused",
-                reused);
-
-        return result;
-    }
-
-    private Map<String, String> buildIpnResponse(
-            String responseCode,
-            String message) {
-
-        Map<String, String> result = new LinkedHashMap<>();
-
-        result.put(
-                "RspCode",
-                responseCode);
-
-        result.put(
-                "Message",
-                message);
-
-        return result;
-    }
-
-    /*
-     * =========================
-     * CALLBACK PARAMETERS
-     * =========================
-     */
-    private Map<String, String> normalizeVNPayParameters(
-            Map<String, String> source) {
-
-        Map<String, String> result = new TreeMap<>();
-
-        if (source == null) {
-            return result;
+                return result;
         }
 
-        for (Map.Entry<String, String> entry : source.entrySet()) {
+        /*
+         * =========================
+         * CALLBACK PARAMETERS
+         * =========================
+         */
+        private Map<String, String> normalizeVNPayParameters(
+                        Map<String, String> source) {
 
-            String key = entry.getKey();
+                Map<String, String> result = new TreeMap<>();
 
-            if (key == null
-                    || !key.startsWith(
-                            "vnp_")) {
+                if (source == null) {
+                        return result;
+                }
 
-                continue;
-            }
+                for (Map.Entry<String, String> entry : source.entrySet()) {
 
-            result.put(
-                    key,
-                    entry.getValue() == null
-                            ? ""
-                            : entry.getValue());
+                        String key = entry.getKey();
+
+                        if (key == null
+                                        || !key.startsWith(
+                                                        "vnp_")) {
+
+                                continue;
+                        }
+
+                        result.put(
+                                        key,
+                                        entry.getValue() == null
+                                                        ? ""
+                                                        : entry.getValue());
+                }
+
+                return result;
         }
 
-        return result;
-    }
+        private String serializePayload(
+                        Map<String, String> parameters) {
 
-    private String serializePayload(
-            Map<String, String> parameters) {
+                try {
+                        return jsonMapper.writeValueAsString(
+                                        parameters);
 
-        try {
-            return jsonMapper.writeValueAsString(
-                    parameters);
-
-        } catch (JacksonException e) {
-            return parameters.toString();
-        }
-    }
-
-    /*
-     * =========================
-     * SUBSCRIPTION RESPONSE
-     * =========================
-     */
-    private String extractSubscriptionId(
-            Map<String, Object> subscriptionData) {
-
-        if (subscriptionData == null) {
-            throw new IllegalStateException(
-                    "Subscription activation returned no data");
+                } catch (JacksonException e) {
+                        return parameters.toString();
+                }
         }
 
-        Object subscriptionObject = subscriptionData.get(
-                "subscription");
+        /*
+         * =========================
+         * SUBSCRIPTION RESPONSE
+         * =========================
+         */
+        private String extractSubscriptionId(
+                        Map<String, Object> subscriptionData) {
 
-        if (!(subscriptionObject instanceof Map<?, ?> subscriptionMap)) {
+                if (subscriptionData == null) {
+                        throw new IllegalStateException(
+                                        "Subscription activation returned no data");
+                }
 
-            throw new IllegalStateException(
-                    "Subscription activation response is invalid");
+                Object subscriptionObject = subscriptionData.get(
+                                "subscription");
+
+                if (!(subscriptionObject instanceof Map<?, ?> subscriptionMap)) {
+
+                        throw new IllegalStateException(
+                                        "Subscription activation response is invalid");
+                }
+
+                Object subscriptionId = subscriptionMap.get(
+                                "id");
+
+                if (subscriptionId == null
+                                || subscriptionId
+                                                .toString()
+                                                .isBlank()) {
+
+                        throw new IllegalStateException(
+                                        "Activated subscription ID is missing");
+                }
+
+                return subscriptionId
+                                .toString();
         }
 
-        Object subscriptionId = subscriptionMap.get(
-                "id");
+        /*
+         * =========================
+         * VALUE NORMALIZATION
+         * =========================
+         */
+        private String normalizePlanCode(
+                        String value) {
 
-        if (subscriptionId == null
-                || subscriptionId
-                        .toString()
-                        .isBlank()) {
-
-            throw new IllegalStateException(
-                    "Activated subscription ID is missing");
+                return normalize(value)
+                                .toUpperCase();
         }
 
-        return subscriptionId
-                .toString();
-    }
+        private String normalizeLocale(
+                        String value) {
 
-    /*
-     * =========================
-     * VALUE NORMALIZATION
-     * =========================
-     */
-    private String normalizePlanCode(
-            String value) {
-
-        return normalize(value)
-                .toUpperCase();
-    }
-
-    private String normalizeLocale(
-            String value) {
-
-        return "en".equalsIgnoreCase(
-                normalize(value))
-                        ? "en"
-                        : VNPayConfig.DEFAULT_LOCALE;
-    }
-
-    private String normalizeBankCode(
-            String value) {
-
-        String normalized = normalize(value)
-                .toUpperCase();
-
-        if (normalized.isBlank()) {
-            return null;
+                return "en".equalsIgnoreCase(
+                                normalize(value))
+                                                ? "en"
+                                                : VNPayConfig.DEFAULT_LOCALE;
         }
 
-        if (!normalized.matches(
-                "[A-Z0-9]{3,20}")) {
+        private String normalizeBankCode(
+                        String value) {
 
-            throw new IllegalArgumentException(
-                    "Invalid VNPAY bank code");
+                String normalized = normalize(value)
+                                .toUpperCase();
+
+                if (normalized.isBlank()) {
+                        return null;
+                }
+
+                if (!normalized.matches(
+                                "[A-Z0-9]{3,20}")) {
+
+                        throw new IllegalArgumentException(
+                                        "Invalid VNPAY bank code");
+                }
+
+                return normalized;
         }
 
-        return normalized;
-    }
+        private String normalize(
+                        String value) {
 
-    private String normalize(
-            String value) {
-
-        return value == null
-                ? ""
-                : value.trim();
-    }
-
-    private String normalizeNullable(
-            String value) {
-
-        String normalized = normalize(value);
-
-        return normalized.isBlank()
-                ? null
-                : normalized;
-    }
-
-    private String limitLength(
-            String value,
-            int maxLength) {
-
-        String normalized = normalize(value);
-
-        if (normalized.length() <= maxLength) {
-
-            return normalized;
+                return value == null
+                                ? ""
+                                : value.trim();
         }
 
-        return normalized.substring(
-                0,
-                maxLength);
-    }
+        private String normalizeNullable(
+                        String value) {
 
-    /*
-     * =========================
-     * DATE HELPERS
-     * =========================
-     */
-    private LocalDateTime nowInVietnam() {
+                String normalized = normalize(value);
 
-        return ZonedDateTime
-                .now(VIETNAM_ZONE)
-                .toLocalDateTime();
-    }
-
-    private String formatVNPayDate(
-            LocalDateTime value) {
-
-        return value.format(
-                VNPAY_DATE_FORMAT);
-    }
-
-    private LocalDateTime parseVNPayDate(
-            String value,
-            LocalDateTime fallback) {
-
-        String normalized = normalize(value);
-
-        if (normalized.isBlank()) {
-            return fallback;
+                return normalized.isBlank()
+                                ? null
+                                : normalized;
         }
 
-        try {
-            return LocalDateTime.parse(
-                    normalized,
-                    VNPAY_DATE_FORMAT);
+        private String limitLength(
+                        String value,
+                        int maxLength) {
 
-        } catch (DateTimeParseException e) {
-            return fallback;
-        }
-    }
+                String normalized = normalize(value);
 
-    /*
-     * =========================
-     * PAYMENT STATUS
-     * =========================
-     */
-    private String resolveFailedStatus(
-            String responseCode) {
+                if (normalized.length() <= maxLength) {
 
-        if ("24".equals(responseCode)) {
-            return PaymentTransaction.STATUS_CANCELED;
+                        return normalized;
+                }
+
+                return normalized.substring(
+                                0,
+                                maxLength);
         }
 
-        if ("11".equals(responseCode)) {
-            return PaymentTransaction.STATUS_EXPIRED;
+        /*
+         * =========================
+         * DATE HELPERS
+         * =========================
+         */
+        private LocalDateTime nowInVietnam() {
+
+                return ZonedDateTime
+                                .now(VIETNAM_ZONE)
+                                .toLocalDateTime();
         }
 
-        return PaymentTransaction.STATUS_FAILED;
-    }
+        private String formatVNPayDate(
+                        LocalDateTime value) {
 
-    /*
-     * =========================
-     * ID GENERATION
-     * =========================
-     */
-    private String generateId() {
-
-        return UUID.randomUUID()
-                .toString()
-                .replace("-", "")
-                .substring(0, 24);
-    }
-
-    private String generateUniqueOrderCode() {
-
-        for (int attempt = 0; attempt < 10; attempt++) {
-
-            String orderCode = "SC"
-                    + formatVNPayDate(
-                            nowInVietnam())
-                    + UUID.randomUUID()
-                            .toString()
-                            .replace("-", "")
-                            .substring(0, 8)
-                            .toUpperCase();
-
-            if (!paymentTransactionRepository
-                    .existsByOrderCode(
-                            orderCode)) {
-
-                return orderCode;
-            }
+                return value.format(
+                                VNPAY_DATE_FORMAT);
         }
 
-        throw new IllegalStateException(
-                "Cannot generate unique payment order code");
-    }
+        private LocalDateTime parseVNPayDate(
+                        String value,
+                        LocalDateTime fallback) {
 
-    /*
-     * =========================
-     * USER PAYMENT HISTORY
-     * =========================
-     */
-    @Transactional(readOnly = true)
-    public Map<String, Object> getUserPayments(
-            String userId,
-            int current,
-            int pageSize) {
+                String normalized = normalize(value);
 
-        if (userId == null || userId.isBlank()) {
-            throw new IllegalArgumentException(
-                    "User ID is required");
+                if (normalized.isBlank()) {
+                        return fallback;
+                }
+
+                try {
+                        return LocalDateTime.parse(
+                                        normalized,
+                                        VNPAY_DATE_FORMAT);
+
+                } catch (DateTimeParseException e) {
+                        return fallback;
+                }
         }
 
-        int safeCurrent = Math.max(current, 1);
+        /*
+         * =========================
+         * PAYMENT STATUS
+         * =========================
+         */
+        private String resolveFailedStatus(
+                        String responseCode) {
 
-        int safePageSize = Math.min(
-                Math.max(pageSize, 1),
-                100);
+                if ("24".equals(responseCode)) {
+                        return PaymentTransaction.STATUS_CANCELED;
+                }
 
-        Pageable pageable = PageRequest.of(
-                safeCurrent - 1,
-                safePageSize);
+                if ("11".equals(responseCode)) {
+                        return PaymentTransaction.STATUS_EXPIRED;
+                }
 
-        Page<PaymentTransaction> paymentPage = paymentTransactionRepository
-                .findByUserIdOrderByCreatedAtDesc(
-                        userId,
-                        pageable);
-
-        return buildPaymentPageResponse(
-                paymentPage,
-                safeCurrent,
-                safePageSize);
-    }
-
-    /*
-     * =========================
-     * ADMIN PAYMENT LIST
-     * =========================
-     */
-    @Transactional(readOnly = true)
-    public Map<String, Object> getAdminPayments(
-            String status,
-            int current,
-            int pageSize) {
-
-        int safeCurrent = Math.max(current, 1);
-
-        int safePageSize = Math.min(
-                Math.max(pageSize, 1),
-                100);
-
-        Pageable pageable = PageRequest.of(
-                safeCurrent - 1,
-                safePageSize);
-
-        String normalizedStatus = normalize(status)
-                .toUpperCase();
-
-        Page<PaymentTransaction> paymentPage;
-
-        if (normalizedStatus.isBlank()) {
-
-            paymentPage = paymentTransactionRepository
-                    .findAllByOrderByCreatedAtDesc(
-                            pageable);
-
-        } else {
-
-            if (!isSupportedPaymentStatus(
-                    normalizedStatus)) {
-
-                throw new IllegalArgumentException(
-                        "Invalid payment status");
-            }
-
-            paymentPage = paymentTransactionRepository
-                    .findByStatusOrderByCreatedAtDesc(
-                            normalizedStatus,
-                            pageable);
+                return PaymentTransaction.STATUS_FAILED;
         }
 
-        return buildPaymentPageResponse(
-                paymentPage,
-                safeCurrent,
-                safePageSize);
-    }
+        /*
+         * =========================
+         * ID GENERATION
+         * =========================
+         */
+        private String generateId() {
 
-    /*
-     * =========================
-     * PAYMENT PAGE RESPONSE
-     * =========================
-     */
-    private Map<String, Object> buildPaymentPageResponse(
-            Page<PaymentTransaction> paymentPage,
-            int current,
-            int pageSize) {
+                return UUID.randomUUID()
+                                .toString()
+                                .replace("-", "")
+                                .substring(0, 24);
+        }
 
-        List<Map<String, Object>> result = paymentPage.getContent()
-                .stream()
-                .map(this::toPaymentResponse)
-                .toList();
+        private String generateUniqueOrderCode() {
 
-        Map<String, Object> meta = new LinkedHashMap<>();
+                for (int attempt = 0; attempt < 10; attempt++) {
 
-        meta.put(
-                "current",
-                current);
+                        String orderCode = "SC"
+                                        + formatVNPayDate(
+                                                        nowInVietnam())
+                                        + UUID.randomUUID()
+                                                        .toString()
+                                                        .replace("-", "")
+                                                        .substring(0, 8)
+                                                        .toUpperCase();
 
-        meta.put(
-                "pageSize",
-                pageSize);
+                        if (!paymentTransactionRepository
+                                        .existsByOrderCode(
+                                                        orderCode)) {
 
-        meta.put(
-                "pages",
-                paymentPage.getTotalPages());
+                                return orderCode;
+                        }
+                }
 
-        meta.put(
-                "total",
-                paymentPage.getTotalElements());
+                throw new IllegalStateException(
+                                "Cannot generate unique payment order code");
+        }
 
-        Map<String, Object> response = new LinkedHashMap<>();
+        /*
+         * =========================
+         * USER PAYMENT HISTORY
+         * =========================
+         */
+        @Transactional(readOnly = true)
+        public Map<String, Object> getUserPayments(
+                        String userId,
+                        int current,
+                        int pageSize) {
 
-        response.put(
-                "meta",
-                meta);
+                if (userId == null || userId.isBlank()) {
+                        throw new IllegalArgumentException(
+                                        "User ID is required");
+                }
 
-        response.put(
-                "result",
-                result);
+                int safeCurrent = Math.max(current, 1);
 
-        return response;
-    }
+                int safePageSize = Math.min(
+                                Math.max(pageSize, 1),
+                                100);
 
-    /*
-     * =========================
-     * PAYMENT ITEM RESPONSE
-     * =========================
-     */
-    private Map<String, Object> toPaymentResponse(
-            PaymentTransaction payment) {
+                Pageable pageable = PageRequest.of(
+                                safeCurrent - 1,
+                                safePageSize);
 
-        Map<String, Object> result = new LinkedHashMap<>();
+                Page<PaymentTransaction> paymentPage = paymentTransactionRepository
+                                .findByUserIdOrderByCreatedAtDesc(
+                                                userId,
+                                                pageable);
 
-        result.put(
-                "id",
-                payment.getId());
+                return buildPaymentPageResponse(
+                                paymentPage,
+                                safeCurrent,
+                                safePageSize);
+        }
 
-        result.put(
-                "userId",
-                payment.getUserId());
+        /*
+         * =========================
+         * ADMIN PAYMENT LIST
+         * =========================
+         */
+        @Transactional(readOnly = true)
+        public Map<String, Object> getAdminPayments(
+                        String status,
+                        int current,
+                        int pageSize) {
 
-        result.put(
-                "planId",
-                payment.getPlanId());
+                int safeCurrent = Math.max(current, 1);
 
-        result.put(
-                "subscriptionId",
-                payment.getSubscriptionId());
+                int safePageSize = Math.min(
+                                Math.max(pageSize, 1),
+                                100);
 
-        result.put(
-                "orderCode",
-                payment.getOrderCode());
+                Pageable pageable = PageRequest.of(
+                                safeCurrent - 1,
+                                safePageSize);
 
-        result.put(
-                "provider",
-                payment.getProvider());
+                String normalizedStatus = normalize(status)
+                                .toUpperCase();
 
-        result.put(
-                "amount",
-                payment.getAmount());
+                Page<PaymentTransaction> paymentPage;
 
-        result.put(
-                "currency",
-                payment.getCurrency());
+                if (normalizedStatus.isBlank()) {
 
-        result.put(
-                "status",
-                payment.getStatus());
+                        paymentPage = paymentTransactionRepository
+                                        .findAllByOrderByCreatedAtDesc(
+                                                        pageable);
 
-        result.put(
-                "responseCode",
-                payment.getResponseCode());
+                } else {
 
-        result.put(
-                "transactionStatus",
-                payment.getTransactionStatus());
+                        if (!isSupportedPaymentStatus(
+                                        normalizedStatus)) {
 
-        result.put(
-                "providerTransactionId",
-                payment.getProviderTransactionId());
+                                throw new IllegalArgumentException(
+                                                "Invalid payment status");
+                        }
 
-        result.put(
-                "bankCode",
-                payment.getBankCode());
+                        paymentPage = paymentTransactionRepository
+                                        .findByStatusOrderByCreatedAtDesc(
+                                                        normalizedStatus,
+                                                        pageable);
+                }
 
-        result.put(
-                "bankTransactionNo",
-                payment.getBankTransactionNo());
+                return buildPaymentPageResponse(
+                                paymentPage,
+                                safeCurrent,
+                                safePageSize);
+        }
 
-        result.put(
-                "cardType",
-                payment.getCardType());
+        /*
+         * =========================
+         * PAYMENT PAGE RESPONSE
+         * =========================
+         */
+        private Map<String, Object> buildPaymentPageResponse(
+                        Page<PaymentTransaction> paymentPage,
+                        int current,
+                        int pageSize) {
 
-        result.put(
-                "failureReason",
-                payment.getFailureReason());
+                List<Map<String, Object>> result = paymentPage.getContent()
+                                .stream()
+                                .map(this::toPaymentResponse)
+                                .toList();
 
-        result.put(
-                "paidAt",
-                payment.getPaidAt());
+                Map<String, Object> meta = new LinkedHashMap<>();
 
-        result.put(
-                "expiresAt",
-                payment.getExpiresAt());
+                meta.put(
+                                "current",
+                                current);
 
-        result.put(
-                "createdAt",
-                payment.getCreatedAt());
+                meta.put(
+                                "pageSize",
+                                pageSize);
 
-        result.put(
-                "updatedAt",
-                payment.getUpdatedAt());
+                meta.put(
+                                "pages",
+                                paymentPage.getTotalPages());
 
-        return result;
-    }
+                meta.put(
+                                "total",
+                                paymentPage.getTotalElements());
 
-    /*
-     * =========================
-     * PAYMENT STATUS VALIDATION
-     * =========================
-     */
-    private boolean isSupportedPaymentStatus(
-            String status) {
+                Map<String, Object> response = new LinkedHashMap<>();
 
-        return PaymentTransaction.STATUS_PENDING.equals(status)
-                || PaymentTransaction.STATUS_PROCESSING.equals(status)
-                || PaymentTransaction.STATUS_PAID.equals(status)
-                || PaymentTransaction.STATUS_FAILED.equals(status)
-                || PaymentTransaction.STATUS_CANCELED.equals(status)
-                || PaymentTransaction.STATUS_EXPIRED.equals(status)
-                || PaymentTransaction.STATUS_REFUNDED.equals(status);
-    }
+                response.put(
+                                "meta",
+                                meta);
+
+                response.put(
+                                "result",
+                                result);
+
+                return response;
+        }
+
+        /*
+         * =========================
+         * PAYMENT ITEM RESPONSE
+         * =========================
+         */
+        private Map<String, Object> toPaymentResponse(
+                        PaymentTransaction payment) {
+
+                Map<String, Object> result = new LinkedHashMap<>();
+
+                result.put(
+                                "id",
+                                payment.getId());
+
+                result.put(
+                                "userId",
+                                payment.getUserId());
+
+                result.put(
+                                "planId",
+                                payment.getPlanId());
+
+                result.put(
+                                "subscriptionId",
+                                payment.getSubscriptionId());
+
+                result.put(
+                                "orderCode",
+                                payment.getOrderCode());
+
+                result.put(
+                                "provider",
+                                payment.getProvider());
+
+                result.put(
+                                "amount",
+                                payment.getAmount());
+
+                result.put(
+                                "currency",
+                                payment.getCurrency());
+
+                result.put(
+                                "status",
+                                payment.getStatus());
+
+                result.put(
+                                "responseCode",
+                                payment.getResponseCode());
+
+                result.put(
+                                "transactionStatus",
+                                payment.getTransactionStatus());
+
+                result.put(
+                                "providerTransactionId",
+                                payment.getProviderTransactionId());
+
+                result.put(
+                                "bankCode",
+                                payment.getBankCode());
+
+                result.put(
+                                "bankTransactionNo",
+                                payment.getBankTransactionNo());
+
+                result.put(
+                                "cardType",
+                                payment.getCardType());
+
+                result.put(
+                                "failureReason",
+                                payment.getFailureReason());
+
+                result.put(
+                                "paidAt",
+                                payment.getPaidAt());
+
+                result.put(
+                                "expiresAt",
+                                payment.getExpiresAt());
+
+                result.put(
+                                "createdAt",
+                                payment.getCreatedAt());
+
+                result.put(
+                                "updatedAt",
+                                payment.getUpdatedAt());
+
+                return result;
+        }
+
+        /*
+         * =========================
+         * PAYMENT STATUS VALIDATION
+         * =========================
+         */
+        private boolean isSupportedPaymentStatus(
+                        String status) {
+
+                return PaymentTransaction.STATUS_PENDING.equals(status)
+                                || PaymentTransaction.STATUS_PROCESSING.equals(status)
+                                || PaymentTransaction.STATUS_PAID.equals(status)
+                                || PaymentTransaction.STATUS_FAILED.equals(status)
+                                || PaymentTransaction.STATUS_CANCELED.equals(status)
+                                || PaymentTransaction.STATUS_EXPIRED.equals(status)
+                                || PaymentTransaction.STATUS_REFUNDED.equals(status);
+        }
 }

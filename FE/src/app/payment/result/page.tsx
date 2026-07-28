@@ -505,9 +505,9 @@ export default function PaymentResultPage() {
                 },
               }}
             >
-              "No confirmation has been received from VNPAY. The transaction was
-              unsuccessful and the subscription package has not been activated.
-              You may return to the package page to create a new transaction."
+              Chưa nhận được xác nhận từ VNPAY. Giao dịch chưa hoàn tất và gói
+              đăng ký chưa được kích hoạt. Vui lòng quay lại trang gói để tạo
+              giao dịch mới.
             </Alert>
           )}
 
@@ -609,7 +609,7 @@ export default function PaymentResultPage() {
           <Button
             fullWidth
             variant="outlined"
-            onClick={() => router.push("/")}
+            onClick={() => router.push("/plans")}
             sx={{
               minHeight: 46,
               color: "#ffffff",
@@ -622,7 +622,7 @@ export default function PaymentResultPage() {
               },
             }}
           >
-            Về trang chủ
+            Quay lại trang gói
           </Button>
         </Stack>
       </Paper>

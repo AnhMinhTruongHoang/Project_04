@@ -201,24 +201,24 @@ public class PaymentController {
                         Map<String, Object> data) {
 
                 boolean signatureValid = Boolean.TRUE.equals(
-                                data.get(
-                                                "signatureValid"));
+                                data.get("signatureValid"));
+
+                boolean merchantValid = Boolean.TRUE.equals(
+                                data.get("merchantValid"));
 
                 boolean orderFound = Boolean.TRUE.equals(
-                                data.get(
-                                                "orderFound"));
+                                data.get("orderFound"));
 
                 boolean amountValid = Boolean.TRUE.equals(
-                                data.get(
-                                                "amountValid"));
+                                data.get("amountValid"));
 
                 boolean paymentConfirmed = Boolean.TRUE.equals(
-                                data.get(
-                                                "paymentConfirmed"));
+                                data.get("paymentConfirmed"));
 
                 String status;
 
                 if (!signatureValid
+                                || !merchantValid
                                 || !orderFound
                                 || !amountValid) {
 
@@ -247,6 +247,9 @@ public class PaymentController {
                                 .queryParam(
                                                 "signatureValid",
                                                 signatureValid)
+                                .queryParam(
+                                                "merchantValid",
+                                                merchantValid)
                                 .queryParam(
                                                 "paymentConfirmed",
                                                 paymentConfirmed)

@@ -8,6 +8,7 @@ import {
   Box,
   Button,
   Chip,
+  CircularProgress,
   Dialog,
   DialogActions,
   DialogContent,
@@ -23,9 +24,11 @@ import {
   getAudioUrl,
   getImageUrl,
   rejectTrackApi,
+  scanTrackCopyrightApi,
   sendRequest,
 } from "@/utils/api";
 
+import { useToast } from "@/utils/toast";
 import DeleteRoundedIcon from "@mui/icons-material/DeleteRounded";
 import OpenInNewRoundedIcon from "@mui/icons-material/OpenInNewRounded";
 import CheckCircleRoundedIcon from "@mui/icons-material/CheckCircleRounded";
@@ -34,7 +37,10 @@ import PlayArrowRoundedIcon from "@mui/icons-material/PlayArrowRounded";
 import PauseRoundedIcon from "@mui/icons-material/PauseRounded";
 import { DataGrid, GridColDef } from "@mui/x-data-grid";
 import DashboardTableToolbar from "@/components/dashboard/components/DashboardTableToolbar";
-import { useToast } from "@/utils/toast";
+import SmartToyRoundedIcon from "@mui/icons-material/SmartToyRounded";
+import VisibilityRoundedIcon from "@mui/icons-material/VisibilityRounded";
+import AiCopyrightResultDialog from "../components/AiCopyrightResultDialog";
+import AiCopyrightTestGuide from "@/test/AiCopyrightTestGuide";
 
 type Props = {
   tracks: ITrackTop[];
@@ -115,6 +121,8 @@ const TracksTable = ({ tracks, accessToken }: Props) => {
 
   const [moderatingId, setModeratingId] = useState("");
 
+  const [scanningTrackId, setScanningTrackId] = useState("");
+
   const [confirmTrack, setConfirmTrack] = useState<ITrackTop | null>(null);
 
   const [rejectingTrack, setRejectingTrack] = useState<ITrackTop | null>(null);
@@ -124,6 +132,8 @@ const TracksTable = ({ tracks, accessToken }: Props) => {
   const [previewTrackId, setPreviewTrackId] = useState("");
 
   const [isPreviewPlaying, setIsPreviewPlaying] = useState(false);
+
+  const [aiResultTrack, setAiResultTrack] = useState<ITrackTop | null>(null);
 
   useEffect(() => {
     setRows(tracks);
@@ -388,6 +398,104 @@ const TracksTable = ({ tracks, accessToken }: Props) => {
       toast.error(`Cannot ${action} track.`);
     } finally {
       setModeratingId("");
+    }
+  };
+
+  /* =========================
+   AI COPYRIGHT SCAN
+========================= */
+
+  const handleCopyrightScan = async (track: ITrackTop) => {
+    const trackId = getItemId(track);
+
+    if (!trackId) {
+      toast.error("Track not found.");
+      return;
+    }
+
+    if (!accessToken) {
+      toast.error("Please login first.");
+      return;
+    }
+
+    if (scanningTrackId) {
+      return;
+    }
+
+    setScanningTrackId(trackId);
+
+    setRows((currentRows) =>
+      currentRows.map((item) =>
+        getItemId(item) === trackId
+          ? {
+              ...item,
+              processingStatus: "PROCESSING",
+              copyrightStatus: "SCANNING",
+              copyrightMessage: "Analyzing audio fingerprint",
+            }
+          : item
+      )
+    );
+
+    try {
+      const response = await scanTrackCopyrightApi(trackId, accessToken);
+
+      if (response?.statusCode !== 200 || !response?.data) {
+        toast.error(response?.message || "Copyright scan failed.");
+
+        await reloadTracks();
+        return;
+      }
+
+      const scanResult = response.data as any;
+
+      setRows((currentRows) =>
+        currentRows.map((item) =>
+          getItemId(item) === trackId
+            ? {
+                ...item,
+                processingStatus: scanResult.processingStatus || "COMPLETED",
+                copyrightStatus: scanResult.copyrightStatus || "UNKNOWN",
+                copyrightRiskLevel: scanResult.riskLevel || null,
+                copyrightScore: scanResult.copyrightScore ?? null,
+                fingerprintScore: scanResult.fingerprintScore ?? null,
+                matchedDurationRatio: scanResult.matchedDurationRatio ?? null,
+                matchedTrackId: scanResult.matchedTrackId || null,
+                copyrightMessage:
+                  scanResult.message || "Copyright scan completed",
+                scannedAt: scanResult.scannedAt || new Date().toISOString(),
+              }
+            : item
+        )
+      );
+
+      const matchedTrackTitle = scanResult.matchedTrackTitle;
+
+      const riskLevel = String(scanResult.riskLevel || "UNKNOWN").toUpperCase();
+
+      if (riskLevel === "HIGH") {
+        toast.error(
+          matchedTrackTitle
+            ? `High copyright risk. Matched "${matchedTrackTitle}".`
+            : "High copyright risk detected."
+        );
+      } else if (riskLevel === "MEDIUM") {
+        toast.error(
+          matchedTrackTitle
+            ? `Possible match with "${matchedTrackTitle}". Manual review is recommended.`
+            : "Possible copyright match detected."
+        );
+      } else {
+        toast.success("Copyright scan completed. No high-risk match detected.");
+      }
+    } catch (error) {
+      console.error("Copyright scan failed:", error);
+
+      toast.error("Copyright scan failed.");
+
+      await reloadTracks();
+    } finally {
+      setScanningTrackId("");
     }
   };
 
@@ -698,7 +806,7 @@ const TracksTable = ({ tracks, accessToken }: Props) => {
     {
       field: "actions",
       headerName: "Actions",
-      width: 190,
+      width: 225,
       align: "center",
       headerAlign: "center",
       sortable: false,
@@ -710,7 +818,22 @@ const TracksTable = ({ tracks, accessToken }: Props) => {
 
         const approvalStatus = String(track.approvalStatus || "").toUpperCase();
 
-        const isUpdating = moderatingId === trackId;
+        const isScanning = scanningTrackId === trackId;
+
+        const copyrightStatus = String(
+          track.copyrightStatus || ""
+        ).toUpperCase();
+
+        const hasAiResult = Boolean(
+          track.copyrightRiskLevel ||
+            track.fingerprintAlgorithm ||
+            track.scannedAt ||
+            ["CLEAN", "MATCHED", "REVIEW_REQUIRED", "SCAN_FAILED"].includes(
+              copyrightStatus
+            )
+        );
+
+        const isUpdating = moderatingId === trackId || isScanning;
 
         const trackRouteKey = trackId;
 
@@ -728,6 +851,94 @@ const TracksTable = ({ tracks, accessToken }: Props) => {
               gap: 0.5,
             }}
           >
+            {/* AI COPYRIGHT CHECK */}
+            <Tooltip
+              title={
+                isScanning
+                  ? "Analyzing audio fingerprint..."
+                  : track.copyrightStatus === "CLEAN"
+                  ? "Run copyright scan again"
+                  : "AI-assisted copyright scan"
+              }
+              arrow
+            >
+              <span>
+                <IconButton
+                  size="small"
+                  disabled={
+                    isScanning || Boolean(moderatingId) || !track.trackUrl
+                  }
+                  onClick={(event) => {
+                    event.stopPropagation();
+
+                    void handleCopyrightScan(track);
+                  }}
+                  sx={{
+                    color: "#a78bfa",
+
+                    "&:hover": {
+                      color: "#c4b5fd",
+                      backgroundColor: "rgba(167,139,250,0.14)",
+                    },
+
+                    "&.Mui-disabled": {
+                      color: "#a78bfa",
+                      opacity: 0.4,
+                    },
+                  }}
+                >
+                  {isScanning ? (
+                    <CircularProgress
+                      size={18}
+                      thickness={5}
+                      sx={{
+                        color: "#a78bfa",
+                      }}
+                    />
+                  ) : (
+                    <SmartToyRoundedIcon fontSize="small" />
+                  )}
+                </IconButton>
+              </span>
+            </Tooltip>
+
+            {/* VIEW AI COPYRIGHT RESULT */}
+            <Tooltip
+              title={
+                hasAiResult
+                  ? "View AI copyright result"
+                  : "Run AI copyright scan first"
+              }
+              arrow
+            >
+              <span>
+                <IconButton
+                  size="small"
+                  disabled={!hasAiResult || isScanning}
+                  onClick={(event) => {
+                    event.stopPropagation();
+
+                    setAiResultTrack(track);
+                  }}
+                  sx={{
+                    color: "#60a5fa",
+
+                    "&:hover": {
+                      color: "#93c5fd",
+                      backgroundColor: "rgba(96,165,250,0.14)",
+                    },
+
+                    "&.Mui-disabled": {
+                      color: "#60a5fa",
+                      opacity: 0.3,
+                    },
+                  }}
+                >
+                  <VisibilityRoundedIcon fontSize="small" />
+                </IconButton>
+              </span>
+            </Tooltip>
+
             <Tooltip
               title={
                 approvalStatus === "APPROVED"
@@ -878,6 +1089,9 @@ const TracksTable = ({ tracks, accessToken }: Props) => {
         }}
       />
 
+      {/* AI COPYRIGHT TEST GUIDE */}
+      <AiCopyrightTestGuide />
+
       <DashboardTableToolbar
         searchValue={searchValue}
         onSearchChange={setSearchValue}
@@ -982,6 +1196,13 @@ const TracksTable = ({ tracks, accessToken }: Props) => {
           }}
         />
       </Box>
+
+      {/* AI COPYRIGHT RESULT DIALOG */}
+      <AiCopyrightResultDialog
+        open={Boolean(aiResultTrack)}
+        track={aiResultTrack}
+        onClose={() => setAiResultTrack(null)}
+      />
 
       {/* DELETE DIALOG */}
       <Dialog

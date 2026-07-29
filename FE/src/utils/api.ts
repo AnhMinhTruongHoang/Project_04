@@ -869,6 +869,18 @@ export const rejectTrackApi = (
 };
 
 /* =========================
+   ADMIN COPYRIGHT SCAN API
+========================= */
+
+export const scanTrackCopyrightApi = (id: string, accessToken?: string) => {
+  return sendRequest<IBackendRes<Record<string, any>>>({
+    url: `/api/v1/admin/tracks/${encodeURIComponent(id)}/copyright-scan`,
+    method: "POST",
+    headers: authHeaders(accessToken),
+  });
+};
+
+/* =========================
    FILE UPLOAD APIs
 ========================= */
 

@@ -22,42 +22,85 @@ import jakarta.persistence.Transient;
 
 @Entity
 @Table(name = "tracks")
-@JsonIgnoreProperties({ "hibernateLazyInitializer", "handler" })
+@JsonIgnoreProperties({
+		"hibernateLazyInitializer",
+		"handler"
+})
 public class Track implements java.io.Serializable {
 
 	private String id;
+
 	private String title;
+
 	private String slug;
+
 	private String description;
 
-	// New category relation
+	/*
+	 * =========================
+	 * CATEGORY
+	 * =========================
+	 */
+
 	private String categoryId;
+
 	private Category categoryInfo;
 
+	/*
+	 * =========================
+	 * TRACK MEDIA
+	 * =========================
+	 */
+
 	private String imgUrl;
+
 	private String trackUrl;
+
 	private Integer countLike;
+
 	private Integer countPlay;
+
 	private String uploaderId;
+
+	/*
+	 * =========================
+	 * ADMIN MODERATION
+	 * =========================
+	 */
+
 	private String approvalStatus;
+
 	private String rejectionReason;
 
-	public void setRejectionReason(String rejectionReason) {
-		this.rejectionReason = rejectionReason;
-	}
-
-	public String getRejectionReason() {
-		return rejectionReason;
-	}
+	/*
+	 * =========================
+	 * TRACK STATUS
+	 * =========================
+	 */
 
 	private Boolean isDeleted;
+
 	private LocalDateTime createdAt;
+
 	private LocalDateTime updatedAt;
 
-	/// upload
+	/*
+	 * =========================
+	 * AUDIO INFORMATION
+	 * =========================
+	 */
+
 	private String audioHash;
 
 	private Long audioSize;
+
+	private Long durationSeconds;
+
+	/*
+	 * =========================
+	 * COPYRIGHT SCAN SUMMARY
+	 * =========================
+	 */
 
 	private String processingStatus;
 
@@ -69,17 +112,45 @@ public class Track implements java.io.Serializable {
 
 	private LocalDateTime scannedAt;
 
-	///
+	/*
+	 * =========================
+	 * AUDIO FINGERPRINT SUMMARY
+	 * =========================
+	 */
+
+	private String fingerprintAlgorithm;
+
+	private String fingerprintVersion;
+
+	private String matchedTrackId;
+
+	private Double fingerprintScore;
+
+	private Double matchedDurationRatio;
+
+	private String copyrightRiskLevel;
+
+	/*
+	 * =========================
+	 * RELATIONSHIPS
+	 * =========================
+	 */
 
 	private User uploader;
+
 	private Set<Comment> comments = new HashSet<Comment>(0);
+
 	private Set<Playlist> playlists = new HashSet<Playlist>(0);
+
 	private Set<User> likedByUsers = new HashSet<User>(0);
 
 	public Track() {
 	}
 
-	public Track(String id, String title) {
+	public Track(
+			String id,
+			String title) {
+
 		this.id = id;
 		this.title = title;
 	}
@@ -97,6 +168,7 @@ public class Track implements java.io.Serializable {
 			Boolean isDeleted,
 			LocalDateTime createdAt,
 			LocalDateTime updatedAt) {
+
 		this.id = id;
 		this.title = title;
 		this.description = description;
@@ -111,13 +183,21 @@ public class Track implements java.io.Serializable {
 		this.updatedAt = updatedAt;
 	}
 
+	/*
+	 * =========================
+	 * BASIC INFORMATION
+	 * =========================
+	 */
+
 	@Id
 	@Column(name = "id", unique = true, nullable = false, length = 24)
 	public String getId() {
 		return this.id;
 	}
 
-	public void setId(String id) {
+	public void setId(
+			String id) {
+
 		this.id = id;
 	}
 
@@ -126,7 +206,9 @@ public class Track implements java.io.Serializable {
 		return this.title;
 	}
 
-	public void setTitle(String title) {
+	public void setTitle(
+			String title) {
+
 		this.title = title;
 	}
 
@@ -135,7 +217,9 @@ public class Track implements java.io.Serializable {
 		return this.slug;
 	}
 
-	public void setSlug(String slug) {
+	public void setSlug(
+			String slug) {
+
 		this.slug = slug;
 	}
 
@@ -144,16 +228,26 @@ public class Track implements java.io.Serializable {
 		return this.description;
 	}
 
-	public void setDescription(String description) {
+	public void setDescription(
+			String description) {
+
 		this.description = description;
 	}
+
+	/*
+	 * =========================
+	 * CATEGORY
+	 * =========================
+	 */
 
 	@Column(name = "categoryId", length = 24)
 	public String getCategoryId() {
 		return this.categoryId;
 	}
 
-	public void setCategoryId(String categoryId) {
+	public void setCategoryId(
+			String categoryId) {
+
 		this.categoryId = categoryId;
 	}
 
@@ -164,15 +258,22 @@ public class Track implements java.io.Serializable {
 		return this.categoryInfo;
 	}
 
-	public void setCategoryInfo(Category categoryInfo) {
+	public void setCategoryInfo(
+			Category categoryInfo) {
+
 		this.categoryInfo = categoryInfo;
 	}
 
-	// Giữ compatibility cho FE cũ:
-	// FE vẫn có thể đọc track.category = "ncs", "kpop", "pop", ...
+	/*
+	 * Giữ compatibility cho Frontend cũ.
+	 *
+	 * Frontend vẫn có thể đọc:
+	 * track.category = "ncs", "kpop", "pop", ...
+	 */
 	@Transient
 	@JsonProperty("category")
 	public String getCategory() {
+
 		if (this.categoryInfo == null) {
 			return null;
 		}
@@ -180,12 +281,20 @@ public class Track implements java.io.Serializable {
 		return this.categoryInfo.getSlug();
 	}
 
+	/*
+	 * =========================
+	 * TRACK MEDIA
+	 * =========================
+	 */
+
 	@Column(name = "imgUrl", length = 500)
 	public String getImgUrl() {
 		return this.imgUrl;
 	}
 
-	public void setImgUrl(String imgUrl) {
+	public void setImgUrl(
+			String imgUrl) {
+
 		this.imgUrl = imgUrl;
 	}
 
@@ -194,7 +303,9 @@ public class Track implements java.io.Serializable {
 		return this.trackUrl;
 	}
 
-	public void setTrackUrl(String trackUrl) {
+	public void setTrackUrl(
+			String trackUrl) {
+
 		this.trackUrl = trackUrl;
 	}
 
@@ -203,7 +314,9 @@ public class Track implements java.io.Serializable {
 		return this.countLike;
 	}
 
-	public void setCountLike(Integer countLike) {
+	public void setCountLike(
+			Integer countLike) {
+
 		this.countLike = countLike;
 	}
 
@@ -212,7 +325,9 @@ public class Track implements java.io.Serializable {
 		return this.countPlay;
 	}
 
-	public void setCountPlay(Integer countPlay) {
+	public void setCountPlay(
+			Integer countPlay) {
+
 		this.countPlay = countPlay;
 	}
 
@@ -221,28 +336,54 @@ public class Track implements java.io.Serializable {
 		return this.uploaderId;
 	}
 
-	public void setUploaderId(String uploaderId) {
+	public void setUploaderId(
+			String uploaderId) {
+
 		this.uploaderId = uploaderId;
 	}
+
+	/*
+	 * =========================
+	 * ADMIN MODERATION
+	 * =========================
+	 */
 
 	@Column(name = "approvalStatus", length = 30)
 	public String getApprovalStatus() {
 		return this.approvalStatus;
 	}
 
-	public void setApprovalStatus(String approvalStatus) {
+	public void setApprovalStatus(
+			String approvalStatus) {
+
 		this.approvalStatus = approvalStatus;
 	}
 
-	@Column(name = "durationSeconds")
-	private Long durationSeconds;
+	@Column(name = "rejectionReason", length = 1000)
+	public String getRejectionReason() {
+		return this.rejectionReason;
+	}
+
+	public void setRejectionReason(
+			String rejectionReason) {
+
+		this.rejectionReason = rejectionReason;
+	}
+
+	/*
+	 * =========================
+	 * TRACK STATUS
+	 * =========================
+	 */
 
 	@Column(name = "isDeleted")
 	public Boolean getIsDeleted() {
 		return this.isDeleted;
 	}
 
-	public void setIsDeleted(Boolean isDeleted) {
+	public void setIsDeleted(
+			Boolean isDeleted) {
+
 		this.isDeleted = isDeleted;
 	}
 
@@ -251,7 +392,9 @@ public class Track implements java.io.Serializable {
 		return this.createdAt;
 	}
 
-	public void setCreatedAt(LocalDateTime createdAt) {
+	public void setCreatedAt(
+			LocalDateTime createdAt) {
+
 		this.createdAt = createdAt;
 	}
 
@@ -260,9 +403,189 @@ public class Track implements java.io.Serializable {
 		return this.updatedAt;
 	}
 
-	public void setUpdatedAt(LocalDateTime updatedAt) {
+	public void setUpdatedAt(
+			LocalDateTime updatedAt) {
+
 		this.updatedAt = updatedAt;
 	}
+
+	/*
+	 * =========================
+	 * AUDIO INFORMATION
+	 * =========================
+	 */
+
+	@Column(name = "audioHash", length = 64)
+	public String getAudioHash() {
+		return this.audioHash;
+	}
+
+	public void setAudioHash(
+			String audioHash) {
+
+		this.audioHash = audioHash;
+	}
+
+	@Column(name = "audioSize")
+	public Long getAudioSize() {
+		return this.audioSize;
+	}
+
+	public void setAudioSize(
+			Long audioSize) {
+
+		this.audioSize = audioSize;
+	}
+
+	@Column(name = "durationSeconds")
+	public Long getDurationSeconds() {
+		return this.durationSeconds;
+	}
+
+	public void setDurationSeconds(
+			Long durationSeconds) {
+
+		this.durationSeconds = durationSeconds;
+	}
+
+	/*
+	 * =========================
+	 * COPYRIGHT SCAN SUMMARY
+	 * =========================
+	 */
+
+	@Column(name = "processingStatus", length = 30)
+	public String getProcessingStatus() {
+		return this.processingStatus;
+	}
+
+	public void setProcessingStatus(
+			String processingStatus) {
+
+		this.processingStatus = processingStatus;
+	}
+
+	@Column(name = "copyrightStatus", length = 40)
+	public String getCopyrightStatus() {
+		return this.copyrightStatus;
+	}
+
+	public void setCopyrightStatus(
+			String copyrightStatus) {
+
+		this.copyrightStatus = copyrightStatus;
+	}
+
+	@Column(name = "copyrightMessage", length = 2000)
+	public String getCopyrightMessage() {
+		return this.copyrightMessage;
+	}
+
+	public void setCopyrightMessage(
+			String copyrightMessage) {
+
+		this.copyrightMessage = copyrightMessage;
+	}
+
+	@Column(name = "copyrightScore")
+	public Double getCopyrightScore() {
+		return this.copyrightScore;
+	}
+
+	public void setCopyrightScore(
+			Double copyrightScore) {
+
+		this.copyrightScore = copyrightScore;
+	}
+
+	@Column(name = "scannedAt")
+	public LocalDateTime getScannedAt() {
+		return this.scannedAt;
+	}
+
+	public void setScannedAt(
+			LocalDateTime scannedAt) {
+
+		this.scannedAt = scannedAt;
+	}
+
+	/*
+	 * =========================
+	 * AUDIO FINGERPRINT SUMMARY
+	 * =========================
+	 */
+
+	@Column(name = "fingerprintAlgorithm", length = 50)
+	public String getFingerprintAlgorithm() {
+		return this.fingerprintAlgorithm;
+	}
+
+	public void setFingerprintAlgorithm(
+			String fingerprintAlgorithm) {
+
+		this.fingerprintAlgorithm = fingerprintAlgorithm;
+	}
+
+	@Column(name = "fingerprintVersion", length = 50)
+	public String getFingerprintVersion() {
+		return this.fingerprintVersion;
+	}
+
+	public void setFingerprintVersion(
+			String fingerprintVersion) {
+
+		this.fingerprintVersion = fingerprintVersion;
+	}
+
+	@Column(name = "matchedTrackId", length = 24)
+	public String getMatchedTrackId() {
+		return this.matchedTrackId;
+	}
+
+	public void setMatchedTrackId(
+			String matchedTrackId) {
+
+		this.matchedTrackId = matchedTrackId;
+	}
+
+	@Column(name = "fingerprintScore")
+	public Double getFingerprintScore() {
+		return this.fingerprintScore;
+	}
+
+	public void setFingerprintScore(
+			Double fingerprintScore) {
+
+		this.fingerprintScore = fingerprintScore;
+	}
+
+	@Column(name = "matchedDurationRatio")
+	public Double getMatchedDurationRatio() {
+		return this.matchedDurationRatio;
+	}
+
+	public void setMatchedDurationRatio(
+			Double matchedDurationRatio) {
+
+		this.matchedDurationRatio = matchedDurationRatio;
+	}
+
+	@Column(name = "copyrightRiskLevel", length = 20)
+	public String getCopyrightRiskLevel() {
+		return this.copyrightRiskLevel;
+	}
+
+	public void setCopyrightRiskLevel(
+			String copyrightRiskLevel) {
+
+		this.copyrightRiskLevel = copyrightRiskLevel;
+	}
+
+	/*
+	 * =========================
+	 * RELATIONSHIPS
+	 * =========================
+	 */
 
 	@ManyToOne(fetch = FetchType.LAZY)
 	@JoinColumn(name = "uploaderId", insertable = false, updatable = false)
@@ -270,7 +593,9 @@ public class Track implements java.io.Serializable {
 		return this.uploader;
 	}
 
-	public void setUploader(User uploader) {
+	public void setUploader(
+			User uploader) {
+
 		this.uploader = uploader;
 	}
 
@@ -280,7 +605,9 @@ public class Track implements java.io.Serializable {
 		return this.comments;
 	}
 
-	public void setComments(Set<Comment> comments) {
+	public void setComments(
+			Set<Comment> comments) {
+
 		this.comments = comments;
 	}
 
@@ -290,7 +617,9 @@ public class Track implements java.io.Serializable {
 		return this.likedByUsers;
 	}
 
-	public void setLikedByUsers(Set<User> likedByUsers) {
+	public void setLikedByUsers(
+			Set<User> likedByUsers) {
+
 		this.likedByUsers = likedByUsers;
 	}
 
@@ -300,77 +629,9 @@ public class Track implements java.io.Serializable {
 		return this.playlists;
 	}
 
-	public void setPlaylists(Set<Playlist> playlists) {
+	public void setPlaylists(
+			Set<Playlist> playlists) {
+
 		this.playlists = playlists;
-	}
-
-	public String getAudioHash() {
-		return audioHash;
-	}
-
-	public void setAudioHash(String audioHash) {
-		this.audioHash = audioHash;
-	}
-
-	public Long getAudioSize() {
-		return audioSize;
-	}
-
-	public void setAudioSize(Long audioSize) {
-		this.audioSize = audioSize;
-	}
-
-	public String getProcessingStatus() {
-		return processingStatus;
-	}
-
-	public void setProcessingStatus(
-			String processingStatus) {
-		this.processingStatus = processingStatus;
-	}
-
-	public String getCopyrightStatus() {
-		return copyrightStatus;
-	}
-
-	public void setCopyrightStatus(
-			String copyrightStatus) {
-		this.copyrightStatus = copyrightStatus;
-	}
-
-	public String getCopyrightMessage() {
-		return copyrightMessage;
-	}
-
-	public void setCopyrightMessage(
-			String copyrightMessage) {
-		this.copyrightMessage = copyrightMessage;
-	}
-
-	public Double getCopyrightScore() {
-		return copyrightScore;
-	}
-
-	public void setCopyrightScore(
-			Double copyrightScore) {
-		this.copyrightScore = copyrightScore;
-	}
-
-	public LocalDateTime getScannedAt() {
-		return scannedAt;
-	}
-
-	public void setScannedAt(
-			LocalDateTime scannedAt) {
-		this.scannedAt = scannedAt;
-	}
-
-	public Long getDurationSeconds() {
-		return durationSeconds;
-	}
-
-	public void setDurationSeconds(
-			Long durationSeconds) {
-		this.durationSeconds = durationSeconds;
 	}
 }

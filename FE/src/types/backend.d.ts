@@ -287,26 +287,34 @@ declare global {
     uploader?: IUser | null;
 
     approvalStatus?: ApprovalStatus;
-
     rejectionReason?: string | null;
 
     durationSeconds?: number;
 
     audioHash?: string | null;
     audioSize?: number | null;
+
     processingStatus?: string | null;
     copyrightStatus?: string | null;
     copyrightMessage?: string | null;
     copyrightScore?: number | null;
+
+    /* AI COPYRIGHT RESULT */
+    fingerprintAlgorithm?: string | null;
+    fingerprintVersion?: string | null;
+    fingerprintScore?: number | null;
+
+    matchedDurationRatio?: number | null;
+    matchedTrackId?: string | null;
+    matchedTrackTitle?: string | null;
+
+    copyrightRiskLevel?: "LOW" | "MEDIUM" | "HIGH" | string | null;
 
     scannedAt?: string | null;
     isDeleted?: boolean;
     createdAt?: string;
     updatedAt?: string;
 
-    /**
-     * Alias/fallback media được một số component cũ sử dụng.
-     */
     image?: string;
     thumbnail?: string;
     audio?: string;
@@ -785,6 +793,12 @@ declare global {
     comments: number;
     earnings: number;
     fans: number;
+  }
+
+  interface IAiCopyrightResultDialogProps {
+    open: boolean;
+    track: ITrackTop | null;
+    onClose: () => void;
   }
 
   /* =========================

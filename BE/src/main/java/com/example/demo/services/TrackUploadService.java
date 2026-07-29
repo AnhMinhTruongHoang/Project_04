@@ -10,43 +10,120 @@ import com.example.demo.repositories.TrackRepository;
 @Service
 public class TrackUploadService {
 
-    @Autowired
-    private TrackRepository trackRepository;
+        @Autowired
+        private TrackRepository trackRepository;
 
-    @Autowired
-    private SubscriptionService subscriptionService;
+        @Autowired
+        private SubscriptionService subscriptionService;
 
-    @Transactional
-    public Track saveTrackWithQuota(
-            Track track,
-            long durationSeconds) {
+        /*
+         * =========================
+         * CREATE TRACK WITH QUOTA
+         * =========================
+         */
 
-        if (track == null) {
-            throw new IllegalArgumentException(
-                    "Track is required");
-        }
+        @Transactional
+        public Track saveTrackWithQuota(
+                        Track track,
+                        long durationSeconds) {
 
-        if (track.getUploaderId() == null
-                || track.getUploaderId()
-                        .isBlank()) {
+                validateTrack(track);
 
-            throw new IllegalArgumentException(
-                    "Track uploader is required");
+                if (durationSeconds < 0) {
+                        throw new IllegalArgumentException(
+                                        "Track duration cannot be negative");
+                }
+
+                /*
+                 * Trừ toàn bộ thời lượng của audio mới
+                 * trong cùng transaction với việc lưu Track.
+                 */
+                subscriptionService.consumeUploadQuota(
+                                track.getUploaderId(),
+                                durationSeconds);
+
+                /*
+                 * Nếu lưu Track lỗi:
+                 * transaction rollback luôn phần quota vừa trừ.
+                 */
+                return trackRepository.saveAndFlush(
+                                track);
         }
 
         /*
-         * Trừ quota trong cùng transaction
-         * với việc lưu Track.
+         * =========================
+         * UPDATE TRACK WITH QUOTA
+         * =========================
          */
-        subscriptionService.consumeUploadQuota(
-                track.getUploaderId(),
-                durationSeconds);
+
+        @Transactional
+        public Track updateTrackWithQuotaAdjustment(
+                        Track track,
+                        long oldDurationSeconds,
+                        long newDurationSeconds) {
+
+                validateTrack(track);
+
+                if (oldDurationSeconds < 0) {
+                        throw new IllegalArgumentException(
+                                        "Old track duration cannot be negative");
+                }
+
+                if (newDurationSeconds < 0) {
+                        throw new IllegalArgumentException(
+                                        "New track duration cannot be negative");
+                }
+
+                /*
+                 * Chỉ điều chỉnh phần thời lượng chênh lệch.
+                 *
+                 * Ví dụ:
+                 *
+                 * Audio cũ: 300 giây
+                 * Audio mới: 420 giây
+                 * Delta: +120 giây
+                 * → trừ thêm 120 giây quota.
+                 *
+                 * Audio cũ: 300 giây
+                 * Audio mới: 180 giây
+                 * Delta: -120 giây
+                 * → hoàn lại 120 giây quota.
+                 */
+                long durationDeltaSeconds = Math.subtractExact(
+                                newDurationSeconds,
+                                oldDurationSeconds);
+
+                subscriptionService.adjustUploadQuota(
+                                track.getUploaderId(),
+                                durationDeltaSeconds);
+
+                /*
+                 * Nếu save Track lỗi:
+                 * quota adjustment cũng rollback.
+                 */
+                return trackRepository.saveAndFlush(
+                                track);
+        }
 
         /*
-         * Nếu save track lỗi:
-         * transaction rollback luôn quota.
+         * =========================
+         * VALIDATION
+         * =========================
          */
-        return trackRepository.saveAndFlush(
-                track);
-    }
+
+        private void validateTrack(
+                        Track track) {
+
+                if (track == null) {
+                        throw new IllegalArgumentException(
+                                        "Track is required");
+                }
+
+                if (track.getUploaderId() == null
+                                || track.getUploaderId().isBlank()) {
+
+                        throw new IllegalArgumentException(
+                                        "Track uploader is required");
+                }
+        }
 }

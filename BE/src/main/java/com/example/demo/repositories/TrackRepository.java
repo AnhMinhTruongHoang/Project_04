@@ -52,12 +52,28 @@ public interface TrackRepository extends JpaRepository<Track, String> {
 
 	//// count songs in category
 	long countByCategoryIdAndIsDeletedFalse(String categoryId);
+	/*
+	 * =========================
+	 * AUDIO SHA-256 DUPLICATE CHECK
+	 * =========================
+	 */
 
 	boolean existsByAudioHashAndIsDeletedFalse(
 			String audioHash);
 
 	Track findFirstByAudioHashAndIsDeletedFalse(
 			String audioHash);
+
+	/*
+	 * Dùng khi cập nhật audio của một track.
+	 *
+	 * Loại chính track hiện tại khỏi truy vấn để user có thể:
+	 * - giữ lại đúng audio cũ;
+	 * - cập nhật metadata mà không bị báo trùng chính nó.
+	 */
+	Track findFirstByAudioHashAndIsDeletedFalseAndIdNot(
+			String audioHash,
+			String excludedTrackId);
 
 	//// slider playlist (Hidden Gems sẽ ưu tiên bài ít lượt nghe nhưng có lượt
 	//// thích tốt, sau đó ưu tiên bài mới hơn.)

@@ -43,6 +43,24 @@ public class TrackDTO {
 
 	private LocalDateTime scannedAt;
 
+	/*
+	 * =========================
+	 * AUDIO FINGERPRINT RESULT
+	 * =========================
+	 */
+
+	private String fingerprintAlgorithm;
+
+	private String fingerprintVersion;
+
+	private String matchedTrackId;
+
+	private Double fingerprintScore;
+
+	private Double matchedDurationRatio;
+
+	private String copyrightRiskLevel;
+
 	///
 
 	public TrackDTO() {
@@ -269,5 +287,71 @@ public class TrackDTO {
 	public void setScannedAt(
 			LocalDateTime scannedAt) {
 		this.scannedAt = scannedAt;
+	}
+
+	/*
+	 * =========================
+	 * AUDIO FINGERPRINT RESULT
+	 * =========================
+	 */
+
+	public String getFingerprintAlgorithm() {
+		return fingerprintAlgorithm;
+	}
+
+	public void setFingerprintAlgorithm(
+			String fingerprintAlgorithm) {
+
+		this.fingerprintAlgorithm = fingerprintAlgorithm;
+	}
+
+	public String getFingerprintVersion() {
+		return fingerprintVersion;
+	}
+
+	public void setFingerprintVersion(
+			String fingerprintVersion) {
+
+		this.fingerprintVersion = fingerprintVersion;
+	}
+
+	public String getMatchedTrackId() {
+		return matchedTrackId;
+	}
+
+	public void setMatchedTrackId(
+			String matchedTrackId) {
+
+		this.matchedTrackId = matchedTrackId;
+	}
+
+	public Double getFingerprintScore() {
+		return fingerprintScore;
+	}
+
+	public void setFingerprintScore(
+			Double fingerprintScore) {
+
+		this.fingerprintScore = fingerprintScore;
+	}
+
+	public Double getMatchedDurationRatio() {
+		return matchedDurationRatio;
+	}
+
+	public void setMatchedDurationRatio(
+			Double matchedDurationRatio) {
+
+		this.matchedDurationRatio = matchedDurationRatio;
+	}
+
+	public String getCopyrightRiskLevel() {
+		return copyrightRiskLevel;
+	}
+
+	public void setCopyrightRiskLevel(
+			String copyrightRiskLevel) {
+
+		this.copyrightRiskLevel = copyrightRiskLevel;
 	}
 }

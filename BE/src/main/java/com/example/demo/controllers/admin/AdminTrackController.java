@@ -24,6 +24,9 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.bind.annotation.PostMapping;
+import com.example.demo.services.CopyrightScanService;
+import com.example.demo.services.CopyrightScanService.CopyrightScanResult;
 
 import com.example.demo.dtos.RejectTrackDTO;
 import com.example.demo.entities.Category;
@@ -68,6 +71,9 @@ public class AdminTrackController {
 
 	@Autowired
 	private CategoryRepository categoryRepository;
+
+	@Autowired
+	private CopyrightScanService copyrightScanService;
 
 	// =====================================================
 	// GET TRACKS WITH PAGINATION
@@ -420,6 +426,100 @@ public class AdminTrackController {
 	}
 
 	// =====================================================
+	// AI-ASSISTED COPYRIGHT SCAN
+	// =====================================================
+
+	@PostMapping({
+			"/copyright-scan/{id}",
+			"/{id}/copyright-scan"
+	})
+	public ResponseEntity<?> scanTrackCopyright(
+			@PathVariable String id,
+			HttpServletRequest request) {
+
+		try {
+			User admin = getCurrentAdmin(
+					request);
+
+			if (admin == null) {
+
+				return ResponseEntity
+						.status(403)
+						.body(
+								new ApiResponse<>(
+										403,
+										"Access denied",
+										null));
+			}
+
+			Track track = trackRepository
+					.findById(id)
+					.orElse(null);
+
+			if (track == null
+					|| Boolean.TRUE.equals(
+							track.getIsDeleted())) {
+
+				return ResponseEntity
+						.status(404)
+						.body(
+								new ApiResponse<>(
+										404,
+										"Track not found",
+										null));
+			}
+
+			String copyrightStatus = String.valueOf(
+					track.getCopyrightStatus());
+
+			if ("SCANNING".equalsIgnoreCase(
+					copyrightStatus)) {
+
+				return ResponseEntity
+						.status(409)
+						.body(
+								new ApiResponse<>(
+										409,
+										"Copyright scan is already running",
+										null));
+			}
+
+			CopyrightScanResult result = copyrightScanService.scanTrack(
+					id);
+
+			return ResponseEntity.ok(
+					new ApiResponse<>(
+							200,
+							"Copyright scan completed",
+							result));
+
+		} catch (IllegalArgumentException e) {
+
+			return ResponseEntity
+					.badRequest()
+					.body(
+							new ApiResponse<>(
+									400,
+									e.getMessage(),
+									null));
+
+		} catch (Exception e) {
+
+			e.printStackTrace();
+
+			return ResponseEntity
+					.internalServerError()
+					.body(
+							new ApiResponse<>(
+									500,
+									e.getMessage() == null
+											? "Copyright scan failed"
+											: e.getMessage(),
+									null));
+		}
+	}
+
+	// =====================================================
 	// APPROVE TRACK
 	// =====================================================
 
@@ -768,6 +868,34 @@ public class AdminTrackController {
 		result.put(
 				"audioSize",
 				track.getAudioSize());
+
+		result.put(
+				"durationSeconds",
+				track.getDurationSeconds());
+
+		result.put(
+				"fingerprintAlgorithm",
+				track.getFingerprintAlgorithm());
+
+		result.put(
+				"fingerprintVersion",
+				track.getFingerprintVersion());
+
+		result.put(
+				"matchedTrackId",
+				track.getMatchedTrackId());
+
+		result.put(
+				"fingerprintScore",
+				track.getFingerprintScore());
+
+		result.put(
+				"matchedDurationRatio",
+				track.getMatchedDurationRatio());
+
+		result.put(
+				"copyrightRiskLevel",
+				track.getCopyrightRiskLevel());
 
 		result.put(
 				"scannedAt",

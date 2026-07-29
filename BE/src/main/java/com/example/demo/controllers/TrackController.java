@@ -346,6 +346,30 @@ public class TrackController {
 		dto.setCopyrightScore(track.getCopyrightScore());
 		dto.setScannedAt(track.getScannedAt());
 
+		/*
+		 * =========================
+		 * AUDIO FINGERPRINT RESULT
+		 * =========================
+		 */
+
+		dto.setFingerprintAlgorithm(
+				track.getFingerprintAlgorithm());
+
+		dto.setFingerprintVersion(
+				track.getFingerprintVersion());
+
+		dto.setMatchedTrackId(
+				track.getMatchedTrackId());
+
+		dto.setFingerprintScore(
+				track.getFingerprintScore());
+
+		dto.setMatchedDurationRatio(
+				track.getMatchedDurationRatio());
+
+		dto.setCopyrightRiskLevel(
+				track.getCopyrightRiskLevel());
+
 		User uploader = null;
 
 		if (track.getUploaderId() != null) {
@@ -983,16 +1007,92 @@ public class TrackController {
 			}
 
 			// =====================================================
-			// PREPARE CLOUDINARY MEDIA UPDATE
+			// PREPARE AUDIO VALIDATION
 			// =====================================================
 
 			String oldImageUrl = track.getImgUrl();
 
 			String oldAudioUrl = track.getTrackUrl();
 
+			long oldDurationSeconds = track.getDurationSeconds() == null
+					? 0L
+					: track.getDurationSeconds();
+
+			boolean hasNewImage = image != null
+					&& !image.isEmpty();
+
+			boolean hasNewAudio = audio != null
+					&& !audio.isEmpty();
+
+			String preparedAudioHash = null;
+
+			long preparedDurationSeconds = oldDurationSeconds;
+
+			/*
+			 * Kiểm tra audio mới trước khi upload Cloudinary.
+			 */
+			if (hasNewAudio) {
+
+				preparedAudioHash = calculateSha256(
+						audio);
+
+				Track duplicatedTrack = trackRepository
+						.findFirstByAudioHashAndIsDeletedFalseAndIdNot(
+								preparedAudioHash,
+								track.getId());
+
+				if (duplicatedTrack != null) {
+
+					Map<String, Object> duplicateData = new LinkedHashMap<>();
+
+					duplicateData.put(
+							"trackId",
+							duplicatedTrack.getId());
+
+					duplicateData.put(
+							"title",
+							duplicatedTrack.getTitle());
+
+					duplicateData.put(
+							"audioHash",
+							preparedAudioHash);
+
+					return ResponseEntity
+							.status(409)
+							.body(
+									new ApiResponse<>(
+											409,
+											"Audio file already exists",
+											duplicateData));
+				}
+
+				try {
+
+					preparedDurationSeconds = AudioMetadataHelper
+							.getDurationSeconds(
+									audio);
+
+				} catch (IllegalArgumentException metadataError) {
+
+					return ResponseEntity
+							.badRequest()
+							.body(
+									new ApiResponse<>(
+											400,
+											metadataError.getMessage(),
+											null));
+				}
+			}
+
+			// =====================================================
+			// UPLOAD NEW MEDIA AND SAVE TRACK
+			// =====================================================
+
 			String newImageUrl = null;
 
 			String newAudioUrl = null;
+
+			Track savedTrack;
 
 			try {
 
@@ -1000,8 +1100,7 @@ public class TrackController {
 				// UPLOAD NEW IMAGE
 				// =================================================
 
-				if (image != null
-						&& !image.isEmpty()) {
+				if (hasNewImage) {
 
 					newImageUrl = cloudinaryService
 							.uploadImage(
@@ -1015,8 +1114,7 @@ public class TrackController {
 				// UPLOAD NEW AUDIO
 				// =================================================
 
-				if (audio != null
-						&& !audio.isEmpty()) {
+				if (hasNewAudio) {
 
 					newAudioUrl = cloudinaryService
 							.uploadAudio(
@@ -1024,83 +1122,174 @@ public class TrackController {
 
 					track.setTrackUrl(
 							newAudioUrl);
-				}
 
-				// =================================================
-				// SAVE DATABASE
-				// =================================================
+					track.setAudioHash(
+							preparedAudioHash);
+
+					track.setAudioSize(
+							audio.getSize());
+
+					track.setDurationSeconds(
+							preparedDurationSeconds);
+
+					/*
+					 * Audio đã thay đổi nên toàn bộ kết quả
+					 * copyright trước đó không còn giá trị.
+					 */
+					track.setProcessingStatus(
+							"PROCESSING");
+
+					track.setCopyrightStatus(
+							"PENDING");
+
+					track.setCopyrightMessage(
+							"Waiting for copyright scan");
+
+					track.setCopyrightScore(
+							null);
+
+					track.setScannedAt(
+							null);
+
+					track.setFingerprintAlgorithm(
+							null);
+
+					track.setFingerprintVersion(
+							null);
+
+					track.setMatchedTrackId(
+							null);
+
+					track.setFingerprintScore(
+							null);
+
+					track.setMatchedDurationRatio(
+							null);
+
+					track.setCopyrightRiskLevel(
+							null);
+
+					/*
+					 * Bất kỳ ai thay audio đều phải đưa track
+					 * về trạng thái chờ Admin duyệt lại.
+					 */
+					track.setApprovalStatus(
+							TRACK_PENDING);
+
+					track.setRejectionReason(
+							null);
+				}
 
 				track.setUpdatedAt(
 						LocalDateTime.now());
 
-				Track savedTrack = trackRepository.save(
-						track);
+				// =================================================
+				// SAVE WITH QUOTA ADJUSTMENT
+				// =================================================
 
-				// =================================================
-				// DELETE OLD CLOUDINARY ASSETS AFTER DB SUCCESS
-				// =================================================
+				if (hasNewAudio) {
+
+					savedTrack = trackUploadService
+							.updateTrackWithQuotaAdjustment(
+									track,
+									oldDurationSeconds,
+									preparedDurationSeconds);
+
+				} else {
+
+					savedTrack = trackRepository
+							.saveAndFlush(
+									track);
+				}
+
+			} catch (UploadQuotaExceededException quotaError) {
 
 				/*
-				 * Chỉ xóa media cũ sau khi database save thành công.
-				 *
-				 * Nếu URL cũ là filename local hoặc localhost,
-				 * CloudinaryService.delete...() sẽ tự bỏ qua.
+				 * Database transaction đã rollback.
+				 * Xóa media mới vừa upload để tránh asset rác.
 				 */
+				safeDeleteImage(
+						newImageUrl);
 
-				if (newImageUrl != null) {
+				safeDeleteAudio(
+						newAudioUrl);
 
-					cloudinaryService
-							.deleteImage(
-									oldImageUrl);
-				}
+				Map<String, Object> quotaData = new LinkedHashMap<>();
 
-				if (newAudioUrl != null) {
+				quotaData.put(
+						"planCode",
+						quotaError.getPlanCode());
 
-					cloudinaryService
-							.deleteAudio(
-									oldAudioUrl);
-				}
+				quotaData.put(
+						"requiredSeconds",
+						quotaError.getRequiredSeconds());
 
-				// =================================================
-				// RESPONSE
-				// =================================================
+				quotaData.put(
+						"remainingSeconds",
+						quotaError.getRemainingSeconds());
 
-				return ResponseEntity.ok(
-						new ApiResponse<>(
-								200,
-								"Update track success",
-								toTrackDTO(
-										savedTrack)));
+				quotaData.put(
+						"requiredMinutes",
+						Math.ceil(
+								quotaError.getRequiredSeconds()
+										/ 60.0));
+
+				quotaData.put(
+						"remainingMinutes",
+						quotaError.getRemainingSeconds()
+								/ 60.0);
+
+				return ResponseEntity
+						.status(403)
+						.body(
+								new ApiResponse<>(
+										403,
+										quotaError.getMessage(),
+										quotaData));
 
 			} catch (Exception updateError) {
 
-				// =================================================
-				// CLEANUP NEW CLOUDINARY ASSETS ON ERROR
-				// =================================================
-
 				/*
-				 * Nếu upload hoặc database update lỗi:
-				 *
-				 * - Xóa media mới vừa upload.
-				 * - Giữ nguyên media cũ.
+				 * Upload hoặc database save lỗi.
+				 * Giữ nguyên media cũ và xóa media mới.
 				 */
+				safeDeleteImage(
+						newImageUrl);
 
-				if (newImageUrl != null) {
-
-					cloudinaryService
-							.deleteImage(
-									newImageUrl);
-				}
-
-				if (newAudioUrl != null) {
-
-					cloudinaryService
-							.deleteAudio(
-									newAudioUrl);
-				}
+				safeDeleteAudio(
+						newAudioUrl);
 
 				throw updateError;
 			}
+
+			// =====================================================
+			// DELETE REPLACED MEDIA AFTER DATABASE SUCCESS
+			// =====================================================
+
+			if (newImageUrl != null) {
+
+				safeDeleteImage(
+						oldImageUrl);
+			}
+
+			if (newAudioUrl != null) {
+
+				safeDeleteAudio(
+						oldAudioUrl);
+			}
+
+			// =====================================================
+			// RESPONSE
+			// =====================================================
+
+			return ResponseEntity.ok(
+					new ApiResponse<>(
+							200,
+							hasNewAudio
+									? "Track updated and waiting for copyright scan"
+									: "Update track success",
+							toTrackDTO(
+									savedTrack)));
 
 		} catch (Exception e) {
 
@@ -1602,6 +1791,54 @@ public class TrackController {
 			throw new IllegalStateException(
 					"Cannot calculate audio SHA-256",
 					e);
+		}
+	}
+
+	/*
+	 * =========================
+	 * SAFE CLOUDINARY CLEANUP
+	 * =========================
+	 */
+
+	private void safeDeleteImage(
+			String imageUrl) {
+
+		if (imageUrl == null
+				|| imageUrl.isBlank()) {
+
+			return;
+		}
+
+		try {
+			cloudinaryService.deleteImage(
+					imageUrl);
+
+		} catch (Exception cleanupError) {
+
+			System.err.println(
+					"Cannot delete image from Cloudinary: "
+							+ cleanupError.getMessage());
+		}
+	}
+
+	private void safeDeleteAudio(
+			String audioUrl) {
+
+		if (audioUrl == null
+				|| audioUrl.isBlank()) {
+
+			return;
+		}
+
+		try {
+			cloudinaryService.deleteAudio(
+					audioUrl);
+
+		} catch (Exception cleanupError) {
+
+			System.err.println(
+					"Cannot delete audio from Cloudinary: "
+							+ cleanupError.getMessage());
 		}
 	}
 

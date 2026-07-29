@@ -1103,6 +1103,127 @@ public class SubscriptionService {
                                 usage);
         }
 
+        /*
+         * =========================
+         * ADJUST UPLOAD QUOTA
+         * =========================
+         */
+
+        /*
+         * Điều chỉnh quota khi user thay audio của một track.
+         *
+         * durationDeltaSeconds > 0:
+         * Audio mới dài hơn audio cũ → trừ thêm phần chênh lệch.
+         *
+         * durationDeltaSeconds < 0:
+         * Audio mới ngắn hơn audio cũ → hoàn lại phần chênh lệch.
+         *
+         * durationDeltaSeconds = 0:
+         * Không thay đổi quota.
+         */
+        @Transactional(propagation = Propagation.MANDATORY)
+        public void adjustUploadQuota(
+                        String userId,
+                        long durationDeltaSeconds) {
+
+                if (userId == null
+                                || userId.isBlank()) {
+
+                        throw new IllegalArgumentException(
+                                        "User ID is required");
+                }
+
+                if (durationDeltaSeconds == 0) {
+                        return;
+                }
+
+                /*
+                 * Khóa user để tránh hai request upload/update
+                 * cùng lúc làm sai uploadedSeconds.
+                 */
+                lockUser(userId);
+
+                UserSubscription subscription = getOrCreateCurrentSubscription(
+                                userId);
+
+                SubscriptionPlan plan = getPlan(
+                                subscription.getPlanId());
+
+                SubscriptionUsage usage = getOrCreateUsage(
+                                subscription);
+
+                long uploadedSeconds = usage.getUploadedSeconds() == null
+                                ? 0L
+                                : usage.getUploadedSeconds();
+
+                /*
+                 * Audio mới dài hơn audio cũ.
+                 */
+                if (durationDeltaSeconds > 0) {
+
+                        boolean unlimitedUploads = Boolean.TRUE.equals(
+                                        plan.getUnlimitedUploads());
+
+                        long uploadLimitSeconds = plan.getUploadMinutesLimit() == null
+                                        ? 0L
+                                        : plan.getUploadMinutesLimit()
+                                                        * 60L;
+
+                        long remainingSeconds = unlimitedUploads
+                                        ? Long.MAX_VALUE
+                                        : Math.max(
+                                                        uploadLimitSeconds
+                                                                        - uploadedSeconds,
+                                                        0L);
+
+                        if (!unlimitedUploads
+                                        && durationDeltaSeconds > remainingSeconds) {
+
+                                throw new UploadQuotaExceededException(
+                                                plan.getCode(),
+                                                durationDeltaSeconds,
+                                                remainingSeconds);
+                        }
+
+                        usage.setUploadedSeconds(
+                                        Math.addExact(
+                                                        uploadedSeconds,
+                                                        durationDeltaSeconds));
+                }
+
+                /*
+                 * Audio mới ngắn hơn audio cũ.
+                 */
+                else {
+
+                        long releasedSeconds;
+
+                        if (durationDeltaSeconds == Long.MIN_VALUE) {
+
+                                releasedSeconds = Long.MAX_VALUE;
+
+                        } else {
+
+                                releasedSeconds = Math.abs(
+                                                durationDeltaSeconds);
+                        }
+
+                        usage.setUploadedSeconds(
+                                        Math.max(
+                                                        uploadedSeconds
+                                                                        - Math.min(
+                                                                                        uploadedSeconds,
+                                                                                        releasedSeconds),
+                                                        0L));
+                }
+
+                usage.setUpdatedAt(
+                                LocalDateTime.now());
+
+                subscriptionUsageRepository.save(
+                                usage);
+        }
+
         /// overview chart
         private static class InsightBucket {
 

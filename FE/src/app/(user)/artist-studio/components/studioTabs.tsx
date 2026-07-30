@@ -3,19 +3,18 @@
 import Box from "@mui/material/Box";
 import Typography from "@mui/material/Typography";
 
+type StudioTabItem = {
+  label: string;
+  value: StudioTab;
+};
+
 type Props = {
-  tabs: {
-    label: string;
-    value: StudioTab;
-  }[];
+  tabs: StudioTabItem[];
   activeTab: StudioTab;
   onChange: (value: StudioTab) => void;
 };
 
-export const studioTabs: {
-  label: string;
-  value: StudioTab;
-}[] = [
+export const studioTabs: StudioTabItem[] = [
   {
     label: "SoundClone Tracks",
     value: "tracks",
@@ -37,8 +36,8 @@ export const studioTabs: {
     value: "earnings",
   },
   {
-    value: "subscription",
     label: "Subscription",
+    value: "subscription",
   },
   {
     label: "Benefits",
@@ -49,12 +48,20 @@ export const studioTabs: {
 const StudioTabs = ({ tabs, activeTab, onChange }: Props) => {
   return (
     <Box
+      role="tablist"
+      aria-label="Artist Studio sections"
       sx={{
         display: "flex",
-        alignItems: "center",
-        gap: { xs: 2, md: 4 },
+        alignItems: "stretch",
+        gap: {
+          xs: 2.5,
+          md: 4,
+        },
+        minHeight: 46,
         borderBottom: "1px solid rgba(255,255,255,0.12)",
         overflowX: "auto",
+        overflowY: "hidden",
+        scrollbarWidth: "none",
         "&::-webkit-scrollbar": {
           display: "none",
         },
@@ -66,20 +73,28 @@ const StudioTabs = ({ tabs, activeTab, onChange }: Props) => {
         return (
           <Box
             key={tab.value}
+            id={`artist-studio-tab-${tab.value}`}
+            role="tab"
+            aria-selected={active}
+            aria-controls={`artist-studio-panel-${tab.value}`}
+            tabIndex={active ? 0 : -1}
             component="button"
+            type="button"
             onClick={() => onChange(tab.value)}
             sx={{
               appearance: "none",
-              border: "none",
+              minHeight: 46,
+              border: 0,
+              borderRadius: 0,
               background: "transparent",
               color: active ? "#ffffff" : "#9CA3AF",
-              fontSize: 14,
-              fontWeight: 900,
               cursor: "pointer",
-              pb: 1.8,
               px: 0,
+              py: 0,
+              flexShrink: 0,
               whiteSpace: "nowrap",
               position: "relative",
+              transition: "color 150ms ease",
               "&::after": {
                 content: '""',
                 position: "absolute",
@@ -87,14 +102,26 @@ const StudioTabs = ({ tabs, activeTab, onChange }: Props) => {
                 right: 0,
                 bottom: -1,
                 height: 2,
-                background: active ? "#ffffff" : "transparent",
+                backgroundColor: active ? "#ffffff" : "transparent",
+                transition: "background-color 150ms ease",
               },
               "&:hover": {
                 color: "#ffffff",
               },
+              "&:focus-visible": {
+                outline: "2px solid #FF5500",
+                outlineOffset: "-2px",
+              },
             }}
           >
-            <Typography component="span" sx={{ fontSize: 14, fontWeight: 900 }}>
+            <Typography
+              component="span"
+              sx={{
+                fontSize: 14,
+                fontWeight: active ? 950 : 800,
+                lineHeight: 1,
+              }}
+            >
               {tab.label}
             </Typography>
           </Box>

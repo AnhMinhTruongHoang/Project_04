@@ -9,16 +9,17 @@ import CircularProgress from "@mui/material/CircularProgress";
 import Tooltip from "@mui/material/Tooltip";
 import Typography from "@mui/material/Typography";
 
-import EqualizerRoundedIcon from "@mui/icons-material/EqualizerRounded";
-import PaidRoundedIcon from "@mui/icons-material/PaidRounded";
-import GroupsRoundedIcon from "@mui/icons-material/GroupsRounded";
-import WorkspacePremiumRoundedIcon from "@mui/icons-material/WorkspacePremiumRounded";
-import FavoriteRoundedIcon from "@mui/icons-material/FavoriteRounded";
 import CommentRoundedIcon from "@mui/icons-material/CommentRounded";
+import EqualizerRoundedIcon from "@mui/icons-material/EqualizerRounded";
+import ErrorOutlineRoundedIcon from "@mui/icons-material/ErrorOutlineRounded";
+import FavoriteRoundedIcon from "@mui/icons-material/FavoriteRounded";
 import FileDownloadRoundedIcon from "@mui/icons-material/FileDownloadRounded";
-import RepeatRoundedIcon from "@mui/icons-material/RepeatRounded";
-import PlayCircleFilledRoundedIcon from "@mui/icons-material/PlayCircleFilledRounded";
+import GroupsRoundedIcon from "@mui/icons-material/GroupsRounded";
 import LockRoundedIcon from "@mui/icons-material/LockRounded";
+import PaidRoundedIcon from "@mui/icons-material/PaidRounded";
+import PlayCircleFilledRoundedIcon from "@mui/icons-material/PlayCircleFilledRounded";
+import RepeatRoundedIcon from "@mui/icons-material/RepeatRounded";
+import WorkspacePremiumRoundedIcon from "@mui/icons-material/WorkspacePremiumRounded";
 
 type ArtistStudioStatsData = {
   plays: number;
@@ -33,6 +34,7 @@ type ArtistStudioStatsData = {
 type Props = {
   plan: ISubscriptionPlan | null;
   loading?: boolean;
+  error?: string;
   stats?: Partial<ArtistStudioStatsData>;
 };
 
@@ -121,11 +123,17 @@ const formatNumber = (value?: number) => {
 };
 
 const getInsightsLabel = (plan?: ISubscriptionPlan | null) => {
-  const days = Number(plan?.advancedInsightsDays || 0);
-
-  if (plan?.code === "ARTIST_PRO" || days <= 0) {
+  if (plan?.code === "ARTIST_PRO") {
     return "Unlimited";
   }
+
+  const fallbackDays = plan?.code === "ARTIST" ? 30 : 7;
+  const configuredDays = Number(plan?.advancedInsightsDays);
+
+  const days =
+    Number.isFinite(configuredDays) && configuredDays > 0
+      ? configuredDays
+      : fallbackDays;
 
   return `${days} days`;
 };
@@ -166,11 +174,12 @@ const getRequiredPlan = (key: StatKey) => {
 const ArtistStudioStats = ({
   plan,
   loading = false,
+  error = "",
   stats: providedStats,
 }: Props) => {
   const router = useRouter();
 
-  const stats = {
+  const stats: ArtistStudioStatsData = {
     ...defaultStats,
     ...providedStats,
   };
@@ -192,6 +201,7 @@ const ArtistStudioStats = ({
   if (loading) {
     return (
       <Box
+        aria-label="Loading Artist Studio statistics"
         sx={{
           minHeight: 180,
           borderRadius: "16px",
@@ -209,6 +219,59 @@ const ArtistStudioStats = ({
             color: "#FF5500",
           }}
         />
+      </Box>
+    );
+  }
+
+  if (error) {
+    return (
+      <Box
+        role="alert"
+        sx={{
+          minHeight: 180,
+          borderRadius: "16px",
+          border: "1px solid rgba(255,85,0,0.24)",
+          background:
+            "linear-gradient(180deg, rgba(28,18,14,0.98), rgba(11,13,14,0.98))",
+          px: 3,
+          py: 4,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          textAlign: "center",
+        }}
+      >
+        <Box>
+          <ErrorOutlineRoundedIcon
+            sx={{
+              color: "#FF5500",
+              fontSize: 30,
+              mb: 1,
+            }}
+          />
+
+          <Typography
+            sx={{
+              color: "#ffffff",
+              fontSize: 15,
+              fontWeight: 900,
+            }}
+          >
+            Artist Studio stats are unavailable
+          </Typography>
+
+          <Typography
+            sx={{
+              mt: 0.7,
+              color: "#9CA3AF",
+              fontSize: 12,
+              fontWeight: 700,
+              overflowWrap: "anywhere",
+            }}
+          >
+            {error}
+          </Typography>
+        </Box>
       </Box>
     );
   }
@@ -252,6 +315,7 @@ const ArtistStudioStats = ({
           }}
         >
           <Typography
+            component="h1"
             sx={{
               color: "#ffffff",
               fontSize: {
@@ -331,7 +395,6 @@ const ArtistStudioStats = ({
       >
         {statItems.map((item, index) => {
           const unlocked = isUnlocked(item.key, planCode);
-
           const requiredPlan = getRequiredPlan(item.key);
 
           return (
@@ -352,6 +415,11 @@ const ArtistStudioStats = ({
                     router.push("/plans");
                   }
                 }}
+                aria-label={
+                  unlocked
+                    ? `${item.label}: ${getStatValue(item.key)}`
+                    : `${item.label} requires ${requiredPlan}`
+                }
                 sx={{
                   appearance: "none",
                   width: "100%",
@@ -361,11 +429,9 @@ const ArtistStudioStats = ({
                     md: 1.6,
                   },
                   py: 1.2,
-
                   borderTop: 0,
                   borderBottom: 0,
                   borderLeft: 0,
-
                   borderRight: {
                     xs: "none",
                     lg:
@@ -373,34 +439,30 @@ const ArtistStudioStats = ({
                         ? "1px solid rgba(255,255,255,0.12)"
                         : "none",
                   },
-
                   borderRadius: {
                     xs: "8px",
                     lg: 0,
                   },
-
                   backgroundColor: unlocked
                     ? "transparent"
                     : "rgba(255,255,255,0.018)",
-
                   color: unlocked ? "#ffffff" : "#676e77",
-
                   cursor: unlocked ? "default" : "pointer",
-
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
-
                   textAlign: "center",
-
-                  transition: "background-color 160ms ease, color 160ms ease",
-
+                  transition:
+                    "background-color 160ms ease, color 160ms ease",
                   "&:hover": {
                     color: unlocked ? "#ffffff" : "#FF5500",
-
                     backgroundColor: unlocked
                       ? "rgba(255,255,255,0.025)"
                       : "rgba(255,85,0,0.06)",
+                  },
+                  "&:focus-visible": {
+                    outline: "2px solid #FF5500",
+                    outlineOffset: "-2px",
                   },
                 }}
               >
@@ -413,10 +475,10 @@ const ArtistStudioStats = ({
                     <Box
                       sx={{
                         color:
-                          item.key === "earnings" || item.key === "benefits"
+                          item.key === "earnings" ||
+                          item.key === "benefits"
                             ? "#f4c542"
                             : "#ffffff",
-
                         "& svg": {
                           fontSize: 22,
                         },
@@ -429,12 +491,11 @@ const ArtistStudioStats = ({
                       sx={{
                         mt: 0.45,
                         color:
-                          item.key === "benefits" && planCode === "ARTIST_PRO"
+                          item.key === "benefits" &&
+                          planCode === "ARTIST_PRO"
                             ? "#f4c542"
                             : "#ffffff",
-
                         fontSize: item.key === "insights" ? 13 : 19,
-
                         fontWeight: 950,
                         lineHeight: 1.1,
                       }}
@@ -465,7 +526,6 @@ const ArtistStudioStats = ({
                       <Box
                         sx={{
                           color: "#5f6670",
-
                           "& svg": {
                             fontSize: 23,
                           },
@@ -479,9 +539,7 @@ const ArtistStudioStats = ({
                           position: "absolute",
                           right: -8,
                           bottom: -3,
-
                           color: "#8B949E",
-
                           fontSize: 13,
                         }}
                       />

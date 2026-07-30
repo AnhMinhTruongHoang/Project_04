@@ -1,5 +1,6 @@
 "use client";
 
+import type { ReactNode } from "react";
 import { useMemo, useState } from "react";
 
 import { useRouter } from "next/navigation";
@@ -14,32 +15,44 @@ import Tooltip from "@mui/material/Tooltip";
 import Typography from "@mui/material/Typography";
 
 import AddRoundedIcon from "@mui/icons-material/AddRounded";
-import PublicRoundedIcon from "@mui/icons-material/PublicRounded";
 import AttachMoneyRoundedIcon from "@mui/icons-material/AttachMoneyRounded";
 import LockRoundedIcon from "@mui/icons-material/LockRounded";
+import PublicRoundedIcon from "@mui/icons-material/PublicRounded";
 import WorkspacePremiumRoundedIcon from "@mui/icons-material/WorkspacePremiumRounded";
 
 type Props = {
   plan: ISubscriptionPlan | null;
   loading?: boolean;
-
   onDistributionClick?: () => void;
 };
 
-const UPLOAD_ROUTE = "/track/upload";
+type StudioActionKey = "upload" | "distribution" | "monetization";
 
 type StudioAction = {
-  key: "upload" | "distribution" | "monetization";
-
+  key: StudioActionKey;
   label: string;
   description: string;
-
   enabled: boolean;
   requiredPlan?: string;
-
-  icon: React.ReactNode;
-
+  icon: ReactNode;
   onClick: () => void;
+};
+
+const UPLOAD_ROUTE = "/track/upload";
+const PLANS_ROUTE = "/plans";
+
+const getUploadDescription = (plan?: ISubscriptionPlan | null) => {
+  if (plan?.unlimitedUploads) {
+    return "Unlimited uploads included";
+  }
+
+  const limit = Number(plan?.uploadMinutesLimit);
+
+  if (Number.isFinite(limit) && limit > 0) {
+    return `${limit} upload minutes`;
+  }
+
+  return "Upload tracks and audio files";
 };
 
 const StudioActions = ({
@@ -51,105 +64,84 @@ const StudioActions = ({
 
   const [noticeOpen, setNoticeOpen] = useState(false);
 
-  const planCode = plan?.code || "BASIC";
+  const planCode: SubscriptionPlanCode = plan?.code || "BASIC";
 
   const canDistribute = Boolean(plan?.canDistribute);
-
   const canMonetize = Boolean(plan?.canMonetize);
+
+  const goToPlans = () => {
+    router.push(PLANS_ROUTE);
+  };
 
   const actions = useMemo<StudioAction[]>(() => {
     return [
       {
         key: "upload",
-
         label: "Upload or drop tracks",
-
-        description: plan?.unlimitedUploads
-          ? "Unlimited uploads included"
-          : `${Number(plan?.uploadMinutesLimit || 0)} upload minutes`,
-
+        description: getUploadDescription(plan),
         enabled: true,
-
         icon: <AddRoundedIcon />,
-
         onClick: () => {
           router.push(UPLOAD_ROUTE);
         },
       },
-
       {
         key: "distribution",
-
         label: "Distribute tracks",
-
         description: canDistribute
           ? "Distribution is included"
           : "Artist plan required",
-
         enabled: canDistribute,
-
         requiredPlan: "Artist",
-
         icon: <PublicRoundedIcon />,
-
         onClick: () => {
           if (!canDistribute) {
-            router.push("/plans");
-
+            goToPlans();
             return;
           }
 
-          onDistributionClick?.();
+          if (onDistributionClick) {
+            onDistributionClick();
+            return;
+          }
+
+          router.replace("/artist-studio?tab=distribution", {
+            scroll: false,
+          });
         },
       },
-
       {
         key: "monetization",
-
         label: "Monetize tracks",
-
         description: canMonetize
-          ? "Monetization is included"
+          ? "Available with Artist Pro"
           : "Artist Pro required",
-
         enabled: canMonetize,
-
         requiredPlan: "Artist Pro",
-
         icon: <AttachMoneyRoundedIcon />,
-
         onClick: () => {
           if (!canMonetize) {
-            router.push("/plans");
-
+            goToPlans();
             return;
           }
 
-          /*
-           * Quyền đã mở.
-           * UI monetization sẽ được
-           * triển khai ở module sau.
-           */
           setNoticeOpen(true);
         },
       },
     ];
-  }, [plan, canDistribute, canMonetize, router, onDistributionClick]);
+  }, [plan, canDistribute, canMonetize, onDistributionClick, router]);
 
   if (loading) {
     return (
       <Box
+        aria-label="Loading Artist Studio actions"
         sx={{
           minHeight: 72,
-
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-
           borderRadius: "8px",
-
           backgroundColor: "rgba(255,255,255,0.025)",
-
           border: "1px solid rgba(255,255,255,0.06)",
         }}
       >
@@ -168,6 +160,7 @@ const StudioActions = ({
       <Box
         sx={{
           display: "flex",
+          alignItems: "stretch",
           gap: 1.5,
           flexWrap: "wrap",
         }}
@@ -186,68 +179,67 @@ const StudioActions = ({
               }
             >
               <Button
+                type="button"
                 onClick={item.onClick}
                 startIcon={item.icon}
                 endIcon={locked ? <LockRoundedIcon /> : undefined}
+                aria-label={
+                  locked
+                    ? `${item.label}. Requires ${item.requiredPlan}.`
+                    : item.label
+                }
                 sx={{
                   position: "relative",
-
                   minHeight: 58,
-
                   minWidth: {
                     xs: "100%",
                     sm: 215,
                   },
-
+                  flex: {
+                    xs: "1 1 100%",
+                    sm: "0 1 235px",
+                  },
                   px: 2.2,
-
                   borderRadius: "7px",
-
                   color: locked ? "#9da3ab" : "#ffffff",
-
                   backgroundColor: locked
                     ? "rgba(255,255,255,0.035)"
                     : "#202020",
-
                   border: locked
                     ? "1px solid rgba(255,255,255,0.08)"
-                    : "1px solid rgba(255,255,255,0.06)",
-
+                    : "1px solid rgba(255,255,255,0.07)",
                   textTransform: "none",
-
                   justifyContent: "flex-start",
-
                   opacity: locked ? 0.72 : 1,
-
+                  transition:
+                    "background-color 150ms ease, border-color 150ms ease, opacity 150ms ease",
                   "& .MuiButton-startIcon": {
                     color: locked ? "#757b84" : "#ffffff",
-
                     mr: 1.2,
                   },
-
                   "& .MuiButton-startIcon svg": {
                     fontSize: 21,
                   },
-
                   "& .MuiButton-endIcon": {
                     ml: "auto",
                     color: "#9da3ab",
                   },
-
                   "& .MuiButton-endIcon svg": {
                     fontSize: 17,
                   },
-
                   "&:hover": {
                     color: "#ffffff",
-
                     opacity: 1,
-
-                    backgroundColor: locked ? "rgba(255,85,0,0.08)" : "#282828",
-
+                    backgroundColor: locked
+                      ? "rgba(255,85,0,0.08)"
+                      : "#282828",
                     borderColor: locked
                       ? "rgba(255,85,0,0.45)"
                       : "rgba(255,85,0,0.35)",
+                  },
+                  "&:focus-visible": {
+                    outline: "2px solid #FF5500",
+                    outlineOffset: "2px",
                   },
                 }}
               >
@@ -261,9 +253,7 @@ const StudioActions = ({
                     component="span"
                     sx={{
                       display: "block",
-
                       color: "inherit",
-
                       fontSize: 13,
                       fontWeight: 950,
                       lineHeight: 1.3,
@@ -276,11 +266,8 @@ const StudioActions = ({
                     component="span"
                     sx={{
                       display: "block",
-
                       mt: 0.35,
-
                       color: locked ? "#777e87" : "#8B949E",
-
                       fontSize: 10.5,
                       fontWeight: 750,
                       lineHeight: 1.3,
@@ -300,24 +287,21 @@ const StudioActions = ({
               xs: 0,
               lg: "auto",
             },
-
+            width: {
+              xs: "100%",
+              sm: "auto",
+            },
             minHeight: 58,
-
             px: 2,
-
             display: "flex",
             alignItems: "center",
             gap: 1,
-
             borderRadius: "7px",
-
             color: planCode === "ARTIST_PRO" ? "#f4c542" : "#AEB4BD",
-
             backgroundColor:
               planCode === "ARTIST_PRO"
                 ? "rgba(244,197,66,0.07)"
                 : "rgba(255,255,255,0.025)",
-
             border:
               planCode === "ARTIST_PRO"
                 ? "1px solid rgba(244,197,66,0.26)"
@@ -327,11 +311,17 @@ const StudioActions = ({
           <WorkspacePremiumRoundedIcon
             sx={{
               fontSize: 19,
+              flexShrink: 0,
             }}
           />
 
-          <Box>
+          <Box
+            sx={{
+              minWidth: 0,
+            }}
+          >
             <Typography
+              noWrap
               sx={{
                 color: "inherit",
                 fontSize: 11,
@@ -342,6 +332,7 @@ const StudioActions = ({
             </Typography>
 
             <Typography
+              noWrap
               sx={{
                 mt: 0.2,
                 color: "#777e87",
@@ -355,29 +346,29 @@ const StudioActions = ({
 
           {planCode !== "ARTIST_PRO" && (
             <Chip
-              onClick={() => router.push("/plans")}
+              component="button"
+              type="button"
+              onClick={goToPlans}
               size="small"
               label="Upgrade"
               sx={{
-                ml: 1,
-
+                ml: "auto",
                 height: 22,
-
+                border: 0,
                 color: "#ffffff",
-
                 backgroundColor: "#FF5500",
-
                 fontSize: 9,
                 fontWeight: 900,
-
                 cursor: "pointer",
-
                 "& .MuiChip-label": {
                   px: 1.1,
                 },
-
                 "&:hover": {
                   backgroundColor: "#ff6a1a",
+                },
+                "&:focus-visible": {
+                  outline: "2px solid #ffffff",
+                  outlineOffset: "2px",
                 },
               }}
             />
@@ -387,7 +378,7 @@ const StudioActions = ({
 
       <Snackbar
         open={noticeOpen}
-        autoHideDuration={3500}
+        autoHideDuration={4000}
         onClose={() => setNoticeOpen(false)}
         anchorOrigin={{
           vertical: "bottom",
@@ -395,12 +386,12 @@ const StudioActions = ({
         }}
       >
         <Alert
-          severity="success"
+          severity="info"
           variant="filled"
           onClose={() => setNoticeOpen(false)}
         >
-          Monetization is unlocked for your plan. The monetization workspace
-          will be connected next.
+          Your plan supports monetization, but the track monetization workspace
+          has not been connected yet.
         </Alert>
       </Snackbar>
     </>

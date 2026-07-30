@@ -1,6 +1,12 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 
 import { useSession } from "next-auth/react";
 
@@ -14,11 +20,15 @@ import Stack from "@mui/material/Stack";
 import Tooltip from "@mui/material/Tooltip";
 import Typography from "@mui/material/Typography";
 
+import ErrorOutlineRoundedIcon from "@mui/icons-material/ErrorOutlineRounded";
 import HistoryRoundedIcon from "@mui/icons-material/HistoryRounded";
 import MusicNoteRoundedIcon from "@mui/icons-material/MusicNoteRounded";
 import RefreshRoundedIcon from "@mui/icons-material/RefreshRounded";
 
 import { getArtistEarningHistoryApi } from "@/utils/api";
+
+const EARNING_PAGE_SIZE = 10;
+const DEFAULT_CURRENCY = "VND";
 
 const earningFilters = [
   "ALL",
@@ -27,6 +37,8 @@ const earningFilters = [
   "REJECTED",
   "REVERSED",
 ] as const;
+
+type EarningFilter = (typeof earningFilters)[number];
 
 const getAccessToken = (session: unknown) => {
   const sessionData = session as any;
@@ -40,12 +52,43 @@ const getAccessToken = (session: unknown) => {
   );
 };
 
-const formatMoney = (amount: number, currency = "VND") => {
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency,
-    maximumFractionDigits: 0,
-  }).format(Number(amount || 0));
+const normalizeStatus = (value?: string | null) => {
+  return String(value || "UNKNOWN")
+    .trim()
+    .toUpperCase();
+};
+
+const getSafeAmount = (value?: number | null) => {
+  const amount = Number(value || 0);
+
+  return Number.isFinite(amount) ? amount : 0;
+};
+
+const formatMoney = (
+  amount: number,
+  currency = DEFAULT_CURRENCY
+) => {
+  const safeAmount = getSafeAmount(amount);
+
+  const normalizedCurrency =
+    String(currency || DEFAULT_CURRENCY)
+      .trim()
+      .toUpperCase() || DEFAULT_CURRENCY;
+
+  try {
+    return new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency: normalizedCurrency,
+      minimumFractionDigits:
+        normalizedCurrency === "VND" ? 0 : undefined,
+      maximumFractionDigits:
+        normalizedCurrency === "VND" ? 0 : 2,
+    }).format(safeAmount);
+  } catch {
+    return `${safeAmount.toLocaleString(
+      "en-US"
+    )} ${normalizedCurrency}`;
+  }
 };
 
 const formatDateTime = (value?: string | null) => {
@@ -69,21 +112,24 @@ const formatDateTime = (value?: string | null) => {
 };
 
 const shortenId = (value?: string | null) => {
-  if (!value) {
+  const normalizedValue = String(value || "").trim();
+
+  if (!normalizedValue) {
     return "—";
   }
 
-  if (value.length <= 14) {
-    return value;
+  if (normalizedValue.length <= 14) {
+    return normalizedValue;
   }
 
-  return `${value.slice(0, 7)}...${value.slice(-5)}`;
+  return `${normalizedValue.slice(
+    0,
+    7
+  )}...${normalizedValue.slice(-5)}`;
 };
 
 const getStatusStyle = (status?: string | null) => {
-  const normalizedStatus = String(status || "")
-    .trim()
-    .toUpperCase();
+  const normalizedStatus = normalizeStatus(status);
 
   if (normalizedStatus === "AVAILABLE") {
     return {
@@ -93,7 +139,10 @@ const getStatusStyle = (status?: string | null) => {
     };
   }
 
-  if (normalizedStatus === "REJECTED" || normalizedStatus === "REVERSED") {
+  if (
+    normalizedStatus === "REJECTED" ||
+    normalizedStatus === "REVERSED"
+  ) {
     return {
       color: "#ff747c",
       backgroundColor: "rgba(255,90,100,0.1)",
@@ -108,26 +157,51 @@ const getStatusStyle = (status?: string | null) => {
   };
 };
 
+const getFilterLabel = (status: EarningFilter) => {
+  switch (status) {
+    case "ALL":
+      return "All earnings";
+
+    case "PENDING":
+      return "Pending";
+
+    case "AVAILABLE":
+      return "Available";
+
+    case "REJECTED":
+      return "Rejected";
+
+    case "REVERSED":
+      return "Reversed";
+
+    default:
+      return status;
+  }
+};
+
 const ArtistEarningHistory = () => {
-  const { data: session, status: sessionStatus } = useSession();
+  const { data: session, status: sessionStatus } =
+    useSession();
 
-  const [history, setHistory] = useState<ArtistEarningHistoryData | null>(null);
+  const requestIdRef = useRef(0);
 
-  const [selectedStatus, setSelectedStatus] = useState<
-    ArtistEarningStatus | "ALL"
-  >("ALL");
+  const [history, setHistory] =
+    useState<ArtistEarningHistoryData | null>(null);
+
+  const [selectedStatus, setSelectedStatus] =
+    useState<EarningFilter>("ALL");
 
   const [currentPage, setCurrentPage] = useState(1);
 
   const [loading, setLoading] = useState(true);
-
   const [refreshing, setRefreshing] = useState(false);
 
   const [errorMessage, setErrorMessage] = useState("");
 
-  const pageSize = 10;
-
-  const accessToken = useMemo(() => getAccessToken(session), [session]);
+  const accessToken = useMemo(
+    () => getAccessToken(session),
+    [session]
+  );
 
   const loadHistory = useCallback(
     async (silent = false) => {
@@ -135,12 +209,16 @@ const ArtistEarningHistory = () => {
         return;
       }
 
+      const requestId = ++requestIdRef.current;
+
       if (!accessToken) {
         setHistory(null);
         setLoading(false);
         setRefreshing(false);
 
-        setErrorMessage("Please sign in to view your earning history.");
+        setErrorMessage(
+          "Please sign in to view your earning history."
+        );
 
         return;
       }
@@ -154,25 +232,50 @@ const ArtistEarningHistory = () => {
 
         setErrorMessage("");
 
-        const response = await getArtistEarningHistoryApi(accessToken, {
-          status: selectedStatus === "ALL" ? undefined : selectedStatus,
-          current: currentPage,
-          pageSize,
-        });
+        const response = await getArtistEarningHistoryApi(
+          accessToken,
+          {
+            status:
+              selectedStatus === "ALL"
+                ? undefined
+                : selectedStatus,
+            current: currentPage,
+            pageSize: EARNING_PAGE_SIZE,
+          }
+        );
+
+        if (requestId !== requestIdRef.current) {
+          return;
+        }
+
+        const statusCode = Number(
+          response?.statusCode || 0
+        );
 
         if (
           response?.error ||
-          Number(response?.statusCode) >= 400 ||
+          statusCode >= 400 ||
           !response?.data
         ) {
           throw new Error(
-            response?.message || "Unable to load earning history."
+            response?.message ||
+              "Unable to load earning history."
           );
         }
 
         setHistory(response.data);
       } catch (error) {
-        setHistory(null);
+        if (requestId !== requestIdRef.current) {
+          return;
+        }
+
+        /*
+         * Refresh lỗi không được xóa dữ liệu cũ.
+         * Chỉ request tải chính mới đưa history về null.
+         */
+        if (!silent) {
+          setHistory(null);
+        }
 
         setErrorMessage(
           error instanceof Error
@@ -180,34 +283,73 @@ const ArtistEarningHistory = () => {
             : "Unable to load earning history."
         );
       } finally {
-        setLoading(false);
-        setRefreshing(false);
+        if (requestId === requestIdRef.current) {
+          setLoading(false);
+          setRefreshing(false);
+        }
       }
     },
-    [accessToken, currentPage, selectedStatus, sessionStatus]
+    [
+      accessToken,
+      currentPage,
+      selectedStatus,
+      sessionStatus,
+    ]
   );
 
   useEffect(() => {
     void loadHistory();
   }, [loadHistory]);
 
-  const earnings = history?.result || [];
+  const earnings = Array.isArray(history?.result)
+    ? history.result
+    : [];
 
-  const totalPages = Math.max(Number(history?.totalPages || 0), 1);
+  const rawTotalPages = Number(
+    history?.totalPages || 0
+  );
 
-  const handleStatusChange = (status: ArtistEarningStatus | "ALL") => {
+  const totalPages = Math.max(
+    Number.isFinite(rawTotalPages)
+      ? rawTotalPages
+      : 0,
+    1
+  );
+
+  /*
+   * Khi filter làm giảm số trang, đưa user về trang cuối
+   * hợp lệ thay vì để UI hiển thị một trang rỗng.
+   */
+  useEffect(() => {
+    if (
+      history &&
+      rawTotalPages > 0 &&
+      currentPage > rawTotalPages
+    ) {
+      setCurrentPage(rawTotalPages);
+    }
+  }, [history, rawTotalPages, currentPage]);
+
+  const handleStatusChange = (
+    status: EarningFilter
+  ) => {
+    if (status === selectedStatus) {
+      return;
+    }
+
     setSelectedStatus(status);
     setCurrentPage(1);
   };
 
   return (
     <Box
+      component="section"
+      aria-labelledby="earning-history-title"
       sx={{
         mt: 3,
         minWidth: 0,
       }}
     >
-      {/* EARNING HISTORY HEADER */}
       <Stack
         direction={{
           xs: "column",
@@ -224,7 +366,11 @@ const ArtistEarningHistory = () => {
         }}
       >
         <Box>
-          <Stack direction="row" alignItems="center" spacing={1}>
+          <Stack
+            direction="row"
+            alignItems="center"
+            spacing={1}
+          >
             <HistoryRoundedIcon
               sx={{
                 color: "#ff650f",
@@ -233,6 +379,7 @@ const ArtistEarningHistory = () => {
             />
 
             <Typography
+              id="earning-history-title"
               component="h3"
               sx={{
                 color: "#ffffff",
@@ -255,17 +402,28 @@ const ArtistEarningHistory = () => {
               fontWeight: 650,
             }}
           >
-            Revenue generated from qualified listening sessions.
+            Revenue generated from qualified listening
+            sessions.
           </Typography>
         </Box>
 
-        {/* HISTORY REFRESH ACTION */}
         <Button
+          type="button"
           onClick={() => void loadHistory(true)}
-          disabled={refreshing || sessionStatus === "loading"}
+          disabled={
+            refreshing ||
+            loading ||
+            sessionStatus === "loading"
+          }
           startIcon={
             refreshing ? (
-              <CircularProgress size={15} thickness={5} color="inherit" />
+              <CircularProgress
+                size={15}
+                thickness={5}
+                sx={{
+                  color: "inherit",
+                }}
+              />
             ) : (
               <RefreshRoundedIcon />
             )
@@ -274,34 +432,45 @@ const ArtistEarningHistory = () => {
             minHeight: 38,
             px: 1.8,
             color: "#ffffff",
-            border: "1px solid rgba(255,255,255,0.14)",
-            backgroundColor: "rgba(255,255,255,0.035)",
+            border:
+              "1px solid rgba(255,255,255,0.14)",
+            backgroundColor:
+              "rgba(255,255,255,0.035)",
             textTransform: "none",
+            fontSize: 12,
             fontWeight: 900,
 
             "&:hover": {
-              borderColor: "rgba(255,255,255,0.3)",
-              backgroundColor: "rgba(255,255,255,0.07)",
+              borderColor:
+                "rgba(255,255,255,0.3)",
+              backgroundColor:
+                "rgba(255,255,255,0.07)",
             },
 
             "&.Mui-disabled": {
               color: "#666a6c",
-              borderColor: "rgba(255,255,255,0.06)",
+              borderColor:
+                "rgba(255,255,255,0.06)",
             },
           }}
         >
-          Refresh history
+          {refreshing
+            ? "Refreshing"
+            : "Refresh history"}
         </Button>
       </Stack>
 
-      {/* EARNING STATUS FILTERS */}
       <Box
+        role="tablist"
+        aria-label="Earning status filters"
         sx={{
           mb: 2,
           display: "flex",
           gap: 1,
           overflowX: "auto",
+          overflowY: "hidden",
           pb: 0.5,
+          scrollbarWidth: "none",
 
           "&::-webkit-scrollbar": {
             display: "none",
@@ -314,14 +483,23 @@ const ArtistEarningHistory = () => {
           return (
             <Button
               key={status}
-              onClick={() => handleStatusChange(status)}
+              type="button"
+              role="tab"
+              aria-selected={active}
+              onClick={() =>
+                handleStatusChange(status)
+              }
               sx={{
                 minWidth: "max-content",
                 minHeight: 32,
                 px: 1.7,
                 borderRadius: "999px",
-                color: active ? "#ffffff" : "#a0a5a8",
-                backgroundColor: active ? "#ff5500" : "rgba(255,255,255,0.035)",
+                color: active
+                  ? "#ffffff"
+                  : "#a0a5a8",
+                backgroundColor: active
+                  ? "#ff5500"
+                  : "rgba(255,255,255,0.035)",
                 border: active
                   ? "1px solid #ff5500"
                   : "1px solid rgba(255,255,255,0.1)",
@@ -335,26 +513,47 @@ const ArtistEarningHistory = () => {
                     ? "#ff681a"
                     : "rgba(255,255,255,0.08)",
                 },
+
+                "&:focus-visible": {
+                  outline: "2px solid #ffffff",
+                  outlineOffset: "2px",
+                },
               }}
             >
-              {status === "ALL" ? "All earnings" : status}
+              {getFilterLabel(status)}
             </Button>
           );
         })}
       </Box>
 
-      {/* HISTORY ERROR */}
-      {errorMessage && (
+      {errorMessage && history && (
         <Alert
-          severity="error"
+          severity="warning"
+          action={
+            <Button
+              type="button"
+              color="inherit"
+              size="small"
+              onClick={() => void loadHistory(true)}
+              disabled={refreshing}
+              sx={{
+                textTransform: "none",
+                fontWeight: 900,
+              }}
+            >
+              Retry
+            </Button>
+          }
           sx={{
             mb: 2,
-            color: "#ffb4b4",
-            backgroundColor: "rgba(255,80,80,0.1)",
-            border: "1px solid rgba(255,100,100,0.22)",
+            color: "#ffd39d",
+            backgroundColor:
+              "rgba(255,179,92,0.09)",
+            border:
+              "1px solid rgba(255,179,92,0.24)",
 
             "& .MuiAlert-icon": {
-              color: "#ff7777",
+              color: "#ffb35c",
             },
           }}
         >
@@ -362,13 +561,14 @@ const ArtistEarningHistory = () => {
         </Alert>
       )}
 
-      {/* HISTORY LOADING */}
       {loading ? (
         <Box
+          aria-label="Loading earning history"
           sx={{
             minHeight: 240,
             borderRadius: 2,
-            border: "1px solid rgba(255,255,255,0.08)",
+            border:
+              "1px solid rgba(255,255,255,0.08)",
             backgroundColor: "#151718",
             display: "flex",
             alignItems: "center",
@@ -394,14 +594,93 @@ const ArtistEarningHistory = () => {
             </Typography>
           </Stack>
         </Box>
+      ) : !history && errorMessage ? (
+        <Box
+          role="alert"
+          sx={{
+            minHeight: 230,
+            px: 3,
+            py: 4,
+            borderRadius: 2,
+            border:
+              "1px solid rgba(255,85,0,0.2)",
+            background:
+              "linear-gradient(180deg, rgba(255,85,0,0.04), #151718)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            textAlign: "center",
+          }}
+        >
+          <Box>
+            <ErrorOutlineRoundedIcon
+              sx={{
+                color: "#ff5500",
+                fontSize: 34,
+              }}
+            />
+
+            <Typography
+              sx={{
+                mt: 1,
+                color: "#ffffff",
+                fontSize: 15,
+                fontWeight: 900,
+              }}
+            >
+              Earning history is unavailable
+            </Typography>
+
+            <Typography
+              sx={{
+                mt: 0.6,
+                maxWidth: 460,
+                color: "#92979a",
+                fontSize: 12,
+                fontWeight: 650,
+                lineHeight: 1.5,
+              }}
+            >
+              {errorMessage}
+            </Typography>
+
+            {accessToken && (
+              <Button
+                type="button"
+                onClick={() => void loadHistory()}
+                startIcon={<RefreshRoundedIcon />}
+                sx={{
+                  mt: 2,
+                  borderRadius: "999px",
+                  px: 2.4,
+                  color: "#ffffff",
+                  border:
+                    "1px solid rgba(255,255,255,0.24)",
+                  textTransform: "none",
+                  fontSize: 12,
+                  fontWeight: 900,
+
+                  "&:hover": {
+                    borderColor: "#ff5500",
+                    backgroundColor:
+                      "rgba(255,85,0,0.08)",
+                  },
+                }}
+              >
+                Try again
+              </Button>
+            )}
+          </Box>
+        </Box>
       ) : earnings.length === 0 ? (
-        /* EMPTY EARNING HISTORY */
         <Box
           sx={{
             minHeight: 230,
             borderRadius: 2,
-            border: "1px dashed rgba(255,255,255,0.12)",
-            backgroundColor: "rgba(255,255,255,0.025)",
+            border:
+              "1px dashed rgba(255,255,255,0.12)",
+            backgroundColor:
+              "rgba(255,255,255,0.025)",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
@@ -436,13 +715,16 @@ const ArtistEarningHistory = () => {
                 fontWeight: 650,
               }}
             >
-              Qualified stream earnings will appear here.
+              {selectedStatus === "ALL"
+                ? "Qualified stream earnings will appear here."
+                : `No ${getFilterLabel(
+                    selectedStatus
+                  ).toLowerCase()} earnings were found.`}
             </Typography>
           </Box>
         </Box>
       ) : (
         <>
-          {/* DESKTOP EARNING TABLE */}
           <Box
             sx={{
               display: {
@@ -450,7 +732,8 @@ const ArtistEarningHistory = () => {
                 md: "block",
               },
               borderRadius: 2,
-              border: "1px solid rgba(255,255,255,0.08)",
+              border:
+                "1px solid rgba(255,255,255,0.08)",
               backgroundColor: "#151718",
               overflow: "hidden",
             }}
@@ -464,96 +747,128 @@ const ArtistEarningHistory = () => {
                   "minmax(150px,1fr) 115px 125px minmax(160px,1fr) minmax(160px,1fr)",
                 gap: 1.5,
                 alignItems: "center",
-                borderBottom: "1px solid rgba(255,255,255,0.08)",
+                borderBottom:
+                  "1px solid rgba(255,255,255,0.08)",
                 backgroundColor: "#111314",
               }}
             >
-              <Typography sx={headerSx}>Track</Typography>
+              <Typography sx={headerSx}>
+                Track
+              </Typography>
 
-              <Typography sx={headerSx}>Status</Typography>
+              <Typography sx={headerSx}>
+                Status
+              </Typography>
 
-              <Typography sx={headerSx}>Amount</Typography>
+              <Typography sx={headerSx}>
+                Amount
+              </Typography>
 
-              <Typography sx={headerSx}>Qualified</Typography>
+              <Typography sx={headerSx}>
+                Qualified
+              </Typography>
 
-              <Typography sx={headerSx}>Available</Typography>
+              <Typography sx={headerSx}>
+                Available
+              </Typography>
             </Box>
 
-            {earnings.map((earning) => (
-              <Box
-                key={earning.id}
-                sx={{
-                  minHeight: 72,
-                  px: 2,
-                  display: "grid",
-                  gridTemplateColumns:
-                    "minmax(150px,1fr) 115px 125px minmax(160px,1fr) minmax(160px,1fr)",
-                  gap: 1.5,
-                  alignItems: "center",
-                  borderBottom: "1px solid rgba(255,255,255,0.06)",
+            {earnings.map((earning) => {
+              const status = normalizeStatus(
+                earning.status
+              );
 
-                  "&:last-child": {
-                    borderBottom: "none",
-                  },
-
-                  "&:hover": {
-                    backgroundColor: "rgba(255,255,255,0.025)",
-                  },
-                }}
-              >
-                <Tooltip title={earning.trackId} arrow>
-                  <Typography
-                    noWrap
-                    sx={{
-                      color: "#d9dcde",
-                      fontSize: 12,
-                      fontWeight: 800,
-                      fontFamily: "monospace",
-                      cursor: "help",
-                    }}
-                  >
-                    {shortenId(earning.trackId)}
-                  </Typography>
-                </Tooltip>
-
-                <Chip
-                  size="small"
-                  label={earning.status}
+              return (
+                <Box
+                  key={earning.id}
                   sx={{
-                    ...getStatusStyle(earning.status),
-                    width: "fit-content",
-                    height: 24,
-                    fontSize: 9.5,
-                    fontWeight: 950,
+                    minHeight: 72,
+                    px: 2,
+                    display: "grid",
+                    gridTemplateColumns:
+                      "minmax(150px,1fr) 115px 125px minmax(160px,1fr) minmax(160px,1fr)",
+                    gap: 1.5,
+                    alignItems: "center",
+                    borderBottom:
+                      "1px solid rgba(255,255,255,0.06)",
 
-                    "& .MuiChip-label": {
-                      px: 1,
+                    "&:last-child": {
+                      borderBottom: "none",
+                    },
+
+                    "&:hover": {
+                      backgroundColor:
+                        "rgba(255,255,255,0.025)",
                     },
                   }}
-                />
-
-                <Typography
-                  sx={{
-                    color: "#63e6a6",
-                    fontSize: 13,
-                    fontWeight: 950,
-                  }}
                 >
-                  {formatMoney(earning.amount, earning.currency)}
-                </Typography>
+                  <Tooltip
+                    title={earning.trackId || ""}
+                    arrow
+                  >
+                    <Typography
+                      noWrap
+                      sx={{
+                        color: "#d9dcde",
+                        fontSize: 12,
+                        fontWeight: 800,
+                        fontFamily: "monospace",
+                        cursor: "help",
+                      }}
+                    >
+                      {shortenId(earning.trackId)}
+                    </Typography>
+                  </Tooltip>
 
-                <Typography sx={cellSx}>
-                  {formatDateTime(earning.qualifiedAt)}
-                </Typography>
+                  <Chip
+                    size="small"
+                    label={status}
+                    sx={{
+                      ...getStatusStyle(status),
+                      width: "fit-content",
+                      height: 24,
+                      fontSize: 9.5,
+                      fontWeight: 950,
 
-                <Typography sx={cellSx}>
-                  {formatDateTime(earning.availableAt)}
-                </Typography>
-              </Box>
-            ))}
+                      "& .MuiChip-label": {
+                        px: 1,
+                      },
+                    }}
+                  />
+
+                  <Typography
+                    sx={{
+                      color:
+                        status === "REJECTED" ||
+                        status === "REVERSED"
+                          ? "#ff747c"
+                          : "#63e6a6",
+                      fontSize: 13,
+                      fontWeight: 950,
+                    }}
+                  >
+                    {formatMoney(
+                      earning.amount,
+                      earning.currency
+                    )}
+                  </Typography>
+
+                  <Typography sx={cellSx}>
+                    {formatDateTime(
+                      earning.qualifiedAt
+                    )}
+                  </Typography>
+
+                  <Typography sx={cellSx}>
+                    {formatDateTime(
+                      earning.availableAt
+                    )}
+                  </Typography>
+                </Box>
+              );
+            })}
           </Box>
 
-          {/* MOBILE EARNING CARDS */}
           <Stack
             spacing={1.2}
             sx={{
@@ -563,120 +878,148 @@ const ArtistEarningHistory = () => {
               },
             }}
           >
-            {earnings.map((earning) => (
-              <Box
-                key={earning.id}
-                sx={{
-                  p: 1.7,
-                  borderRadius: 2,
-                  border: "1px solid rgba(255,255,255,0.08)",
-                  backgroundColor: "#151718",
-                }}
-              >
-                <Stack
-                  direction="row"
-                  justifyContent="space-between"
-                  alignItems="flex-start"
-                  spacing={1.5}
-                >
-                  <Box sx={{ minWidth: 0 }}>
-                    <Typography
-                      sx={{
-                        color: "#858a8d",
-                        fontSize: 10,
-                        fontWeight: 850,
-                        textTransform: "uppercase",
-                      }}
-                    >
-                      Track
-                    </Typography>
+            {earnings.map((earning) => {
+              const status = normalizeStatus(
+                earning.status
+              );
 
-                    <Tooltip title={earning.trackId} arrow>
+              return (
+                <Box
+                  key={earning.id}
+                  sx={{
+                    p: 1.7,
+                    borderRadius: 2,
+                    border:
+                      "1px solid rgba(255,255,255,0.08)",
+                    backgroundColor: "#151718",
+                  }}
+                >
+                  <Stack
+                    direction="row"
+                    justifyContent="space-between"
+                    alignItems="flex-start"
+                    spacing={1.5}
+                  >
+                    <Box sx={{ minWidth: 0 }}>
                       <Typography
-                        noWrap
                         sx={{
-                          mt: 0.4,
-                          color: "#ffffff",
-                          fontSize: 12,
+                          color: "#858a8d",
+                          fontSize: 10,
                           fontWeight: 850,
-                          fontFamily: "monospace",
+                          textTransform: "uppercase",
                         }}
                       >
-                        {shortenId(earning.trackId)}
+                        Track
                       </Typography>
-                    </Tooltip>
-                  </Box>
 
-                  <Chip
-                    size="small"
-                    label={earning.status}
-                    sx={{
-                      ...getStatusStyle(earning.status),
-                      flexShrink: 0,
-                      height: 23,
-                      fontSize: 9,
-                      fontWeight: 950,
-                    }}
-                  />
-                </Stack>
+                      <Tooltip
+                        title={earning.trackId || ""}
+                        arrow
+                      >
+                        <Typography
+                          noWrap
+                          sx={{
+                            mt: 0.4,
+                            color: "#ffffff",
+                            fontSize: 12,
+                            fontWeight: 850,
+                            fontFamily: "monospace",
+                          }}
+                        >
+                          {shortenId(
+                            earning.trackId
+                          )}
+                        </Typography>
+                      </Tooltip>
+                    </Box>
 
-                <Typography
-                  sx={{
-                    mt: 1.4,
-                    color: "#63e6a6",
-                    fontSize: 20,
-                    fontWeight: 950,
-                  }}
-                >
-                  {formatMoney(earning.amount, earning.currency)}
-                </Typography>
+                    <Chip
+                      size="small"
+                      label={status}
+                      sx={{
+                        ...getStatusStyle(status),
+                        flexShrink: 0,
+                        height: 23,
+                        fontSize: 9,
+                        fontWeight: 950,
+                      }}
+                    />
+                  </Stack>
 
-                <Box
-                  sx={{
-                    mt: 1.4,
-                    pt: 1.3,
-                    borderTop: "1px solid rgba(255,255,255,0.06)",
-                    display: "grid",
-                    gridTemplateColumns: "repeat(2, minmax(0,1fr))",
-                    gap: 1.2,
-                  }}
-                >
-                  <Box>
-                    <Typography sx={mobileLabelSx}>Qualified</Typography>
-
-                    <Typography sx={mobileValueSx}>
-                      {formatDateTime(earning.qualifiedAt)}
-                    </Typography>
-                  </Box>
-
-                  <Box>
-                    <Typography sx={mobileLabelSx}>Available</Typography>
-
-                    <Typography sx={mobileValueSx}>
-                      {formatDateTime(earning.availableAt)}
-                    </Typography>
-                  </Box>
-                </Box>
-
-                {earning.rejectionReason && (
                   <Typography
                     sx={{
-                      mt: 1.2,
-                      color: "#ff858c",
-                      fontSize: 11,
-                      fontWeight: 750,
-                      lineHeight: 1.5,
+                      mt: 1.4,
+                      color:
+                        status === "REJECTED" ||
+                        status === "REVERSED"
+                          ? "#ff747c"
+                          : "#63e6a6",
+                      fontSize: 20,
+                      fontWeight: 950,
                     }}
                   >
-                    {earning.rejectionReason}
+                    {formatMoney(
+                      earning.amount,
+                      earning.currency
+                    )}
                   </Typography>
-                )}
-              </Box>
-            ))}
+
+                  <Box
+                    sx={{
+                      mt: 1.4,
+                      pt: 1.3,
+                      borderTop:
+                        "1px solid rgba(255,255,255,0.06)",
+                      display: "grid",
+                      gridTemplateColumns:
+                        "repeat(2, minmax(0,1fr))",
+                      gap: 1.2,
+                    }}
+                  >
+                    <Box>
+                      <Typography sx={mobileLabelSx}>
+                        Qualified
+                      </Typography>
+
+                      <Typography sx={mobileValueSx}>
+                        {formatDateTime(
+                          earning.qualifiedAt
+                        )}
+                      </Typography>
+                    </Box>
+
+                    <Box>
+                      <Typography sx={mobileLabelSx}>
+                        Available
+                      </Typography>
+
+                      <Typography sx={mobileValueSx}>
+                        {formatDateTime(
+                          earning.availableAt
+                        )}
+                      </Typography>
+                    </Box>
+                  </Box>
+
+                  {earning.rejectionReason && (
+                    <Typography
+                      sx={{
+                        mt: 1.2,
+                        color: "#ff858c",
+                        fontSize: 11,
+                        fontWeight: 750,
+                        lineHeight: 1.5,
+                      }}
+                    >
+                      {earning.rejectionReason}
+                    </Typography>
+                  )}
+                </Box>
+              );
+            })}
           </Stack>
 
-          {/* EARNING PAGINATION */}
-          {Number(history?.totalPages || 0) > 1 && (
+          {rawTotalPages > 1 && (
             <Box
               sx={{
                 mt: 2,
@@ -687,22 +1030,28 @@ const ArtistEarningHistory = () => {
               <Pagination
                 page={currentPage}
                 count={totalPages}
-                onChange={(_, page) => setCurrentPage(page)}
+                onChange={(_, page) =>
+                  setCurrentPage(page)
+                }
+                disabled={loading || refreshing}
                 shape="rounded"
                 sx={{
                   "& .MuiPaginationItem-root": {
                     color: "#aeb2b5",
-                    borderColor: "rgba(255,255,255,0.12)",
+                    borderColor:
+                      "rgba(255,255,255,0.12)",
                   },
 
                   "& .MuiPaginationItem-root:hover": {
                     color: "#ffffff",
-                    backgroundColor: "rgba(255,255,255,0.08)",
+                    backgroundColor:
+                      "rgba(255,255,255,0.08)",
                   },
 
                   "& .Mui-selected": {
                     color: "#ffffff !important",
-                    backgroundColor: "#ff5500 !important",
+                    backgroundColor:
+                      "#ff5500 !important",
                   },
                 }}
               />

@@ -1,6 +1,15 @@
 "use client";
 
-import { ReactNode, useCallback, useEffect, useMemo, useState } from "react";
+import type { ReactNode } from "react";
+
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
+
 import { useSession } from "next-auth/react";
 
 import Alert from "@mui/material/Alert";
@@ -8,26 +17,42 @@ import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import CircularProgress from "@mui/material/CircularProgress";
 import Stack from "@mui/material/Stack";
+import Tooltip from "@mui/material/Tooltip";
 import Typography from "@mui/material/Typography";
 
 import AccountBalanceWalletRoundedIcon from "@mui/icons-material/AccountBalanceWalletRounded";
+import ErrorOutlineRoundedIcon from "@mui/icons-material/ErrorOutlineRounded";
 import LockRoundedIcon from "@mui/icons-material/LockRounded";
 import PaymentsRoundedIcon from "@mui/icons-material/PaymentsRounded";
 import RefreshRoundedIcon from "@mui/icons-material/RefreshRounded";
 import ScheduleRoundedIcon from "@mui/icons-material/ScheduleRounded";
 import TrendingUpRoundedIcon from "@mui/icons-material/TrendingUpRounded";
+
 import { getArtistWalletApi } from "@/utils/api";
-import ArtistPayoutDialog from "./artistPayoutDialog";
+
 import ArtistEarningHistory from "./artistEarningHistory";
+import ArtistPayoutDialog from "./artistPayoutDialog";
 import ArtistPayoutHistory from "./artistPayoutHistory";
 
-type WalletCards = {
-  key: "available" | "pending" | "reserved" | "withdrawn";
+type WalletCardKey =
+  | "available"
+  | "pending"
+  | "reserved"
+  | "withdrawn";
+
+type WalletCard = {
+  key: WalletCardKey;
   label: string;
   description: string;
   amount: number;
   icon: ReactNode;
 };
+
+const WALLET_REFRESH_EVENT = "artist-wallet-refresh";
+const PAYOUT_REFRESH_EVENT = "artist-payout-refresh";
+
+const DEFAULT_CURRENCY = "VND";
+const DEFAULT_MINIMUM_PAYOUT = 100000;
 
 const getAccessToken = (session: unknown) => {
   const sessionData = session as any;
@@ -41,37 +66,77 @@ const getAccessToken = (session: unknown) => {
   );
 };
 
-const formatMoney = (amount: number, currency = "VND") => {
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency,
-    maximumFractionDigits: 0,
-  }).format(Number(amount || 0));
+const getSafeAmount = (value?: number | null) => {
+  const amount = Number(value || 0);
+
+  return Number.isFinite(amount) ? amount : 0;
+};
+
+const formatMoney = (
+  amount: number,
+  currency = DEFAULT_CURRENCY
+) => {
+  const safeAmount = getSafeAmount(amount);
+
+  const normalizedCurrency =
+    String(currency || DEFAULT_CURRENCY)
+      .trim()
+      .toUpperCase() || DEFAULT_CURRENCY;
+
+  try {
+    return new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency: normalizedCurrency,
+      minimumFractionDigits:
+        normalizedCurrency === "VND" ? 0 : undefined,
+      maximumFractionDigits:
+        normalizedCurrency === "VND" ? 0 : 2,
+    }).format(safeAmount);
+  } catch {
+    return `${safeAmount.toLocaleString("en-US")} ${normalizedCurrency}`;
+  }
+};
+
+const normalizeWalletStatus = (status?: string | null) => {
+  return String(status || "UNKNOWN")
+    .trim()
+    .toUpperCase();
 };
 
 const ArtistEarningsOverview = () => {
   const { data: session, status: sessionStatus } = useSession();
 
-  const [wallet, setWallet] = useState<ArtistWalletData | null>(null);
+  const requestIdRef = useRef(0);
+
+  const [wallet, setWallet] =
+    useState<ArtistWalletData | null>(null);
 
   const [loading, setLoading] = useState(true);
-
   const [refreshing, setRefreshing] = useState(false);
 
   const [errorMessage, setErrorMessage] = useState("");
 
-  const accessToken = useMemo(() => getAccessToken(session), [session]);
+  const [payoutDialogOpen, setPayoutDialogOpen] =
+    useState(false);
 
-  const [payoutDialogOpen, setPayoutDialogOpen] = useState(false);
+  const accessToken = useMemo(
+    () => getAccessToken(session),
+    [session]
+  );
 
+  /*
+   * Đây chỉ là validation UI.
+   * Backend vẫn bắt buộc phải kiểm tra minimum payout.
+   */
   const minimumPayoutAmount = useMemo(() => {
     const configuredAmount = Number(
       process.env.NEXT_PUBLIC_ARTIST_PAYOUT_MINIMUM_AMOUNT
     );
 
-    return Number.isFinite(configuredAmount) && configuredAmount > 0
+    return Number.isFinite(configuredAmount) &&
+      configuredAmount > 0
       ? configuredAmount
-      : 100000;
+      : DEFAULT_MINIMUM_PAYOUT;
   }, []);
 
   const loadWallet = useCallback(
@@ -80,11 +145,17 @@ const ArtistEarningsOverview = () => {
         return;
       }
 
+      const requestId = ++requestIdRef.current;
+
       if (!accessToken) {
         setWallet(null);
         setLoading(false);
         setRefreshing(false);
-        setErrorMessage("Please sign in to view your artist earnings.");
+
+        setErrorMessage(
+          "Please sign in to view your artist earnings."
+        );
+
         return;
       }
 
@@ -99,13 +170,35 @@ const ArtistEarningsOverview = () => {
 
         const response = await getArtistWalletApi(accessToken);
 
-        if (response?.statusCode !== 200 || !response?.data) {
-          throw new Error(response?.message || "Unable to load artist wallet.");
+        if (requestId !== requestIdRef.current) {
+          return;
+        }
+
+        const statusCode = Number(response?.statusCode || 0);
+
+        if (
+          response?.error ||
+          statusCode >= 400 ||
+          !response?.data
+        ) {
+          throw new Error(
+            response?.message || "Unable to load artist wallet."
+          );
         }
 
         setWallet(response.data);
       } catch (error) {
-        setWallet(null);
+        if (requestId !== requestIdRef.current) {
+          return;
+        }
+
+        /*
+         * Refresh âm thầm thất bại không được xóa dữ liệu
+         * wallet hiện tại. Chỉ lần tải đầu mới đưa wallet về null.
+         */
+        if (!silent) {
+          setWallet(null);
+        }
 
         setErrorMessage(
           error instanceof Error
@@ -113,8 +206,10 @@ const ArtistEarningsOverview = () => {
             : "Unable to load artist wallet."
         );
       } finally {
-        setLoading(false);
-        setRefreshing(false);
+        if (requestId === requestIdRef.current) {
+          setLoading(false);
+          setRefreshing(false);
+        }
       }
     },
     [accessToken, sessionStatus]
@@ -124,11 +219,75 @@ const ArtistEarningsOverview = () => {
     void loadWallet();
   }, [loadWallet]);
 
-  const currency = wallet?.currency || "VND";
+  useEffect(() => {
+    const handleWalletRefresh = () => {
+      void loadWallet(true);
+    };
 
-  const availableBalance = Number(wallet?.availableBalance || 0);
+    window.addEventListener(
+      WALLET_REFRESH_EVENT,
+      handleWalletRefresh
+    );
 
-  const cards = useMemo<WalletCards[]>(
+    return () => {
+      window.removeEventListener(
+        WALLET_REFRESH_EVENT,
+        handleWalletRefresh
+      );
+    };
+  }, [loadWallet]);
+
+  const currency =
+    String(wallet?.currency || DEFAULT_CURRENCY)
+      .trim()
+      .toUpperCase() || DEFAULT_CURRENCY;
+
+  const availableBalance = getSafeAmount(
+    wallet?.availableBalance
+  );
+
+  const walletStatus = normalizeWalletStatus(wallet?.status);
+
+  const walletActive = walletStatus === "ACTIVE";
+
+  const canRequestPayout =
+    Boolean(wallet) &&
+    walletActive &&
+    availableBalance >= minimumPayoutAmount &&
+    !loading;
+
+  const payoutDisabledReason = useMemo(() => {
+    if (loading) {
+      return "Artist wallet is still loading.";
+    }
+
+    if (!wallet) {
+      return "Artist wallet is unavailable.";
+    }
+
+    if (!walletActive) {
+      return `Payouts are unavailable while wallet status is ${walletStatus}.`;
+    }
+
+    if (availableBalance < minimumPayoutAmount) {
+      return `A minimum balance of ${formatMoney(
+        minimumPayoutAmount,
+        currency
+      )} is required.`;
+    }
+
+    return "Request a payout";
+  }, [
+    loading,
+    wallet,
+    walletActive,
+    walletStatus,
+    availableBalance,
+    minimumPayoutAmount,
+    currency,
+  ]);
+
+  const cards = useMemo<WalletCard[]>(
     () => [
       {
         key: "available",
@@ -141,40 +300,27 @@ const ArtistEarningsOverview = () => {
         key: "pending",
         label: "Pending earnings",
         description: "Waiting for the holding period",
-        amount: Number(wallet?.pendingBalance || 0),
+        amount: getSafeAmount(wallet?.pendingBalance),
         icon: <ScheduleRoundedIcon />,
       },
       {
         key: "reserved",
         label: "Reserved balance",
         description: "Held for an active payout",
-        amount: Number(wallet?.reservedBalance || 0),
+        amount: getSafeAmount(wallet?.reservedBalance),
         icon: <LockRoundedIcon />,
       },
       {
         key: "withdrawn",
         label: "Total withdrawn",
         description: "Completed artist payouts",
-        amount: Number(wallet?.withdrawnBalance || 0),
+        amount: getSafeAmount(wallet?.withdrawnBalance),
         icon: <PaymentsRoundedIcon />,
       },
     ],
     [availableBalance, wallet]
   );
 
-  useEffect(() => {
-    const handleWalletRefresh = () => {
-      void loadWallet(true);
-    };
-
-    window.addEventListener("artist-wallet-refresh", handleWalletRefresh);
-
-    return () => {
-      window.removeEventListener("artist-wallet-refresh", handleWalletRefresh);
-    };
-  }, [loadWallet]);
-
-  /* PAYOUT SUCCESS */
   const handlePayoutSuccess = useCallback(
     (data: ArtistPayoutActionData) => {
       setWallet((currentWallet) => {
@@ -184,22 +330,29 @@ const ArtistEarningsOverview = () => {
 
         return {
           ...currentWallet,
-          availableBalance: Number(
-            data.availableBalance ?? currentWallet.availableBalance
+
+          availableBalance: getSafeAmount(
+            data.availableBalance ??
+              currentWallet.availableBalance
           ),
-          reservedBalance: Number(
-            data.reservedBalance ?? currentWallet.reservedBalance
+
+          reservedBalance: getSafeAmount(
+            data.reservedBalance ??
+              currentWallet.reservedBalance
           ),
-          withdrawnBalance: Number(
-            data.withdrawnBalance ?? currentWallet.withdrawnBalance
+
+          withdrawnBalance: getSafeAmount(
+            data.withdrawnBalance ??
+              currentWallet.withdrawnBalance
           ),
         };
       });
 
       setPayoutDialogOpen(false);
 
-      /* REFRESH PAYOUT HISTORY */
-      window.dispatchEvent(new Event("artist-payout-refresh"));
+      window.dispatchEvent(
+        new Event(PAYOUT_REFRESH_EVENT)
+      );
 
       void loadWallet(true);
     },
@@ -208,12 +361,13 @@ const ArtistEarningsOverview = () => {
 
   return (
     <Box
+      component="section"
+      aria-labelledby="artist-earnings-title"
       sx={{
         width: "100%",
         minWidth: 0,
       }}
     >
-      {/* EARNINGS HEADER */}
       <Stack
         direction={{
           xs: "column",
@@ -231,6 +385,7 @@ const ArtistEarningsOverview = () => {
       >
         <Box sx={{ minWidth: 0 }}>
           <Typography
+            id="artist-earnings-title"
             component="h2"
             sx={{
               color: "#ffffff",
@@ -240,6 +395,7 @@ const ArtistEarningsOverview = () => {
               },
               fontWeight: 950,
               lineHeight: 1.2,
+              letterSpacing: "-0.025em",
             }}
           >
             Artist earnings
@@ -253,11 +409,11 @@ const ArtistEarningsOverview = () => {
               fontWeight: 650,
             }}
           >
-            Review your earnings and available payout balance.
+            Review your earnings, payout balance and payment
+            history.
           </Typography>
         </Box>
 
-        {/* DESKTOP AND MOBILE ACTIONS */}
         <Stack
           direction="row"
           spacing={1}
@@ -269,11 +425,20 @@ const ArtistEarningsOverview = () => {
           }}
         >
           <Button
+            type="button"
             onClick={() => void loadWallet(true)}
-            disabled={refreshing || sessionStatus === "loading"}
+            disabled={
+              refreshing || sessionStatus === "loading"
+            }
             startIcon={
               refreshing ? (
-                <CircularProgress size={15} thickness={5} />
+                <CircularProgress
+                  size={15}
+                  thickness={5}
+                  sx={{
+                    color: "inherit",
+                  }}
+                />
               ) : (
                 <RefreshRoundedIcon />
               )
@@ -290,6 +455,7 @@ const ArtistEarningsOverview = () => {
               color: "#ffffff",
               backgroundColor: "rgba(255,255,255,0.04)",
               textTransform: "none",
+              fontSize: 12,
               fontWeight: 900,
 
               "&:hover": {
@@ -303,57 +469,82 @@ const ArtistEarningsOverview = () => {
               },
             }}
           >
-            Refresh
+            {refreshing ? "Refreshing" : "Refresh"}
           </Button>
 
-          <Button
-            onClick={() => setPayoutDialogOpen(true)}
-            disabled={
-              availableBalance < minimumPayoutAmount ||
-              loading ||
-              wallet?.status !== "ACTIVE"
-            }
-            startIcon={<PaymentsRoundedIcon />}
-            sx={{
-              minHeight: 40,
-              px: 2,
-              flex: {
-                xs: 1,
-                sm: "initial",
-              },
-              borderRadius: "6px",
-              color: "#ffffff",
-              backgroundColor: "#ff5500",
-              textTransform: "none",
-              fontWeight: 950,
-
-              "&:hover": {
-                backgroundColor: "#ff6a1a",
-              },
-
-              "&.Mui-disabled": {
-                color: "#777777",
-                backgroundColor: "#252728",
-              },
-            }}
+          <Tooltip
+            arrow
+            title={payoutDisabledReason}
           >
-            Request payout
-          </Button>
+            <Box
+              component="span"
+              sx={{
+                display: "flex",
+                flex: {
+                  xs: 1,
+                  sm: "initial",
+                },
+              }}
+            >
+              <Button
+                type="button"
+                onClick={() => setPayoutDialogOpen(true)}
+                disabled={!canRequestPayout}
+                startIcon={<PaymentsRoundedIcon />}
+                sx={{
+                  width: "100%",
+                  minHeight: 40,
+                  px: 2,
+                  borderRadius: "6px",
+                  color: "#ffffff",
+                  backgroundColor: "#ff5500",
+                  textTransform: "none",
+                  fontSize: 12,
+                  fontWeight: 950,
+
+                  "&:hover": {
+                    backgroundColor: "#ff6a1a",
+                  },
+
+                  "&.Mui-disabled": {
+                    color: "#777777",
+                    backgroundColor: "#252728",
+                  },
+                }}
+              >
+                Request payout
+              </Button>
+            </Box>
+          </Tooltip>
         </Stack>
       </Stack>
 
-      {/* WALLET ERROR */}
-      {errorMessage && (
+      {errorMessage && wallet && (
         <Alert
-          severity="error"
+          severity="warning"
+          action={
+            <Button
+              type="button"
+              color="inherit"
+              size="small"
+              onClick={() => void loadWallet(true)}
+              disabled={refreshing}
+              sx={{
+                textTransform: "none",
+                fontWeight: 900,
+              }}
+            >
+              Retry
+            </Button>
+          }
           sx={{
             mb: 2,
-            color: "#ffb4b4",
-            backgroundColor: "rgba(255,80,80,0.1)",
-            border: "1px solid rgba(255,100,100,0.22)",
+            color: "#ffd39d",
+            backgroundColor: "rgba(255,179,92,0.09)",
+            border: "1px solid rgba(255,179,92,0.24)",
 
             "& .MuiAlert-icon": {
-              color: "#ff7777",
+              color: "#ffb35c",
             },
           }}
         >
@@ -361,9 +552,9 @@ const ArtistEarningsOverview = () => {
         </Alert>
       )}
 
-      {/* WALLET LOADING */}
       {loading ? (
         <Box
+          aria-label="Loading artist wallet"
           sx={{
             minHeight: 230,
             borderRadius: 2,
@@ -393,9 +584,85 @@ const ArtistEarningsOverview = () => {
             </Typography>
           </Stack>
         </Box>
+      ) : !wallet ? (
+        <Box
+          role="alert"
+          sx={{
+            minHeight: 230,
+            px: 3,
+            py: 5,
+            borderRadius: 2,
+            border: "1px solid rgba(255,85,0,0.2)",
+            background:
+              "linear-gradient(180deg, rgba(255,85,0,0.045), #151718)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            textAlign: "center",
+          }}
+        >
+          <Box>
+            <ErrorOutlineRoundedIcon
+              sx={{
+                color: "#ff5500",
+                fontSize: 36,
+                mb: 1,
+              }}
+            />
+
+            <Typography
+              sx={{
+                color: "#ffffff",
+                fontSize: 16,
+                fontWeight: 950,
+              }}
+            >
+              Artist wallet is unavailable
+            </Typography>
+
+            <Typography
+              sx={{
+                mt: 0.7,
+                maxWidth: 480,
+                color: "#a7aaac",
+                fontSize: 12,
+                fontWeight: 700,
+                lineHeight: 1.55,
+              }}
+            >
+              {errorMessage ||
+                "The artist wallet could not be loaded."}
+            </Typography>
+
+            {accessToken && (
+              <Button
+                type="button"
+                onClick={() => void loadWallet()}
+                startIcon={<RefreshRoundedIcon />}
+                sx={{
+                  mt: 2,
+                  borderRadius: "999px",
+                  px: 2.5,
+                  color: "#ffffff",
+                  border:
+                    "1px solid rgba(255,255,255,0.25)",
+                  textTransform: "none",
+                  fontSize: 12,
+                  fontWeight: 900,
+
+                  "&:hover": {
+                    borderColor: "#ff5500",
+                    backgroundColor: "rgba(255,85,0,0.08)",
+                  },
+                }}
+              >
+                Try again
+              </Button>
+            )}
+          </Box>
+        </Box>
       ) : (
         <>
-          {/* WALLET BALANCE CARDS */}
           <Box
             sx={{
               display: "grid",
@@ -407,84 +674,89 @@ const ArtistEarningsOverview = () => {
               gap: 1.5,
             }}
           >
-            {cards.map((card) => (
-              <Box
-                key={card.key}
-                sx={{
-                  minWidth: 0,
-                  minHeight: 145,
-                  p: 2,
-                  borderRadius: 2,
-                  border: "1px solid rgba(255,255,255,0.08)",
-                  background:
-                    card.key === "available"
+            {cards.map((card) => {
+              const highlighted = card.key === "available";
+
+              return (
+                <Box
+                  key={card.key}
+                  sx={{
+                    minWidth: 0,
+                    minHeight: 145,
+                    p: 2,
+                    borderRadius: 2,
+                    border: highlighted
+                      ? "1px solid rgba(255,85,0,0.22)"
+                      : "1px solid rgba(255,255,255,0.08)",
+                    background: highlighted
                       ? "linear-gradient(145deg, rgba(255,85,0,0.17), rgba(25,27,28,0.96) 62%)"
                       : "#17191a",
-                }}
-              >
-                <Box
-                  sx={{
-                    width: 38,
-                    height: 38,
-                    borderRadius: "10px",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    color: card.key === "available" ? "#ff6a1a" : "#c9ccce",
-                    backgroundColor:
-                      card.key === "available"
+                  }}
+                >
+                  <Box
+                    sx={{
+                      width: 38,
+                      height: 38,
+                      borderRadius: "10px",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      color: highlighted
+                        ? "#ff6a1a"
+                        : "#c9ccce",
+                      backgroundColor: highlighted
                         ? "rgba(255,85,0,0.14)"
                         : "rgba(255,255,255,0.06)",
 
-                    "& svg": {
-                      fontSize: 21,
-                    },
-                  }}
-                >
-                  {card.icon}
+                      "& svg": {
+                        fontSize: 21,
+                      },
+                    }}
+                  >
+                    {card.icon}
+                  </Box>
+
+                  <Typography
+                    sx={{
+                      mt: 1.6,
+                      color: "#ffffff",
+                      fontSize: {
+                        xs: 20,
+                        md: 22,
+                      },
+                      fontWeight: 950,
+                      overflowWrap: "anywhere",
+                    }}
+                  >
+                    {formatMoney(card.amount, currency)}
+                  </Typography>
+
+                  <Typography
+                    sx={{
+                      mt: 0.4,
+                      color: "#d7d9da",
+                      fontSize: 13,
+                      fontWeight: 850,
+                    }}
+                  >
+                    {card.label}
+                  </Typography>
+
+                  <Typography
+                    sx={{
+                      mt: 0.25,
+                      color: "#7f8487",
+                      fontSize: 11.5,
+                      fontWeight: 650,
+                    }}
+                  >
+                    {card.description}
+                  </Typography>
                 </Box>
-
-                <Typography
-                  sx={{
-                    mt: 1.6,
-                    color: "#ffffff",
-                    fontSize: {
-                      xs: 20,
-                      md: 22,
-                    },
-                    fontWeight: 950,
-                    overflowWrap: "anywhere",
-                  }}
-                >
-                  {formatMoney(card.amount, currency)}
-                </Typography>
-
-                <Typography
-                  sx={{
-                    mt: 0.4,
-                    color: "#d7d9da",
-                    fontSize: 13,
-                    fontWeight: 850,
-                  }}
-                >
-                  {card.label}
-                </Typography>
-
-                <Typography
-                  sx={{
-                    mt: 0.25,
-                    color: "#7f8487",
-                    fontSize: 11.5,
-                    fontWeight: 650,
-                  }}
-                >
-                  {card.description}
-                </Typography>
-              </Box>
-            ))}
+              );
+            })}
           </Box>
 
-          {/* LIFETIME EARNINGS */}
           <Box
             sx={{
               mt: 1.5,
@@ -508,7 +780,11 @@ const ArtistEarningsOverview = () => {
               gap: 1.5,
             }}
           >
-            <Stack direction="row" alignItems="center" spacing={1.4}>
+            <Stack
+              direction="row"
+              alignItems="center"
+              spacing={1.4}
+            >
               <Box
                 sx={{
                   width: 42,
@@ -519,6 +795,7 @@ const ArtistEarningsOverview = () => {
                   justifyContent: "center",
                   color: "#63e6a6",
                   backgroundColor: "rgba(99,230,166,0.1)",
+                  flexShrink: 0,
                 }}
               >
                 <TrendingUpRoundedIcon />
@@ -543,7 +820,8 @@ const ArtistEarningsOverview = () => {
                     fontWeight: 650,
                   }}
                 >
-                  Total qualified-stream revenue recorded for this wallet
+                  Total qualified-stream revenue recorded for
+                  this wallet
                 </Typography>
               </Box>
             </Stack>
@@ -558,11 +836,13 @@ const ArtistEarningsOverview = () => {
                 fontWeight: 950,
               }}
             >
-              {formatMoney(Number(wallet?.lifetimeEarnings || 0), currency)}
+              {formatMoney(
+                getSafeAmount(wallet.lifetimeEarnings),
+                currency
+              )}
             </Typography>
           </Box>
 
-          {/* WALLET STATUS */}
           <Typography
             sx={{
               mt: 1.2,
@@ -575,23 +855,22 @@ const ArtistEarningsOverview = () => {
             <Box
               component="span"
               sx={{
-                color: wallet?.status === "ACTIVE" ? "#63e6a6" : "#ffb35c",
+                color: walletActive
+                  ? "#63e6a6"
+                  : "#ffb35c",
                 fontWeight: 950,
               }}
             >
-              {wallet?.status || "UNKNOWN"}
+              {walletStatus}
             </Box>
           </Typography>
+
+          <ArtistEarningHistory />
+
+          <ArtistPayoutHistory />
         </>
       )}
 
-      {/* ARTIST EARNING HISTORY */}
-      {!loading && !errorMessage && <ArtistEarningHistory />}
-
-      {/* ARTIST PAYOUT HISTORY */}
-      {!loading && !errorMessage && <ArtistPayoutHistory />}
-
-      {/* ARTIST PAYOUT DIALOG */}
       <ArtistPayoutDialog
         open={payoutDialogOpen}
         onClose={() => setPayoutDialogOpen(false)}

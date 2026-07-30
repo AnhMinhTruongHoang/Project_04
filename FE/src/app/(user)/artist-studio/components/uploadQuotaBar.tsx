@@ -9,13 +9,14 @@ import Tooltip from "@mui/material/Tooltip";
 import Typography from "@mui/material/Typography";
 
 import CloudUploadRoundedIcon from "@mui/icons-material/CloudUploadRounded";
-import WorkspacePremiumRoundedIcon from "@mui/icons-material/WorkspacePremiumRounded";
 import ErrorOutlineRoundedIcon from "@mui/icons-material/ErrorOutlineRounded";
+import WorkspacePremiumRoundedIcon from "@mui/icons-material/WorkspacePremiumRounded";
 
 type Props = {
   data: IMySubscriptionData | null;
   loading?: boolean;
   error?: string;
+  onManage?: () => void;
 };
 
 const formatMinutes = (value?: number) => {
@@ -62,7 +63,12 @@ const getActionLabel = (code?: SubscriptionPlanCode) => {
   return "Upgrade plan";
 };
 
-const UploadQuotaBar = ({ data, loading = false, error = "" }: Props) => {
+const UploadQuotaBar = ({
+  data,
+  loading = false,
+  error = "",
+  onManage,
+}: Props) => {
   const router = useRouter();
 
   const plan = data?.plan;
@@ -72,7 +78,10 @@ const UploadQuotaBar = ({ data, loading = false, error = "" }: Props) => {
   const unlimited =
     Boolean(plan?.unlimitedUploads) || Boolean(usage?.unlimited);
 
-  const percentage = Math.min(Math.max(Number(usage?.percentage || 0), 0), 100);
+  const percentage = Math.min(
+    Math.max(Number(usage?.percentage || 0), 0),
+    100
+  );
 
   const usageText = unlimited
     ? "Unlimited uploads"
@@ -81,24 +90,34 @@ const UploadQuotaBar = ({ data, loading = false, error = "" }: Props) => {
       )} minutes used`;
 
   const progressColor =
-    percentage >= 95 ? "#ff3040" : percentage >= 80 ? "#ffb020" : "#FF5500";
+    percentage >= 95
+      ? "#ff3040"
+      : percentage >= 80
+      ? "#ffb020"
+      : "#FF5500";
+
+  const handleManageSubscription = () => {
+    if (onManage) {
+      onManage();
+      return;
+    }
+
+    router.push("/plans");
+  };
 
   if (loading) {
     return (
       <Box
+        aria-label="Loading subscription information"
         sx={{
-          minHeight: 65,
-
+          minHeight: 68,
           borderRadius: "4px",
           background: "#202020",
-
-          border: "1px solid rgba(255,255,255,0.06)",
-
+          border: "1px solid rgba(255,255,255,0.07)",
           px: {
             xs: 2,
             md: 2.5,
           },
-
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
@@ -117,26 +136,28 @@ const UploadQuotaBar = ({ data, loading = false, error = "" }: Props) => {
   if (error || !data) {
     return (
       <Box
+        role="alert"
         sx={{
-          minHeight: 65,
-
+          minHeight: 68,
           borderRadius: "4px",
           background: "rgba(255,48,64,0.06)",
-
-          border: "1px solid rgba(255,48,64,0.2)",
-
+          border: "1px solid rgba(255,48,64,0.22)",
           px: {
             xs: 2,
             md: 2.5,
           },
-
           py: 1.4,
-
           display: "flex",
-          alignItems: "center",
+          alignItems: {
+            xs: "stretch",
+            sm: "center",
+          },
           justifyContent: "space-between",
-
-          gap: 2,
+          flexDirection: {
+            xs: "column",
+            sm: "row",
+          },
+          gap: 1.5,
         }}
       >
         <Box
@@ -144,12 +165,14 @@ const UploadQuotaBar = ({ data, loading = false, error = "" }: Props) => {
             display: "flex",
             alignItems: "center",
             gap: 1,
+            minWidth: 0,
           }}
         >
           <ErrorOutlineRoundedIcon
             sx={{
               color: "#ff6673",
               fontSize: 20,
+              flexShrink: 0,
             }}
           />
 
@@ -158,6 +181,7 @@ const UploadQuotaBar = ({ data, loading = false, error = "" }: Props) => {
               color: "#ff9da5",
               fontSize: 13,
               fontWeight: 800,
+              overflowWrap: "anywhere",
             }}
           >
             {error || "Subscription data is unavailable."}
@@ -165,18 +189,21 @@ const UploadQuotaBar = ({ data, loading = false, error = "" }: Props) => {
         </Box>
 
         <Button
+          type="button"
           onClick={() => router.push("/plans")}
           sx={{
             borderRadius: "999px",
-
             color: "#ffffff",
-
             border: "1px solid rgba(255,255,255,0.3)",
-
             textTransform: "none",
-
             fontSize: 12,
             fontWeight: 900,
+            px: 2.2,
+            flexShrink: 0,
+            "&:hover": {
+              borderColor: "#FF5500",
+              backgroundColor: "rgba(255,85,0,0.08)",
+            },
           }}
         >
           View plans
@@ -189,32 +216,23 @@ const UploadQuotaBar = ({ data, loading = false, error = "" }: Props) => {
     <Box
       sx={{
         borderRadius: "4px",
-
         background: "linear-gradient(90deg, #202020 0%, #1a1b1c 100%)",
-
-        border: "1px solid rgba(255,255,255,0.06)",
-
+        border: "1px solid rgba(255,255,255,0.07)",
         px: {
           xs: 2,
           md: 2.5,
         },
-
         py: 1.5,
-
         display: "flex",
-
         alignItems: {
           xs: "stretch",
           sm: "center",
         },
-
         justifyContent: "space-between",
-
         flexDirection: {
           xs: "column",
           sm: "row",
         },
-
         gap: {
           xs: 1.5,
           sm: 2,
@@ -234,17 +252,12 @@ const UploadQuotaBar = ({ data, loading = false, error = "" }: Props) => {
           sx={{
             width: 36,
             height: 36,
-
             borderRadius: "50%",
-
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-
             flexShrink: 0,
-
             color: unlimited ? "#f4c542" : "#ffffff",
-
             backgroundColor: unlimited
               ? "rgba(244,197,66,0.12)"
               : "rgba(255,255,255,0.07)",
@@ -291,13 +304,13 @@ const UploadQuotaBar = ({ data, loading = false, error = "" }: Props) => {
 
             <Typography
               sx={{
-                color: plan?.code === "ARTIST_PRO" ? "#f4c542" : "#8B949E",
-
+                color:
+                  plan?.code === "ARTIST_PRO" ? "#f4c542" : "#8B949E",
                 fontSize: 11,
                 fontWeight: 850,
               }}
             >
-              {plan?.name}
+              {plan?.name || "Basic"}
             </Typography>
           </Box>
 
@@ -305,21 +318,15 @@ const UploadQuotaBar = ({ data, loading = false, error = "" }: Props) => {
             <Box
               sx={{
                 mt: 0.85,
-
                 width: {
                   xs: "100%",
                   sm: 250,
                   md: 340,
                 },
-
                 maxWidth: "100%",
-
                 height: 5,
-
                 borderRadius: "999px",
-
                 background: "rgba(255,255,255,0.16)",
-
                 overflow: "hidden",
               }}
             >
@@ -327,11 +334,8 @@ const UploadQuotaBar = ({ data, loading = false, error = "" }: Props) => {
                 sx={{
                   width: `${percentage}%`,
                   height: "100%",
-
                   borderRadius: "999px",
-
                   background: progressColor,
-
                   transition: "width 280ms ease",
                 }}
               />
@@ -360,48 +364,41 @@ const UploadQuotaBar = ({ data, loading = false, error = "" }: Props) => {
       <Tooltip
         title={
           plan?.code === "ARTIST_PRO"
-            ? "View and manage your current plan"
-            : "Compare available subscription plans"
+            ? "View and manage your current subscription"
+            : "Compare and manage available subscription plans"
         }
         arrow
       >
         <Button
-          onClick={() => router.push("/plans")}
+          type="button"
+          onClick={handleManageSubscription}
           variant="outlined"
           sx={{
             borderRadius: "999px",
-
             px: {
               xs: 2,
               sm: 3.5,
             },
-
             minWidth: {
               xs: "100%",
               sm: 185,
             },
-
             color: "#ffffff",
-
             borderColor:
               plan?.code === "ARTIST_PRO"
                 ? "rgba(244,197,66,0.7)"
                 : "rgba(255,255,255,0.28)",
-
             backgroundColor:
               plan?.code === "ARTIST_PRO"
                 ? "rgba(244,197,66,0.06)"
                 : "transparent",
-
             textTransform: "none",
-
             fontSize: 12,
             fontWeight: 950,
-
             "&:hover": {
-              borderColor: plan?.code === "ARTIST_PRO" ? "#f4c542" : "#FF5500",
-
-              background:
+              borderColor:
+                plan?.code === "ARTIST_PRO" ? "#f4c542" : "#FF5500",
+              backgroundColor:
                 plan?.code === "ARTIST_PRO"
                   ? "rgba(244,197,66,0.12)"
                   : "rgba(255,85,0,0.08)",

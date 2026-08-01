@@ -90,6 +90,18 @@ public class ArtistEarning {
     private String sourceType = SOURCE_QUALIFIED_STREAM;
 
     /*
+     * Snapshot tỷ giá tại thời điểm earning được tạo.
+     *
+     * Ví dụ:
+     * 1 qualified stream = 20 VND
+     *
+     * Sau này Admin thay đổi tỷ giá, earning cũ vẫn giữ nguyên
+     * ratePerStream và amount ban đầu.
+     */
+    @Column(nullable = false)
+    private Long ratePerStream;
+
+    /*
      * Số tiền theo đơn vị VND.
      * Không dùng Double cho tiền.
      */
@@ -158,6 +170,10 @@ public class ArtistEarning {
 
         if (amount == null) {
             amount = 0L;
+        }
+
+        if (ratePerStream == null) {
+            ratePerStream = amount;
         }
 
         if (currency == null
@@ -253,6 +269,15 @@ public class ArtistEarning {
     public void setSourceType(
             String sourceType) {
         this.sourceType = sourceType;
+    }
+
+    public Long getRatePerStream() {
+        return ratePerStream;
+    }
+
+    public void setRatePerStream(
+            Long ratePerStream) {
+        this.ratePerStream = ratePerStream;
     }
 
     public Long getAmount() {

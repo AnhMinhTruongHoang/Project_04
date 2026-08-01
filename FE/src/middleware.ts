@@ -1,12 +1,22 @@
 import { withAuth } from "next-auth/middleware";
 
 export default withAuth({
-  // Matches the pages config in `[...nextauth]`
   pages: {
     signIn: "/auth/signin",
+  },
+
+  callbacks: {
+    authorized: ({ token }) => {
+      return Boolean(token);
+    },
   },
 });
 
 export const config = {
-  matcher: ["/playlist", "/track/upload", "/like"],
+  matcher: [
+    "/dashboard/:path*",
+    "/playlist/:path*",
+    "/track/upload/:path*",
+    "/like/:path*",
+  ],
 };

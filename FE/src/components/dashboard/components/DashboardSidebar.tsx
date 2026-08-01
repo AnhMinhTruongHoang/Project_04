@@ -25,6 +25,7 @@ import MenuRoundedIcon from "@mui/icons-material/MenuRounded";
 import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
 import ArticleOutlinedIcon from "@mui/icons-material/ArticleOutlined";
 import PaymentsRoundedIcon from "@mui/icons-material/PaymentsRounded";
+import CurrencyExchangeRoundedIcon from "@mui/icons-material/CurrencyExchangeRounded";
 
 type Props = {
   collapsed: boolean;
@@ -61,6 +62,11 @@ const menuItems = [
     label: "Comments",
     href: "/dashboard/comments",
     icon: <CommentRoundedIcon />,
+  },
+  {
+    label: "Earning Rates",
+    href: "/dashboard/earning-rates",
+    icon: <CurrencyExchangeRoundedIcon />,
   },
   {
     label: "Artist Payouts",

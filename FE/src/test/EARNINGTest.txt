@@ -1,0 +1,375 @@
+CÔNG THỨC TÍNH ARTIST EARNING VÀ CÁCH TEST
+
+============================================================
+1. CÔNG THỨC EARNING
+============================================================
+
+Artist earning = Số qualified stream hợp lệ × 20 VND
+
+Cấu hình Backend:
+
+artist.earning.amount-per-qualified-stream=20
+
+Ví dụ:
+
+1 qualified stream      = 20 VND
+10 qualified stream     = 200 VND
+100 qualified stream    = 2.000 VND
+5.000 qualified stream  = 100.000 VND
+
+Backend không tính tiền trực tiếp từ countPlay.
+
+Chỉ khi ListeningSession đạt điều kiện qualified thì Backend mới tạo một bản ghi ArtistEarning.
+
+============================================================
+2. ĐIỀU KIỆN ĐƯỢC TÍNH EARNING
+============================================================
+
+Một lượt nghe chỉ được tính tiền khi đáp ứng đầy đủ:
+
+- Listener đã đăng nhập bằng JWT.
+- Track có approvalStatus = APPROVED.
+- Track chưa bị xóa.
+- Listener không phải chủ sở hữu track.
+- Artist có quyền kiếm tiền, ví dụ canMonetize = true.
+- Listener nghe đủ thời gian qualified.
+- Cùng listener + track + ngày chỉ được tính tiền một lần.
+- Cùng listeningSessionId không được tạo earning hai lần.
+
+Ví dụ:
+
+Listener B nghe Track X của Artist A đủ điều kiện:
+
+Lần nghe đầu trong ngày:
++20 VND
+
+Listener B nghe lại Track X trong cùng ngày:
++0 VND
+
+Listener B nghe Track Y của Artist A trong cùng ngày:
++20 VND
+
+Artist A tự nghe Track X của mình:
++0 VND
+
+============================================================
+3. LUỒNG CẬP NHẬT VÍ
+============================================================
+
+Khi earning vừa được tạo:
+
+earning.status = PENDING
+
+pendingBalance += 20
+lifetimeEarnings += 20
+
+Khi hết thời gian hold:
+
+earning.status = AVAILABLE
+
+pendingBalance -= 20
+availableBalance += 20
+
+Khi artist rút tiền thành công:
+
+availableBalance -= payoutAmount
+withdrawnBalance += payoutAmount
+
+lifetimeEarnings không giảm vì đây là tổng doanh thu artist từng kiếm được.
+
+============================================================
+4. CẤU HÌNH TEST LOCAL
+============================================================
+
+Trong application.properties dùng tạm:
+
+artist.earning.amount-per-qualified-stream=20
+
+# Không cần chờ 7 ngày khi test
+artist.earning.hold-days=0
+
+# Scheduler xử lý mỗi 10 giây
+artist.earning.release-delay-ms=10000
+
+# Test payout từ 20 VND
+artist.payout.minimum-amount=20
+
+artist.payout.maximum-amount=100000000
+
+Restart Backend sau khi sửa.
+
+Khi hoàn tất test, trả về cấu hình production:
+
+artist.earning.hold-days=7
+artist.earning.release-delay-ms=60000
+artist.payout.minimum-amount=100000
+
+============================================================
+5. CHUẨN BỊ DỮ LIỆU TEST
+============================================================
+
+Cần 2 tài khoản khác nhau.
+
+ARTIST A:
+
+accountStatus = ACTIVE
+canMonetize = true
+subscriptionTier = ARTIST_PRO
+
+Track của Artist A:
+
+approvalStatus = APPROVED
+isDeleted = false
+
+LISTENER B:
+
+- Là tài khoản khác Artist A.
+- Dùng access token của Listener B.
+- Không sử dụng token của Artist A để nghe track.
+
+============================================================
+6. TEST LISTENING SESSION BẰNG POSTMAN
+============================================================
+
+API:
+
+POST http://localhost:8000/api/v1/tracks/{TRACK_ID}/history
+
+Headers:
+
+Authorization: Bearer LISTENER_B_ACCESS_TOKEN
+Content-Type: application/json
+
+Dùng cùng một sessionId trong toàn bộ quá trình test.
+
+REQUEST 1:
+
+{
+  "sessionId": "earning-test-session-001",
+  "position": 0,
+  "duration": 180,
+  "completed": false,
+  "playing": true
+}
+
+Chờ khoảng 15 giây.
+
+REQUEST 2:
+
+{
+  "sessionId": "earning-test-session-001",
+  "position": 15,
+  "duration": 180,
+  "completed": false,
+  "playing": true
+}
+
+Chờ thêm khoảng 15 giây.
+
+REQUEST 3:
+
+{
+  "sessionId": "earning-test-session-001",
+  "position": 30,
+  "duration": 180,
+  "completed": false,
+  "playing": true
+}
+
+Có thể gửi thêm REQUEST 4:
+
+{
+  "sessionId": "earning-test-session-001",
+  "position": 45,
+  "duration": 180,
+  "completed": false,
+  "playing": true
+}
+
+Không gửi các heartbeat liên tục ngay lập tức.
+
+Backend có thể kiểm tra position delta với thời gian thực để chống tua nhanh hoặc giả mạo thời lượng nghe.
+
+============================================================
+7. KIỂM TRA LISTENING SESSION TRONG DATABASE
+============================================================
+
+SELECT
+    id,
+    session_id,
+    listener_id,
+    track_id,
+    artist_id,
+    accumulated_seconds,
+    heartbeat_count,
+    qualified,
+    status,
+    qualified_at,
+    created_at,
+    updated_at
+FROM listening_sessions
+ORDER BY created_at DESC
+LIMIT 10;
+
+Kết quả mong đợi:
+
+listener_id = ID của Listener B
+artist_id = ID của Artist A
+track_id = Track đang test
+accumulated_seconds >= ngưỡng qualified
+qualified = 1
+qualified_at khác null
+
+============================================================
+8. KIỂM TRA ARTIST EARNING
+============================================================
+
+SELECT
+    id,
+    listening_session_id,
+    artist_id,
+    listener_id,
+    track_id,
+    amount,
+    status,
+    earning_date,
+    available_at,
+    released_at,
+    created_at
+FROM artist_earnings
+ORDER BY created_at DESC
+LIMIT 10;
+
+Kết quả ngay sau khi qualified:
+
+amount = 20
+status = PENDING
+
+Nếu artist.earning.hold-days=0, sau khoảng 10 giây:
+
+amount = 20
+status = AVAILABLE
+released_at khác null
+
+============================================================
+9. KIỂM TRA ARTIST WALLET
+============================================================
+
+SELECT
+    artist_id,
+    pending_balance,
+    available_balance,
+    reserved_balance,
+    withdrawn_balance,
+    lifetime_earnings,
+    status
+FROM artist_wallets
+WHERE artist_id = 'ARTIST_A_ID';
+
+Ngay khi earning được tạo:
+
+pending_balance tăng 20
+lifetime_earnings tăng 20
+
+Sau scheduler:
+
+pending_balance giảm 20
+available_balance tăng 20
+lifetime_earnings giữ nguyên
+
+============================================================
+10. KIỂM TRA QUA API ARTIST
+============================================================
+
+Dùng access token của Artist A.
+
+XEM VÍ:
+
+GET http://localhost:8000/api/v1/artist/earnings/wallet
+
+Authorization: Bearer ARTIST_A_ACCESS_TOKEN
+
+XEM LỊCH SỬ EARNING:
+
+GET http://localhost:8000/api/v1/artist/earnings/history?current=1&pageSize=10
+
+Authorization: Bearer ARTIST_A_ACCESS_TOKEN
+
+XEM TỔNG HỢP EARNING:
+
+GET http://localhost:8000/api/v1/artist/earnings/summary
+
+Authorization: Bearer ARTIST_A_ACCESS_TOKEN
+
+============================================================
+11. TEST SELF-PLAY
+============================================================
+
+Dùng token của Artist A nghe chính track của Artist A.
+
+Kết quả mong đợi:
+
+- Không tạo ArtistEarning.
+- Wallet không tăng.
+- Session không được tính earning.
+
+============================================================
+12. TEST DUPLICATE TRONG CÙNG NGÀY
+============================================================
+
+Listener B tạo session mới và nghe lại cùng Track X trong cùng ngày.
+
+Ví dụ session mới:
+
+earning-test-session-002
+
+Kết quả mong đợi:
+
+- ListeningSession có thể vẫn được tạo.
+- Không tạo ArtistEarning thứ hai.
+- Wallet không tăng thêm 20 VND.
+
+============================================================
+13. TEST TRACK KHÁC
+============================================================
+
+Listener B nghe một Track Y khác của Artist A trong cùng ngày.
+
+Kết quả mong đợi:
+
+- Tạo ArtistEarning mới.
+- Wallet tăng thêm 20 VND.
+
+============================================================
+14. TEST ARTIST KHÔNG CÓ QUYỀN KIẾM TIỀN
+============================================================
+
+Tạm đặt:
+
+canMonetize = false
+
+hoặc artist không có Artist Pro.
+
+Listener B nghe track đủ thời gian.
+
+Kết quả mong đợi:
+
+- Session có thể đạt qualified về thời lượng.
+- Không tạo ArtistEarning.
+- Wallet không tăng.
+
+============================================================
+15. CÔNG THỨC KẾT LUẬN
+============================================================
+
+1 listener
++ 1 track
++ 1 ngày
++ đủ thời lượng qualified
++ không self-play
++ track APPROVED
++ artist được monetize
+= 20 VND
+
+Cùng listener + cùng track + cùng ngày:
+chỉ được tính earning một lần.

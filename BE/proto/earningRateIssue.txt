@@ -1,0 +1,305 @@
+============================================================
+NOTE TEST EARNING RATE 25 VND / QUALIFIED STREAM
+============================================================
+
+MỤC TIÊU
+--------
+Xác nhận flow earning mới lấy tỷ giá ACTIVE từ bảng earning_rates:
+
+1 qualified stream = 25 VND
+
+Kết quả cần đạt:
+
+artist_earnings.ratePerStream = 25
+artist_earnings.amount        = 25
+artist_wallets.pendingBalance tăng 25
+artist_wallets.lifetimeEarnings tăng 25
+
+
+============================================================
+1. ĐIỀU KIỆN TEST
+============================================================
+
+- Rate ACTIVE hiện tại: 25 VND.
+- Track phải có approvalStatus = APPROVED.
+- Track không bị xóa.
+- Artist phải có canMonetize = true.
+- Listener phải đăng nhập.
+- Listener phải khác Artist.
+- Không dùng lại sessionId cũ.
+- Listener chưa tạo earning cho cùng track trong cùng ngày.
+- Không gửi các heartbeat quá nhanh.
+
+LƯU Ý QUAN TRỌNG:
+
+Không dùng token của chính người upload track.
+
+Ví dụ sai:
+
+listenerId = e9a281a413fd4b69ad07f4bd
+artistId   = e9a281a413fd4b69ad07f4bd
+
+Kết quả:
+
+status = INVALID
+qualificationReason = SELF_PLAY
+earning = null
+
+
+============================================================
+2. THÔNG TIN TRACK ĐANG TEST
+============================================================
+
+Track ID:
+
+26eb028b1687419998c8df5d
+
+Artist/Uploader ID:
+
+e9a281a413fd4b69ad07f4bd
+
+Vì vậy Listener phải là một tài khoản có ID khác:
+
+e9a281a413fd4b69ad07f4bd
+
+
+============================================================
+3. API HEARTBEAT
+============================================================
+
+POST {{baseUrl}}/api/v1/tracks/26eb028b1687419998c8df5d/history
+
+Headers:
+
+Authorization: Bearer LISTENER_ACCESS_TOKEN
+Content-Type: application/json
+
+
+============================================================
+4. HEARTBEAT LẦN 1
+============================================================
+
+Dùng sessionId mới hoàn toàn:
+
+{
+  "sessionId": "rate-test-session-250002",
+  "position": 0,
+  "duration": 48,
+  "completed": false,
+  "playing": true
+}
+
+Kết quả mong đợi:
+
+heartbeatCount = 1
+creditedSeconds = 0
+accumulatedSeconds = 0
+qualified = false
+earning = null
+
+
+============================================================
+5. HEARTBEAT LẦN 2
+============================================================
+
+Chờ khoảng 15 giây rồi gửi:
+
+{
+  "sessionId": "rate-test-session-250002",
+  "position": 15,
+  "duration": 48,
+  "completed": false,
+  "playing": true
+}
+
+Kết quả mong đợi:
+
+heartbeatCount = 2
+creditedSeconds khoảng 15
+accumulatedSeconds khoảng 15
+qualified = false
+earning = null
+
+
+============================================================
+6. HEARTBEAT LẦN 3
+============================================================
+
+Chờ thêm khoảng 15 giây rồi gửi:
+
+{
+  "sessionId": "rate-test-session-250002",
+  "position": 31,
+  "duration": 48,
+  "completed": false,
+  "playing": true
+}
+
+Kết quả đúng:
+
+qualificationReason = QUALIFIED
+qualified = true
+earning.created = true
+earning.reason = EARNING_CREATED
+earning.ratePerStream = 25
+earning.amount = 25
+earning.currency = VND
+earning.status = PENDING
+
+
+============================================================
+7. KIỂM TRA ARTIST EARNING TRONG TIDB
+============================================================
+
+SELECT
+    `id`,
+    `listeningSessionId`,
+    `listenerId`,
+    `artistId`,
+    `trackId`,
+    `ratePerStream`,
+    `amount`,
+    `currency`,
+    `status`,
+    `earningDate`,
+    `qualifiedAt`,
+    `availableAt`,
+    `createdAt`
+FROM `artist_earnings`
+ORDER BY `createdAt` DESC
+LIMIT 10;
+
+Kết quả earning mới cần có:
+
+ratePerStream = 25
+amount        = 25
+currency      = VND
+status        = PENDING
+
+
+============================================================
+8. KIỂM TRA ARTIST WALLET
+============================================================
+
+SELECT
+    `artistId`,
+    `pendingBalance`,
+    `availableBalance`,
+    `reservedBalance`,
+    `withdrawnBalance`,
+    `lifetimeEarnings`,
+    `currency`,
+    `status`,
+    `updatedAt`
+FROM `artist_wallets`
+WHERE `artistId` = 'e9a281a413fd4b69ad07f4bd';
+
+Sau khi tạo một earning thành công:
+
+pendingBalance   tăng thêm 25
+lifetimeEarnings tăng thêm 25
+
+availableBalance chưa tăng ngay nếu earning còn PENDING.
+
+
+============================================================
+9. KIỂM TRA LISTENING SESSION
+============================================================
+
+SELECT
+    `sessionId`,
+    `listenerId`,
+    `artistId`,
+    `trackId`,
+    `status`,
+    `qualified`,
+    `qualifiedAt`,
+    `endedAt`,
+    `accumulatedSeconds`,
+    `heartbeatCount`,
+    `createdAt`,
+    `updatedAt`
+FROM `listening_sessions`
+WHERE `sessionId` = 'rate-test-session-250002';
+
+Kết quả đúng:
+
+listenerId != artistId
+qualified = 1
+qualifiedAt != NULL
+accumulatedSeconds >= 30
+heartbeatCount >= 3
+
+
+============================================================
+10. CÁC TRƯỜNG HỢP KHÔNG TẠO EARNING
+============================================================
+
+SELF_PLAY
+- Listener và Artist cùng ID.
+- Session chuyển INVALID.
+- Không tạo earning.
+
+ARTIST_NOT_ELIGIBLE
+- Artist không có canMonetize
+qualifiedAt != NULL
+accumulatedSeconds >= 30
+heartbeatCount >= 3
+
+
+============================================================
+10. CÁC TRƯỜNG HỢP KHÔNG TẠO EARNING
+============================================================
+
+SELF_PLAY
+- Listener và Artist cùng ID.
+- Session chuyển INVALID.
+-.
+- Session chuyển INVALID.
+- Không tạo earning.
+
+DAILY_LIMIT_REACHED
+- Listener đã tạo earning cho cùng track trong cùng ngày.
+- Đổi listener hoặc đổi track để test lại.
+
+ALREADY_RECORDED
+- ListeningSession đã có earning.
+- Phải dùng sessionId mới.
+
+SESSION_ALREADY_CLOSED
+- Session trước đó đã INVALID hoặc COMPLETED.
+- Không được dùng lại sessionId đó.
+
+TRACK_NOT_APPROVED
+- Track chưa được Admin approve.
+- Không đủ điều kiện tạo qualified stream.
+
+
+============================================================
+11. KẾT QUẢ CUỐI CÙNG CẦN XÁC NHẬN
+============================================================
+
+earning_rates:
+
+25 VND = ACTIVE
+20 VND = INACTIVE
+
+artist_earnings:
+
+ratePerStream = 25
+amount        = 25
+
+artist_wallets:
+
+pendingBalance tăng 25
+lifetimeEarnings tăng 25
+
+Flow hoàn chỉnh:
+
+Listener khác Artist
+→ nghe đủ ít nhất 30 giây hợp lệ
+→ ListeningSession qualified
+→ lấy rate ACTIVE từ earning_rates
+→ lưu snapshot ratePerStream = 25
+→ tạo ArtistEarning amount = 25
+→ cộng 25 VND vào ví Artist

@@ -30,12 +30,7 @@ public class ArtistEarningService {
 
         private final SubscriptionService subscriptionService;
 
-        /*
-         * Đơn giá mặc định cho project demo.
-         * Có thể thay bằng environment variable.
-         */
-        @Value("${artist.earning.amount-per-qualified-stream:20}")
-        private long amountPerQualifiedStream;
+        private final EarningRateService earningRateService;
 
         /*
          * Số ngày giữ tiền trước khi chuyển:
@@ -47,13 +42,16 @@ public class ArtistEarningService {
         public ArtistEarningService(
                         ArtistEarningRepository artistEarningRepository,
                         ArtistWalletRepository artistWalletRepository,
-                        SubscriptionService subscriptionService) {
+                        SubscriptionService subscriptionService,
+                        EarningRateService earningRateService) {
 
                 this.artistEarningRepository = artistEarningRepository;
 
                 this.artistWalletRepository = artistWalletRepository;
 
                 this.subscriptionService = subscriptionService;
+
+                this.earningRateService = earningRateService;
         }
 
         /*
@@ -121,9 +119,22 @@ public class ArtistEarningService {
                                         "Artist subscription plan is missing");
                 }
 
-                long earningAmount = Math.max(
-                                amountPerQualifiedStream,
-                                0L);
+                /*
+                 * Lấy tỷ giá ACTIVE từ database.
+                 *
+                 * Nếu database chưa có rate ACTIVE,
+                 * EarningRateService sẽ fallback về:
+                 *
+                 * artist.earning.amount-per-qualified-stream
+                 */
+                Long activeRatePerStream = earningRateService
+                                .getActiveAmountPerStream();
+
+                long earningAmount = activeRatePerStream == null
+                                ? 0L
+                                : Math.max(
+                                                activeRatePerStream,
+                                                0L);
 
                 if (earningAmount <= 0L) {
                         throw new IllegalStateException(
@@ -193,6 +204,13 @@ public class ArtistEarningService {
 
                 artistEarning.setSourceType(
                                 ArtistEarning.SOURCE_QUALIFIED_STREAM);
+
+                /*
+                 * Snapshot tỷ giá tại thời điểm
+                 * qualified stream được ghi nhận.
+                 */
+                artistEarning.setRatePerStream(
+                                earningAmount);
 
                 artistEarning.setAmount(
                                 earningAmount);
@@ -560,6 +578,13 @@ public class ArtistEarningService {
                                                                 .getListeningSessionId());
 
                 result.put(
+                                "ratePerStream",
+                                earning == null
+                                                ? 0L
+                                                : safeMoney(
+                                                                earning.getRatePerStream()));
+
+                result.put(
                                 "amount",
                                 earning == null
                                                 ? 0L
@@ -660,6 +685,11 @@ public class ArtistEarningService {
                 result.put(
                                 "sourceType",
                                 earning.getSourceType());
+
+                result.put(
+                                "ratePerStream",
+                                safeMoney(
+                                                earning.getRatePerStream()));
 
                 result.put(
                                 "amount",

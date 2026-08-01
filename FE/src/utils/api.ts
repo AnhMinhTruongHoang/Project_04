@@ -1801,5 +1801,79 @@ export const createVnPayPaymentApi = (
 };
 
 /* =========================
+   ADMIN EARNING RATE APIs
+========================= */
+
+/*
+ * Lấy lịch sử tỷ giá earning.
+ *
+ * Backend:
+ * GET /api/v1/admin/earning-rates
+ */
+export const getAdminEarningRatesApi = (
+  accessToken?: string,
+  params: EarningRateQueryParams = {}
+) => {
+  return sendRequest<IBackendRes<IEarningRateHistoryData>>({
+    url: "/api/v1/admin/earning-rates",
+    method: "GET",
+    queryParams: {
+      current: params.current ?? 1,
+      pageSize: params.pageSize ?? 10,
+    },
+    headers: authHeaders(accessToken),
+    nextOption: {
+      cache: "no-store",
+    },
+  });
+};
+
+/*
+ * Lấy tỷ giá earning đang ACTIVE.
+ *
+ * Backend:
+ * GET /api/v1/admin/earning-rates/active
+ */
+export const getActiveAdminEarningRateApi = (accessToken?: string) => {
+  return sendRequest<IBackendRes<IEarningRate>>({
+    url: "/api/v1/admin/earning-rates/active",
+    method: "GET",
+    headers: authHeaders(accessToken),
+    nextOption: {
+      cache: "no-store",
+    },
+  });
+};
+
+/*
+ * Tạo tỷ giá earning mới.
+ *
+ * effectiveFrom = null:
+ * áp dụng ngay và đóng rate ACTIVE cũ.
+ *
+ * effectiveFrom nằm trong tương lai:
+ * tạo rate SCHEDULED.
+ *
+ * Backend:
+ * POST /api/v1/admin/earning-rates
+ */
+export const createAdminEarningRateApi = (
+  payload: CreateEarningRatePayload,
+  accessToken?: string
+) => {
+  return sendRequest<IBackendRes<IEarningRate>>({
+    url: "/api/v1/admin/earning-rates",
+    method: "POST",
+    body: {
+      amountPerStream: Number(payload.amountPerStream),
+      currency: payload.currency || "VND",
+      effectiveFrom: payload.effectiveFrom || null,
+      reason: payload.reason?.trim() || null,
+    },
+    headers: authHeaders(accessToken),
+  });
+};
+
+/* =========================
 
 ========================= */

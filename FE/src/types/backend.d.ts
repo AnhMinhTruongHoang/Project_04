@@ -1104,5 +1104,57 @@ declare global {
     label: string;
     value: string;
   }
+
+  /* =========================
+   ADMIN EARNING RATE TYPES
+========================= */
+
+  interface IEarningRate {
+    id: string;
+    amountPerStream: number;
+    currency: string;
+    effectiveFrom: string;
+    effectiveTo?: string | null;
+    status: "ACTIVE" | "INACTIVE" | "SCHEDULED";
+    reason?: string | null;
+    createdBy?: string | null;
+    createdAt: string;
+    updatedAt: string;
+  }
+
+  interface IEarningRateHistoryMeta {
+    current: number;
+    pageSize: number;
+    pages: number;
+    total: number;
+  }
+
+  interface IEarningRateHistoryData {
+    meta: IEarningRateHistoryMeta;
+    result: IEarningRate[];
+  }
+
+  interface CreateEarningRatePayload {
+    amountPerStream: number;
+    currency?: "VND";
+    effectiveFrom?: string | null;
+    reason?: string;
+  }
+
+  interface EarningRateQueryParams {
+    current?: number;
+    pageSize?: number;
+  }
+
+  /* =========================
+   ADMIN EARNING RATE COMPONENT TYPES
+========================= */
+
+  interface EarningRatesTableProps {
+    initialRates: IEarningRate[];
+    initialActiveRate: IEarningRate | null;
+    initialMeta: IEarningRateHistoryMeta;
+    accessToken?: string;
+  }
   ///
 }

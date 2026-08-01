@@ -11,7 +11,7 @@ import TextField from "@mui/material/TextField";
 import Divider from "@mui/material/Divider";
 import Grid from "@mui/material/Grid";
 import Avatar from "@mui/material/Avatar";
-import { sendRequest, updateUserApi, uploadImageApi } from "@/utils/api";
+import { sendRequest, updateMyProfileApi, uploadImageApi } from "@/utils/api";
 import { useToast } from "@/utils/toast";
 import { getInitials, getUserAvatarUrl } from "@/utils/actions/getImages";
 
@@ -67,8 +67,6 @@ export default function ProfileEditDialog({ open, onClose, user }: Props) {
   // preview and uploaded urls
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
-  const fileInputRef = useRef<HTMLInputElement | null>(null);
-  const getUserId = (u?: IUser | null) => u?._id ?? "";
   const currentAvatarUrl = avatarPreview ?? getUserAvatarUrl(user);
   const [avatarSrc, setAvatarSrc] = useState(currentAvatarUrl);
 
@@ -110,14 +108,7 @@ export default function ProfileEditDialog({ open, onClose, user }: Props) {
   };
 
   const handleSave = async () => {
-    const userId = getUserId(user);
-
     const accessToken = (session as any)?.access_token;
-
-    if (!userId) {
-      toast.error("User not found.");
-      return;
-    }
 
     if (!accessToken) {
       toast.error("Please login first.");
@@ -134,53 +125,56 @@ export default function ProfileEditDialog({ open, onClose, user }: Props) {
 
       let avatarUrl = user?.avatarUrl;
 
+      /* UPLOAD NEW AVATAR */
       if (avatarFile) {
         const uploadRes = await uploadImageApi(avatarFile, accessToken);
 
         avatarUrl = parseUploadResult(uploadRes);
 
         if (!avatarUrl) {
-          toast.error("Upload avatar failed.");
+          toast.error(uploadRes?.message || "Upload avatar failed.");
           return;
         }
       }
 
-      const payload: UpdateUserPayload = {
-        _id: userId,
+      /* UPDATE CURRENT USER PROFILE */
+      const payload: UpdateMyProfilePayload = {
         name: displayName.trim(),
         website: website.trim(),
         bio: bio.trim(),
-        subscriptionTier: user?.subscriptionTier,
+        ...(avatarUrl ? { avatarUrl } : {}),
       };
 
-      const res = await updateUserApi(payload, accessToken);
+      const res = await updateMyProfileApi(payload, accessToken);
 
-      if (res?.data) {
+      if (res?.statusCode === 200 && res?.data) {
         toast.success("Profile updated successfully.");
 
         try {
           await sendRequest<IBackendRes<any>>({
             url: "/api/revalidate",
-
             method: "POST",
-
             queryParams: {
               tag: "profile-user",
-
               secret: "justArandomString",
             },
           });
-        } catch {}
+        } catch (error) {
+          console.error("Profile revalidation failed:", error);
+        }
+
+        setAvatarFile(null);
+        setAvatarPreview(null);
 
         onClose();
-
         router.refresh();
-      } else {
-        toast.error(res?.message ?? "Update profile failed.");
-      }
-    } catch (err) {
-      console.error(err);
 
+        return;
+      }
+
+      toast.error(res?.message || "Update profile failed.");
+    } catch (error) {
+      console.error(error);
       toast.error("Update profile failed.");
     } finally {
       setLoading(false);

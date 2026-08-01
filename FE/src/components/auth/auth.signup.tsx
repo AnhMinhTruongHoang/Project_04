@@ -115,9 +115,6 @@ const AuthSignUp = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [rePassword, setRePassword] = useState("");
-  const [age, setAge] = useState("");
-  const [gender, setGender] = useState("MALE");
-  const [address, setAddress] = useState("");
 
   const [agree, setAgree] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -139,22 +136,14 @@ const AuthSignUp = () => {
 
     if (!password.trim()) {
       nextError.password = "Password is required.";
-    } else if (password.length < 3) {
-      nextError.password = "Password must be at least 3 characters.";
+    } else if (password.length < 8) {
+      nextError.password = "Password must be at least 8 characters.";
     }
-
     if (!rePassword.trim()) {
       nextError.rePassword = "Please re-enter your password.";
     } else if (rePassword !== password) {
       nextError.rePassword = "Passwords do not match.";
     }
-    if (!age.trim()) {
-      nextError.age = "Age is required.";
-    } else if (Number.isNaN(Number(age)) || Number(age) <= 0) {
-      nextError.age = "Age is invalid.";
-    }
-
-    if (!address.trim()) nextError.address = "Address is required.";
 
     if (!agree) {
       nextError.agree = "You must agree to the terms and privacy policy.";
@@ -183,9 +172,6 @@ const AuthSignUp = () => {
           name: name.trim(),
           email: normalizedEmail,
           password,
-          age: Number(age),
-          gender,
-          address: address.trim(),
         },
       });
 
@@ -213,12 +199,38 @@ const AuthSignUp = () => {
       }
 
       setSeverity("error");
-
       if (statusCode === 409) {
+        const requiresVerification =
+          Boolean(res?.data?.requiresVerification) ||
+          responseMessage.toLowerCase().includes("not been verified");
+
+        if (requiresVerification) {
+          const verificationEmail = String(res?.data?.email || normalizedEmail)
+            .trim()
+            .toLowerCase();
+
+          setSeverity("success");
+          setResMessage(
+            "This account has not been verified. Redirecting to OTP verification..."
+          );
+          setOpenMessage(true);
+
+          setTimeout(() => {
+            router.push(
+              `/auth/verify-otp?email=${encodeURIComponent(verificationEmail)}`
+            );
+          }, 700);
+
+          return;
+        }
+
+        setSeverity("error");
         setResMessage(
-          responseMessage ||
-            "This email is already registered. Please use the correct sign-in method."
+          responseMessage || "This email is already registered. Please sign in."
         );
+        setOpenMessage(true);
+
+        return;
       } else if (statusCode === 403) {
         setResMessage(
           responseMessage ||
@@ -443,59 +455,7 @@ const AuthSignUp = () => {
                 sx={inputSx}
               />
             </FormControl>
-            <Box
-              sx={{
-                display: "grid",
-                gridTemplateColumns: { xs: "1fr", sm: "1fr 1fr" },
-                gap: 2,
-              }}
-            >
-              <FormControl>
-                <FormLabel sx={{ color: "#E5E7EB", mb: 0.8, fontWeight: 600 }}>
-                  Age
-                </FormLabel>
-                <TextField
-                  type="number"
-                  fullWidth
-                  value={age}
-                  error={!!error.age}
-                  helperText={error.age}
-                  onChange={(e) => setAge(e.target.value)}
-                  sx={inputSx}
-                />
-              </FormControl>
 
-              <FormControl>
-                <FormLabel sx={{ color: "#E5E7EB", mb: 0.8, fontWeight: 600 }}>
-                  Gender
-                </FormLabel>
-                <TextField
-                  select
-                  fullWidth
-                  value={gender}
-                  onChange={(e) => setGender(e.target.value)}
-                  sx={inputSx}
-                >
-                  <MenuItem value="MALE">Male</MenuItem>
-                  <MenuItem value="FEMALE">Female</MenuItem>
-                  <MenuItem value="OTHER">Other</MenuItem>
-                </TextField>
-              </FormControl>
-            </Box>
-            <FormControl>
-              <FormLabel sx={{ color: "#E5E7EB", mb: 0.8, fontWeight: 600 }}>
-                Address
-              </FormLabel>
-              <TextField
-                placeholder="Vietnam"
-                fullWidth
-                value={address}
-                error={!!error.address}
-                helperText={error.address}
-                onChange={(e) => setAddress(e.target.value)}
-                sx={inputSx}
-              />
-            </FormControl>
             <Divider
               sx={{
                 color: "#8B949E",

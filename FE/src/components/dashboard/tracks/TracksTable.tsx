@@ -758,6 +758,23 @@ const TracksTable = ({ tracks, accessToken }: Props) => {
     },
 
     {
+      field: "approvalStatus",
+      headerName: "Approval",
+      width: 130,
+      sortable: true,
+
+      renderCell: (params) => <StatusChip value={params.row.approvalStatus} />,
+    },
+
+    {
+      field: "createdAt",
+      headerName: "Created",
+      width: 150,
+
+      valueFormatter: (params) =>
+        params.value ? dayjs(params.value).format("DD/MM/YYYY") : "",
+    },
+    {
       field: "copyrightScore",
       headerName: "Score",
       width: 90,
@@ -783,24 +800,6 @@ const TracksTable = ({ tracks, accessToken }: Props) => {
           </Typography>
         );
       },
-    },
-
-    {
-      field: "approvalStatus",
-      headerName: "Approval",
-      width: 130,
-      sortable: true,
-
-      renderCell: (params) => <StatusChip value={params.row.approvalStatus} />,
-    },
-
-    {
-      field: "createdAt",
-      headerName: "Created",
-      width: 150,
-
-      valueFormatter: (params) =>
-        params.value ? dayjs(params.value).format("DD/MM/YYYY") : "",
     },
 
     {

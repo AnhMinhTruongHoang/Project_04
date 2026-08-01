@@ -265,6 +265,18 @@ declare global {
     spotlightTrackId?: string;
   }
 
+  interface UpdateMyProfilePayload {
+    name: string;
+    website?: string;
+    bio?: string;
+    avatarUrl?: string;
+    coverUrl?: string;
+    city?: string;
+    country?: string;
+    gender?: string;
+    age?: number;
+  }
+
   interface ITrackTop {
     _id?: string;
     id?: string;

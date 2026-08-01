@@ -115,14 +115,22 @@ public class AuthController {
 		return type.trim().toUpperCase();
 	}
 
+	private boolean isSocialAccountType(String type) {
+		String normalizedType = normalizeAccountType(type);
+
+		return "GOOGLE".equals(normalizedType)
+				|| "GITHUB".equals(normalizedType)
+				|| "SOCIAL".equals(normalizedType);
+	}
+
 	private String getProviderName(String type) {
 		String normalizedType = normalizeAccountType(type);
 
 		return switch (normalizedType) {
 			case "GOOGLE" -> "Google";
 			case "GITHUB" -> "GitHub";
-			case "SYSTEM" -> "email and password";
-			default -> normalizedType;
+			case "SOCIAL" -> "social login";
+			default -> "email and password";
 		};
 	}
 
@@ -264,16 +272,12 @@ public class AuthController {
 			}
 
 			/* LOGIN PROVIDER */
-			String accountType = user.getType() == null || user.getType().isBlank()
-					? "SYSTEM"
-					: user.getType().trim().toUpperCase();
+			String accountType = normalizeAccountType(
+					user.getType());
 
-			if (!"SYSTEM".equals(accountType)) {
-				String providerName = switch (accountType) {
-					case "GOOGLE" -> "Google";
-					case "GITHUB" -> "GitHub";
-					default -> accountType;
-				};
+			if (isSocialAccountType(accountType)) {
+				String providerName = getProviderName(
+						accountType);
 
 				return new ResponseEntity<>(
 						new ApiResponse<>(
@@ -337,13 +341,38 @@ public class AuthController {
 
 	/// REGISTER
 	@PostMapping("register")
-	public ResponseEntity<?> register(@RequestBody RegisterDTO dto) {
-		try {
-			String email = dto.getEmail() == null
-					? null
-					: dto.getEmail().trim().toLowerCase();
+	public ResponseEntity<?> register(
+			@RequestBody RegisterDTO dto) {
 
-			if (email == null || email.isBlank()) {
+		try {
+			String name = dto.getName() == null
+					? ""
+					: dto.getName().trim();
+
+			String email = dto.getEmail() == null
+					? ""
+					: dto.getEmail()
+							.trim()
+							.toLowerCase();
+
+			String password = dto.getPassword();
+
+			/*
+			 * =========================
+			 * VALIDATE INPUT
+			 * =========================
+			 */
+
+			if (name.isBlank()) {
+				return new ResponseEntity<>(
+						new ApiResponse<>(
+								400,
+								"Name is required.",
+								null),
+						HttpStatus.BAD_REQUEST);
+			}
+
+			if (email.isBlank()) {
 				return new ResponseEntity<>(
 						new ApiResponse<>(
 								400,
@@ -352,7 +381,20 @@ public class AuthController {
 						HttpStatus.BAD_REQUEST);
 			}
 
-			if (dto.getPassword() == null || dto.getPassword().isBlank()) {
+			if (!email.matches(
+					"^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+$")) {
+
+				return new ResponseEntity<>(
+						new ApiResponse<>(
+								400,
+								"Email is invalid.",
+								null),
+						HttpStatus.BAD_REQUEST);
+			}
+
+			if (password == null
+					|| password.isBlank()) {
+
 				return new ResponseEntity<>(
 						new ApiResponse<>(
 								400,
@@ -361,12 +403,30 @@ public class AuthController {
 						HttpStatus.BAD_REQUEST);
 			}
 
-			User checkUser = userService.findByEmail(email);
+			if (password.length() < 8) {
+				return new ResponseEntity<>(
+						new ApiResponse<>(
+								400,
+								"Password must be at least 8 characters.",
+								null),
+						HttpStatus.BAD_REQUEST);
+			}
 
-			if (checkUser != null) {
-				String accountStatus = checkUser.getAccountStatus() == null
+			/*
+			 * =========================
+			 * CHECK EXISTING ACCOUNT
+			 * =========================
+			 */
+
+			User existingUser = userService.findByEmail(email);
+
+			if (existingUser != null) {
+				String accountStatus = existingUser.getAccountStatus() == null
 						? "ACTIVE"
-						: checkUser.getAccountStatus().trim().toUpperCase();
+						: existingUser
+								.getAccountStatus()
+								.trim()
+								.toUpperCase();
 
 				if ("DELETED".equals(accountStatus)) {
 					return new ResponseEntity<>(
@@ -387,9 +447,11 @@ public class AuthController {
 				}
 
 				if ("SUSPENDED".equals(accountStatus)) {
-					Date suspendedUntil = checkUser.getSuspendedUntil();
+					Date suspendedUntil = existingUser.getSuspendedUntil();
 
-					if (suspendedUntil == null || suspendedUntil.after(new Date())) {
+					if (suspendedUntil == null
+							|| suspendedUntil.after(new Date())) {
+
 						return new ResponseEntity<>(
 								new ApiResponse<>(
 										403,
@@ -399,17 +461,11 @@ public class AuthController {
 					}
 				}
 
-				String existingType = checkUser.getType() == null
-						|| checkUser.getType().isBlank()
-								? "SYSTEM"
-								: checkUser.getType().trim().toUpperCase();
+				String existingType = normalizeAccountType(
+						existingUser.getType());
 
-				if (!"SYSTEM".equals(existingType)) {
-					String providerName = switch (existingType) {
-						case "GOOGLE" -> "Google";
-						case "GITHUB" -> "GitHub";
-						default -> existingType;
-					};
+				if (isSocialAccountType(existingType)) {
+					String providerName = getProviderName(existingType);
 
 					return new ResponseEntity<>(
 							new ApiResponse<>(
@@ -423,7 +479,9 @@ public class AuthController {
 							HttpStatus.CONFLICT);
 				}
 
-				if (Boolean.TRUE.equals(checkUser.getIsVerify())) {
+				if (Boolean.TRUE.equals(
+						existingUser.getIsVerify())) {
+
 					return new ResponseEntity<>(
 							new ApiResponse<>(
 									409,
@@ -432,49 +490,123 @@ public class AuthController {
 							HttpStatus.CONFLICT);
 				}
 
+				/* EXISTING BUT NOT VERIFIED */
+
+				Map<String, Object> verificationData = new LinkedHashMap<>();
+
+				verificationData.put(
+						"requiresVerification",
+						true);
+
+				verificationData.put(
+						"email",
+						existingUser.getEmail());
+
 				return new ResponseEntity<>(
 						new ApiResponse<>(
 								409,
 								"This email is already registered but has not been verified. Please verify your OTP or request a new OTP.",
-								null),
+								verificationData),
 						HttpStatus.CONFLICT);
 			}
+
+			/*
+			 * =========================
+			 * CREATE LOCAL ACCOUNT
+			 * =========================
+			 */
 
 			String otp = generateOtp();
 			Date now = new Date();
 
+			Date otpExpiredAt = new Date(
+					now.getTime()
+							+ 5 * 60 * 1000L);
+
 			User user = new User();
 
-			user.setId(generateId());
-			user.setEmail(email);
+			user.setId(
+					generateId());
+
+			user.setName(
+					name);
+
+			user.setEmail(
+					email);
+
+			user.setUsername(
+					email);
+
 			user.setPassword(
 					BCrypt.hashpw(
-							dto.getPassword(),
+							password,
 							BCrypt.gensalt()));
 
-			user.setName(dto.getName());
-			user.setAge(dto.getAge());
-			user.setGender(dto.getGender());
-			user.setUsername(email);
-			user.setRole("USER");
-			user.setType("SYSTEM");
-			user.setIsVerify(false);
-			user.setVerified(false);
-			user.setCode(otp);
-			user.setRefreshToken("");
-			user.setFollowers(0);
-			user.setFollowing(0);
+			user.setRole(
+					"USER");
 
-			user.setAccountStatus("ACTIVE");
-			user.setStatusReason(null);
-			user.setSuspendedUntil(null);
-			user.setStatusUpdatedAt(now);
+			user.setType(
+					"SYSTEM");
 
-			user.setCreatedAt(now);
-			user.setUpdatedAt(now);
+			user.setSubscriptionTier(
+					"FREE");
 
-			userService.save(user);
-			createDefaultPlaylist(user);
+			user.setAge(
+					null);
+
+			user.setGender(
+					"OTHER");
+
+			user.setIsVerify(
+					false);
+
+			user.setVerified(
+					false);
+
+			user.setCode(
+					otp);
+
+			user.setCodeExpired(
+					otpExpiredAt);
+
+			user.setRefreshToken(
+					"");
+
+			user.setFollowers(
+					0);
+
+			user.setFollowing(
+					0);
+
+			user.setAccountStatus(
+					"ACTIVE");
+
+			user.setStatusReason(
+					null);
+
+			user.setSuspendedUntil(
+					null);
+
+			user.setStatusUpdatedAt(
+					now);
+
+			user.setCreatedAt(
+					now);
+
+			user.setUpdatedAt(
+					now);
+
+			userService.save(
+					user);
+
+			createDefaultPlaylist(
+					user);
+
+			/*
+			 * =========================
+			 * SEND VERIFICATION OTP
+			 * =========================
+			 */
 
 			emailService.sendOtpEmail(
 					user.getEmail(),
@@ -1003,7 +1135,7 @@ public class AuthController {
 								? "SYSTEM"
 								: user.getType().trim().toUpperCase();
 
-				if ("SYSTEM".equals(existingType)) {
+				if (!isSocialAccountType(existingType)) {
 					return new ResponseEntity<>(
 							new ApiResponse<>(
 									409,
@@ -1011,7 +1143,6 @@ public class AuthController {
 									null),
 							HttpStatus.CONFLICT);
 				}
-
 				/*
 				 * Hỗ trợ tài khoản social cũ chưa lưu rõ GOOGLE/GITHUB.
 				 * Sau lần đăng nhập hợp lệ đầu tiên sẽ chuẩn hóa provider.

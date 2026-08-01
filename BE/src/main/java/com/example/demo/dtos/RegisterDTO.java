@@ -3,11 +3,10 @@ package com.example.demo.dtos;
 public class RegisterDTO {
 
 	private String name;
+
 	private String email;
+
 	private String password;
-	private Integer age;
-	private String gender;
-	private String address;
 
 	public RegisterDTO() {
 	}
@@ -16,7 +15,9 @@ public class RegisterDTO {
 		return name;
 	}
 
-	public void setName(String name) {
+	public void setName(
+			String name) {
+
 		this.name = name;
 	}
 
@@ -24,7 +25,9 @@ public class RegisterDTO {
 		return email;
 	}
 
-	public void setEmail(String email) {
+	public void setEmail(
+			String email) {
+
 		this.email = email;
 	}
 
@@ -32,31 +35,9 @@ public class RegisterDTO {
 		return password;
 	}
 
-	public void setPassword(String password) {
+	public void setPassword(
+			String password) {
+
 		this.password = password;
-	}
-
-	public Integer getAge() {
-		return age;
-	}
-
-	public void setAge(Integer age) {
-		this.age = age;
-	}
-
-	public String getGender() {
-		return gender;
-	}
-
-	public void setGender(String gender) {
-		this.gender = gender;
-	}
-
-	public String getAddress() {
-		return address;
-	}
-
-	public void setAddress(String address) {
-		this.address = address;
 	}
 }

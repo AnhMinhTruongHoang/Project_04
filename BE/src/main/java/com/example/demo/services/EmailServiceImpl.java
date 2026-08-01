@@ -1,5 +1,8 @@
 package com.example.demo.services;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.mail.SimpleMailMessage;
@@ -15,6 +18,8 @@ public class EmailServiceImpl implements EmailService {
 	@Value("${spring.mail.username}")
 	private String fromEmail;
 
+	private static final Logger logger = LoggerFactory.getLogger(EmailServiceImpl.class);
+
 	@Override
 	public void sendOtpEmail(String to, String subject, String otp, int expiredMinutes) {
 		SimpleMailMessage message = new SimpleMailMessage();
@@ -26,6 +31,18 @@ public class EmailServiceImpl implements EmailService {
 				"Your OTP code is: " + otp + "\n\n"
 						+ "This code will expire in " + expiredMinutes + " minutes.\n"
 						+ "If you did not request this email, please ignore it.");
+
+		logger.info(
+				"Sending OTP email from [{}] to [{}]",
+				fromEmail,
+				to);
+
+		javaMailSender.send(message);
+
+		logger.info(
+				"SMTP accepted OTP email from [{}] to [{}]",
+				fromEmail,
+				to);
 
 		javaMailSender.send(message);
 	}

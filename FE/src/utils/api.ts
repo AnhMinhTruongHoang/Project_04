@@ -526,6 +526,18 @@ export const updateUserApi = (
   });
 };
 
+export const updateMyProfileApi = (
+  payload: UpdateMyProfilePayload,
+  accessToken?: string
+) => {
+  return sendRequest<IBackendRes<IUser>>({
+    url: "/api/v1/users/me",
+    method: "PATCH",
+    body: payload,
+    headers: authHeaders(accessToken),
+  });
+};
+
 export const deleteUserApi = (id: string, accessToken?: string) => {
   return sendRequest<IBackendRes<null>>({
     url: `/api/v1/users/${encodeURIComponent(id)}`,

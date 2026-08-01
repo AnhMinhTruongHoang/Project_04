@@ -850,6 +850,170 @@ public class UserController {
 		}
 	}
 
+	private void applyMyProfileFields(
+			User user,
+			Map<String, Object> body) {
+
+		String name = getString(
+				body,
+				"name",
+				"fullName");
+
+		String gender = getString(
+				body,
+				"gender");
+
+		String avatarUrl = getString(
+				body,
+				"avatarUrl",
+				"avatar",
+				"image");
+
+		String coverUrl = getString(
+				body,
+				"coverUrl");
+
+		String bio = getString(
+				body,
+				"bio");
+
+		String website = getString(
+				body,
+				"website");
+
+		String city = getString(
+				body,
+				"city");
+
+		String country = getString(
+				body,
+				"country");
+
+		String spotlightTrackId = getString(
+				body,
+				"spotlightTrackId");
+
+		Integer age = getInteger(
+				body,
+				"age");
+
+		if (name != null) {
+			user.setName(name);
+		}
+
+		if (gender != null) {
+			user.setGender(
+					gender.toUpperCase());
+		}
+
+		if (avatarUrl != null) {
+			user.setAvatarUrl(
+					avatarUrl);
+		}
+
+		if (coverUrl != null) {
+			user.setCoverUrl(
+					coverUrl);
+		}
+
+		if (bio != null) {
+			user.setBio(bio);
+		}
+
+		if (website != null) {
+			user.setWebsite(
+					website);
+		}
+
+		if (city != null) {
+			user.setCity(city);
+		}
+
+		if (country != null) {
+			user.setCountry(
+					country);
+		}
+
+		if (spotlightTrackId != null) {
+			user.setSpotlightTrackId(
+					spotlightTrackId);
+		}
+
+		if (age != null
+				&& age >= 1
+				&& age <= 120) {
+
+			user.setAge(age);
+		}
+	}
+
+	/*
+	 * =========================
+	 * UPDATE MY PROFILE
+	 * =========================
+	 */
+	@PatchMapping("/me")
+	public ResponseEntity<?> updateMyProfile(
+			@RequestBody Map<String, Object> body,
+			@RequestHeader(value = "Authorization", required = false) String authorization) {
+
+		try {
+			User currentUser = getCurrentUser(authorization);
+
+			if (currentUser == null) {
+				return new ResponseEntity<>(
+						new ApiResponse<>(
+								401,
+								"Unauthorized",
+								null),
+						HttpStatus.UNAUTHORIZED);
+			}
+
+			String accountStatus = currentUser.getAccountStatus() == null
+					? "ACTIVE"
+					: currentUser
+							.getAccountStatus()
+							.trim()
+							.toUpperCase();
+
+			if (!"ACTIVE".equals(accountStatus)) {
+				return new ResponseEntity<>(
+						new ApiResponse<>(
+								403,
+								"Your account is not allowed to update its profile.",
+								null),
+						HttpStatus.FORBIDDEN);
+			}
+
+			applyMyProfileFields(
+					currentUser,
+					body);
+
+			currentUser.setUpdatedAt(
+					new Date());
+
+			userRepository.save(
+					currentUser);
+
+			return new ResponseEntity<>(
+					new ApiResponse<>(
+							200,
+							"Profile updated successfully",
+							toDTO(currentUser)),
+					HttpStatus.OK);
+
+		} catch (Exception e) {
+			e.printStackTrace();
+
+			return new ResponseEntity<>(
+					new ApiResponse<>(
+							500,
+							"Unable to update profile due to an internal server error.",
+							null),
+					HttpStatus.INTERNAL_SERVER_ERROR);
+		}
+	}
+
 	/// delete
 	@Transactional
 	@DeleteMapping({ "/{id}", "/delete/{id}" })

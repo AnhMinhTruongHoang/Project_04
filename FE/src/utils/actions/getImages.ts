@@ -92,7 +92,7 @@ export const getUserCoverUrl = (user?: any) => {
   const cover = user?.coverUrl || "";
 
   if (!cover) {
-    return "/images/default-cover.jpg";
+    return "/images/user/default-cover.jpg";
   }
 
   return getImageUrl(cover, "/images/default-cover.jpg");
@@ -115,7 +115,7 @@ export const getTrackImageUrl = (track?: ITrackTop | string | null) => {
 export const getPlaylistCoverUrl = (playlist?: Partial<IPlaylist> | null) => {
   return getImageUrl(
     (playlist as any)?.coverUrl || (playlist as any)?.image,
-    "/images/default-playlist.jpg"
+    "/images/user/default-cover.jpg"
   );
 };
 

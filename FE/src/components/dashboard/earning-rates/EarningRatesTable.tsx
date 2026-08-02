@@ -197,10 +197,11 @@ const EarningRatesTable = ({
           return;
         }
 
-        const historyData = historyResponse.data;
+        const historyData = historyResponse?.data;
+        const historyResult = historyData?.result;
 
-        const nextRates = Array.isArray(historyData?.result)
-          ? historyData.result
+        const nextRates: IEarningRate[] = Array.isArray(historyResult)
+          ? historyResult
           : [];
 
         setRates(nextRates);

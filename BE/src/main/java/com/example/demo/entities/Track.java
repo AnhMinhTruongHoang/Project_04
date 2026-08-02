@@ -114,6 +114,177 @@ public class Track implements java.io.Serializable {
 
 	/*
 	 * =========================
+	 * COPYRIGHT LICENSE DOCUMENT
+	 * =========================
+	 */
+
+	/*
+	 * URL PDF giấy phép trên Cloudinary.
+	 */
+	private String licenseUrl;
+
+	/*
+	 * Tên file gốc do user upload.
+	 */
+	private String licenseFileName;
+
+	/*
+	 * Dung lượng file PDF, đơn vị byte.
+	 */
+	private Long licenseFileSize;
+
+	/*
+	 * Loại quyền sử dụng nội dung:
+	 *
+	 * ORIGINAL_OWNER
+	 * LICENSED
+	 * CREATIVE_COMMONS
+	 * PUBLIC_DOMAIN
+	 * OTHER
+	 */
+	private String licenseType;
+
+	/*
+	 * Ghi chú do uploader cung cấp.
+	 */
+	private String licenseNote;
+
+	/*
+	 * Trạng thái Admin kiểm tra giấy phép:
+	 *
+	 * NOT_PROVIDED
+	 * PENDING_REVIEW
+	 * VERIFIED
+	 * REJECTED
+	 */
+	private String licenseReviewStatus;
+
+	/*
+	 * Lý do Admin từ chối giấy phép.
+	 */
+	private String licenseReviewReason;
+
+	private LocalDateTime licenseUploadedAt;
+
+	private LocalDateTime licenseReviewedAt;
+
+	/*
+	 * ID Admin kiểm tra giấy phép.
+	 */
+	private String licenseReviewedBy;
+
+	@Column(name = "licenseUrl", length = 1000)
+	public String getLicenseUrl() {
+		return this.licenseUrl;
+	}
+
+	public void setLicenseUrl(
+			String licenseUrl) {
+
+		this.licenseUrl = licenseUrl;
+	}
+
+	@Column(name = "licenseFileName", length = 500)
+	public String getLicenseFileName() {
+		return this.licenseFileName;
+	}
+
+	public void setLicenseFileName(
+			String licenseFileName) {
+
+		this.licenseFileName = licenseFileName;
+	}
+
+	@Column(name = "licenseFileSize")
+	public Long getLicenseFileSize() {
+		return this.licenseFileSize;
+	}
+
+	public void setLicenseFileSize(
+			Long licenseFileSize) {
+
+		this.licenseFileSize = licenseFileSize;
+	}
+
+	@Column(name = "licenseType", length = 40)
+	public String getLicenseType() {
+		return this.licenseType;
+	}
+
+	public void setLicenseType(
+			String licenseType) {
+
+		this.licenseType = licenseType;
+	}
+
+	@Column(name = "licenseNote", length = 2000)
+	public String getLicenseNote() {
+		return this.licenseNote;
+	}
+
+	public void setLicenseNote(
+			String licenseNote) {
+
+		this.licenseNote = licenseNote;
+	}
+
+	@Column(name = "licenseReviewStatus", length = 30)
+	public String getLicenseReviewStatus() {
+		return this.licenseReviewStatus;
+	}
+
+	public void setLicenseReviewStatus(
+			String licenseReviewStatus) {
+
+		this.licenseReviewStatus = licenseReviewStatus;
+	}
+
+	@Column(name = "licenseReviewReason", length = 1000)
+	public String getLicenseReviewReason() {
+		return this.licenseReviewReason;
+	}
+
+	public void setLicenseReviewReason(
+			String licenseReviewReason) {
+
+		this.licenseReviewReason = licenseReviewReason;
+	}
+
+	@Column(name = "licenseUploadedAt")
+	public LocalDateTime getLicenseUploadedAt() {
+		return this.licenseUploadedAt;
+	}
+
+	public void setLicenseUploadedAt(
+			LocalDateTime licenseUploadedAt) {
+
+		this.licenseUploadedAt = licenseUploadedAt;
+	}
+
+	@Column(name = "licenseReviewedAt")
+	public LocalDateTime getLicenseReviewedAt() {
+		return this.licenseReviewedAt;
+	}
+
+	public void setLicenseReviewedAt(
+			LocalDateTime licenseReviewedAt) {
+
+		this.licenseReviewedAt = licenseReviewedAt;
+	}
+
+	@Column(name = "licenseReviewedBy", length = 24)
+	public String getLicenseReviewedBy() {
+		return this.licenseReviewedBy;
+	}
+
+	public void setLicenseReviewedBy(
+			String licenseReviewedBy) {
+
+		this.licenseReviewedBy = licenseReviewedBy;
+	}
+
+	/*
+	 * =========================
 	 * AUDIO FINGERPRINT SUMMARY
 	 * =========================
 	 */

@@ -881,6 +881,33 @@ export const rejectTrackApi = (
 };
 
 /* =========================
+   ADMIN TRACK LICENSE APIs
+========================= */
+
+export const approveTrackLicenseApi = (id: string, accessToken?: string) => {
+  return sendRequest<IBackendRes<ITrackTop>>({
+    url: `/api/v1/admin/tracks/${encodeURIComponent(id)}/license/approve`,
+    method: "PATCH",
+    headers: authHeaders(accessToken),
+  });
+};
+
+export const rejectTrackLicenseApi = (
+  id: string,
+  reason: string,
+  accessToken?: string
+) => {
+  return sendRequest<IBackendRes<ITrackTop>>({
+    url: `/api/v1/admin/tracks/${encodeURIComponent(id)}/license/reject`,
+    method: "PATCH",
+    body: {
+      reason: reason.trim(),
+    },
+    headers: authHeaders(accessToken),
+  });
+};
+
+/* =========================
    ADMIN COPYRIGHT SCAN API
 ========================= */
 
@@ -1872,6 +1899,20 @@ export const createAdminEarningRateApi = (
     },
     headers: authHeaders(accessToken),
   });
+};
+
+export const getLicenseUrl = (licenseUrl?: string | null) => {
+  if (!licenseUrl) return "";
+
+  if (/^https?:\/\//i.test(licenseUrl)) {
+    return licenseUrl;
+  }
+
+  if (licenseUrl.startsWith("/")) {
+    return `${BACKEND_URL}${licenseUrl}`;
+  }
+
+  return `${BACKEND_URL}/uploads/licenses/${licenseUrl}`;
 };
 
 /* =========================

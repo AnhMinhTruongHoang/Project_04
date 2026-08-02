@@ -331,6 +331,26 @@ declare global {
     thumbnail?: string;
     audio?: string;
     audioUrl?: string;
+
+    licenseUrl?: string | null;
+
+    licenseFileName?: string | null;
+
+    licenseFileSize?: number | null;
+
+    licenseType?: TrackLicenseType | null;
+
+    licenseNote?: string | null;
+
+    licenseReviewStatus?: TrackLicenseReviewStatus | null;
+
+    licenseReviewReason?: string | null;
+
+    licenseUploadedAt?: string | null;
+
+    licenseReviewedAt?: string | null;
+
+    licenseReviewedBy?: string | null;
   }
 
   interface IListeningHistoryItem {
@@ -366,12 +386,12 @@ declare global {
     title: string;
     description: string;
     category: string;
-
-    /**
-     * TrackController nhận multipart/form-data.
-     */
     image: File;
     audio: File;
+
+    license: File;
+    licenseType: TrackLicenseType;
+    licenseNote?: string;
 
     /**
      * Giữ tương thích với form/component cũ.
@@ -593,8 +613,21 @@ declare global {
     title: string;
     description: string;
     category: string;
+
     imageFile: File | null;
     imagePreview: string;
+
+    /* COPYRIGHT LICENSE */
+    licenseFile: File | null;
+    licenseFileName: string;
+    licenseType:
+      | ""
+      | "ORIGINAL_OWNER"
+      | "LICENSED"
+      | "CREATIVE_COMMONS"
+      | "PUBLIC_DOMAIN"
+      | "OTHER";
+    licenseNote: string;
   }
 
   ///
@@ -1156,5 +1189,42 @@ declare global {
     initialMeta: IEarningRateHistoryMeta;
     accessToken?: string;
   }
+
+  /* =========================
+   ADMIN TRACK LICENSE APIs
+========================= */
+
+  export const approveTrackLicenseApi = (id: string, accessToken?: string) => {
+    return sendRequest<IBackendRes<ITrackTop>>({
+      url: `/api/v1/admin/tracks/${encodeURIComponent(id)}/license/approve`,
+      method: "PATCH",
+      headers: authHeaders(accessToken),
+    });
+  };
+
+  export const rejectTrackLicenseApi = (
+    id: string,
+    reason: string,
+    accessToken?: string
+  ) => {
+    return sendRequest<IBackendRes<ITrackTop>>({
+      url: `/api/v1/admin/tracks/${encodeURIComponent(id)}/license/reject`,
+      method: "PATCH",
+      body: {
+        reason: reason.trim(),
+      },
+      headers: authHeaders(accessToken),
+    });
+  };
+
+  type TrackLicenseType =
+    | "ORIGINAL_OWNER"
+    | "LICENSED"
+    | "CREATIVE_COMMONS"
+    | "PUBLIC_DOMAIN"
+    | "OTHER";
+
+  type TrackLicenseReviewStatus = "PENDING_REVIEW" | "VERIFIED" | "REJECTED";
+
   ///
 }

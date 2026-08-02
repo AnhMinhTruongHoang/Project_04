@@ -63,6 +63,12 @@ public class AdminTrackController {
 
 	private static final String COPYRIGHT_MANUAL_REJECTED = "MANUAL_REJECTED";
 
+	private static final String LICENSE_PENDING_REVIEW = "PENDING_REVIEW";
+
+	private static final String LICENSE_VERIFIED = "VERIFIED";
+
+	private static final String LICENSE_REJECTED = "REJECTED";
+
 	@Autowired
 	private TrackRepository trackRepository;
 
@@ -559,6 +565,29 @@ public class AdminTrackController {
 								null));
 			}
 
+			/*
+			 * =========================
+			 * REQUIRE VERIFIED LICENSE
+			 * =========================
+			 */
+
+			if (!LICENSE_VERIFIED.equals(
+					track.getLicenseReviewStatus())) {
+
+				Map<String, Object> validationData = new LinkedHashMap<>();
+
+				validationData.put(
+						"licenseReviewStatus",
+						track.getLicenseReviewStatus());
+
+				return ResponseEntity
+						.status(409)
+						.body(new ApiResponse<>(
+								409,
+								"Copyright license must be verified before approving the track",
+								validationData));
+			}
+
 			LocalDateTime now = LocalDateTime.now();
 
 			track.setApprovalStatus(
@@ -707,6 +736,240 @@ public class AdminTrackController {
 									savedTrack)));
 
 		} catch (Exception e) {
+			e.printStackTrace();
+
+			return ResponseEntity
+					.internalServerError()
+					.body(new ApiResponse<>(
+							500,
+							e.getMessage(),
+							null));
+		}
+	}
+
+	// =====================================================
+	// APPROVE COPYRIGHT LICENSE
+	// =====================================================
+
+	@PatchMapping({
+			"/license/approve/{id}",
+			"/{id}/license/approve"
+	})
+	public ResponseEntity<?> approveLicense(
+			@PathVariable String id,
+			HttpServletRequest request) {
+
+		try {
+
+			User admin = getCurrentAdmin(
+					request);
+
+			if (admin == null) {
+
+				return ResponseEntity
+						.status(403)
+						.body(new ApiResponse<>(
+								403,
+								"Access denied",
+								null));
+			}
+
+			Track track = trackRepository
+					.findById(id)
+					.orElse(null);
+
+			if (track == null
+					|| Boolean.TRUE.equals(
+							track.getIsDeleted())) {
+
+				return ResponseEntity
+						.status(404)
+						.body(new ApiResponse<>(
+								404,
+								"Track not found",
+								null));
+			}
+
+			if (track.getLicenseUrl() == null
+					|| track.getLicenseUrl()
+							.isBlank()) {
+
+				return ResponseEntity
+						.badRequest()
+						.body(new ApiResponse<>(
+								400,
+								"Track does not have a copyright license document",
+								null));
+			}
+
+			LocalDateTime now = LocalDateTime.now();
+
+			track.setLicenseReviewStatus(
+					LICENSE_VERIFIED);
+
+			track.setLicenseReviewReason(
+					null);
+
+			track.setLicenseReviewedAt(
+					now);
+
+			track.setLicenseReviewedBy(
+					admin.getId());
+
+			track.setUpdatedAt(
+					now);
+
+			Track savedTrack = trackRepository.save(track);
+
+			return ResponseEntity.ok(
+					new ApiResponse<>(
+							200,
+							"Copyright license verified",
+							toAdminTrackResponse(
+									savedTrack)));
+
+		} catch (Exception e) {
+
+			e.printStackTrace();
+
+			return ResponseEntity
+					.internalServerError()
+					.body(new ApiResponse<>(
+							500,
+							e.getMessage(),
+							null));
+		}
+	}
+
+	// =====================================================
+	// REJECT COPYRIGHT LICENSE
+	// =====================================================
+
+	@PatchMapping({
+			"/license/reject/{id}",
+			"/{id}/license/reject"
+	})
+	public ResponseEntity<?> rejectLicense(
+			@PathVariable String id,
+
+			@RequestBody(required = false) RejectTrackDTO dto,
+
+			HttpServletRequest request) {
+
+		try {
+
+			User admin = getCurrentAdmin(
+					request);
+
+			if (admin == null) {
+
+				return ResponseEntity
+						.status(403)
+						.body(new ApiResponse<>(
+								403,
+								"Access denied",
+								null));
+			}
+
+			Track track = trackRepository
+					.findById(id)
+					.orElse(null);
+
+			if (track == null
+					|| Boolean.TRUE.equals(
+							track.getIsDeleted())) {
+
+				return ResponseEntity
+						.status(404)
+						.body(new ApiResponse<>(
+								404,
+								"Track not found",
+								null));
+			}
+
+			if (track.getLicenseUrl() == null
+					|| track.getLicenseUrl()
+							.isBlank()) {
+
+				return ResponseEntity
+						.badRequest()
+						.body(new ApiResponse<>(
+								400,
+								"Track does not have a copyright license document",
+								null));
+			}
+
+			String reason = dto == null
+					? ""
+					: dto.getReason();
+
+			reason = reason == null
+					? ""
+					: reason.trim();
+
+			if (reason.isEmpty()) {
+
+				return ResponseEntity
+						.badRequest()
+						.body(new ApiResponse<>(
+								400,
+								"License rejection reason is required",
+								null));
+			}
+
+			if (reason.length() > 1000) {
+
+				return ResponseEntity
+						.badRequest()
+						.body(new ApiResponse<>(
+								400,
+								"License rejection reason must not exceed 1000 characters",
+								null));
+			}
+
+			LocalDateTime now = LocalDateTime.now();
+
+			track.setLicenseReviewStatus(
+					LICENSE_REJECTED);
+
+			track.setLicenseReviewReason(
+					reason);
+
+			track.setLicenseReviewedAt(
+					now);
+
+			track.setLicenseReviewedBy(
+					admin.getId());
+
+			/*
+			 * License bị từ chối thì track cũng không được
+			 * phép tiếp tục ở trạng thái APPROVED.
+			 */
+
+			track.setApprovalStatus(
+					STATUS_REJECTED);
+
+			track.setRejectionReason(
+					"Copyright license rejected: "
+							+ reason);
+
+			track.setProcessingStatus(
+					STATUS_COMPLETED);
+
+			track.setUpdatedAt(
+					now);
+
+			Track savedTrack = trackRepository.save(track);
+
+			return ResponseEntity.ok(
+					new ApiResponse<>(
+							200,
+							"Copyright license rejected",
+							toAdminTrackResponse(
+									savedTrack)));
+
+		} catch (Exception e) {
+
 			e.printStackTrace();
 
 			return ResponseEntity
@@ -900,6 +1163,52 @@ public class AdminTrackController {
 		result.put(
 				"scannedAt",
 				track.getScannedAt());
+
+		/*
+		 * =========================
+		 * COPYRIGHT LICENSE
+		 * =========================
+		 */
+
+		result.put(
+				"licenseUrl",
+				track.getLicenseUrl());
+
+		result.put(
+				"licenseFileName",
+				track.getLicenseFileName());
+
+		result.put(
+				"licenseFileSize",
+				track.getLicenseFileSize());
+
+		result.put(
+				"licenseType",
+				track.getLicenseType());
+
+		result.put(
+				"licenseNote",
+				track.getLicenseNote());
+
+		result.put(
+				"licenseReviewStatus",
+				track.getLicenseReviewStatus());
+
+		result.put(
+				"licenseReviewReason",
+				track.getLicenseReviewReason());
+
+		result.put(
+				"licenseUploadedAt",
+				track.getLicenseUploadedAt());
+
+		result.put(
+				"licenseReviewedAt",
+				track.getLicenseReviewedAt());
+
+		result.put(
+				"licenseReviewedBy",
+				track.getLicenseReviewedBy());
 
 		result.put(
 				"isDeleted",

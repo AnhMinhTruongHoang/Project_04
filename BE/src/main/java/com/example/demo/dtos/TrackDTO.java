@@ -45,6 +45,32 @@ public class TrackDTO {
 
 	/*
 	 * =========================
+	 * COPYRIGHT LICENSE DOCUMENT
+	 * =========================
+	 */
+
+	private String licenseUrl;
+
+	private String licenseFileName;
+
+	private Long licenseFileSize;
+
+	private String licenseType;
+
+	private String licenseNote;
+
+	private String licenseReviewStatus;
+
+	private String licenseReviewReason;
+
+	private LocalDateTime licenseUploadedAt;
+
+	private LocalDateTime licenseReviewedAt;
+
+	private String licenseReviewedBy;
+
+	/*
+	 * =========================
 	 * AUDIO FINGERPRINT RESULT
 	 * =========================
 	 */
@@ -353,5 +379,111 @@ public class TrackDTO {
 			String copyrightRiskLevel) {
 
 		this.copyrightRiskLevel = copyrightRiskLevel;
+	}
+
+	/*
+	 * =========================
+	 * COPYRIGHT LICENSE DOCUMENT
+	 * =========================
+	 */
+
+	public String getLicenseUrl() {
+		return licenseUrl;
+	}
+
+	public void setLicenseUrl(
+			String licenseUrl) {
+
+		this.licenseUrl = licenseUrl;
+	}
+
+	public String getLicenseFileName() {
+		return licenseFileName;
+	}
+
+	public void setLicenseFileName(
+			String licenseFileName) {
+
+		this.licenseFileName = licenseFileName;
+	}
+
+	public Long getLicenseFileSize() {
+		return licenseFileSize;
+	}
+
+	public void setLicenseFileSize(
+			Long licenseFileSize) {
+
+		this.licenseFileSize = licenseFileSize;
+	}
+
+	public String getLicenseType() {
+		return licenseType;
+	}
+
+	public void setLicenseType(
+			String licenseType) {
+
+		this.licenseType = licenseType;
+	}
+
+	public String getLicenseNote() {
+		return licenseNote;
+	}
+
+	public void setLicenseNote(
+			String licenseNote) {
+
+		this.licenseNote = licenseNote;
+	}
+
+	public String getLicenseReviewStatus() {
+		return licenseReviewStatus;
+	}
+
+	public void setLicenseReviewStatus(
+			String licenseReviewStatus) {
+
+		this.licenseReviewStatus = licenseReviewStatus;
+	}
+
+	public String getLicenseReviewReason() {
+		return licenseReviewReason;
+	}
+
+	public void setLicenseReviewReason(
+			String licenseReviewReason) {
+
+		this.licenseReviewReason = licenseReviewReason;
+	}
+
+	public LocalDateTime getLicenseUploadedAt() {
+		return licenseUploadedAt;
+	}
+
+	public void setLicenseUploadedAt(
+			LocalDateTime licenseUploadedAt) {
+
+		this.licenseUploadedAt = licenseUploadedAt;
+	}
+
+	public LocalDateTime getLicenseReviewedAt() {
+		return licenseReviewedAt;
+	}
+
+	public void setLicenseReviewedAt(
+			LocalDateTime licenseReviewedAt) {
+
+		this.licenseReviewedAt = licenseReviewedAt;
+	}
+
+	public String getLicenseReviewedBy() {
+		return licenseReviewedBy;
+	}
+
+	public void setLicenseReviewedBy(
+			String licenseReviewedBy) {
+
+		this.licenseReviewedBy = licenseReviewedBy;
 	}
 }

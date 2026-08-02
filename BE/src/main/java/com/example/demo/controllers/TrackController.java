@@ -69,6 +69,15 @@ public class TrackController {
 	private static final String TRACK_APPROVED = "APPROVED";
 	private static final String TRACK_REJECTED = "REJECTED";
 
+	private static final String LICENSE_PENDING_REVIEW = "PENDING_REVIEW";
+
+	private static final Set<String> ALLOWED_LICENSE_TYPES = Set.of(
+			"ORIGINAL_OWNER",
+			"LICENSED",
+			"CREATIVE_COMMONS",
+			"PUBLIC_DOMAIN",
+			"OTHER");
+
 	@Autowired
 	private TrackRepository trackRepository;
 
@@ -329,7 +338,6 @@ public class TrackController {
 		dto.setCountPlay(track.getCountPlay() == null ? 0 : track.getCountPlay());
 		dto.setUploaderId(track.getUploaderId());
 		dto.setIsDeleted(track.getIsDeleted());
-		dto.setApprovalStatus(track.getApprovalStatus());
 		dto.setApprovalStatus(
 				track.getApprovalStatus());
 
@@ -345,6 +353,21 @@ public class TrackController {
 		dto.setCopyrightMessage(track.getCopyrightMessage());
 		dto.setCopyrightScore(track.getCopyrightScore());
 		dto.setScannedAt(track.getScannedAt());
+
+		/*
+		 * =========================
+		 * COPYRIGHT LICENSE SUMMARY
+		 * =========================
+		 */
+
+		dto.setLicenseType(
+				track.getLicenseType());
+
+		dto.setLicenseReviewStatus(
+				track.getLicenseReviewStatus());
+
+		dto.setLicenseUploadedAt(
+				track.getLicenseUploadedAt());
 
 		/*
 		 * =========================
@@ -409,6 +432,13 @@ public class TrackController {
 			@RequestParam("category") String category,
 			@RequestParam("image") MultipartFile image,
 			@RequestParam("audio") MultipartFile audio,
+
+			@RequestParam("license") MultipartFile license,
+
+			@RequestParam("licenseType") String licenseType,
+
+			@RequestParam(value = "licenseNote", required = false, defaultValue = "") String licenseNote,
+
 			HttpServletRequest request) {
 
 		try {
@@ -466,6 +496,57 @@ public class TrackController {
 								"Audio is required",
 								null));
 			}
+
+			if (license == null
+					|| license.isEmpty()) {
+
+				return ResponseEntity
+						.badRequest()
+						.body(new ApiResponse<>(
+								400,
+								"Copyright license PDF is required",
+								null));
+			}
+
+			String normalizedLicenseType = licenseType == null
+					? ""
+					: licenseType
+							.trim()
+							.toUpperCase();
+
+			if (!ALLOWED_LICENSE_TYPES.contains(
+					normalizedLicenseType)) {
+
+				Map<String, Object> validationData = new LinkedHashMap<>();
+
+				validationData.put(
+						"allowedLicenseTypes",
+						ALLOWED_LICENSE_TYPES);
+
+				return ResponseEntity
+						.badRequest()
+						.body(new ApiResponse<>(
+								400,
+								"Invalid license type",
+								validationData));
+			}
+
+			String cleanLicenseNote = licenseNote == null
+					? ""
+					: licenseNote.trim();
+
+			if (cleanLicenseNote.length() > 2000) {
+
+				return ResponseEntity
+						.badRequest()
+						.body(new ApiResponse<>(
+								400,
+								"License note must not exceed 2000 characters",
+								null));
+			}
+
+			String originalLicenseFileName = getSafeOriginalFileName(
+					license.getOriginalFilename());
 
 			/*
 			 * Kiểm tra audio trùng trước,
@@ -576,6 +657,7 @@ public class TrackController {
 
 			String imageUrl = null;
 			String audioUrl = null;
+			String licenseUrl = null;
 
 			try {
 
@@ -585,21 +667,23 @@ public class TrackController {
 				audioUrl = cloudinaryService
 						.uploadAudio(audio);
 
+				licenseUrl = cloudinaryService
+						.uploadLicensePdf(license);
+
 			} catch (Exception uploadError) {
 
 				/*
 				 * Nếu image upload thành công nhưng audio lỗi,
 				 * xóa asset đã upload để tránh file rác.
 				 */
-				if (imageUrl != null) {
-					cloudinaryService
-							.deleteImage(imageUrl);
-				}
+				safeDeleteImage(
+						imageUrl);
 
-				if (audioUrl != null) {
-					cloudinaryService
-							.deleteAudio(audioUrl);
-				}
+				safeDeleteAudio(
+						audioUrl);
+
+				safeDeleteLicensePdf(
+						licenseUrl);
 
 				throw uploadError;
 			}
@@ -660,6 +744,42 @@ public class TrackController {
 			track.setScannedAt(
 					null);
 
+			/*
+			 * =========================
+			 * COPYRIGHT LICENSE DOCUMENT
+			 * =========================
+			 */
+
+			track.setLicenseUrl(
+					licenseUrl);
+
+			track.setLicenseFileName(
+					originalLicenseFileName);
+
+			track.setLicenseFileSize(
+					license.getSize());
+
+			track.setLicenseType(
+					normalizedLicenseType);
+
+			track.setLicenseNote(
+					cleanLicenseNote);
+
+			track.setLicenseReviewStatus(
+					LICENSE_PENDING_REVIEW);
+
+			track.setLicenseReviewReason(
+					null);
+
+			track.setLicenseUploadedAt(
+					now);
+
+			track.setLicenseReviewedAt(
+					null);
+
+			track.setLicenseReviewedBy(
+					null);
+
 			track.setCountLike(0);
 			track.setCountPlay(0);
 
@@ -693,17 +813,18 @@ public class TrackController {
 				/*
 				 * Database transaction đã rollback.
 				 *
-				 * Xóa image + audio vừa upload lên Cloudinary
-				 * để tránh tạo asset rác.
+				 * Xóa image, audio và license PDF vừa upload
+				 * để tránh tạo asset rác trên Cloudinary.
 				 */
 
-				cloudinaryService
-						.deleteImage(
-								imageUrl);
+				safeDeleteImage(
+						imageUrl);
 
-				cloudinaryService
-						.deleteAudio(
-								audioUrl);
+				safeDeleteAudio(
+						audioUrl);
+
+				safeDeleteLicensePdf(
+						licenseUrl);
 
 				Map<String, Object> quotaData = new LinkedHashMap<>();
 
@@ -738,28 +859,45 @@ public class TrackController {
 										e.getMessage(),
 										quotaData));
 
+			} catch (IllegalArgumentException e) {
+
+				safeDeleteImage(
+						imageUrl);
+
+				safeDeleteAudio(
+						audioUrl);
+
+				safeDeleteLicensePdf(
+						licenseUrl);
+
+				return ResponseEntity
+						.badRequest()
+						.body(
+								new ApiResponse<>(
+										400,
+										e.getMessage(),
+										null));
+
 			} catch (Exception e) {
 
-				// =====================================================
-				// DATABASE / TRANSACTION ERROR - CLEANUP CLOUDINARY
-				// =====================================================
+				safeDeleteImage(
+						imageUrl);
 
-				/*
-				 * Track save hoặc transaction lỗi.
-				 *
-				 * Xóa media mới vừa upload trên Cloudinary
-				 * để không để lại asset rác.
-				 */
+				safeDeleteAudio(
+						audioUrl);
 
-				cloudinaryService
-						.deleteImage(
-								imageUrl);
+				safeDeleteLicensePdf(
+						licenseUrl);
 
-				cloudinaryService
-						.deleteAudio(
-								audioUrl);
+				e.printStackTrace();
 
-				throw e;
+				return ResponseEntity
+						.internalServerError()
+						.body(
+								new ApiResponse<>(
+										500,
+										e.getMessage(),
+										null));
 			}
 
 			// =====================================================
@@ -772,7 +910,17 @@ public class TrackController {
 							"Track uploaded and waiting for processing",
 							toTrackDTO(
 									savedTrack)));
+		} catch (IllegalArgumentException e) {
+
+			return ResponseEntity
+					.badRequest()
+					.body(new ApiResponse<>(
+							400,
+							e.getMessage(),
+							null));
+
 		} catch (Exception e) {
+
 			e.printStackTrace();
 
 			return ResponseEntity
@@ -1177,6 +1325,21 @@ public class TrackController {
 							TRACK_PENDING);
 
 					track.setRejectionReason(
+							null);
+
+					/*
+					 * Audio thay đổi nên giấy phép phải được Admin kiểm tra lại.
+					 */
+					track.setLicenseReviewStatus(
+							LICENSE_PENDING_REVIEW);
+
+					track.setLicenseReviewReason(
+							null);
+
+					track.setLicenseReviewedAt(
+							null);
+
+					track.setLicenseReviewedBy(
 							null);
 				}
 
@@ -1840,6 +2003,75 @@ public class TrackController {
 					"Cannot delete audio from Cloudinary: "
 							+ cleanupError.getMessage());
 		}
+	}
+
+	/*
+	 * =========================
+	 * SAFE LICENSE PDF CLEANUP
+	 * =========================
+	 */
+
+	private void safeDeleteLicensePdf(
+			String licenseUrl) {
+
+		if (licenseUrl == null
+				|| licenseUrl.isBlank()) {
+
+			return;
+		}
+
+		try {
+
+			cloudinaryService
+					.deleteLicensePdf(
+							licenseUrl);
+
+		} catch (Exception cleanupError) {
+
+			System.err.println(
+					"Cannot delete license PDF from Cloudinary: "
+							+ cleanupError.getMessage());
+		}
+	}
+
+	private String getSafeOriginalFileName(
+			String originalFileName) {
+
+		if (originalFileName == null
+				|| originalFileName.isBlank()) {
+
+			return "license.pdf";
+		}
+
+		String safeFileName = originalFileName
+				.replace('\\', '/');
+
+		int lastSlashIndex = safeFileName.lastIndexOf('/');
+
+		if (lastSlashIndex >= 0
+				&& lastSlashIndex < safeFileName.length() - 1) {
+
+			safeFileName = safeFileName.substring(
+					lastSlashIndex + 1);
+		}
+
+		safeFileName = safeFileName
+				.replaceAll(
+						"[\\p{Cntrl}]",
+						"")
+				.trim();
+
+		if (safeFileName.isEmpty()) {
+			return "license.pdf";
+		}
+
+		if (safeFileName.length() > 500) {
+
+			safeFileName = safeFileName.substring(
+					safeFileName.length() - 500);
+		}
+
+		return safeFileName;
 	}
 
 	/// history helper

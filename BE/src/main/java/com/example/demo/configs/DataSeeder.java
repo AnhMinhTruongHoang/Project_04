@@ -25,9 +25,13 @@ import com.example.demo.repositories.CategoryRepository;
 import com.example.demo.repositories.PlaylistRepository;
 import com.example.demo.repositories.TrackRepository;
 import com.example.demo.repositories.UserRepository;
+import org.springframework.beans.factory.annotation.Value;
 
 @Configuration
 public class DataSeeder {
+
+        @Value("${seed.default-license-url:}")
+        private String defaultLicenseUrl;
 
         private String id() {
                 return UUID.randomUUID().toString().replace("-", "").substring(0, 24);
@@ -310,6 +314,68 @@ public class DataSeeder {
                 return artist;
         }
 
+        ///
+        private boolean applyDefaultSeedLicense(
+                        Track track) {
+
+                if (track == null) {
+                        return false;
+                }
+
+                if (track.getLicenseUrl() != null
+                                && !track.getLicenseUrl().isBlank()) {
+
+                        return false;
+                }
+
+                if (defaultLicenseUrl == null
+                                || defaultLicenseUrl.isBlank()) {
+
+                        if (track.getLicenseReviewStatus() == null
+                                        || track.getLicenseReviewStatus().isBlank()) {
+
+                                track.setLicenseReviewStatus(
+                                                "NOT_PROVIDED");
+
+                                return true;
+                        }
+
+                        return false;
+                }
+
+                track.setLicenseUrl(
+                                defaultLicenseUrl.trim());
+
+                track.setLicenseFileName(
+                                "defaultLicence.pdf");
+
+                track.setLicenseFileSize(
+                                null);
+
+                track.setLicenseType(
+                                "OTHER");
+
+                track.setLicenseNote(
+                                "Demo seed document only. This file is not proof of ownership or commercial licensing.");
+
+                track.setLicenseReviewStatus(
+                                "PENDING_REVIEW");
+
+                track.setLicenseReviewReason(
+                                null);
+
+                track.setLicenseUploadedAt(
+                                LocalDateTime.now());
+
+                track.setLicenseReviewedAt(
+                                null);
+
+                track.setLicenseReviewedBy(
+                                null);
+
+                return true;
+        }
+
         private Track createTrack(
                         TrackRepository trackRepository,
                         User uploader,
@@ -321,46 +387,86 @@ public class DataSeeder {
 
                 String trackId = id();
 
+                LocalDateTime now = LocalDateTime.now();
+
                 Track track = new Track();
 
-                track.setId(trackId);
-                track.setTitle(title.trim());
-                track.setSlug(slugify(title) + "-" + trackId.substring(0, 6));
-                track.setDescription(description);
-                track.setCategoryId(category.getId());
-                track.setImgUrl(imgUrl);
-                track.setTrackUrl(trackUrl);
-                track.setCountLike(0);
-                track.setCountPlay(0);
-                track.setUploaderId(uploader.getId());
-                track.setIsDeleted(false);
-                track.setApprovalStatus("APPROVED");
-                track.setProcessingStatus("COMPLETED");
-                track.setCopyrightStatus("CLEAN");
-                track.setCopyrightMessage("Seed track");
-                track.setCopyrightScore(0.0);
-                track.setScannedAt(LocalDateTime.now());
-                track.setCreatedAt(LocalDateTime.now());
-                track.setUpdatedAt(LocalDateTime.now());
+                track.setId(
+                                trackId);
 
-                return trackRepository.save(track);
+                track.setTitle(
+                                title.trim());
+
+                track.setSlug(
+                                slugify(title)
+                                                + "-"
+                                                + trackId.substring(0, 6));
+
+                track.setDescription(
+                                description);
+
+                track.setCategoryId(
+                                category.getId());
+
+                track.setImgUrl(
+                                imgUrl);
+
+                track.setTrackUrl(
+                                trackUrl);
+
+                track.setCountLike(
+                                0);
+
+                track.setCountPlay(
+                                0);
+
+                track.setUploaderId(
+                                uploader.getId());
+
+                track.setIsDeleted(
+                                false);
+
+                track.setApprovalStatus(
+                                "APPROVED");
+
+                track.setRejectionReason(
+                                null);
+
+                track.setProcessingStatus(
+                                "COMPLETED");
+
+                track.setCopyrightStatus(
+                                "CLEAN");
+
+                track.setCopyrightMessage(
+                                "Seed track");
+
+                track.setCopyrightScore(
+                                0.0);
+
+                track.setScannedAt(
+                                now);
+
+                /*
+                 * =========================
+                 * DEFAULT SEED LICENSE
+                 * =========================
+                 */
+
+                applyDefaultSeedLicense(
+                                track);
+
+                track.setCreatedAt(
+                                now);
+
+                track.setUpdatedAt(
+                                now);
+
+                return trackRepository.save(
+                                track);
         }
 
-        private void updateExistingTrackCategoryIfNeeded(
-                        TrackRepository trackRepository,
-                        Track track,
-                        Category category) {
-
-                if (track == null || category == null) {
-                        return;
-                }
-
-                if (track.getCategoryId() == null || track.getCategoryId().trim().isEmpty()) {
-                        track.setCategoryId(category.getId());
-                        track.setUpdatedAt(LocalDateTime.now());
-                        trackRepository.save(track);
-                }
-        }
+        ///
 
         @Bean
         CommandLineRunner seedData(
@@ -791,4 +897,53 @@ public class DataSeeder {
                         System.out.println("Seed data completed.");
                 };
         }
+
+        private void updateExistingTrackCategoryIfNeeded(
+                        TrackRepository trackRepository,
+                        Track track,
+                        Category category) {
+
+                if (track == null
+                                || category == null) {
+
+                        return;
+                }
+
+                boolean changed = false;
+
+                /*
+                 * =========================
+                 * BACKFILL CATEGORY
+                 * =========================
+                 */
+
+                if (track.getCategoryId() == null
+                                || track.getCategoryId().isBlank()) {
+
+                        track.setCategoryId(
+                                        category.getId());
+
+                        changed = true;
+                }
+
+                /*
+                 * =========================
+                 * BACKFILL DEFAULT LICENSE
+                 * =========================
+                 */
+
+                if (applyDefaultSeedLicense(track)) {
+                        changed = true;
+                }
+
+                if (changed) {
+
+                        track.setUpdatedAt(
+                                        LocalDateTime.now());
+
+                        trackRepository.save(
+                                        track);
+                }
+        }
+
 }

@@ -20,10 +20,13 @@ import {
 } from "@mui/material";
 import {
   approveTrackApi,
+  approveTrackLicenseApi,
   getAdminTracksApi,
   getAudioUrl,
   getImageUrl,
+  getLicenseUrl,
   rejectTrackApi,
+  rejectTrackLicenseApi,
   scanTrackCopyrightApi,
   sendRequest,
 } from "@/utils/api";
@@ -41,6 +44,9 @@ import SmartToyRoundedIcon from "@mui/icons-material/SmartToyRounded";
 import VisibilityRoundedIcon from "@mui/icons-material/VisibilityRounded";
 import AiCopyrightResultDialog from "../components/AiCopyrightResultDialog";
 import AiCopyrightTestGuide from "@/test/AiCopyrightTestGuide";
+import PictureAsPdfRoundedIcon from "@mui/icons-material/PictureAsPdfRounded";
+import VerifiedRoundedIcon from "@mui/icons-material/VerifiedRounded";
+import GppBadRoundedIcon from "@mui/icons-material/GppBadRounded";
 
 type Props = {
   tracks: ITrackTop[];
@@ -49,6 +55,24 @@ type Props = {
 
 const getItemId = (item?: Partial<ITrackTop> | null) => {
   return (item as any)?.id || (item as any)?._id || "";
+};
+
+const formatFileSize = (size?: number | null) => {
+  const safeSize = Number(size);
+
+  if (!Number.isFinite(safeSize) || safeSize <= 0) {
+    return "";
+  }
+
+  if (safeSize < 1024) {
+    return `${safeSize} B`;
+  }
+
+  if (safeSize < 1024 * 1024) {
+    return `${(safeSize / 1024).toFixed(1)} KB`;
+  }
+
+  return `${(safeSize / (1024 * 1024)).toFixed(1)} MB`;
 };
 
 const getStatusStyle = (value?: string | null) => {
@@ -134,6 +158,13 @@ const TracksTable = ({ tracks, accessToken }: Props) => {
   const [isPreviewPlaying, setIsPreviewPlaying] = useState(false);
 
   const [aiResultTrack, setAiResultTrack] = useState<ITrackTop | null>(null);
+
+  const [licenseModeratingId, setLicenseModeratingId] = useState("");
+
+  const [rejectingLicenseTrack, setRejectingLicenseTrack] =
+    useState<ITrackTop | null>(null);
+
+  const [licenseRejectReason, setLicenseRejectReason] = useState("");
 
   useEffect(() => {
     setRows(tracks);
@@ -398,6 +429,97 @@ const TracksTable = ({ tracks, accessToken }: Props) => {
       toast.error(`Cannot ${action} track.`);
     } finally {
       setModeratingId("");
+    }
+  };
+
+  /* =========================
+   COPYRIGHT LICENSE REVIEW
+========================= */
+
+  const handleLicenseModeration = async (
+    track: ITrackTop,
+    action: "approve" | "reject",
+    reason = ""
+  ) => {
+    const trackId = getItemId(track);
+
+    if (!trackId) {
+      toast.error("Track not found.");
+      return;
+    }
+
+    if (!accessToken) {
+      toast.error("Please login first.");
+      return;
+    }
+
+    if (!track.licenseUrl) {
+      toast.error("This track does not have a license document.");
+      return;
+    }
+
+    const cleanReason = reason.trim();
+
+    if (action === "reject" && !cleanReason) {
+      toast.error("License rejection reason is required.");
+      return;
+    }
+
+    if (cleanReason.length > 1000) {
+      toast.error("License rejection reason must not exceed 1000 characters.");
+      return;
+    }
+
+    setLicenseModeratingId(trackId);
+
+    try {
+      const response =
+        action === "approve"
+          ? await approveTrackLicenseApi(trackId, accessToken)
+          : await rejectTrackLicenseApi(trackId, cleanReason, accessToken);
+
+      if (response?.statusCode !== 200 || !response?.data) {
+        toast.error(
+          response?.message ||
+            (action === "approve"
+              ? "Cannot verify license."
+              : "Cannot reject license.")
+        );
+
+        return;
+      }
+
+      const updatedTrack = response.data as ITrackTop;
+
+      setRows((currentRows) =>
+        currentRows.map((item) =>
+          getItemId(item) === trackId
+            ? {
+                ...item,
+                ...updatedTrack,
+              }
+            : item
+        )
+      );
+
+      setRejectingLicenseTrack(null);
+      setLicenseRejectReason("");
+
+      toast.success(
+        action === "approve"
+          ? "Copyright license verified."
+          : "Copyright license rejected."
+      );
+    } catch (error) {
+      console.error(`Cannot ${action} copyright license:`, error);
+
+      toast.error(
+        action === "approve"
+          ? "Cannot verify copyright license."
+          : "Cannot reject copyright license."
+      );
+    } finally {
+      setLicenseModeratingId("");
     }
   };
 
@@ -756,6 +878,217 @@ const TracksTable = ({ tracks, accessToken }: Props) => {
         </Tooltip>
       ),
     },
+    {
+      field: "licenseReviewStatus",
+      headerName: "License",
+      width: 300,
+      sortable: true,
+
+      renderCell: (params) => {
+        const track = params.row;
+        const trackId = getItemId(track);
+
+        const licenseStatus = String(
+          track.licenseReviewStatus || "MISSING"
+        ).toUpperCase();
+
+        const hasLicense = Boolean(track.licenseUrl);
+
+        const licenseUrl = getLicenseUrl(track.licenseUrl);
+
+        const isUpdatingThisLicense = licenseModeratingId === trackId;
+
+        const hasLicenseRequest = Boolean(licenseModeratingId);
+
+        const isVerified = licenseStatus === "VERIFIED";
+
+        return (
+          <Box
+            sx={{
+              width: "100%",
+              minWidth: 0,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              gap: 1,
+            }}
+          >
+            {/* LICENSE INFORMATION */}
+            <Box
+              sx={{
+                minWidth: 0,
+                flex: 1,
+              }}
+            >
+              <StatusChip value={licenseStatus} />
+
+              <Typography
+                title={track.licenseFileName || "No license document"}
+                sx={{
+                  mt: 0.4,
+                  color: hasLicense ? "#bdbdbd" : "#737373",
+                  fontSize: 10.5,
+                  fontWeight: 700,
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                  whiteSpace: "nowrap",
+                }}
+              >
+                {track.licenseFileName || "No PDF attached"}
+              </Typography>
+
+              {hasLicense && (
+                <Typography
+                  sx={{
+                    color: "#777777",
+                    fontSize: 9.5,
+                    fontWeight: 700,
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  {String(track.licenseType || "UNKNOWN").replaceAll("_", " ")}
+
+                  {track.licenseFileSize
+                    ? ` • ${formatFileSize(track.licenseFileSize)}`
+                    : ""}
+                </Typography>
+              )}
+            </Box>
+
+            {/* LICENSE ACTIONS */}
+            <Box
+              sx={{
+                display: "flex",
+                alignItems: "center",
+                flexShrink: 0,
+              }}
+            >
+              <Tooltip
+                title={hasLicense ? "View license PDF" : "No license document"}
+                arrow
+              >
+                <span>
+                  <IconButton
+                    size="small"
+                    disabled={!hasLicense}
+                    onClick={(event) => {
+                      event.stopPropagation();
+
+                      if (!licenseUrl) return;
+
+                      window.open(licenseUrl, "_blank", "noopener,noreferrer");
+                    }}
+                    sx={{
+                      color: "#f87171",
+
+                      "&:hover": {
+                        color: "#fca5a5",
+                        backgroundColor: "rgba(248,113,113,0.14)",
+                      },
+
+                      "&.Mui-disabled": {
+                        color: "#f87171",
+                        opacity: 0.25,
+                      },
+                    }}
+                  >
+                    <PictureAsPdfRoundedIcon fontSize="small" />
+                  </IconButton>
+                </span>
+              </Tooltip>
+
+              <Tooltip
+                title={
+                  isVerified
+                    ? "License already verified"
+                    : hasLicense
+                    ? "Verify license"
+                    : "No license document"
+                }
+                arrow
+              >
+                <span>
+                  <IconButton
+                    size="small"
+                    disabled={!hasLicense || hasLicenseRequest || isVerified}
+                    onClick={(event) => {
+                      event.stopPropagation();
+
+                      void handleLicenseModeration(track, "approve");
+                    }}
+                    sx={{
+                      color: "#63e6a6",
+
+                      "&:hover": {
+                        backgroundColor: "rgba(99,230,166,0.14)",
+                      },
+
+                      "&.Mui-disabled": {
+                        color: "#63e6a6",
+                        opacity: 0.3,
+                      },
+                    }}
+                  >
+                    {isUpdatingThisLicense ? (
+                      <CircularProgress
+                        size={17}
+                        thickness={5}
+                        sx={{
+                          color: "#63e6a6",
+                        }}
+                      />
+                    ) : (
+                      <VerifiedRoundedIcon fontSize="small" />
+                    )}
+                  </IconButton>
+                </span>
+              </Tooltip>
+
+              <Tooltip
+                title={
+                  hasLicense
+                    ? licenseStatus === "REJECTED"
+                      ? "Review or update license rejection"
+                      : "Reject license"
+                    : "No license document"
+                }
+                arrow
+              >
+                <span>
+                  <IconButton
+                    size="small"
+                    disabled={!hasLicense || hasLicenseRequest}
+                    onClick={(event) => {
+                      event.stopPropagation();
+
+                      setRejectingLicenseTrack(track);
+
+                      setLicenseRejectReason(track.licenseReviewReason || "");
+                    }}
+                    sx={{
+                      color: "#ff5f67",
+
+                      "&:hover": {
+                        backgroundColor: "rgba(255,95,103,0.14)",
+                      },
+
+                      "&.Mui-disabled": {
+                        color: "#ff5f67",
+                        opacity: 0.3,
+                      },
+                    }}
+                  >
+                    <GppBadRoundedIcon fontSize="small" />
+                  </IconButton>
+                </span>
+              </Tooltip>
+            </Box>
+          </Box>
+        );
+      },
+    },
 
     {
       field: "approvalStatus",
@@ -832,7 +1165,18 @@ const TracksTable = ({ tracks, accessToken }: Props) => {
             )
         );
 
-        const isUpdating = moderatingId === trackId || isScanning;
+        ///
+        const licenseReviewStatus = String(
+          track.licenseReviewStatus || ""
+        ).toUpperCase();
+
+        const isLicenseVerified = licenseReviewStatus === "VERIFIED";
+
+        const isUpdating =
+          moderatingId === trackId ||
+          isScanning ||
+          licenseModeratingId === trackId;
+        ///
 
         const trackRouteKey = trackId;
 
@@ -942,13 +1286,21 @@ const TracksTable = ({ tracks, accessToken }: Props) => {
               title={
                 approvalStatus === "APPROVED"
                   ? "Track already approved"
+                  : !isLicenseVerified
+                  ? `Verify copyright license first (${
+                      licenseReviewStatus || "MISSING"
+                    })`
                   : "Approve track"
               }
             >
               <span>
                 <IconButton
                   size="small"
-                  disabled={isUpdating || approvalStatus === "APPROVED"}
+                  disabled={
+                    isUpdating ||
+                    approvalStatus === "APPROVED" ||
+                    !isLicenseVerified
+                  }
                   onClick={() => void handleModeration(track, "approve")}
                   sx={{
                     color: "#63e6a6",
@@ -1449,6 +1801,210 @@ const TracksTable = ({ tracks, accessToken }: Props) => {
             }}
           >
             Reject track
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* LICENSE REJECT DIALOG */}
+      <Dialog
+        open={Boolean(rejectingLicenseTrack)}
+        onClose={() => {
+          if (licenseModeratingId) return;
+
+          setRejectingLicenseTrack(null);
+          setLicenseRejectReason("");
+        }}
+        PaperProps={{
+          sx: {
+            width: "calc(100% - 32px)",
+            maxWidth: 560,
+            color: "#ffffff",
+            backgroundColor: "#181A1B",
+            borderRadius: 3,
+            border: "1px solid rgba(255,255,255,0.12)",
+          },
+        }}
+      >
+        <DialogTitle
+          sx={{
+            color: "#ffffff",
+            fontWeight: 900,
+            textAlign: "center",
+          }}
+        >
+          Reject copyright license
+        </DialogTitle>
+
+        <DialogContent>
+          <Typography
+            sx={{
+              color: "#bdbdbd",
+              fontSize: 14,
+              mb: 1,
+              textAlign: "center",
+            }}
+          >
+            Enter a clear reason for rejecting the license attached to{" "}
+            <Box
+              component="span"
+              sx={{
+                color: "#ffffff",
+                fontWeight: 900,
+              }}
+            >
+              {rejectingLicenseTrack?.title}
+            </Box>
+            .
+          </Typography>
+
+          {rejectingLicenseTrack?.licenseFileName && (
+            <Box
+              sx={{
+                mb: 2,
+                p: 1.5,
+                display: "flex",
+                alignItems: "center",
+                gap: 1,
+                borderRadius: 2,
+                backgroundColor: "#111314",
+                border: "1px solid rgba(255,255,255,0.08)",
+              }}
+            >
+              <PictureAsPdfRoundedIcon
+                sx={{
+                  color: "#f87171",
+                }}
+              />
+
+              <Box sx={{ minWidth: 0 }}>
+                <Typography
+                  sx={{
+                    color: "#ffffff",
+                    fontSize: 13,
+                    fontWeight: 800,
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  {rejectingLicenseTrack.licenseFileName}
+                </Typography>
+
+                <Typography
+                  sx={{
+                    color: "#8f8f8f",
+                    fontSize: 11,
+                    fontWeight: 700,
+                  }}
+                >
+                  {String(
+                    rejectingLicenseTrack.licenseType || "UNKNOWN"
+                  ).replaceAll("_", " ")}
+
+                  {rejectingLicenseTrack.licenseFileSize
+                    ? ` • ${formatFileSize(
+                        rejectingLicenseTrack.licenseFileSize
+                      )}`
+                    : ""}
+                </Typography>
+              </Box>
+            </Box>
+          )}
+
+          <TextField
+            autoFocus
+            fullWidth
+            multiline
+            minRows={4}
+            value={licenseRejectReason}
+            onChange={(event) => setLicenseRejectReason(event.target.value)}
+            placeholder="Example: The document does not prove ownership or distribution rights..."
+            inputProps={{
+              maxLength: 1000,
+            }}
+            helperText={`${licenseRejectReason.length}/1000`}
+            sx={{
+              "& .MuiInputBase-root": {
+                color: "#ffffff",
+                backgroundColor: "#111314",
+              },
+
+              "& .MuiOutlinedInput-notchedOutline": {
+                borderColor: "rgba(255,255,255,0.16)",
+              },
+
+              "&:hover .MuiOutlinedInput-notchedOutline": {
+                borderColor: "rgba(255,255,255,0.3)",
+              },
+
+              "& .MuiOutlinedInput-root.Mui-focused .MuiOutlinedInput-notchedOutline":
+                {
+                  borderColor: "#ff5f67",
+                },
+
+              "& .MuiFormHelperText-root": {
+                color: "#8f8f8f",
+                textAlign: "right",
+              },
+
+              "& textarea::placeholder": {
+                color: "#777777",
+                opacity: 1,
+              },
+            }}
+          />
+        </DialogContent>
+
+        <DialogActions
+          sx={{
+            px: 3,
+            pb: 2,
+          }}
+        >
+          <Button
+            disabled={Boolean(licenseModeratingId)}
+            onClick={() => {
+              setRejectingLicenseTrack(null);
+              setLicenseRejectReason("");
+            }}
+            sx={{
+              color: "#cfcfcf",
+              fontWeight: 800,
+            }}
+          >
+            Cancel
+          </Button>
+
+          <Button
+            variant="contained"
+            disabled={
+              Boolean(licenseModeratingId) || !licenseRejectReason.trim()
+            }
+            onClick={() => {
+              if (!rejectingLicenseTrack) return;
+
+              void handleLicenseModeration(
+                rejectingLicenseTrack,
+                "reject",
+                licenseRejectReason
+              );
+            }}
+            sx={{
+              color: "#ffffff",
+              fontWeight: 900,
+              backgroundColor: "#ff4d4f",
+
+              "&:hover": {
+                backgroundColor: "#ff2f32",
+              },
+
+              "&.Mui-disabled": {
+                color: "rgba(255,255,255,0.35)",
+                backgroundColor: "rgba(255,77,79,0.2)",
+              },
+            }}
+          >
+            Reject license
           </Button>
         </DialogActions>
       </Dialog>

@@ -91,8 +91,15 @@ const Step2 = (props: IProps) => {
     title: trackUpload.uploadedTrackName || "",
     description: "",
     category: "",
+
     imageFile: null,
     imagePreview: "",
+
+    /* COPYRIGHT LICENSE */
+    licenseFile: null,
+    licenseFileName: "",
+    licenseType: "",
+    licenseNote: "",
   });
 
   // Keep object URLs to revoke on cleanup
@@ -197,6 +204,53 @@ const Step2 = (props: IProps) => {
     }));
   };
 
+  /* =========================
+   * COPYRIGHT LICENSE HANDLERS
+   * ========================= */
+
+  const MAX_LICENSE_FILE_SIZE = 10 * 1024 * 1024;
+
+  const handleLicenseChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const licenseFile = event.target.files?.[0];
+
+    if (!licenseFile) {
+      return;
+    }
+
+    const fileName = licenseFile.name.toLowerCase();
+
+    const isPdf =
+      licenseFile.type === "application/pdf" || fileName.endsWith(".pdf");
+
+    if (!isPdf) {
+      toast.error("Copyright document must be a PDF file.");
+      event.target.value = "";
+      return;
+    }
+
+    if (licenseFile.size > MAX_LICENSE_FILE_SIZE) {
+      toast.error("Copyright PDF must not exceed 10 MB.");
+      event.target.value = "";
+      return;
+    }
+
+    setInfo((previous) => ({
+      ...previous,
+      licenseFile,
+      licenseFileName: licenseFile.name,
+    }));
+
+    event.target.value = "";
+  };
+
+  const handleRemoveLicense = () => {
+    setInfo((previous) => ({
+      ...previous,
+      licenseFile: null,
+      licenseFileName: "",
+    }));
+  };
+
   const handleSubmitForm = async () => {
     const accessToken = (session as any)?.access_token;
 
@@ -224,6 +278,20 @@ const Step2 = (props: IProps) => {
       toast.error("Please select category.");
       return;
     }
+    if (!info.licenseFile) {
+      toast.error("Please select a copyright license PDF.");
+      return;
+    }
+
+    if (!info.licenseType) {
+      toast.error("Please select a copyright license type.");
+      return;
+    }
+
+    if (info.licenseNote.trim().length > 2000) {
+      toast.error("License note must not exceed 2000 characters.");
+      return;
+    }
 
     const formData = new FormData();
     formData.append("title", info.title.trim());
@@ -231,6 +299,13 @@ const Step2 = (props: IProps) => {
     formData.append("category", info.category);
     formData.append("image", info.imageFile);
     formData.append("audio", trackUpload.audioFile);
+    /* COPYRIGHT LICENSE */
+    formData.append("license", info.licenseFile);
+    formData.append("licenseType", info.licenseType);
+
+    if (info.licenseNote.trim()) {
+      formData.append("licenseNote", info.licenseNote.trim());
+    }
 
     setIsUploading(true);
 
@@ -281,8 +356,15 @@ const Step2 = (props: IProps) => {
         title: "",
         description: "",
         category: "",
+
         imageFile: null,
         imagePreview: "",
+
+        /* COPYRIGHT LICENSE */
+        licenseFile: null,
+        licenseFileName: "",
+        licenseType: "",
+        licenseNote: "",
       });
 
       setValue(0);
@@ -603,6 +685,235 @@ const Step2 = (props: IProps) => {
                 <MenuItem disabled>No categories available</MenuItem>
               )}
             </TextField>
+
+            {/* COPYRIGHT LICENSE TYPE */}
+            <TextField
+              select
+              label="Copyright license type"
+              fullWidth
+              required
+              value={info.licenseType}
+              onChange={(event) =>
+                setInfo((previous) => ({
+                  ...previous,
+                  licenseType: event.target.value as INewTrack["licenseType"],
+                }))
+              }
+              variant="filled"
+              size="small"
+              InputLabelProps={{ shrink: true }}
+              disabled={isUploading}
+              sx={{
+                backgroundColor: "#121212",
+
+                "& .MuiFilledInput-root": {
+                  backgroundColor: "#121212",
+                  color: "#ffffff",
+                },
+
+                "& .MuiInputLabel-root": {
+                  color: "#bdbdbd",
+                },
+
+                "& .MuiFilledInput-underline:before": {
+                  borderBottomColor: "transparent",
+                },
+
+                "& .MuiFilledInput-underline:after": {
+                  borderBottomColor: "#ff7a00",
+                },
+
+                "& .MuiSvgIcon-root": {
+                  color: "#ffffff",
+                },
+              }}
+            >
+              <MenuItem value="ORIGINAL_OWNER">Original owner</MenuItem>
+
+              <MenuItem value="LICENSED">
+                Licensed from copyright owner
+              </MenuItem>
+
+              <MenuItem value="CREATIVE_COMMONS">Creative Commons</MenuItem>
+
+              <MenuItem value="PUBLIC_DOMAIN">Public domain</MenuItem>
+
+              <MenuItem value="OTHER">Other</MenuItem>
+            </TextField>
+
+            {/* COPYRIGHT LICENSE PDF */}
+            <Box
+              sx={{
+                border: "1px solid rgba(255,255,255,0.1)",
+                backgroundColor: "#121212",
+                borderRadius: 1,
+                p: { xs: 2, sm: 2.5 },
+              }}
+            >
+              <Typography
+                sx={{
+                  color: "#ffffff",
+                  fontSize: 14,
+                  fontWeight: 900,
+                  mb: 0.75,
+                }}
+              >
+                Copyright document PDF *
+              </Typography>
+
+              <Typography
+                sx={{
+                  color: "#9e9e9e",
+                  fontSize: 12,
+                  mb: 2,
+                }}
+              >
+                Upload proof of ownership, a license agreement or another
+                copyright authorization document. PDF only, maximum 10 MB.
+              </Typography>
+
+              {/* MOBILE / DESKTOP LICENSE ACTIONS */}
+              <Box
+                sx={{
+                  display: "flex",
+                  flexDirection: { xs: "column", sm: "row" },
+                  alignItems: { xs: "stretch", sm: "center" },
+                  gap: 1.5,
+                }}
+              >
+                <Button
+                  component="label"
+                  variant="outlined"
+                  startIcon={<CloudUploadIcon />}
+                  disabled={isUploading}
+                  sx={{
+                    borderColor: "rgba(255,255,255,0.2)",
+                    color: "#ffffff",
+                    textTransform: "none",
+                    fontWeight: 900,
+                    minHeight: 42,
+
+                    "&:hover": {
+                      borderColor: "#ff7a00",
+                      backgroundColor: "rgba(255,122,0,0.08)",
+                    },
+                  }}
+                >
+                  Select PDF
+                  <VisuallyHiddenInput
+                    type="file"
+                    accept="application/pdf,.pdf"
+                    onChange={handleLicenseChange}
+                  />
+                </Button>
+
+                {info.licenseFileName ? (
+                  <Box
+                    sx={{
+                      minWidth: 0,
+                      flex: 1,
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 1,
+                      backgroundColor: "#0b0b0b",
+                      border: "1px solid rgba(255,255,255,0.08)",
+                      borderRadius: 1,
+                      px: 1.5,
+                      minHeight: 42,
+                    }}
+                  >
+                    <Typography
+                      noWrap
+                      title={info.licenseFileName}
+                      sx={{
+                        minWidth: 0,
+                        flex: 1,
+                        color: "#e0e0e0",
+                        fontSize: 13,
+                        fontWeight: 700,
+                      }}
+                    >
+                      {info.licenseFileName}
+                    </Typography>
+
+                    <IconButton
+                      aria-label="Remove copyright PDF"
+                      onClick={handleRemoveLicense}
+                      disabled={isUploading}
+                      size="small"
+                      sx={{
+                        color: "#ffffff",
+
+                        "&:hover": {
+                          color: "#ff5252",
+                          backgroundColor: "rgba(255,82,82,0.1)",
+                        },
+                      }}
+                    >
+                      <DeleteIcon fontSize="small" />
+                    </IconButton>
+                  </Box>
+                ) : (
+                  <Typography
+                    sx={{
+                      color: "#757575",
+                      fontSize: 13,
+                    }}
+                  >
+                    No PDF selected
+                  </Typography>
+                )}
+              </Box>
+            </Box>
+
+            {/* COPYRIGHT LICENSE NOTE */}
+            <TextField
+              value={info.licenseNote}
+              onChange={(event) =>
+                setInfo((previous) => ({
+                  ...previous,
+                  licenseNote: event.target.value,
+                }))
+              }
+              label="Copyright license note"
+              placeholder="Describe the document, copyright owner or license source..."
+              variant="filled"
+              fullWidth
+              size="small"
+              multiline
+              rows={3}
+              disabled={isUploading}
+              InputLabelProps={{ shrink: true }}
+              inputProps={{
+                maxLength: 2000,
+              }}
+              helperText={`${info.licenseNote.length}/2000`}
+              sx={{
+                backgroundColor: "#121212",
+
+                "& .MuiFilledInput-root": {
+                  backgroundColor: "#121212",
+                  color: "#ffffff",
+                },
+
+                "& .MuiInputLabel-root": {
+                  color: "#bdbdbd",
+                },
+
+                "& .MuiFormHelperText-root": {
+                  color: "#8f8f8f",
+                  textAlign: "right",
+                },
+
+                "& .MuiFilledInput-underline:before": {
+                  borderBottomColor: "transparent",
+                },
+
+                "& .MuiFilledInput-underline:after": {
+                  borderBottomColor: "#ff7a00",
+                },
+              }}
+            />
 
             <Box
               sx={{

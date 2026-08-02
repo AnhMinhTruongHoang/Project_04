@@ -31,10 +31,10 @@ const DashboardEarningRatesPage = async () => {
     getActiveAdminEarningRateApi(accessToken),
   ]);
 
-  const historyData = historyResponse?.data;
+  const historyResult = historyData?.result;
 
-  const initialRates: IEarningRate[] = Array.isArray(historyData?.result)
-    ? historyData.result
+  const initialRates: IEarningRate[] = Array.isArray(historyResult)
+    ? historyResult
     : [];
 
   const initialActiveRate: IEarningRate | null =

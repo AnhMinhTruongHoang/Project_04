@@ -47,6 +47,7 @@ import AiCopyrightTestGuide from "@/test/AiCopyrightTestGuide";
 import PictureAsPdfRoundedIcon from "@mui/icons-material/PictureAsPdfRounded";
 import VerifiedRoundedIcon from "@mui/icons-material/VerifiedRounded";
 import GppBadRoundedIcon from "@mui/icons-material/GppBadRounded";
+import { useTrackContext } from "@/lib/track.wrapper";
 
 type Props = {
   tracks: ITrackTop[];
@@ -134,9 +135,9 @@ const StatusChip = ({ value }: { value?: string | null }) => {
 };
 
 const TracksTable = ({ tracks, accessToken }: Props) => {
-  const toast = useToast();
+  const { currentTrack, setCurrentTrack } = useTrackContext() as ITrackContext;
 
-  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const toast = useToast();
 
   const [rows, setRows] = useState<ITrackTop[]>(tracks);
 
@@ -153,10 +154,6 @@ const TracksTable = ({ tracks, accessToken }: Props) => {
   const [rejectingTrack, setRejectingTrack] = useState<ITrackTop | null>(null);
 
   const [rejectReason, setRejectReason] = useState("");
-
-  const [previewTrackId, setPreviewTrackId] = useState("");
-
-  const [isPreviewPlaying, setIsPreviewPlaying] = useState(false);
 
   const [aiResultTrack, setAiResultTrack] = useState<ITrackTop | null>(null);
 
@@ -225,17 +222,6 @@ const TracksTable = ({ tracks, accessToken }: Props) => {
     };
   }, [reloadTracks]);
 
-  useEffect(() => {
-    return () => {
-      const audio = audioRef.current;
-
-      if (audio) {
-        audio.pause();
-        audio.removeAttribute("src");
-      }
-    };
-  }, []);
-
   const filteredTracks = useMemo(() => {
     const keyword = searchValue.trim().toLowerCase();
 
@@ -257,50 +243,61 @@ const TracksTable = ({ tracks, accessToken }: Props) => {
     });
   }, [rows, searchValue]);
 
-  const handlePreviewTrack = async (track: ITrackTop) => {
+  const handlePreviewTrack = (track: ITrackTop) => {
     const trackId = getItemId(track);
-    const audio = audioRef.current;
 
     if (!trackId) {
       toast.error("Track not found.");
       return;
     }
 
-    if (!audio) {
-      toast.error("Audio player is unavailable.");
-      return;
-    }
-
-    const audioUrl = getAudioUrl(track.trackUrl);
-
-    if (!audioUrl) {
+    if (!track.trackUrl) {
       toast.error("Audio file not found.");
       return;
     }
 
-    if (previewTrackId === trackId && !audio.paused) {
-      audio.pause();
+    const currentTrackId = getItemId(currentTrack as any);
+
+    /* SAME TRACK: TOGGLE PLAY / PAUSE */
+    if (currentTrackId === trackId && currentTrack) {
+      setCurrentTrack({
+        ...currentTrack,
+        isPlaying: !Boolean(currentTrack.isPlaying),
+        source: "footer-control",
+        seekTime: undefined,
+        seekId: undefined,
+      } as any);
+
       return;
     }
 
-    try {
-      if (previewTrackId !== trackId) {
-        audio.pause();
+    /* RESTORE GLOBAL VOLUME */
+    const savedVolumeRaw =
+      typeof window !== "undefined"
+        ? window.localStorage.getItem("soundclone-volume")
+        : null;
 
-        audio.src = audioUrl;
-        audio.currentTime = 0;
+    const parsedVolume = Number(savedVolumeRaw);
 
-        setPreviewTrackId(trackId);
-      }
+    const nextVolume = Number.isFinite(parsedVolume)
+      ? Math.max(0, Math.min(1, parsedVolume))
+      : 0.5;
 
-      await audio.play();
-    } catch (error) {
-      console.error("Cannot preview track:", error);
-
-      setIsPreviewPlaying(false);
-
-      toast.error("Cannot play this audio file.");
-    }
+    /* PLAY TRACK THROUGH APP FOOTER */
+    setCurrentTrack({
+      ...track,
+      id: trackId,
+      _id: trackId,
+      isPlaying: true,
+      source: "footer",
+      currentTime: 0,
+      duration: Number(track.durationSeconds) || 0,
+      volume: nextVolume,
+      muted: nextVolume === 0,
+      seekTime: undefined,
+      seekId: undefined,
+      volumeId: Date.now(),
+    } as any);
   };
 
   const deleteTrack = async (track: ITrackTop) => {
@@ -332,12 +329,8 @@ const TracksTable = ({ tracks, accessToken }: Props) => {
         return;
       }
 
-      if (previewTrackId === trackId && audioRef.current) {
-        audioRef.current.pause();
-        audioRef.current.removeAttribute("src");
-
-        setPreviewTrackId("");
-        setIsPreviewPlaying(false);
+      if (getItemId(currentTrack as any) === trackId) {
+        setCurrentTrack(null as any);
       }
 
       setRows((currentRows) =>
@@ -634,8 +627,10 @@ const TracksTable = ({ tracks, accessToken }: Props) => {
         const track = params.row;
         const trackId = getItemId(track);
 
+        const currentTrackId = getItemId(currentTrack as any);
+
         const isThisTrackPlaying =
-          previewTrackId === trackId && isPreviewPlaying;
+          currentTrackId === trackId && Boolean(currentTrack?.isPlaying);
 
         return (
           <Box
@@ -661,8 +656,7 @@ const TracksTable = ({ tracks, accessToken }: Props) => {
                   disabled={!track.trackUrl}
                   onClick={(event) => {
                     event.stopPropagation();
-
-                    void handlePreviewTrack(track);
+                    handlePreviewTrack(track);
                   }}
                   sx={{
                     position: "relative",
@@ -1425,22 +1419,6 @@ const TracksTable = ({ tracks, accessToken }: Props) => {
 
   return (
     <Box>
-      <audio
-        ref={audioRef}
-        preload="none"
-        onPlay={() => setIsPreviewPlaying(true)}
-        onPause={() => setIsPreviewPlaying(false)}
-        onEnded={() => {
-          setIsPreviewPlaying(false);
-          setPreviewTrackId("");
-        }}
-        onError={() => {
-          setIsPreviewPlaying(false);
-
-          toast.error("Unable to load audio preview.");
-        }}
-      />
-
       {/* AI COPYRIGHT TEST GUIDE */}
       <AiCopyrightTestGuide />
 

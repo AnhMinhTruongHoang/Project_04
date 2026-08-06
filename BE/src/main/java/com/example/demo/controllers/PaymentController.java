@@ -14,6 +14,7 @@ import com.example.demo.entities.User;
 import com.example.demo.helpers.JwtHelper;
 import com.example.demo.repositories.UserRepository;
 import com.example.demo.responses.ApiResponse;
+import com.example.demo.services.MembershipPaymentService;
 import com.example.demo.services.PaymentService;
 
 import io.jsonwebtoken.Claims;
@@ -30,16 +31,22 @@ public class PaymentController {
 
         private final UserRepository userRepository;
 
+        private final MembershipPaymentService membershipPaymentService;
+
         @Value("${app.frontend-url}")
-        private String frontendUrl;;
+
+        private String frontendUrl;
 
         public PaymentController(
                         PaymentService paymentService,
-                        UserRepository userRepository) {
+                        UserRepository userRepository,
+                        MembershipPaymentService membershipPaymentService) {
 
                 this.paymentService = paymentService;
 
                 this.userRepository = userRepository;
+
+                this.membershipPaymentService = membershipPaymentService;
         }
 
         /*
@@ -116,7 +123,7 @@ public class PaymentController {
 
         /*
          * =========================
-         * VNPAY IPN CALLBACK
+         * VNPAY IPN CALLBACK ROUTER
          * =========================
          */
         @GetMapping("/vnpay/ipn")
@@ -127,8 +134,21 @@ public class PaymentController {
                         Map<String, String> parameters = getRequestParameters(
                                         request);
 
-                        Map<String, String> result = paymentService.processIpn(
-                                        parameters);
+                        String orderCode = parameters.getOrDefault(
+                                        "vnp_TxnRef",
+                                        "");
+
+                        /*
+                         * Phải kiểm tra SCM trước SC vì
+                         * SCM cũng bắt đầu bằng hai ký tự SC.
+                         */
+                        Map<String, String> result = orderCode.startsWith("SCM")
+                                        ? membershipPaymentService
+                                                        .processIpn(
+                                                                        parameters)
+                                        : paymentService
+                                                        .processIpn(
+                                                                        parameters);
 
                         return ResponseEntity.ok(
                                         result);
@@ -154,14 +174,15 @@ public class PaymentController {
 
         /*
          * =========================
-         * VNPAY RETURN URL
+         * VNPAY RETURN URL ROUTER
          * =========================
          */
         @GetMapping("/vnpay/return")
         public ResponseEntity<Void> handleReturn(
                         HttpServletRequest request) {
 
-                Map<String, String> parameters = getRequestParameters(request);
+                Map<String, String> parameters = getRequestParameters(
+                                request);
 
                 String orderCode = parameters.getOrDefault(
                                 "vnp_TxnRef",
@@ -176,24 +197,32 @@ public class PaymentController {
                                 "");
 
                 try {
-                        Map<String, Object> data = paymentService.handleReturn(
-                                        parameters);
+                        Map<String, Object> data = orderCode.startsWith("SCM")
+                                        ? membershipPaymentService
+                                                        .handleReturn(
+                                                                        parameters)
+                                        : paymentService
+                                                        .handleReturn(
+                                                                        parameters);
 
                         URI redirectUri = buildPaymentResultRedirect(
                                         data);
 
                         return ResponseEntity
                                         .status(302)
-                                        .location(redirectUri)
+                                        .location(
+                                                        redirectUri)
                                         .build();
 
                 } catch (Exception e) {
+
                         e.printStackTrace();
 
                         URI redirectUri = UriComponentsBuilder
                                         .fromUriString(
                                                         normalizeFrontendUrl())
-                                        .path("/payment/result")
+                                        .path(
+                                                        "/payment/result")
                                         .queryParam(
                                                         "orderCode",
                                                         orderCode)
@@ -212,11 +241,11 @@ public class PaymentController {
 
                         return ResponseEntity
                                         .status(302)
-                                        .location(redirectUri)
+                                        .location(
+                                                        redirectUri)
                                         .build();
                 }
         }
-
         ///
 
         private URI buildPaymentResultRedirect(
@@ -287,6 +316,13 @@ public class PaymentController {
                                                                 data,
                                                                 "transactionStatus",
                                                                 ""))
+
+                                .queryParam(
+                                                "paymentType",
+                                                getStringValue(
+                                                                data,
+                                                                "paymentType",
+                                                                "SUBSCRIPTION"))
                                 .build()
                                 .encode()
                                 .toUri();

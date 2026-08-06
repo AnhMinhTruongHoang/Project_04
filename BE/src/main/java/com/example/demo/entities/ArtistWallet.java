@@ -26,9 +26,9 @@ public class ArtistWallet {
     private String artistId;
 
     /*
-     * Tiền từ lượt nghe đang trong thời gian giữ.
+     * Tổng doanh thu đang trong thời gian giữ,
+     * bao gồm lượt nghe và membership.
      */
-    @Column(nullable = false)
     private Long pendingBalance = 0L;
 
     /*
@@ -89,6 +89,10 @@ public class ArtistWallet {
 
         if (availableBalance == null) {
             availableBalance = 0L;
+        }
+
+        if (reservedBalance == null) {
+            reservedBalance = 0L;
         }
 
         if (withdrawnBalance == null) {

@@ -40,7 +40,7 @@ const PROFILE_TABS = [
   "Popular tracks",
   "Albums",
   "Playlists",
-  "Reposts",
+  "Membership",
   "Support",
 ] as const;
 
@@ -59,7 +59,7 @@ const ProfileEmptyTab = ({
   isOwner,
   displayName,
 }: {
-  type: "Albums" | "Reposts";
+  type: "Albums" | "Membership";
   isOwner: boolean;
   displayName: string;
 }) => {
@@ -301,10 +301,10 @@ const ProfileMain = ({ user, tracks }: Props) => {
       case "Playlists":
         return <ProfilePlaylistsTab user={user} isOwner={isOwner} />;
 
-      case "Reposts":
+      case "Membership":
         return (
           <ProfileEmptyTab
-            type="Reposts"
+            type="Membership"
             isOwner={isOwner}
             displayName={displayName}
           />

@@ -1106,7 +1106,9 @@ const EarningRatesTable = ({
                 ),
 
                 endAdornment: (
-                  <InputAdornment position="end">VND</InputAdornment>
+                  <InputAdornment position="end" sx={{ color: "grey.500" }}>
+                    VND
+                  </InputAdornment>
                 ),
               }}
               sx={{

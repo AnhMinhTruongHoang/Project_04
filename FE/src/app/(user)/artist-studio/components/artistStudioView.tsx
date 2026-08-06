@@ -48,7 +48,7 @@ const ArtistStudioView = () => {
 
   const [studioStats, setStudioStats] = useState<IArtistStudioStats>({
     plays: 0,
-    reposts: 0,
+    membership: 0,
     downloads: 0,
     likes: 0,
     comments: 0,
@@ -119,7 +119,7 @@ const ArtistStudioView = () => {
         setStudioStats({
           plays: Number(response.data.plays || 0),
 
-          reposts: Number(response.data.reposts || 0),
+          membership: Number(response.data.membership || 0),
 
           downloads: Number(response.data.downloads || 0),
 

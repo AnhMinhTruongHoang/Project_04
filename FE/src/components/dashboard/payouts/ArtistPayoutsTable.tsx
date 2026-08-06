@@ -24,6 +24,7 @@ import RefreshRoundedIcon from "@mui/icons-material/RefreshRounded";
 
 import { getAdminArtistPayoutsApi } from "@/utils/api";
 import ArtistPayoutActionDialog from "../components/ArtistPayoutActionDialog";
+import ArtistPayoutTrendChart from "./components/ArtistPayoutTrendChart";
 
 const payoutFilters = [
   "ALL",
@@ -234,6 +235,15 @@ const ArtistPayoutsTable = () => {
     setCurrentPage(1);
   };
 
+  /* REFRESH PAYOUT TABLE AND CHART */
+  const handleRefreshPayoutData = useCallback(() => {
+    void loadPayouts(true);
+
+    window.dispatchEvent(new Event("admin-payout-chart-refresh"));
+
+    window.dispatchEvent(new Event("admin-payout-chart-refresh"));
+  }, [loadPayouts]);
+
   /* PAYOUT ACTION SUCCESS */
   const handlePayoutActionSuccess = useCallback(
     (data: ArtistPayoutActionData) => {
@@ -253,6 +263,8 @@ const ArtistPayoutsTable = () => {
       });
 
       void loadPayouts(true);
+
+      window.dispatchEvent(new Event("admin-payout-chart-refresh"));
     },
     [loadPayouts]
   );
@@ -331,7 +343,7 @@ const ArtistPayoutsTable = () => {
 
         {/* ADMIN REFRESH ACTION */}
         <Button
-          onClick={() => void loadPayouts(true)}
+          onClick={handleRefreshPayoutData}
           disabled={refreshing || sessionStatus === "loading"}
           startIcon={
             refreshing ? (
@@ -363,6 +375,9 @@ const ArtistPayoutsTable = () => {
           Refresh payouts
         </Button>
       </Stack>
+
+      {/* ARTIST PAYOUT STATISTICS */}
+      {accessToken && <ArtistPayoutTrendChart accessToken={accessToken} />}
 
       {/* PAYOUT SUMMARY CARDS */}
       <Box

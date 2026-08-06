@@ -22,7 +22,7 @@ import LockRoundedIcon from "@mui/icons-material/LockRounded";
 
 type ArtistStudioStatsData = {
   plays: number;
-  reposts: number;
+  membership: number;
   downloads: number;
   likes: number;
   comments: number;
@@ -38,7 +38,7 @@ type Props = {
 
 type StatKey =
   | "plays"
-  | "reposts"
+  | "membership"
   | "downloads"
   | "likes"
   | "comments"
@@ -60,8 +60,8 @@ const statItems: StatItem[] = [
     icon: <PlayCircleFilledRoundedIcon />,
   },
   {
-    key: "reposts",
-    label: "Reposts",
+    key: "membership",
+    label: "Membership",
     icon: <RepeatRoundedIcon />,
   },
   {
@@ -103,7 +103,7 @@ const statItems: StatItem[] = [
 
 const defaultStats: ArtistStudioStatsData = {
   plays: 0,
-  reposts: 0,
+  membership: 0,
   downloads: 0,
   likes: 0,
   comments: 0,
@@ -140,7 +140,7 @@ const isUnlocked = (key: StatKey, planCode: SubscriptionPlanCode) => {
     return true;
   }
 
-  if (key === "reposts" || key === "downloads") {
+  if (key === "membership" || key === "downloads") {
     return planCode === "ARTIST" || planCode === "ARTIST_PRO";
   }
 
@@ -152,7 +152,7 @@ const isUnlocked = (key: StatKey, planCode: SubscriptionPlanCode) => {
 };
 
 const getRequiredPlan = (key: StatKey) => {
-  if (key === "reposts" || key === "downloads") {
+  if (key === "membership" || key === "downloads") {
     return "Artist";
   }
 

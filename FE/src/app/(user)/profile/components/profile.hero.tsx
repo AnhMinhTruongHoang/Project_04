@@ -9,9 +9,13 @@ import Button from "@mui/material/Button";
 import Typography from "@mui/material/Typography";
 import CameraAltRoundedIcon from "@mui/icons-material/CameraAltRounded";
 import VerifiedRoundedIcon from "@mui/icons-material/VerifiedRounded";
-import { Avatar } from "@mui/material";
+import WorkspacePremiumRoundedIcon from "@mui/icons-material/WorkspacePremiumRounded";
+import MilitaryTechRoundedIcon from "@mui/icons-material/MilitaryTechRounded";
+import FavoriteRoundedIcon from "@mui/icons-material/FavoriteRounded";
+import HeadphonesRoundedIcon from "@mui/icons-material/HeadphonesRounded";
+import { Avatar, Chip, Tooltip } from "@mui/material";
 import { getUserAvatarUrl, getUserCoverUrl } from "@/utils/actions/getImages";
-import { updateUserApi, uploadImageApi } from "@/utils/api";
+import { getUserBadgesApi, updateUserApi, uploadImageApi } from "@/utils/api";
 import { useToast } from "@/utils/toast";
 
 type Props = {
@@ -21,6 +25,25 @@ type Props = {
 
 const getItemId = (item?: any) => {
   return item?._id || item?.id || "";
+};
+
+const getBadgeIcon = (code: string) => {
+  switch (code.toUpperCase()) {
+    case "VERIFIED_ARTIST":
+      return <VerifiedRoundedIcon />;
+
+    case "FOUNDING_ARTIST":
+      return <MilitaryTechRoundedIcon />;
+
+    case "EARLY_SUPPORTER":
+      return <FavoriteRoundedIcon />;
+
+    case "TOP_LISTENER":
+      return <HeadphonesRoundedIcon />;
+
+    default:
+      return <WorkspacePremiumRoundedIcon />;
+  }
 };
 
 const ProfileHero = ({ user }: Props) => {
@@ -44,15 +67,59 @@ const ProfileHero = ({ user }: Props) => {
 
   const subName = user?.email || user?.type || "Sound Clone user";
 
-  const showArtistBadge = String(user?.type || "").toUpperCase() === "ARTIST";
-
   const [coverSrc, setCoverSrc] = useState(getUserCoverUrl(user));
+
+  const [userBadges, setUserBadges] = useState<IUserBadge[]>([]);
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
     setCoverSrc(getUserCoverUrl(user));
   }, [user]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadUserBadges = async () => {
+      if (!profileUserId) {
+        setUserBadges([]);
+        return;
+      }
+
+      try {
+        const response = await getUserBadgesApi(profileUserId);
+
+        if (cancelled) {
+          return;
+        }
+
+        if (Number(response?.statusCode) !== 200) {
+          setUserBadges([]);
+          return;
+        }
+
+        setUserBadges(
+          Array.isArray(response?.data)
+            ? response.data.filter(
+                (item) => item.active && item.badge && item.badge.active
+              )
+            : []
+        );
+      } catch (error) {
+        console.error("Cannot load user badges:", error);
+
+        if (!cancelled) {
+          setUserBadges([]);
+        }
+      }
+    };
+
+    void loadUserBadges();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [profileUserId]);
 
   const getInitials = (name?: string, email?: string) => {
     const value = name?.trim() || email?.trim() || "User";
@@ -125,6 +192,19 @@ const ProfileHero = ({ user }: Props) => {
       event.target.value = "";
     }
   };
+
+  const verifiedArtistBadge = userBadges.find(
+    (item) => item.badge.code === "VERIFIED_ARTIST"
+  );
+
+  const secondaryBadges = userBadges
+    .filter((item) => item.badge.code !== "VERIFIED_ARTIST")
+    .slice(0, 3);
+
+  const remainingBadgeCount = Math.max(
+    userBadges.length - secondaryBadges.length - (verifiedArtistBadge ? 1 : 0),
+    0
+  );
 
   return (
     <Box
@@ -259,15 +339,30 @@ const ProfileHero = ({ user }: Props) => {
             >
               {displayName}
             </Typography>
-
-            {showArtistBadge && (
-              <VerifiedRoundedIcon
-                sx={{
-                  fontSize: { xs: 22, md: 28 },
-                  color: "#4da3ff",
-                  flexShrink: 0,
-                }}
-              />
+            {/* VERIFIED ARTIST BADGE */}
+            {verifiedArtistBadge && (
+              <Tooltip
+                title={
+                  verifiedArtistBadge.badge.description ||
+                  verifiedArtistBadge.badge.name
+                }
+                arrow
+              >
+                <VerifiedRoundedIcon
+                  aria-label={verifiedArtistBadge.badge.name}
+                  sx={{
+                    fontSize: {
+                      xs: 22,
+                      md: 28,
+                    },
+                    color: verifiedArtistBadge.badge.color || "#4da3ff",
+                    flexShrink: 0,
+                    filter: `drop-shadow(0 0 6px ${
+                      verifiedArtistBadge.badge.color || "#4da3ff"
+                    }66)`,
+                  }}
+                />
+              </Tooltip>
             )}
           </Box>
 
@@ -285,6 +380,95 @@ const ProfileHero = ({ user }: Props) => {
           >
             {subName}
           </Typography>
+          {/* USER PROFILE BADGES */}
+          {secondaryBadges.length > 0 && (
+            <Box
+              sx={{
+                display: "flex",
+                alignItems: "center",
+                flexWrap: "wrap",
+                gap: 0.8,
+                mt: 1,
+                maxWidth: {
+                  xs: 210,
+                  sm: 360,
+                  md: 520,
+                },
+              }}
+            >
+              {secondaryBadges.map((userBadge) => {
+                const badge = userBadge.badge;
+                const badgeColor = badge.color || "#ffb020";
+
+                return (
+                  <Tooltip
+                    key={userBadge.id}
+                    title={badge.description || badge.name}
+                    arrow
+                  >
+                    <Chip
+                      icon={getBadgeIcon(badge.code)}
+                      label={badge.name}
+                      size="small"
+                      sx={{
+                        height: 27,
+                        maxWidth: {
+                          xs: 180,
+                          sm: 230,
+                        },
+
+                        color: badgeColor,
+                        backgroundColor: `${badgeColor}20`,
+                        border: `1px solid ${badgeColor}66`,
+
+                        fontSize: {
+                          xs: 10,
+                          sm: 11,
+                        },
+                        fontWeight: 900,
+
+                        backdropFilter: "blur(8px)",
+
+                        "& .MuiChip-label": {
+                          px: 1,
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                        },
+
+                        "& .MuiChip-icon": {
+                          ml: 0.7,
+                          color: `${badgeColor} !important`,
+                          fontSize: 17,
+                        },
+                      }}
+                    />
+                  </Tooltip>
+                );
+              })}
+
+              {remainingBadgeCount > 0 && (
+                <Tooltip
+                  title={`${remainingBadgeCount} more badge${
+                    remainingBadgeCount > 1 ? "s" : ""
+                  }`}
+                  arrow
+                >
+                  <Chip
+                    label={`+${remainingBadgeCount}`}
+                    size="small"
+                    sx={{
+                      height: 27,
+                      color: "#d7d7d7",
+                      backgroundColor: "rgba(0,0,0,0.72)",
+                      border: "1px solid rgba(255,255,255,0.18)",
+                      fontSize: 10,
+                      fontWeight: 900,
+                    }}
+                  />
+                </Tooltip>
+              )}
+            </Box>
+          )}
         </Box>
       </Box>
     </Box>

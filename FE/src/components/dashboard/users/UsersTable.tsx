@@ -25,7 +25,9 @@ import BlockRoundedIcon from "@mui/icons-material/BlockRounded";
 import LockOpenRoundedIcon from "@mui/icons-material/LockOpenRounded";
 import DeleteForeverRoundedIcon from "@mui/icons-material/DeleteForeverRounded";
 import CommentsDisabledRoundedIcon from "@mui/icons-material/CommentsDisabledRounded";
+import WorkspacePremiumRoundedIcon from "@mui/icons-material/WorkspacePremiumRounded";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
+import ManageUserBadgesDialog from "./components/ManageUserBadgesDialog";
 
 type Props = {
   users: IUser[];
@@ -60,6 +62,7 @@ const UsersTable = ({ users, accessToken }: Props) => {
   const [saving, setSaving] = useState(false);
   const [openEdit, setOpenEdit] = useState(false);
   const [editUser, setEditUser] = useState<EditUserState | null>(null);
+  const [badgeUser, setBadgeUser] = useState<IUser | null>(null);
   const resetActionDialog = () => {
     setConfirmUser(null);
     setConfirmAction(null);
@@ -460,6 +463,25 @@ const UsersTable = ({ users, accessToken }: Props) => {
   };
 
   /* =========================
+   MANAGE USER BADGES
+========================= */
+  const handleOpenBadges = (user: IUser) => {
+    const userId = getItemId(user);
+
+    if (!userId) {
+      toast.error("User not found.");
+      return;
+    }
+
+    if (!accessToken) {
+      toast.error("Please sign in as an administrator first.");
+      return;
+    }
+
+    setBadgeUser(user);
+  };
+
+  /* =========================
      TABLE COLUMNS
   ========================= */
 
@@ -750,7 +772,7 @@ const UsersTable = ({ users, accessToken }: Props) => {
     {
       field: "actions",
       headerName: "Actions",
-      width: 255,
+      width: 300,
       align: "center",
       headerAlign: "center",
       sortable: false,
@@ -786,6 +808,31 @@ const UsersTable = ({ users, accessToken }: Props) => {
               gap: 0.4,
             }}
           >
+            {/* MANAGE USER BADGES */}
+            <Tooltip title="Manage badges">
+              <span>
+                <IconButton
+                  onClick={() => handleOpenBadges(user)}
+                  disabled={isLoading || isDeactivated}
+                  size="small"
+                  aria-label={`Manage badges for ${user.name || user.email}`}
+                  sx={{
+                    color: "#ffb020",
+
+                    "&:hover": {
+                      color: "#ffd166",
+                      backgroundColor: "rgba(255,176,32,0.12)",
+                    },
+
+                    "&.Mui-disabled": {
+                      color: "rgba(255,255,255,0.2)",
+                    },
+                  }}
+                >
+                  <WorkspacePremiumRoundedIcon fontSize="small" />
+                </IconButton>
+              </span>
+            </Tooltip>
             {/* EDIT USER */}
             <Tooltip title="Edit user">
               <span>
@@ -1610,6 +1657,16 @@ const UsersTable = ({ users, accessToken }: Props) => {
           </Button>
         </DialogActions>
       </Dialog>
+
+      {/* MANAGE USER BADGES DIALOG */}
+      <ManageUserBadgesDialog
+        open={Boolean(badgeUser)}
+        user={badgeUser}
+        accessToken={accessToken}
+        onClose={() => {
+          setBadgeUser(null);
+        }}
+      />
     </Box>
   );
 };

@@ -832,7 +832,7 @@ declare global {
 
   interface IArtistStudioStats {
     plays: number;
-    reposts: number;
+    membership: number;
     downloads: number;
     likes: number;
     comments: number;
@@ -1226,5 +1226,58 @@ declare global {
 
   type TrackLicenseReviewStatus = "PENDING_REVIEW" | "VERIFIED" | "REJECTED";
 
+  /* =========================
+   ADMIN PAYOUT TREND CHART
+========================= */
+
+  interface ArtistPayoutTrendPoint {
+    monthKey: string;
+    monthLabel: string;
+    amount: number;
+    payoutCount: number;
+  }
+
+  interface IArtistPayoutTrendChartProps {
+    accessToken: string;
+  }
+
+  /// BADGES
+  type BadgeCategory = "USER" | "ARTIST" | "ACHIEVEMENT" | "MEMBERSHIP";
+
+  interface IBadge {
+    id: string;
+    code: string;
+    name: string;
+    description?: string | null;
+    iconUrl?: string | null;
+    color?: string | null;
+    category: BadgeCategory;
+    active: boolean;
+    createdAt?: string | null;
+    updatedAt?: string | null;
+  }
+
+  interface IUserBadgeAwardedBy {
+    id: string;
+    name?: string | null;
+  }
+
+  interface IUserBadge {
+    id: string;
+    active: boolean;
+    note?: string | null;
+    awardedAt: string;
+    expiresAt?: string | null;
+    revokedAt?: string | null;
+    badge: IBadge;
+    awardedBy?: IUserBadgeAwardedBy | null;
+  }
+
+  interface IManageUserBadgesDialogProps {
+    open: boolean;
+    user: IUser | null;
+    accessToken?: string;
+    onClose: () => void;
+  }
   ///
 }

@@ -246,7 +246,7 @@ const AppHeader = () => {
                 href="/blog"
                 sx={navItemSx(isActive("/feed"))}
               >
-                Feed
+                News
               </Box>
 
               <Box
@@ -558,16 +558,9 @@ const AppHeader = () => {
                   }}
                 />
               ) : isAuthenticated ? (
-                <IconButton
-                  onClick={(event) => {
-                    setAnchorEl(event.currentTarget);
-                  }}
-                  sx={{
-                    p: 0.25,
-                  }}
-                >
+                <>
                   {/* MOBILE NOTIFICATION */}
-                  {isAuthenticated && isMobileViewport && (
+                  {isMobileViewport && (
                     <Box
                       sx={{
                         display: "flex",
@@ -588,22 +581,35 @@ const AppHeader = () => {
                     </Box>
                   )}
 
-                  <Avatar
-                    src={user?.avatarUrl || user?.avatar || ""}
-                    alt={user?.name || "User"}
+                  {/* MOBILE USER AVATAR */}
+                  <IconButton
+                    aria-label="Open user menu"
+                    onClick={(event) => {
+                      setAnchorEl(event.currentTarget);
+                    }}
                     sx={{
-                      width: 31,
-                      height: 31,
-                      bgcolor: "#ff5500",
-                      color: "#ffffff",
-                      fontSize: 11,
-                      fontWeight: 900,
-                      border: "1px solid rgba(255,255,255,0.12)",
+                      width: 36,
+                      height: 36,
+                      p: 0.25,
                     }}
                   >
-                    {getInitials(user?.name, user?.email)}
-                  </Avatar>
-                </IconButton>
+                    <Avatar
+                      src={user?.avatarUrl || user?.avatar || ""}
+                      alt={user?.name || "User"}
+                      sx={{
+                        width: 31,
+                        height: 31,
+                        bgcolor: "#ff5500",
+                        color: "#ffffff",
+                        fontSize: 11,
+                        fontWeight: 900,
+                        border: "1px solid rgba(255,255,255,0.12)",
+                      }}
+                    >
+                      {getInitials(user?.name, user?.email)}
+                    </Avatar>
+                  </IconButton>
+                </>
               ) : null}
             </Box>
           </Toolbar>
@@ -721,7 +727,7 @@ const AppHeader = () => {
               router.push("/blog");
             }}
           >
-            Feed
+            News
           </MenuItem>
 
           <MenuItem

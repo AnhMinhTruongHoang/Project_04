@@ -1916,5 +1916,78 @@ export const getLicenseUrl = (licenseUrl?: string | null) => {
 };
 
 /* =========================
+   ADMIN GET ALL PAID PAYOUTS
+========================= */
+
+export const getAllPaidAdminArtistPayoutsApi = async (
+  accessToken?: string
+): Promise<IBackendRes<ArtistPayoutItem[]>> => {
+  const pageSize = 100;
+
+  const firstResponse = await getAdminArtistPayoutsApi(accessToken, {
+    status: "PAID",
+    current: 1,
+    pageSize,
+  });
+
+  if (firstResponse?.statusCode !== 200 || !firstResponse?.data) {
+    return {
+      statusCode: firstResponse?.statusCode || 500,
+      message: firstResponse?.message || "Cannot fetch paid payouts",
+      error: firstResponse?.error || "FETCH_PAID_PAYOUTS_FAILED",
+      data: null,
+    };
+  }
+
+  const firstData = firstResponse.data;
+
+  const allPayouts: ArtistPayoutItem[] = Array.isArray(firstData.result)
+    ? [...firstData.result]
+    : [];
+
+  const totalPages = Math.max(Number(firstData.totalPages) || 1, 1);
+
+  /*
+   * Fetch tuần tự để không tạo quá nhiều request cùng lúc
+   * khi hệ thống có nhiều payout.
+   */
+  for (let current = 2; current <= totalPages; current += 1) {
+    const response = await getAdminArtistPayoutsApi(accessToken, {
+      status: "PAID",
+      current,
+      pageSize,
+    });
+
+    if (response?.statusCode !== 200 || !response?.data) {
+      return {
+        statusCode: response?.statusCode || 500,
+        message:
+          response?.message || `Cannot fetch paid payouts page ${current}`,
+        error: response?.error || "FETCH_PAID_PAYOUTS_FAILED",
+        data: null,
+      };
+    }
+
+    if (Array.isArray(response.data.result)) {
+      allPayouts.push(...response.data.result);
+    }
+  }
+
+  return {
+    statusCode: 200,
+    message: "Fetch all paid artist payouts success",
+    data: allPayouts,
+  };
+};
+
+export const getUserBadgesApi = (userId: string) =>
+  sendRequest<IBackendRes<IUserBadge[]>>({
+    url: `${
+      process.env.NEXT_PUBLIC_BACKEND_URL
+    }/api/v1/users/${encodeURIComponent(userId)}/badges`,
+    method: "GET",
+  });
+
+/* =========================
 
 ========================= */

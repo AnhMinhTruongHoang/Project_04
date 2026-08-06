@@ -10,9 +10,7 @@ import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
 
 import EditRoundedIcon from "@mui/icons-material/EditRounded";
-import EventAvailableRoundedIcon from "@mui/icons-material/EventAvailableRounded";
 import QueueMusicRoundedIcon from "@mui/icons-material/QueueMusicRounded";
-import RepeatRoundedIcon from "@mui/icons-material/RepeatRounded";
 import ShareRoundedIcon from "@mui/icons-material/ShareRounded";
 
 import {
@@ -29,6 +27,8 @@ import ProfilePlaylistsTab from "./profile-playlists-tab";
 import ProfileSupportTab from "./profile-support-tab";
 import ProfileShareDialog from "./profile-share-dialog";
 import ProfileEditDialog from "./profile-edit-dialog";
+import { useTrackContext } from "@/lib/track.wrapper";
+import ProfileMembershipTab from "./profile-membership-tab";
 
 type Props = {
   user: Partial<IUser> | null;
@@ -46,6 +46,8 @@ const PROFILE_TABS = [
 
 type ProfileTab = (typeof PROFILE_TABS)[number];
 
+const OWNER_ONLY_PROFILE_TABS: ProfileTab[] = ["All"];
+
 const getItemId = (item?: any) => {
   return item?._id || item?.id || "";
 };
@@ -55,16 +57,12 @@ const getUploaderId = (track?: ITrackTop | null) => {
 };
 
 const ProfileEmptyTab = ({
-  type,
   isOwner,
   displayName,
 }: {
-  type: "Albums" | "Membership";
   isOwner: boolean;
   displayName: string;
 }) => {
-  const isAlbum = type === "Albums";
-
   return (
     <Box
       sx={{
@@ -80,23 +78,13 @@ const ProfileEmptyTab = ({
         px: 3,
       }}
     >
-      {isAlbum ? (
-        <QueueMusicRoundedIcon
-          sx={{
-            fontSize: 52,
-            color: "#ff5500",
-            mb: 1,
-          }}
-        />
-      ) : (
-        <RepeatRoundedIcon
-          sx={{
-            fontSize: 52,
-            color: "#ff5500",
-            mb: 1,
-          }}
-        />
-      )}
+      <QueueMusicRoundedIcon
+        sx={{
+          fontSize: 52,
+          color: "#ff5500",
+          mb: 1,
+        }}
+      />
 
       <Typography
         sx={{
@@ -105,7 +93,7 @@ const ProfileEmptyTab = ({
           fontWeight: 900,
         }}
       >
-        No {type.toLowerCase()} yet
+        No albums yet
       </Typography>
 
       <Typography
@@ -118,12 +106,8 @@ const ProfileEmptyTab = ({
         }}
       >
         {isOwner
-          ? isAlbum
-            ? "Albums created by you will appear here."
-            : "Tracks reposted by you will appear here."
-          : isAlbum
-          ? `${displayName} has not published any albums.`
-          : `${displayName} has not reposted any tracks.`}
+          ? "Albums created by you will appear here."
+          : `${displayName} has not published any albums.`}
       </Typography>
     </Box>
   );
@@ -132,6 +116,8 @@ const ProfileEmptyTab = ({
 const ProfileMain = ({ user, tracks }: Props) => {
   const toast = useToast();
   const { data: session } = useSession();
+
+  const { currentTrack, setCurrentTrack } = useTrackContext() as ITrackContext;
 
   const [activeTab, setActiveTab] = useState<ProfileTab>("All");
   const [openEdit, setOpenEdit] = useState(false);
@@ -155,6 +141,44 @@ const ProfileMain = ({ user, tracks }: Props) => {
     (session as any)?.accessToken ||
     (session as any)?.access_token ||
     (session as any)?.user?.access_token;
+
+  const showMembershipTab =
+    String(user?.type || "")
+      .trim()
+      .toUpperCase() === "ARTIST";
+
+  const visibleProfileTabs = useMemo(
+    () =>
+      PROFILE_TABS.filter((tab) => {
+        /* MEMBERSHIP ONLY FOR ARTIST PROFILE */
+        if (tab === "Membership" && !showMembershipTab) {
+          return false;
+        }
+
+        /* OWNER-ONLY PROFILE TABS */
+        if (OWNER_ONLY_PROFILE_TABS.includes(tab) && !isOwner) {
+          return false;
+        }
+
+        return true;
+      }),
+    [isOwner, showMembershipTab]
+  );
+
+  /*
+   * =========================
+   * RESET HIDDEN PROFILE TAB
+   * =========================
+   */
+  useEffect(() => {
+    if (visibleProfileTabs.includes(activeTab)) {
+      return;
+    }
+
+    setActiveTab(visibleProfileTabs[0] ?? "Popular tracks");
+  }, [activeTab, visibleProfileTabs]);
+
+  const isMembershipTab = activeTab === "Membership";
 
   const authoredTracks = useMemo(() => {
     if (!profileUserId) {
@@ -275,6 +299,99 @@ const ProfileMain = ({ user, tracks }: Props) => {
     }
   };
 
+  /*
+   * =========================
+   * PLAY MEMBERSHIP TRACK PREVIEW
+   * =========================
+   */
+  const handlePlayMembershipTrack = (
+    track: IArtistMembershipTrackPreview,
+    post: IArtistMembershipPost
+  ) => {
+    if (!track.trackUrl?.trim()) {
+      toast.error("Track preview URL is unavailable.");
+
+      return;
+    }
+
+    const trackId = track.id?.trim();
+
+    if (!trackId) {
+      toast.error("Track preview ID is unavailable.");
+
+      return;
+    }
+
+    const startSeconds = Math.max(Number(track.previewStartSeconds || 0), 0);
+
+    const previewDuration = Number(track.previewDurationSeconds || 0);
+
+    const previewEndSeconds =
+      previewDuration > 0 ? startSeconds + previewDuration : undefined;
+
+    const currentTrackId = getItemId(currentTrack);
+
+    const isCurrentPreview =
+      currentTrackId === trackId &&
+      currentTrack?.membershipPreview === true &&
+      currentTrack?.membershipPreviewPostId === post.id;
+
+    /*
+     * Bấm lại cùng preview đang phát:
+     * chuyển sang pause.
+     */
+    if (isCurrentPreview && currentTrack?.isPlaying) {
+      setCurrentTrack({
+        ...currentTrack,
+
+        isPlaying: false,
+
+        source: "footer",
+      } as IShareTrack);
+
+      return;
+    }
+
+    /*
+     * Phát qua AppFooter.
+     *
+     * seekTime + seekId buộc audio
+     * nhảy đến previewStartSeconds.
+     */
+    setCurrentTrack({
+      _id: trackId,
+      id: trackId,
+
+      title: track.title,
+
+      imgUrl: track.imgUrl || "",
+
+      trackUrl: track.trackUrl,
+
+      durationSeconds: track.durationSeconds,
+
+      isPlaying: true,
+
+      source: "footer",
+
+      currentTime: startSeconds,
+
+      duration: Number(track.durationSeconds || 0),
+
+      seekTime: startSeconds,
+
+      seekId: Date.now(),
+
+      membershipPreview: true,
+
+      membershipPreviewPostId: post.id,
+
+      previewStartSeconds: startSeconds,
+
+      previewEndSeconds,
+    } as IShareTrack);
+  };
+
   const renderActiveTab = () => {
     switch (activeTab) {
       case "All":
@@ -290,23 +407,26 @@ const ProfileMain = ({ user, tracks }: Props) => {
         );
 
       case "Albums":
-        return (
-          <ProfileEmptyTab
-            type="Albums"
-            isOwner={isOwner}
-            displayName={displayName}
-          />
-        );
+        return <ProfileEmptyTab isOwner={isOwner} displayName={displayName} />;
 
       case "Playlists":
         return <ProfilePlaylistsTab user={user} isOwner={isOwner} />;
 
       case "Membership":
+        if (!profileUserId) {
+          return null;
+        }
+
         return (
-          <ProfileEmptyTab
-            type="Membership"
+          <ProfileMembershipTab
+            artistId={profileUserId}
+            artistName={displayName}
+            accessToken={accessToken}
             isOwner={isOwner}
-            displayName={displayName}
+            onPlayTrack={handlePlayMembershipTrack}
+            onRequireLogin={() => {
+              toast.error("Please login first.");
+            }}
           />
         );
 
@@ -324,7 +444,8 @@ const ProfileMain = ({ user, tracks }: Props) => {
         display: "grid",
         gridTemplateColumns: {
           xs: "1fr",
-          lg: "minmax(0, 1fr) 330px",
+
+          lg: isMembershipTab ? "minmax(0, 1fr)" : "minmax(0, 1fr) 330px",
         },
         gap: 4,
         px: {
@@ -368,7 +489,7 @@ const ProfileMain = ({ user, tracks }: Props) => {
               },
             }}
           >
-            {PROFILE_TABS.map((tab) => {
+            {visibleProfileTabs.map((tab) => {
               const selected = activeTab === tab;
 
               return (
@@ -493,123 +614,125 @@ const ProfileMain = ({ user, tracks }: Props) => {
         </Box>
       </Box>
 
-      <Box
-        component="aside"
-        sx={{
-          display: {
-            xs: "none",
-            lg: "block",
-          },
-          borderLeft: "1px solid rgba(255,255,255,0.08)",
-          pl: 3,
-        }}
-      >
+      {/* PROFILE SIDEBAR */}
+      {!isMembershipTab && (
         <Box
           sx={{
-            display: "grid",
-            gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
-            gap: 2,
-            mb: 3,
+            borderLeft: "1px solid rgba(255,255,255,0.08)",
+
+            pl: {
+              xs: 0,
+              lg: 3,
+            },
           }}
         >
-          {[
-            ["Followers", followersCount],
-            ["Following", Number(user?.following || 0)],
-            ["Tracks", authoredTracks.length],
-          ].map(([label, value]) => (
-            <Box key={String(label)}>
-              <Typography
-                sx={{
-                  color: "#9a9a9a",
-                  fontSize: 14,
-                  fontWeight: 900,
-                  mb: 0.6,
-                }}
-              >
-                {label}
-              </Typography>
-
-              <Typography
-                sx={{
-                  color: "#ffffff",
-                  fontSize: 34,
-                  fontWeight: 900,
-                  lineHeight: 1,
-                }}
-              >
-                {value}
-              </Typography>
-            </Box>
-          ))}
-        </Box>
-
-        <Box>
-          <Typography
+          <Box
             sx={{
-              color: "#ffffff",
-              fontSize: 14,
-              fontWeight: 900,
-              textTransform: "uppercase",
+              display: "grid",
+              gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
+              gap: 2,
+              mb: 3,
             }}
           >
-            On tour
-          </Typography>
+            {[
+              ["Followers", followersCount],
+              ["Following", Number(user?.following || 0)],
+              ["Tracks", authoredTracks.length],
+            ].map(([label, value]) => (
+              <Box key={String(label)}>
+                <Typography
+                  sx={{
+                    color: "#9a9a9a",
+                    fontSize: 14,
+                    fontWeight: 900,
+                    mb: 0.6,
+                  }}
+                >
+                  {label}
+                </Typography>
 
-          <Typography
+                <Typography
+                  sx={{
+                    color: "#ffffff",
+                    fontSize: 34,
+                    fontWeight: 900,
+                    lineHeight: 1,
+                  }}
+                >
+                  {value}
+                </Typography>
+              </Box>
+            ))}
+          </Box>
+
+          <Box>
+            <Typography
+              sx={{
+                color: "#ffffff",
+                fontSize: 14,
+                fontWeight: 900,
+                textTransform: "uppercase",
+              }}
+            >
+              On tour
+            </Typography>
+
+            <Typography
+              sx={{
+                color: "#ffffff",
+                fontSize: 12,
+                fontWeight: 700,
+                lineHeight: 1.5,
+                mb: 2,
+              }}
+            >
+              With an Artist Pro account, you can create ticketed live events on
+              Sound Clone and list existing events.
+            </Typography>
+          </Box>
+
+          <Box
             sx={{
-              color: "#ffffff",
-              fontSize: 12,
-              fontWeight: 700,
-              lineHeight: 1.5,
+              mt: 2.5,
+              pt: 2.5,
+              borderTop: "1px solid rgba(255,255,255,0.1)",
+            }}
+          >
+            <ProfileTracksTab />
+          </Box>
+
+          <Divider
+            sx={{
+              borderColor: "rgba(255,255,255,0.08)",
               mb: 2,
             }}
+          />
+
+          <Typography
+            sx={{
+              color: "#9a9a9a",
+              fontSize: 13,
+              lineHeight: 1.7,
+            }}
           >
-            With an Artist Pro account, you can create ticketed live events on
-            Sound Clone and list existing events.
+            Legal · Privacy · Cookie Policy · Cookie Manager · Imprint · Artist
+            Resources · Newsroom · Topics · Charts · Transparency Reports
+          </Typography>
+
+          <Typography
+            sx={{
+              color: "#d8d8d8",
+              fontSize: 13,
+              mt: 2,
+            }}
+          >
+            Language:{" "}
+            <Box component="span" sx={{ color: "#4da3ff" }}>
+              English (US)
+            </Box>
           </Typography>
         </Box>
-
-        <Box
-          sx={{
-            mt: 2.5,
-            pt: 2.5,
-            borderTop: "1px solid rgba(255,255,255,0.1)",
-          }}
-        >
-          <ProfileTracksTab />
-        </Box>
-
-        <Divider
-          sx={{
-            borderColor: "rgba(255,255,255,0.08)",
-            mb: 2,
-          }}
-        />
-
-        <Typography
-          sx={{
-            color: "#9a9a9a",
-            fontSize: 13,
-            lineHeight: 1.7,
-          }}
-        >
-          Legal · Privacy · Cookie Policy · Cookie Manager · Imprint · Artist
-          Resources · Newsroom · Topics · Charts · Transparency Reports
-        </Typography>
-
-        <Typography
-          sx={{
-            color: "#d8d8d8",
-            fontSize: 13,
-            mt: 2,
-          }}
-        >
-          Language:{" "}
-          <Box component="span" sx={{ color: "#4da3ff" }}>
-            English (US)
-          </Box>
-        </Typography>
-      </Box>
+      )}
 
       <ProfileShareDialog
         open={openShare}

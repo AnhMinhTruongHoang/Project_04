@@ -1988,6 +1988,424 @@ export const getUserBadgesApi = (userId: string) =>
     method: "GET",
   });
 
+/* =====================================================
+   ARTIST MEMBERSHIP PLAN APIs
+===================================================== */
+
+export const getArtistMembershipPlansApi = (
+  artistId: string,
+  accessToken?: string
+) => {
+  return sendRequest<IBackendRes<IArtistMembershipPlan[]>>({
+    url: `/api/v1/artists/${encodeURIComponent(artistId)}/membership-plans`,
+    method: "GET",
+    headers: authHeaders(accessToken),
+    nextOption: {
+      cache: "no-store",
+    },
+  });
+};
+
+export const getMyArtistMembershipPlansApi = (accessToken?: string) => {
+  return sendRequest<IBackendRes<IArtistMembershipPlan[]>>({
+    url: "/api/v1/artist/membership-plans",
+    method: "GET",
+    headers: authHeaders(accessToken),
+    nextOption: {
+      cache: "no-store",
+    },
+  });
+};
+
+export const createArtistMembershipPlanApi = (
+  payload: ICreateArtistMembershipPlanPayload,
+  accessToken?: string
+) => {
+  return sendRequest<IBackendRes<IArtistMembershipPlan>>({
+    url: "/api/v1/artist/membership-plans",
+    method: "POST",
+    body: payload,
+    headers: authHeaders(accessToken),
+  });
+};
+
+export const updateArtistMembershipPlanApi = (
+  planId: string,
+  payload: IUpdateArtistMembershipPlanPayload,
+  accessToken?: string
+) => {
+  return sendRequest<IBackendRes<IArtistMembershipPlan>>({
+    url: `/api/v1/artist/membership-plans/${encodeURIComponent(planId)}`,
+    method: "PATCH",
+    body: payload,
+    headers: authHeaders(accessToken),
+  });
+};
+
+/* =====================================================
+   MEMBERSHIP ACCESS APIs
+===================================================== */
+
+export const getArtistMembershipAccessApi = (
+  artistId: string,
+  accessToken?: string
+) => {
+  return sendRequest<IBackendRes<IArtistMembershipAccess>>({
+    url: `/api/v1/artists/${encodeURIComponent(artistId)}/membership/access`,
+    method: "GET",
+    headers: authHeaders(accessToken),
+    nextOption: {
+      cache: "no-store",
+    },
+  });
+};
+
+export const getMyArtistMembershipsApi = (accessToken?: string) => {
+  return sendRequest<IBackendRes<IMyArtistMembership[]>>({
+    url: "/api/v1/memberships/me",
+    method: "GET",
+    headers: authHeaders(accessToken),
+    nextOption: {
+      cache: "no-store",
+    },
+  });
+};
+
+export const cancelArtistMembershipApi = (
+  subscriptionId: string,
+  accessToken?: string
+) => {
+  return sendRequest<IBackendRes<IMyArtistMembership>>({
+    url: `/api/v1/memberships/${encodeURIComponent(subscriptionId)}/cancel`,
+    method: "PATCH",
+    headers: authHeaders(accessToken),
+  });
+};
+
+/* =====================================================
+   MEMBERSHIP COMMUNITY FEED APIs
+===================================================== */
+
+export const getArtistMembershipPostsApi = (
+  artistId: string,
+  accessToken?: string,
+  params: IArtistMembershipPaginationParams = {}
+) => {
+  return sendRequest<IBackendRes<IArtistMembershipFeedData>>({
+    url: `/api/v1/artists/${encodeURIComponent(artistId)}/membership-posts`,
+    method: "GET",
+    queryParams: {
+      current: params.current ?? 1,
+      pageSize: params.pageSize ?? 10,
+    },
+    headers: authHeaders(accessToken),
+    nextOption: {
+      cache: "no-store",
+    },
+  });
+};
+
+export const getMyArtistMembershipPostsApi = (
+  accessToken?: string,
+  params: IArtistMembershipPaginationParams = {}
+) => {
+  return sendRequest<IBackendRes<IArtistMembershipFeedData>>({
+    url: "/api/v1/artist/membership-posts",
+    method: "GET",
+    queryParams: {
+      current: params.current ?? 1,
+      pageSize: params.pageSize ?? 10,
+    },
+    headers: authHeaders(accessToken),
+    nextOption: {
+      cache: "no-store",
+    },
+  });
+};
+
+/* =====================================================
+   CREATE MEMBERSHIP POSTS
+===================================================== */
+
+export const createArtistMembershipPostApi = (
+  payload: ICreateArtistMembershipPostPayload,
+  accessToken?: string
+) => {
+  return sendRequest<IBackendRes<IArtistMembershipPost>>({
+    url: "/api/v1/artist/membership-posts",
+    method: "POST",
+    body: payload,
+    headers: authHeaders(accessToken),
+  });
+};
+
+export const createArtistMembershipImagePostApi = (
+  payload: ICreateArtistMembershipImagePostPayload,
+  image: File,
+  accessToken?: string
+) => {
+  const formData = new FormData();
+
+  formData.append("image", image);
+  formData.append("visibility", payload.visibility);
+
+  if (payload.requiredPlanId) {
+    formData.append("requiredPlanId", payload.requiredPlanId);
+  }
+
+  if (payload.content !== undefined) {
+    formData.append("content", payload.content);
+  }
+
+  if (payload.allowComments !== undefined) {
+    formData.append("allowComments", String(payload.allowComments));
+  }
+
+  if (payload.status) {
+    formData.append("status", payload.status);
+  }
+
+  return sendRequestFile<IBackendRes<IArtistMembershipPost>>({
+    url: "/api/v1/artist/membership-posts/image",
+    method: "POST",
+    body: formData,
+    headers: authHeaders(accessToken),
+  });
+};
+
+export const createArtistMembershipPollApi = (
+  payload: ICreateArtistMembershipPollPayload,
+  accessToken?: string
+) => {
+  return sendRequest<IBackendRes<IArtistMembershipPost>>({
+    url: "/api/v1/artist/membership-posts/poll",
+    method: "POST",
+    body: payload,
+    headers: authHeaders(accessToken),
+  });
+};
+
+/* =====================================================
+   UPDATE MEMBERSHIP POSTS
+===================================================== */
+
+export const updateArtistMembershipPostApi = (
+  postId: string,
+  payload: IUpdateArtistMembershipPostPayload,
+  accessToken?: string
+) => {
+  return sendRequest<IBackendRes<IArtistMembershipPost>>({
+    url: `/api/v1/artist/membership-posts/${encodeURIComponent(postId)}`,
+    method: "PATCH",
+    body: payload,
+    headers: authHeaders(accessToken),
+  });
+};
+
+export const replaceArtistMembershipPostImageApi = (
+  postId: string,
+  image: File,
+  accessToken?: string
+) => {
+  const formData = new FormData();
+
+  formData.append("image", image);
+
+  return sendRequestFile<IBackendRes<IArtistMembershipPost>>({
+    url: `/api/v1/artist/membership-posts/${encodeURIComponent(postId)}/image`,
+    method: "PATCH",
+    body: formData,
+    headers: authHeaders(accessToken),
+  });
+};
+
+export const publishArtistMembershipPostApi = (
+  postId: string,
+  accessToken?: string
+) => {
+  return sendRequest<IBackendRes<IArtistMembershipPost>>({
+    url: `/api/v1/artist/membership-posts/${encodeURIComponent(
+      postId
+    )}/publish`,
+    method: "PATCH",
+    headers: authHeaders(accessToken),
+  });
+};
+
+export const archiveArtistMembershipPostApi = (
+  postId: string,
+  accessToken?: string
+) => {
+  return sendRequest<IBackendRes<IArtistMembershipPost>>({
+    url: `/api/v1/artist/membership-posts/${encodeURIComponent(
+      postId
+    )}/archive`,
+    method: "PATCH",
+    headers: authHeaders(accessToken),
+  });
+};
+
+export const deleteArtistMembershipPostApi = (
+  postId: string,
+  accessToken?: string
+) => {
+  return sendRequest<
+    IBackendRes<{
+      id: string;
+      artistId: string;
+      deleted: boolean;
+    }>
+  >({
+    url: `/api/v1/artist/membership-posts/${encodeURIComponent(postId)}`,
+    method: "DELETE",
+    headers: authHeaders(accessToken),
+  });
+};
+
+/* =====================================================
+   MEMBERSHIP POLL APIs
+===================================================== */
+
+export const getArtistMembershipPollApi = (
+  postId: string,
+  accessToken?: string
+) => {
+  return sendRequest<IBackendRes<IArtistMembershipPost>>({
+    url: `/api/v1/membership-posts/${encodeURIComponent(postId)}/poll`,
+    method: "GET",
+    headers: authHeaders(accessToken),
+    nextOption: {
+      cache: "no-store",
+    },
+  });
+};
+
+export const voteArtistMembershipPollApi = (
+  postId: string,
+  payload: IVoteArtistMembershipPollPayload,
+  accessToken?: string
+) => {
+  return sendRequest<IBackendRes<IArtistMembershipPost>>({
+    url: `/api/v1/membership-posts/${encodeURIComponent(postId)}/poll/vote`,
+    method: "POST",
+    body: payload,
+    headers: authHeaders(accessToken),
+  });
+};
+
+/* =====================================================
+   MEMBERSHIP COMMENT APIs
+===================================================== */
+
+export const getArtistMembershipPostCommentsApi = (
+  postId: string,
+  accessToken?: string,
+  params: IArtistMembershipPaginationParams = {}
+) => {
+  return sendRequest<IBackendRes<IArtistMembershipCommentPageData>>({
+    url: `/api/v1/membership-posts/${encodeURIComponent(postId)}/comments`,
+    method: "GET",
+    queryParams: {
+      current: params.current ?? 1,
+      pageSize: params.pageSize ?? 10,
+    },
+    headers: authHeaders(accessToken),
+    nextOption: {
+      cache: "no-store",
+    },
+  });
+};
+
+export const getArtistMembershipCommentRepliesApi = (
+  postId: string,
+  commentId: string,
+  accessToken?: string
+) => {
+  return sendRequest<IBackendRes<IArtistMembershipPostComment[]>>({
+    url: `/api/v1/membership-posts/${encodeURIComponent(
+      postId
+    )}/comments/${encodeURIComponent(commentId)}/replies`,
+    method: "GET",
+    headers: authHeaders(accessToken),
+    nextOption: {
+      cache: "no-store",
+    },
+  });
+};
+
+export const createArtistMembershipCommentApi = (
+  postId: string,
+  payload: ICreateArtistMembershipCommentPayload,
+  accessToken?: string
+) => {
+  return sendRequest<IBackendRes<IArtistMembershipPostComment>>({
+    url: `/api/v1/membership-posts/${encodeURIComponent(postId)}/comments`,
+    method: "POST",
+    body: payload,
+    headers: authHeaders(accessToken),
+  });
+};
+
+export const updateArtistMembershipCommentApi = (
+  postId: string,
+  commentId: string,
+  payload: IUpdateArtistMembershipCommentPayload,
+  accessToken?: string
+) => {
+  return sendRequest<IBackendRes<IArtistMembershipPostComment>>({
+    url: `/api/v1/membership-posts/${encodeURIComponent(
+      postId
+    )}/comments/${encodeURIComponent(commentId)}`,
+    method: "PATCH",
+    body: payload,
+    headers: authHeaders(accessToken),
+  });
+};
+
+export const deleteArtistMembershipCommentApi = (
+  postId: string,
+  commentId: string,
+  accessToken?: string
+) => {
+  return sendRequest<IBackendRes<IArtistMembershipPostComment>>({
+    url: `/api/v1/membership-posts/${encodeURIComponent(
+      postId
+    )}/comments/${encodeURIComponent(commentId)}`,
+    method: "DELETE",
+    headers: authHeaders(accessToken),
+  });
+};
+
+/* =====================================================
+   MEMBERSHIP PAYMENT APIs
+===================================================== */
+
+export const createArtistMembershipPaymentApi = (
+  payload: ICreateArtistMembershipPaymentPayload,
+  accessToken?: string
+) => {
+  return sendRequest<IBackendRes<IArtistMembershipPayment>>({
+    url: "/api/v1/membership-payments/vnpay/create",
+    method: "POST",
+    body: payload,
+    headers: authHeaders(accessToken),
+  });
+};
+
+export const getArtistMembershipPaymentApi = (
+  orderCode: string,
+  accessToken?: string
+) => {
+  return sendRequest<IBackendRes<IArtistMembershipPayment>>({
+    url: `/api/v1/membership-payments/${encodeURIComponent(orderCode)}`,
+    method: "GET",
+    headers: authHeaders(accessToken),
+    nextOption: {
+      cache: "no-store",
+    },
+  });
+};
+
 /* =========================
 
 ========================= */

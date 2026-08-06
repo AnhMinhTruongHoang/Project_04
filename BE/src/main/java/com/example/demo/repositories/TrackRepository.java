@@ -1,6 +1,7 @@
 package com.example.demo.repositories;
 
 import java.util.List;
+import java.util.Optional;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -31,6 +32,18 @@ public interface TrackRepository extends JpaRepository<Track, String> {
 	List<Track> findByUploaderId(String uploaderId);
 
 	List<Track> findByUploaderIdAndIsDeletedFalse(String uploaderId);
+
+	/*
+	 * =========================
+	 * MEMBERSHIP TRACK PREVIEW
+	 * =========================
+	 *
+	 * Chỉ cho artist đính kèm track
+	 * thuộc chính tài khoản của họ.
+	 */
+	Optional<Track> findByIdAndUploaderIdAndIsDeletedFalse(
+			String id,
+			String uploaderId);
 
 	List<Track> findByCategoryIdAndIsDeletedFalseOrderByCountPlayDesc(String categoryId);
 

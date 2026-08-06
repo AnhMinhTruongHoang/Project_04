@@ -13,94 +13,108 @@ import org.springframework.data.repository.query.Param;
 import com.example.demo.entities.ArtistMembershipSubscription;
 
 public interface ArtistMembershipSubscriptionRepository
-                extends JpaRepository<ArtistMembershipSubscription, String> {
+    extends JpaRepository<ArtistMembershipSubscription, String> {
 
-        /*
-         * =========================
-         * MEMBERSHIP BY MEMBER + ARTIST
-         * =========================
-         */
+  /*
+   * =========================
+   * MEMBERSHIP BY MEMBER + ARTIST
+   * =========================
+   */
 
-        Optional<ArtistMembershipSubscription> findByMemberIdAndArtistId(
-                        String memberId,
-                        String artistId);
+  Optional<ArtistMembershipSubscription> findByMemberIdAndArtistId(
+      String memberId,
+      String artistId);
 
-        boolean existsByMemberIdAndArtistIdAndStatus(
-                        String memberId,
-                        String artistId,
-                        String status);
+  boolean existsByMemberIdAndArtistIdAndStatus(
+      String memberId,
+      String artistId,
+      String status);
 
-        /*
-         * =========================
-         * MEMBER MEMBERSHIP LIST
-         * =========================
-         */
+  /*
+   * =========================
+   * MEMBER MEMBERSHIP LIST
+   * =========================
+   */
 
-        List<ArtistMembershipSubscription> findByMemberIdOrderByCreatedAtDesc(
-                        String memberId);
+  List<ArtistMembershipSubscription> findByMemberIdOrderByCreatedAtDesc(
+      String memberId);
 
-        /*
-         * =========================
-         * ARTIST MEMBER LIST
-         * =========================
-         */
+  /*
+   * =========================
+   * ARTIST MEMBER LIST
+   * =========================
+   */
 
-        Page<ArtistMembershipSubscription> findByArtistIdOrderByCreatedAtDesc(
-                        String artistId,
-                        Pageable pageable);
+  Page<ArtistMembershipSubscription> findByArtistIdOrderByCreatedAtDesc(
+      String artistId,
+      Pageable pageable);
 
-        Page<ArtistMembershipSubscription> findByArtistIdAndStatusOrderByCreatedAtDesc(
-                        String artistId,
-                        String status,
-                        Pageable pageable);
+  Page<ArtistMembershipSubscription> findByArtistIdAndStatusOrderByCreatedAtDesc(
+      String artistId,
+      String status,
+      Pageable pageable);
 
-        long countByArtistIdAndStatus(
-                        String artistId,
-                        String status);
+  long countByArtistIdAndStatus(
+      String artistId,
+      String status);
 
-        /*
-         * =========================
-         * OWNED SUBSCRIPTION
-         * =========================
-         */
+  /*
+   * =========================
+   * OWNED SUBSCRIPTION
+   * =========================
+   */
 
-        Optional<ArtistMembershipSubscription> findByIdAndMemberId(
-                        String id,
-                        String memberId);
+  Optional<ArtistMembershipSubscription> findByIdAndMemberId(
+      String id,
+      String memberId);
 
-        /*
-         * =========================
-         * LOCK MEMBERSHIP
-         * =========================
-         *
-         * Một member chỉ có một subscription
-         * đối với mỗi artist.
-         *
-         * Dùng khi:
-         * - VNPay IPN kích hoạt membership;
-         * - gia hạn membership;
-         * - thay đổi plan;
-         * - hủy membership.
-         */
+  /*
+   * =========================
+   * LOCK MEMBERSHIP
+   * =========================
+   *
+   * Một member chỉ có một subscription
+   * đối với mỗi artist.
+   *
+   * Dùng khi:
+   * - VNPay IPN kích hoạt membership;
+   * - gia hạn membership;
+   * - thay đổi plan;
+   * - hủy membership.
+   */
 
-        @Query(value = """
-                        SELECT *
-                        FROM artist_membership_subscriptions
-                        WHERE memberId = :memberId
-                          AND artistId = :artistId
-                        FOR UPDATE
-                        """, nativeQuery = true)
-        Optional<ArtistMembershipSubscription> findByMemberIdAndArtistIdForUpdate(
-                        @Param("memberId") String memberId,
-                        @Param("artistId") String artistId);
+  @Query(value = """
+      SELECT *
+      FROM artist_membership_subscriptions
+      WHERE memberId = :memberId
+        AND artistId = :artistId
+      FOR UPDATE
+      """, nativeQuery = true)
+  Optional<ArtistMembershipSubscription> findByMemberIdAndArtistIdForUpdate(
+      @Param("memberId") String memberId,
+      @Param("artistId") String artistId);
 
-        /*
-         * =========================
-         * EXPIRED MEMBERSHIP BATCH
-         * =========================
-         */
+  /*
+   * =========================
+   * EXPIRED MEMBERSHIP BATCH
+   * =========================
+   */
 
-        List<ArtistMembershipSubscription> findTop100ByStatusAndCurrentPeriodEndLessThanEqualOrderByCurrentPeriodEndAsc(
-                        String status,
-                        LocalDateTime currentPeriodEnd);
+  List<ArtistMembershipSubscription> findTop100ByStatusAndCurrentPeriodEndLessThanEqualOrderByCurrentPeriodEndAsc(
+      String status,
+      LocalDateTime currentPeriodEnd);
+
+  /*
+   * =========================
+   * LOCK SUBSCRIPTION BY ID
+   * =========================
+   */
+  @Query(value = """
+      SELECT *
+      FROM artist_membership_subscriptions
+      WHERE id = :subscriptionId
+      FOR UPDATE
+      """, nativeQuery = true)
+  Optional<ArtistMembershipSubscription> findByIdForUpdate(
+      @Param("subscriptionId") String subscriptionId);
 }

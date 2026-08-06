@@ -421,6 +421,24 @@ declare global {
 
   interface IShareTrack extends ITrackTop {
     isPlaying: boolean;
+
+    /*
+     * =========================
+     * MEMBERSHIP TRACK PREVIEW
+     * =========================
+     */
+
+    membershipPreview?: boolean;
+
+    membershipPreviewPostId?: string;
+
+    previewStartSeconds?: number;
+
+    /*
+     * null hoặc undefined:
+     * cho phép nghe hết track.
+     */
+    previewEndSeconds?: number;
   }
 
   interface ITrackContext {
@@ -1279,5 +1297,507 @@ declare global {
     accessToken?: string;
     onClose: () => void;
   }
-  ///
+
+  /* =====================================================
+   ARTIST MEMBERSHIP
+===================================================== */
+
+  type ArtistMembershipPostType = "TEXT" | "IMAGE" | "POLL" | "TRACK_PREVIEW";
+
+  type ArtistMembershipVisibility = "PUBLIC" | "MEMBERS_ONLY" | "TIER_ONLY";
+
+  type ArtistMembershipPostStatus = "DRAFT" | "PUBLISHED" | "ARCHIVED";
+
+  type ArtistMembershipSubscriptionStatus = "ACTIVE" | "CANCELED" | "EXPIRED";
+
+  type ArtistMembershipPaymentStatus =
+    | "PENDING"
+    | "PROCESSING"
+    | "PAID"
+    | "FAILED"
+    | "CANCELED"
+    | "EXPIRED"
+    | "REFUNDED";
+
+  type ArtistMembershipCommentStatus = "ACTIVE" | "DELETED";
+
+  type ArtistMembershipLockReason =
+    | "MEMBERSHIP_REQUIRED"
+    | "TIER_REQUIRED"
+    | string;
+
+  /* =====================================================
+ MEMBERSHIP PLANS
+===================================================== */
+
+  interface IArtistMembershipPlan {
+    id: string;
+    artistId: string;
+
+    code: string;
+    name: string;
+    description?: string | null;
+
+    monthlyPrice: number;
+    currency: string;
+
+    badgeName: string;
+    badgeColor: string;
+
+    displayOrder: number;
+    active: boolean;
+
+    createdAt?: string | null;
+    updatedAt?: string | null;
+  }
+
+  interface ICreateArtistMembershipPlanPayload {
+    code: string;
+    name: string;
+    description?: string;
+
+    monthlyPrice: number;
+
+    badgeName: string;
+    badgeColor: string;
+
+    displayOrder?: number;
+  }
+
+  interface IUpdateArtistMembershipPlanPayload {
+    name?: string;
+    description?: string;
+
+    monthlyPrice?: number;
+
+    badgeName?: string;
+    badgeColor?: string;
+
+    displayOrder?: number;
+    active?: boolean;
+  }
+
+  /* =====================================================
+ MEMBERSHIP ACCESS
+===================================================== */
+
+  interface IArtistMembershipAccess {
+    artistId: string;
+
+    hasMembership: boolean;
+    active: boolean;
+
+    status?: ArtistMembershipSubscriptionStatus | null;
+
+    subscriptionId?: string | null;
+    memberId?: string | null;
+
+    planId?: string | null;
+    planCode?: string | null;
+    planName?: string | null;
+
+    badgeName?: string | null;
+    badgeColor?: string | null;
+
+    startedAt?: string | null;
+    currentPeriodStart?: string | null;
+    currentPeriodEnd?: string | null;
+
+    cancelAtPeriodEnd: boolean;
+  }
+
+  interface IMyArtistMembership extends IArtistMembershipAccess {
+    artistName?: string | null;
+    artistUsername?: string | null;
+    artistAvatarUrl?: string | null;
+
+    latestPaymentId?: string | null;
+
+    canceledAt?: string | null;
+    expiredAt?: string | null;
+
+    createdAt?: string | null;
+    updatedAt?: string | null;
+  }
+
+  /* =====================================================
+ MEMBERSHIP TRACK PREVIEW
+===================================================== */
+
+  interface IArtistMembershipTrackPreview {
+    id: string;
+    title: string;
+
+    imgUrl?: string | null;
+    trackUrl?: string | null;
+
+    durationSeconds?: number | null;
+
+    previewStartSeconds?: number | null;
+    previewDurationSeconds?: number | null;
+  }
+
+  /* =====================================================
+ MEMBERSHIP POLL
+===================================================== */
+
+  interface IArtistMembershipPollOption {
+    id: string;
+    text: string;
+
+    displayOrder: number;
+
+    voteCount: number;
+    percentage: number;
+
+    selected: boolean;
+  }
+
+  interface IArtistMembershipPoll {
+    locked: boolean;
+    lockReason?: ArtistMembershipLockReason | null;
+
+    question?: string | null;
+
+    options: IArtistMembershipPollOption[];
+
+    totalVotes?: number | null;
+    viewerOptionId?: string | null;
+  }
+
+  interface ICreateArtistMembershipPollPayload {
+    visibility: ArtistMembershipVisibility;
+
+    requiredPlanId?: string;
+
+    question: string;
+    options: string[];
+
+    allowComments?: boolean;
+
+    status?: Extract<ArtistMembershipPostStatus, "DRAFT" | "PUBLISHED">;
+  }
+
+  interface IVoteArtistMembershipPollPayload {
+    optionId: string;
+  }
+
+  /* =====================================================
+ MEMBERSHIP POSTS
+===================================================== */
+
+  interface IArtistMembershipPost {
+    id: string;
+    artistId: string;
+
+    type: ArtistMembershipPostType;
+    visibility: ArtistMembershipVisibility;
+
+    requiredPlanId?: string | null;
+    requiredPlanName?: string | null;
+
+    requiredBadgeName?: string | null;
+    requiredBadgeColor?: string | null;
+
+    locked: boolean;
+    lockReason?: ArtistMembershipLockReason | null;
+
+    content?: string | null;
+    imageUrl?: string | null;
+
+    allowComments: boolean;
+
+    status: ArtistMembershipPostStatus;
+
+    track?: IArtistMembershipTrackPreview | null;
+    poll?: IArtistMembershipPoll | null;
+
+    commentCount?: number;
+
+    publishedAt?: string | null;
+    createdAt?: string | null;
+    updatedAt?: string | null;
+  }
+
+  interface IArtistMembershipFeedData {
+    current: number;
+    pageSize: number;
+
+    total: number;
+    totalPages: number;
+
+    items: IArtistMembershipPost[];
+  }
+
+  interface ICreateArtistMembershipPostPayload {
+    type: Exclude<ArtistMembershipPostType, "IMAGE" | "POLL">;
+
+    visibility: ArtistMembershipVisibility;
+
+    requiredPlanId?: string;
+
+    content?: string;
+
+    trackId?: string;
+
+    previewStartSeconds?: number;
+    previewDurationSeconds?: number;
+
+    allowComments?: boolean;
+
+    status?: Extract<ArtistMembershipPostStatus, "DRAFT" | "PUBLISHED">;
+  }
+
+  interface ICreateArtistMembershipImagePostPayload {
+    visibility: ArtistMembershipVisibility;
+
+    requiredPlanId?: string;
+
+    content?: string;
+
+    allowComments?: boolean;
+
+    status?: Extract<ArtistMembershipPostStatus, "DRAFT" | "PUBLISHED">;
+  }
+
+  interface IUpdateArtistMembershipPostPayload {
+    visibility?: ArtistMembershipVisibility;
+
+    requiredPlanId?: string;
+
+    content?: string;
+
+    trackId?: string;
+
+    previewStartSeconds?: number;
+    previewDurationSeconds?: number;
+
+    allowComments?: boolean;
+
+    status?: Extract<ArtistMembershipPostStatus, "DRAFT" | "PUBLISHED">;
+  }
+
+  /* =====================================================
+ MEMBERSHIP COMMENTS
+===================================================== */
+
+  interface IArtistMembershipCommentAuthor {
+    id: string;
+
+    name?: string | null;
+    username?: string | null;
+    avatarUrl?: string | null;
+
+    type?: UserType | null;
+  }
+
+  interface IArtistMembershipPostComment {
+    id: string;
+    postId: string;
+
+    parentCommentId?: string | null;
+
+    author: IArtistMembershipCommentAuthor;
+
+    content?: string | null;
+
+    status: ArtistMembershipCommentStatus;
+
+    deleted: boolean;
+    edited: boolean;
+
+    editedAt?: string | null;
+    deletedAt?: string | null;
+
+    replyCount: number;
+
+    canEdit: boolean;
+    canDelete: boolean;
+
+    createdAt?: string | null;
+    updatedAt?: string | null;
+  }
+
+  interface IArtistMembershipCommentPageData {
+    current: number;
+    pageSize: number;
+
+    total: number;
+    totalPages: number;
+
+    items: IArtistMembershipPostComment[];
+  }
+
+  interface ICreateArtistMembershipCommentPayload {
+    content: string;
+    parentCommentId?: string;
+  }
+
+  interface IUpdateArtistMembershipCommentPayload {
+    content: string;
+  }
+
+  /* =====================================================
+ MEMBERSHIP PAGINATION
+===================================================== */
+
+  interface IArtistMembershipPaginationParams {
+    current?: number;
+    pageSize?: number;
+  }
+
+  /* =====================================================
+   PROFILE MEMBERSHIP PLAN CARD
+===================================================== */
+
+  interface IProfileMembershipPlanCardProps {
+    plan: IArtistMembershipPlan;
+
+    membershipAccess?: IArtistMembershipAccess | null;
+
+    isOwner?: boolean;
+    loading?: boolean;
+
+    onJoin?: (plan: IArtistMembershipPlan) => void;
+  }
+  /* =====================================================
+   PROFILE MEMBERSHIP POST CARD
+===================================================== */
+
+  interface IProfileMembershipPostCardProps {
+    post: IArtistMembershipPost;
+
+    votingOptionId?: string | null;
+
+    onVote?: (postId: string, optionId: string) => void | Promise<void>;
+
+    onPlayTrack?: (
+      track: IArtistMembershipTrackPreview,
+      post: IArtistMembershipPost
+    ) => void;
+
+    onOpenComments?: (post: IArtistMembershipPost) => void;
+
+    onJoinMembership?: (post: IArtistMembershipPost) => void;
+  }
+  /* =====================================================
+   PROFILE MEMBERSHIP FEED
+===================================================== */
+
+  interface IProfileMembershipFeedProps {
+    artistId: string;
+
+    accessToken?: string;
+
+    /*
+     * Tăng giá trị này để tải lại feed,
+     * ví dụ sau khi tạo hoặc xóa bình luận.
+     */
+    refreshKey?: number;
+
+    onPlayTrack?: (
+      track: IArtistMembershipTrackPreview,
+      post: IArtistMembershipPost
+    ) => void;
+
+    onOpenComments?: (post: IArtistMembershipPost) => void;
+
+    onJoinMembership?: (post: IArtistMembershipPost) => void;
+
+    onRequireLogin?: () => void;
+  }
+  /* =====================================================
+   PROFILE MEMBERSHIP COMMENTS DIALOG
+===================================================== */
+
+  interface IProfileMembershipCommentsDialogProps {
+    open: boolean;
+
+    post: IArtistMembershipPost | null;
+
+    accessToken?: string;
+
+    onClose: () => void;
+
+    /*
+     * Dùng để component cha tải lại feed
+     * và cập nhật commentCount.
+     */
+    onCommentChanged?: (postId: string) => void;
+
+    onRequireLogin?: () => void;
+  }
+  /* =====================================================
+   MEMBERSHIP PAYMENT
+===================================================== */
+
+  interface ICreateArtistMembershipPaymentPayload {
+    planId: string;
+
+    bankCode?: string;
+    locale?: "vn" | "en";
+  }
+
+  interface IArtistMembershipPayment {
+    paymentId: string;
+    orderCode: string;
+
+    provider: string;
+
+    memberId: string;
+    artistId: string;
+    planId: string;
+
+    planCode?: string | null;
+    planName?: string | null;
+
+    badgeName?: string | null;
+    badgeColor?: string | null;
+
+    periodDays: number;
+
+    grossAmount: number;
+    platformFeePercent: number;
+    platformFeeAmount: number;
+    artistNetAmount: number;
+
+    currency: string;
+
+    status: ArtistMembershipPaymentStatus;
+
+    subscriptionId?: string | null;
+    paymentUrl?: string | null;
+
+    responseCode?: string | null;
+    transactionStatus?: string | null;
+
+    paidAt?: string | null;
+    expiresAt?: string | null;
+    createdAt?: string | null;
+
+    reused: boolean;
+  }
+
+  /* =====================================================
+   PROFILE MEMBERSHIP TAB
+===================================================== */
+
+  interface IProfileMembershipTabProps {
+    artistId: string;
+
+    artistName?: string;
+
+    accessToken?: string;
+
+    isOwner?: boolean;
+
+    onRequireLogin?: () => void;
+
+    onPlayTrack?: (
+      track: IArtistMembershipTrackPreview,
+      post: IArtistMembershipPost
+    ) => void;
+  }
+  /* =====================================================
+===================================================== */
 }

@@ -264,6 +264,15 @@ const AppFooter = () => {
         return;
       }
 
+      /*
+       * =========================
+       * SKIP MEMBERSHIP PREVIEW PROGRESS
+       * =========================
+       */
+      if (trackSnapshot.membershipPreview === true) {
+        return;
+      }
+
       const trackId = trackSnapshot?.id || trackSnapshot?._id || "";
 
       if (!trackId) {
@@ -441,6 +450,38 @@ const AppFooter = () => {
   };
 
   const handleAudioEnded = async () => {
+    /*
+     * =========================
+     * MEMBERSHIP PREVIEW ENDED
+     * =========================
+     *
+     * Preview không lưu progress
+     * và không tự chuyển bài.
+     */
+    if (currentTrack?.membershipPreview === true) {
+      const previewEndSeconds = Number(currentTrack.previewEndSeconds);
+
+      const stoppedTime =
+        Number.isFinite(previewEndSeconds) && previewEndSeconds > 0
+          ? previewEndSeconds
+          : footerCurrentTime;
+
+      setCurrentTrack({
+        ...currentTrack,
+
+        currentTime: stoppedTime,
+
+        isPlaying: false,
+
+        source: "footer",
+
+        seekTime: undefined,
+        seekId: undefined,
+      } as IShareTrack);
+
+      return;
+    }
+
     const audio = playerRef.current?.audio?.current;
 
     const duration = Math.max(
@@ -450,9 +491,12 @@ const AppFooter = () => {
 
     const completedTrack = {
       ...currentTrack,
+
       currentTime: duration,
       duration,
+
       isPlaying: false,
+
       source: "footer",
     };
 
@@ -550,6 +594,14 @@ const AppFooter = () => {
   useEffect(() => {
     const trackId = getTrackId(currentTrack);
 
+    /*
+     * Membership preview không tạo
+     * listening session.
+     */
+    if (currentTrack?.membershipPreview === true) {
+      return;
+    }
+
     const duration = Math.max(Number((currentTrack as any)?.duration) || 0, 0);
 
     if (!accessToken || !trackId || !currentTrack?.isPlaying || duration <= 0) {
@@ -573,6 +625,7 @@ const AppFooter = () => {
     (currentTrack as any)?.duration,
     getOrCreateListeningSessionId,
     persistListeningProgress,
+    currentTrack?.membershipPreview,
   ]);
 
   /*
@@ -653,13 +706,24 @@ const AppFooter = () => {
   ]);
 
   /*
-   * LÆ°u lá»‹ch sá»­ nghe.
+   * =========================
+   * SAVE LISTENING HISTORY
+   * =========================
    */
   useEffect(() => {
+    if (currentTrack?.membershipPreview === true) {
+      return;
+    }
+
     const trackId = getTrackId(currentTrack);
 
-    if (!trackId) return;
-    if (!currentTrack?.isPlaying) return;
+    if (!trackId) {
+      return;
+    }
+
+    if (!currentTrack?.isPlaying) {
+      return;
+    }
 
     saveListeningHistory(currentTrack as ITrackTop);
   }, [
@@ -667,6 +731,7 @@ const AppFooter = () => {
     (currentTrack as any)?.id,
     currentTrack?.trackUrl,
     currentTrack?.isPlaying,
+    currentTrack?.membershipPreview,
   ]);
 
   /*
@@ -1571,6 +1636,45 @@ const AppFooter = () => {
                     Number(audio.currentTime) || 0,
                     0
                   );
+
+                  /*
+                   * =========================
+                   * MEMBERSHIP PREVIEW LIMIT
+                   * =========================
+                   */
+                  const isMembershipPreview =
+                    currentTrack.membershipPreview === true;
+
+                  const previewEndSeconds = Number(
+                    currentTrack.previewEndSeconds
+                  );
+
+                  const reachedPreviewEnd =
+                    isMembershipPreview &&
+                    Number.isFinite(previewEndSeconds) &&
+                    previewEndSeconds > 0 &&
+                    currentTime >= previewEndSeconds;
+
+                  if (reachedPreviewEnd) {
+                    audio.pause();
+
+                    audio.currentTime = previewEndSeconds;
+
+                    setCurrentTrack({
+                      ...currentTrack,
+
+                      currentTime: previewEndSeconds,
+
+                      isPlaying: false,
+
+                      source: "footer",
+
+                      seekTime: undefined,
+                      seekId: undefined,
+                    } as IShareTrack);
+
+                    return;
+                  }
 
                   const duration = Math.max(Number(audio.duration) || 0, 0);
 

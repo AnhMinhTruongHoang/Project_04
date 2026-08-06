@@ -22,6 +22,10 @@ public class CloudinaryService {
 
         private static final String LICENSE_FOLDER = "soundclone/license";
 
+        private static final long MAX_COMMUNITY_IMAGE_SIZE = 8L * 1024L * 1024L;
+
+        private static final String COMMUNITY_IMAGE_FOLDER = "soundclone/community";
+
         public CloudinaryService(
                         Cloudinary cloudinary) {
 
@@ -58,6 +62,47 @@ public class CloudinaryService {
                 return result
                                 .get("secure_url")
                                 .toString();
+        }
+
+        // =====================================================
+        // UPLOAD COMMUNITY IMAGE
+        // =====================================================
+
+        public String uploadCommunityImage(
+                        MultipartFile file)
+                        throws IOException {
+
+                validateCommunityImage(
+                                file);
+
+                Map<?, ?> result = cloudinary.uploader()
+                                .upload(
+                                                file.getBytes(),
+                                                ObjectUtils.asMap(
+                                                                "resource_type",
+                                                                "image",
+
+                                                                "asset_folder",
+                                                                COMMUNITY_IMAGE_FOLDER,
+
+                                                                "use_filename",
+                                                                true,
+
+                                                                "unique_filename",
+                                                                true,
+
+                                                                "overwrite",
+                                                                false));
+
+                Object secureUrl = result.get(
+                                "secure_url");
+
+                if (secureUrl == null) {
+                        throw new IOException(
+                                        "Cloudinary did not return a community image URL");
+                }
+
+                return secureUrl.toString();
         }
 
         // =====================================================
@@ -145,6 +190,18 @@ public class CloudinaryService {
         }
 
         // =====================================================
+        // DELETE COMMUNITY IMAGE
+        // =====================================================
+
+        public void deleteCommunityImage(
+                        String secureUrl) {
+
+                deleteAsset(
+                                secureUrl,
+                                "image");
+        }
+
+        // =====================================================
         // DELETE AUDIO
         // =====================================================
 
@@ -166,6 +223,51 @@ public class CloudinaryService {
                 deleteAsset(
                                 secureUrl,
                                 "raw");
+        }
+
+        // =====================================================
+        // VALIDATE COMMUNITY IMAGE
+        // =====================================================
+
+        private void validateCommunityImage(
+                        MultipartFile file) {
+
+                if (file == null
+                                || file.isEmpty()) {
+
+                        throw new IllegalArgumentException(
+                                        "Community image is required");
+                }
+
+                if (file.getSize() > MAX_COMMUNITY_IMAGE_SIZE) {
+
+                        throw new IllegalArgumentException(
+                                        "Community image must not exceed 8 MB");
+                }
+
+                String contentType = file.getContentType();
+
+                if (contentType == null
+                                || !isAllowedCommunityImageType(
+                                                contentType)) {
+
+                        throw new IllegalArgumentException(
+                                        "Community image must be JPEG, PNG, WEBP or GIF");
+                }
+        }
+
+        private boolean isAllowedCommunityImageType(
+                        String contentType) {
+
+                String normalized = contentType
+                                .trim()
+                                .toLowerCase(
+                                                Locale.ROOT);
+
+                return "image/jpeg".equals(normalized)
+                                || "image/png".equals(normalized)
+                                || "image/webp".equals(normalized)
+                                || "image/gif".equals(normalized);
         }
 
         // =====================================================

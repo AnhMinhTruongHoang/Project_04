@@ -599,7 +599,7 @@ const ProfileMembershipTab = ({
                     lineHeight: 1.25,
                   }}
                 >
-                  Hội viên{" "}
+                  Membership{" "}
                   {artistName?.trim() ? `của ${artistName}` : "nghệ sĩ"}
                 </Typography>
 
@@ -619,8 +619,8 @@ const ProfileMembershipTab = ({
                     lineHeight: 1.7,
                   }}
                 >
-                  Ủng hộ nghệ sĩ và mở khóa bài đăng, hình ảnh, bình chọn cùng
-                  các bản nghe thử dành riêng cho hội viên.
+                  Support artists and unlock posts, images, polls along with
+                  exclusive listening previews for members.
                 </Typography>
               </Box>
             </Stack>
@@ -965,7 +965,7 @@ const ProfileMembershipTab = ({
                   fontWeight: 900,
                 }}
               >
-                Chọn gói hội viên
+                Choose membership plan
               </Typography>
 
               <Typography
@@ -978,7 +978,7 @@ const ProfileMembershipTab = ({
                   lineHeight: 1.5,
                 }}
               >
-                Mỗi lần thanh toán sẽ kích hoạt quyền hội viên trong 30 ngày.
+                Each payment will activate membership rights for 30 days.
               </Typography>
             </Box>
 
@@ -990,7 +990,7 @@ const ProfileMembershipTab = ({
                   fontSize: 12,
                 }}
               >
-                {plans.length} gói khả dụng
+                {plans.length} available plans
               </Typography>
             )}
           </Stack>
@@ -1029,7 +1029,7 @@ const ProfileMembershipTab = ({
                   fontWeight: 800,
                 }}
               >
-                Chưa có gói hội viên
+                No membership plans available
               </Typography>
 
               <Typography
@@ -1041,7 +1041,7 @@ const ProfileMembershipTab = ({
                   fontSize: 13,
                 }}
               >
-                Nghệ sĩ chưa mở gói Membership.
+                The artist has not opened any membership package.
               </Typography>
             </Paper>
           ) : (

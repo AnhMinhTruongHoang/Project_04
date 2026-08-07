@@ -2397,7 +2397,7 @@ export const getArtistMembershipPaymentApi = (
   accessToken?: string
 ) => {
   return sendRequest<IBackendRes<IArtistMembershipPayment>>({
-    url: `/api/v1/membership-payments/${encodeURIComponent(orderCode)}`,
+    url: `/api/v1/payments/${encodeURIComponent(orderCode)}`,
     method: "GET",
     headers: authHeaders(accessToken),
     nextOption: {

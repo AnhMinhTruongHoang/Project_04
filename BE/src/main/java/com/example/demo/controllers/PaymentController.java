@@ -455,9 +455,20 @@ public class PaymentController {
                                                                                 null));
                         }
 
-                        Map<String, Object> data = paymentService.getUserPayment(
-                                        user.getId(),
-                                        orderCode);
+                        /*
+                         * =========================
+                         * ROUTE PAYMENT STATUS
+                         * =========================
+                         */
+                        Map<String, Object> data = orderCode.startsWith("SCM")
+                                        ? membershipPaymentService
+                                                        .getMemberPayment(
+                                                                        user.getId(),
+                                                                        orderCode)
+                                        : paymentService
+                                                        .getUserPayment(
+                                                                        user.getId(),
+                                                                        orderCode);
 
                         return ResponseEntity.ok(
                                         new ApiResponse<>(

@@ -680,12 +680,14 @@ public class MembershipPaymentService {
          * MEMBERSHIP VNPAY RETURN
          * =========================
          *
-         * Return URL chỉ dùng để hiển thị kết quả.
-         * Không kích hoạt membership tại đây.
+         * [Chuẩn]
+         * IPN vẫn là callback chính.
          *
-         * Membership chỉ được kích hoạt bởi IPN.
+         * [Dự án - Sandbox fallback]
+         * Return hợp lệ được phép kích hoạt membership
+         * nếu IPN chưa đến.
          */
-        @Transactional(readOnly = true)
+        @Transactional
         public Map<String, Object> handleReturn(
                         Map<String, String> parameters) {
 
@@ -711,6 +713,11 @@ public class MembershipPaymentService {
                                                 parameters.get(
                                                                 "vnp_TransactionStatus"));
 
+                /*
+                 * =========================
+                 * VALIDATE CALLBACK
+                 * =========================
+                 */
                 boolean signatureValid = parameters != null
                                 && VNPayHelper.verifySignature(
                                                 parameters,
@@ -723,9 +730,12 @@ public class MembershipPaymentService {
                                                                 parameters.get(
                                                                                 "vnp_TmnCode"));
 
+                /*
+                 * Membership phải bắt đầu bằng SCM.
+                 */
                 MembershipPaymentTransaction payment = orderCode.startsWith("SCM")
                                 ? membershipPaymentTransactionRepository
-                                                .findByOrderCode(
+                                                .findByOrderCodeForUpdate(
                                                                 orderCode)
                                                 .orElse(null)
                                 : null;
@@ -743,6 +753,176 @@ public class MembershipPaymentService {
                                 && callbackAmount.equals(
                                                 payment.getGrossAmount());
 
+                boolean vnpayReportedSuccess = "00".equals(responseCode)
+                                && "00".equals(
+                                                transactionStatus);
+
+                /*
+                 * =========================
+                 * SANDBOX RETURN FALLBACK
+                 * =========================
+                 *
+                 * Chỉ xử lý khi:
+                 *
+                 * signature đúng
+                 * merchant đúng
+                 * order tồn tại
+                 * amount đúng
+                 */
+                if (signatureValid
+                                && merchantValid
+                                && orderFound
+                                && amountValid) {
+
+                        /*
+                         * Lưu thông tin callback VNPay.
+                         */
+                        applyCallbackData(
+                                        payment,
+                                        parameters);
+
+                        /*
+                         * =========================
+                         * SUCCESS
+                         * =========================
+                         */
+                        if (vnpayReportedSuccess) {
+
+                                /*
+                                 * Không kích hoạt lần hai nếu IPN
+                                 * đã xử lý payment trước Return.
+                                 */
+                                if (!MembershipPaymentTransaction.STATUS_PAID
+                                                .equalsIgnoreCase(
+                                                                payment.getStatus())) {
+
+                                        String providerTransactionId = normalizeCallbackValue(
+                                                        parameters.get(
+                                                                        "vnp_TransactionNo"),
+                                                        100);
+
+                                        /*
+                                         * Một transaction VNPay không được
+                                         * dùng cho hai membership payment.
+                                         */
+                                        if (providerTransactionId != null) {
+
+                                                MembershipPaymentTransaction duplicated = membershipPaymentTransactionRepository
+                                                                .findByProviderAndProviderTransactionId(
+                                                                                MembershipPaymentTransaction.PROVIDER_VNPAY,
+                                                                                providerTransactionId)
+                                                                .orElse(null);
+
+                                                if (duplicated != null
+                                                                && !duplicated
+                                                                                .getId()
+                                                                                .equals(
+                                                                                                payment.getId())) {
+
+                                                        throw new IllegalStateException(
+                                                                        "VNPAY transaction has already been used");
+                                                }
+                                        }
+
+                                        /*
+                                         * Khóa Artist trước khi:
+                                         *
+                                         * membership
+                                         * ledger
+                                         * wallet
+                                         *
+                                         * được cập nhật.
+                                         */
+                                        userRepository
+                                                        .findByIdForUpdate(
+                                                                        payment.getArtistId())
+                                                        .orElseThrow(
+                                                                        () -> new IllegalStateException(
+                                                                                        "Artist account not found"));
+
+                                        LocalDateTime paidAt = parseVNPayDate(
+                                                        parameters.get(
+                                                                        "vnp_PayDate"));
+
+                                        if (paidAt == null) {
+
+                                                paidAt = LocalDateTime.now(
+                                                                VIETNAM_ZONE);
+                                        }
+
+                                        payment.setStatus(
+                                                        MembershipPaymentTransaction.STATUS_PROCESSING);
+
+                                        /*
+                                         * =========================
+                                         * ACTIVATE MEMBERSHIP
+                                         * =========================
+                                         */
+                                        ArtistMembershipSubscription subscription = artistMembershipActivationService
+                                                        .activatePaidMembership(
+                                                                        payment,
+                                                                        paidAt);
+
+                                        payment.setSubscriptionId(
+                                                        subscription.getId());
+
+                                        payment.setStatus(
+                                                        MembershipPaymentTransaction.STATUS_PAID);
+
+                                        payment.setPaidAt(
+                                                        paidAt);
+
+                                        payment.setFailureReason(
+                                                        null);
+
+                                        membershipPaymentTransactionRepository
+                                                        .saveAndFlush(
+                                                                        payment);
+                                }
+
+                        } else {
+
+                                /*
+                                 * =========================
+                                 * PAYMENT FAILED / CANCELED
+                                 * =========================
+                                 */
+                                boolean canChangeFailureStatus = MembershipPaymentTransaction.STATUS_PENDING
+                                                .equalsIgnoreCase(
+                                                                payment.getStatus())
+                                                || MembershipPaymentTransaction.STATUS_PROCESSING
+                                                                .equalsIgnoreCase(
+                                                                                payment.getStatus());
+
+                                if (canChangeFailureStatus) {
+
+                                        boolean canceled = "24".equals(
+                                                        responseCode);
+
+                                        payment.setStatus(
+                                                        canceled
+                                                                        ? MembershipPaymentTransaction.STATUS_CANCELED
+                                                                        : MembershipPaymentTransaction.STATUS_FAILED);
+
+                                        payment.setFailureReason(
+                                                        canceled
+                                                                        ? "Payment was canceled by the member"
+                                                                        : "VNPAY payment failed with response code "
+                                                                                        + safeCallbackText(
+                                                                                                        responseCode));
+
+                                        membershipPaymentTransactionRepository
+                                                        .saveAndFlush(
+                                                                        payment);
+                                }
+                        }
+                }
+
+                /*
+                 * =========================
+                 * RESULT
+                 * =========================
+                 */
                 boolean paymentConfirmed = payment != null
                                 && MembershipPaymentTransaction.STATUS_PAID
                                                 .equalsIgnoreCase(
@@ -771,6 +951,10 @@ public class MembershipPaymentService {
                 result.put(
                                 "amountValid",
                                 amountValid);
+
+                result.put(
+                                "vnpayReportedSuccess",
+                                vnpayReportedSuccess);
 
                 result.put(
                                 "paymentConfirmed",

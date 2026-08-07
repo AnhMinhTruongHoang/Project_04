@@ -2006,6 +2006,10 @@ export const getArtistMembershipPlansApi = (
   });
 };
 
+/* =========================
+ * ARTIST MEMBERSHIP PLAN MANAGEMENT
+ * ========================= */
+
 export const getMyArtistMembershipPlansApi = (accessToken?: string) => {
   return sendRequest<IBackendRes<IArtistMembershipPlan[]>>({
     url: "/api/v1/artist/membership-plans",
@@ -2129,59 +2133,67 @@ export const getMyArtistMembershipPostsApi = (
 
 export const createArtistMembershipPostApi = (
   payload: ICreateArtistMembershipPostPayload,
-  accessToken?: string
+  accessToken: string
 ) => {
   return sendRequest<IBackendRes<IArtistMembershipPost>>({
     url: "/api/v1/artist/membership-posts",
     method: "POST",
-    body: payload,
     headers: authHeaders(accessToken),
+    body: payload,
   });
 };
 
+/* =========================
+   ARTIST MEMBERSHIP IMAGE POST
+========================= */
+
 export const createArtistMembershipImagePostApi = (
   payload: ICreateArtistMembershipImagePostPayload,
-  image: File,
-  accessToken?: string
+  accessToken: string
 ) => {
   const formData = new FormData();
 
-  formData.append("image", image);
   formData.append("visibility", payload.visibility);
 
   if (payload.requiredPlanId) {
     formData.append("requiredPlanId", payload.requiredPlanId);
   }
 
-  if (payload.content !== undefined) {
-    formData.append("content", payload.content);
+  if (payload.content?.trim()) {
+    formData.append("content", payload.content.trim());
   }
 
-  if (payload.allowComments !== undefined) {
-    formData.append("allowComments", String(payload.allowComments));
-  }
+  formData.append("allowComments", String(payload.allowComments ?? true));
 
-  if (payload.status) {
-    formData.append("status", payload.status);
-  }
+  formData.append("status", payload.status ?? "PUBLISHED");
+
+  /*
+   * Backend:
+   * @RequestParam("image") MultipartFile image
+   */
+  formData.append("image", payload.image);
 
   return sendRequestFile<IBackendRes<IArtistMembershipPost>>({
     url: "/api/v1/artist/membership-posts/image",
     method: "POST",
-    body: formData,
     headers: authHeaders(accessToken),
+    body: formData,
   });
 };
 
+/* =========================
+   ARTIST MEMBERSHIP POLL POST
+========================= */
+
 export const createArtistMembershipPollApi = (
   payload: ICreateArtistMembershipPollPayload,
-  accessToken?: string
+  accessToken: string
 ) => {
   return sendRequest<IBackendRes<IArtistMembershipPost>>({
     url: "/api/v1/artist/membership-posts/poll",
     method: "POST",
-    body: payload,
     headers: authHeaders(accessToken),
+    body: payload,
   });
 };
 
@@ -2280,19 +2292,22 @@ export const getArtistMembershipPollApi = (
   });
 };
 
+/* =========================
+   VOTE ARTIST MEMBERSHIP POLL
+========================= */
+
 export const voteArtistMembershipPollApi = (
   postId: string,
   payload: IVoteArtistMembershipPollPayload,
-  accessToken?: string
+  accessToken: string
 ) => {
   return sendRequest<IBackendRes<IArtistMembershipPost>>({
     url: `/api/v1/membership-posts/${encodeURIComponent(postId)}/poll/vote`,
     method: "POST",
-    body: payload,
     headers: authHeaders(accessToken),
+    body: payload,
   });
 };
-
 /* =====================================================
    MEMBERSHIP COMMENT APIs
 ===================================================== */

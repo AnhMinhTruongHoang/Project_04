@@ -89,7 +89,7 @@ const ProfileMembershipFeed = ({
 
         if (!data) {
           throw new Error(
-            response?.message || "Không thể tải bài đăng hội viên."
+            response?.message || "Unable to load membership posts."
           );
         }
 
@@ -104,7 +104,7 @@ const ProfileMembershipFeed = ({
         setError(
           requestError instanceof Error
             ? requestError.message
-            : "Không thể tải bài đăng hội viên."
+            : "Unable to load membership posts."
         );
       } finally {
         setLoading(false);
@@ -356,7 +356,7 @@ const ProfileMembershipFeed = ({
               lineHeight: 1.3,
             }}
           >
-            Bài đăng dành cho hội viên
+            Members-only post
           </Typography>
 
           <Typography
@@ -369,8 +369,8 @@ const ProfileMembershipFeed = ({
             }}
           >
             {total > 0
-              ? `${total} bài đăng từ nghệ sĩ`
-              : "Nội dung độc quyền từ nghệ sĩ"}
+              ? `${total} posts from the artist`
+              : "Exclusive content from the artist"}
           </Typography>
         </Box>
 
@@ -426,7 +426,7 @@ const ProfileMembershipFeed = ({
             },
           }}
         >
-          Làm mới
+          Refresh
         </Button>
       </Stack>
 
@@ -516,7 +516,7 @@ const ProfileMembershipFeed = ({
               fontWeight: 800,
             }}
           >
-            Chưa có bài đăng hội viên
+            No member posts available.
           </Typography>
 
           <Typography
@@ -531,8 +531,8 @@ const ProfileMembershipFeed = ({
               lineHeight: 1.65,
             }}
           >
-            Các bài viết, hình ảnh, bình chọn và bản nghe thử độc quyền sẽ xuất
-            hiện tại đây.
+            No member posts available. Exclusive articles, photos, polls, and
+            previews will be displayed here.
           </Typography>
         </Paper>
       ) : (

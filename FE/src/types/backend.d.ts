@@ -1377,6 +1377,19 @@ declare global {
     active?: boolean;
   }
 
+  interface IProfileMembershipManagePlansDialogProps {
+    open: boolean;
+    accessToken?: string;
+    onClose: () => void;
+    onChanged?: () => void;
+  }
+
+  interface IProfileMembershipCreatePostDialogProps {
+    open: boolean;
+    accessToken?: string;
+    onClose: () => void;
+    onCreated?: () => void;
+  }
   /* =====================================================
  MEMBERSHIP ACCESS
 ===================================================== */
@@ -1471,6 +1484,7 @@ declare global {
     requiredPlanId?: string;
 
     question: string;
+
     options: string[];
 
     allowComments?: boolean;
@@ -1532,7 +1546,24 @@ declare global {
   interface ICreateArtistMembershipPostPayload {
     type: Exclude<ArtistMembershipPostType, "IMAGE" | "POLL">;
 
-    visibility: ArtistMembershipVisibility;
+    visibility: ArtistMembershipPostVisibility;
+
+    requiredPlanId?: string;
+
+    content?: string;
+
+    trackId?: string;
+
+    previewStartSeconds?: number;
+    previewDurationSeconds?: number;
+
+    allowComments?: boolean;
+
+    status?: Extract<ArtistMembershipPostStatus, "DRAFT" | "PUBLISHED">;
+  }
+
+  interface IUpdateArtistMembershipPostPayload {
+    visibility?: ArtistMembershipVisibility;
 
     requiredPlanId?: string;
 
@@ -1558,23 +1589,8 @@ declare global {
     allowComments?: boolean;
 
     status?: Extract<ArtistMembershipPostStatus, "DRAFT" | "PUBLISHED">;
-  }
 
-  interface IUpdateArtistMembershipPostPayload {
-    visibility?: ArtistMembershipVisibility;
-
-    requiredPlanId?: string;
-
-    content?: string;
-
-    trackId?: string;
-
-    previewStartSeconds?: number;
-    previewDurationSeconds?: number;
-
-    allowComments?: boolean;
-
-    status?: Extract<ArtistMembershipPostStatus, "DRAFT" | "PUBLISHED">;
+    image: File;
   }
 
   /* =====================================================
@@ -1793,10 +1809,22 @@ declare global {
 
     onRequireLogin?: () => void;
 
+    onOpenPlans?: () => void;
+
     onPlayTrack?: (
       track: IArtistMembershipTrackPreview,
       post: IArtistMembershipPost
     ) => void;
+  }
+
+  interface IProfileMembershipPlansDialogProps {
+    open: boolean;
+    artistId: string;
+    artistName: string;
+    accessToken?: string;
+    isOwner?: boolean;
+    onClose: () => void;
+    onRequireLogin?: () => void;
   }
   /* =====================================================
 ===================================================== */

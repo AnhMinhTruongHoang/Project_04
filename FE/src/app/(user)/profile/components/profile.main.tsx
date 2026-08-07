@@ -12,6 +12,7 @@ import Typography from "@mui/material/Typography";
 import EditRoundedIcon from "@mui/icons-material/EditRounded";
 import QueueMusicRoundedIcon from "@mui/icons-material/QueueMusicRounded";
 import ShareRoundedIcon from "@mui/icons-material/ShareRounded";
+import WorkspacePremiumRoundedIcon from "@mui/icons-material/WorkspacePremiumRounded";
 
 import {
   followUserApi,
@@ -29,6 +30,7 @@ import ProfileShareDialog from "./profile-share-dialog";
 import ProfileEditDialog from "./profile-edit-dialog";
 import { useTrackContext } from "@/lib/track.wrapper";
 import ProfileMembershipTab from "./profile-membership-tab";
+import ProfileMembershipPlansDialog from "./profile-membership-plans-dialog";
 
 type Props = {
   user: Partial<IUser> | null;
@@ -122,6 +124,7 @@ const ProfileMain = ({ user, tracks }: Props) => {
   const [activeTab, setActiveTab] = useState<ProfileTab>("All");
   const [openEdit, setOpenEdit] = useState(false);
   const [openShare, setOpenShare] = useState(false);
+  const [openMembershipPlans, setOpenMembershipPlans] = useState(false);
   const [followersCount, setFollowersCount] = useState(
     Number(user?.followers || 0)
   );
@@ -560,6 +563,34 @@ const ProfileMain = ({ user, tracks }: Props) => {
               </Button>
             )}
 
+            {/* MEMBERSHIP ACTION */}
+            {showMembershipTab && (
+              <Button
+                startIcon={<WorkspacePremiumRoundedIcon />}
+                onClick={() => {
+                  setOpenMembershipPlans(true);
+                }}
+                sx={{
+                  minHeight: 36,
+                  px: 1.8,
+                  borderRadius: "5px",
+
+                  color: "#ffffff",
+                  backgroundColor: "#242729",
+
+                  textTransform: "none",
+                  fontWeight: 900,
+
+                  "&:hover": {
+                    backgroundColor: "#303335",
+                  },
+                }}
+              >
+                Membership
+              </Button>
+            )}
+
+            {/* SHARE ACTION */}
             <Button
               startIcon={<ShareRoundedIcon />}
               onClick={() => setOpenShare(true)}
@@ -732,6 +763,23 @@ const ProfileMain = ({ user, tracks }: Props) => {
             </Box>
           </Typography>
         </Box>
+      )}
+
+      {/* MEMBERSHIP PLANS DIALOG */}
+      {profileUserId && (
+        <ProfileMembershipPlansDialog
+          open={openMembershipPlans}
+          artistId={profileUserId}
+          artistName={displayName}
+          accessToken={accessToken}
+          isOwner={isOwner}
+          onClose={() => {
+            setOpenMembershipPlans(false);
+          }}
+          onRequireLogin={() => {
+            toast.error("Please login first.");
+          }}
+        />
       )}
 
       <ProfileShareDialog

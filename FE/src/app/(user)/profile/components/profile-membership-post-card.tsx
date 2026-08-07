@@ -46,7 +46,7 @@ const formatMembershipPostDate = (value?: string | null) => {
 
 const formatPreviewDuration = (value?: number | null) => {
   if (!value || value <= 0) {
-    return "Nghe toàn bộ";
+    return "Listen to full track";
   }
 
   const minutes = Math.floor(value / 60);
@@ -54,7 +54,7 @@ const formatPreviewDuration = (value?: number | null) => {
   const seconds = value % 60;
 
   if (minutes <= 0) {
-    return `${seconds} giây`;
+    return `${seconds} seconds`;
   }
 
   return `${minutes}:${String(seconds).padStart(2, "0")}`;
@@ -63,16 +63,16 @@ const formatPreviewDuration = (value?: number | null) => {
 const getPostTypeLabel = (type: ArtistMembershipPostType) => {
   switch (type) {
     case "IMAGE":
-      return "Hình ảnh";
+      return "Image";
 
     case "POLL":
-      return "Bình chọn";
+      return "Poll";
 
     case "TRACK_PREVIEW":
-      return "Bản nghe thử";
+      return "Track preview";
 
     default:
-      return "Bài viết";
+      return "Post";
   }
 };
 
@@ -130,10 +130,10 @@ const ProfileMembershipPostCard = ({
 
   const visibilityLabel =
     post.visibility === "PUBLIC"
-      ? "Công khai"
+      ? "Public"
       : post.visibility === "TIER_ONLY"
-      ? post.requiredPlanName || "Gói hội viên"
-      : "Hội viên";
+      ? post.requiredPlanName || "Membership plan"
+      : "Members only";
 
   const visibilityColor =
     post.visibility === "PUBLIC"
@@ -226,7 +226,7 @@ const ProfileMembershipPostCard = ({
                 whiteSpace: "nowrap",
               }}
             >
-              Bài đăng hội viên
+              Membership post
             </Typography>
 
             <Typography
@@ -374,7 +374,7 @@ const ProfileMembershipPostCard = ({
               fontWeight: 800,
             }}
           >
-            Nội dung dành riêng cho hội viên
+            Membership content only.
           </Typography>
 
           <Typography
@@ -387,10 +387,10 @@ const ProfileMembershipPostCard = ({
             }}
           >
             {post.lockReason === "TIER_REQUIRED"
-              ? `Bạn cần tham gia gói ${
-                  post.requiredPlanName || "hội viên yêu cầu"
-                } để xem nội dung này.`
-              : "Tham gia hội viên để mở khóa bài đăng, hình ảnh và bản nghe thử độc quyền."}
+              ? `You need to join the ${
+                  post.requiredPlanName || "required membership plan"
+                } to view this content.`
+              : "Join membership to unlock posts, images, and exclusive listening previews."}
           </Typography>
 
           <Button
@@ -423,7 +423,7 @@ const ProfileMembershipPostCard = ({
               },
             }}
           >
-            Tham gia hội viên
+            Join membership
           </Button>
         </Box>
       ) : (
@@ -818,7 +818,7 @@ const ProfileMembershipPostCard = ({
                   fontSize: 12,
                 }}
               >
-                {post.poll.totalVotes || 0} lượt bình chọn
+                {post.poll.totalVotes || 0} VOTES
               </Typography>
             </Box>
           )}
@@ -877,14 +877,14 @@ const ProfileMembershipPostCard = ({
           }}
         >
           {post.allowComments
-            ? `${post.commentCount || 0} bình luận`
-            : "Đã tắt bình luận"}
+            ? `${post.commentCount || 0} comments`
+            : "Comments disabled"}
         </Button>
 
         {post.status !== "PUBLISHED" && (
           <Chip
             size="small"
-            label={post.status === "DRAFT" ? "Bản nháp" : "Đã lưu trữ"}
+            label={post.status === "DRAFT" ? "Draft" : "Archived"}
             sx={{
               color: "#A5A5A5",
               bgcolor: "#202020",

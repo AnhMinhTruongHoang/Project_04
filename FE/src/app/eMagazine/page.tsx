@@ -16,19 +16,19 @@ const articles = [
 
   {
     title: "Weeknd eMagazine",
-    description: "Câu chuyện âm nhạc.",
+    description: "A musical story.",
     img: "/images/media/weeknd01.jpg",
     href: "/eMagazine/ncs",
   },
   {
-    title: "Sơn Tùng M-TP eMagazine",
-    description: "Câu chuyện tương tư của một chàng trai.",
+    title: "Son Tung M-TP eMagazine",
+    description: "The love story of a young man.",
     img: "/images/media/sontungP.jpg",
     href: "/eMagazine/sontung",
   },
   {
     title: "NCS eMagazine",
-    description: "Câu chuyện âm nhạc và cảm hứng.",
+    description: "A story of music and inspiration.",
     img: "/images/user/NCS.jpg",
     href: "/eMagazine/ncs",
   },

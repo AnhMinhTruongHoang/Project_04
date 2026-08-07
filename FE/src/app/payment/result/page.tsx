@@ -195,11 +195,11 @@ export default function PaymentResultPage() {
    */
   const fetchPaymentStatus = useCallback(async (): Promise<PaymentStatus> => {
     if (!orderCode) {
-      throw new Error("Không tìm thấy mã giao dịch.");
+      throw new Error("Transaction ID not found.");
     }
 
     if (!accessToken) {
-      throw new Error("Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.");
+      throw new Error("Your session has expired. Please log in again.");
     }
 
     const response = await fetch(
@@ -219,13 +219,11 @@ export default function PaymentResultPage() {
       .catch(() => null)) as ApiResponse<PaymentData> | null;
 
     if (!response.ok) {
-      throw new Error(
-        result?.message ?? "Không thể kiểm tra trạng thái thanh toán."
-      );
+      throw new Error(result?.message ?? "Unable to check payment status.");
     }
 
     if (!result?.data) {
-      throw new Error("Dữ liệu giao dịch không hợp lệ.");
+      throw new Error("Invalid transaction data.");
     }
 
     const currentStatus = normalizeStatus(result.data.status ?? null);
@@ -248,14 +246,14 @@ export default function PaymentResultPage() {
     }
 
     if (sessionStatus === "unauthenticated") {
-      setError("Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.");
+      setError("Your session has expired. Please log in again.");
       setLoading(false);
       return;
     }
 
     if (sessionStatus === "authenticated" && !accessToken) {
       setError(
-        "Phiên đăng nhập không chứa access token. Vui lòng đăng nhập lại."
+        "The session does not contain an access token. Please log in again."
       );
       setLoading(false);
       return;
@@ -340,7 +338,7 @@ export default function PaymentResultPage() {
       setError(
         refreshError instanceof Error
           ? refreshError.message
-          : "Không thể làm mới giao dịch."
+          : "Unable to refresh the transaction.."
       );
     } finally {
       setRefreshing(false);
@@ -351,59 +349,60 @@ export default function PaymentResultPage() {
     switch (paymentStatus) {
       case "PAID":
         return {
-          title: "Thanh toán thành công",
-          description: "Gói đăng ký của bạn đã được kích hoạt.",
-          chipLabel: "Đã thanh toán",
+          title: "Payment successful",
+          description: "Your subscription plan has been activated.",
+          chipLabel: "Paid",
           chipColor: "success" as const,
         };
 
       case "FAILED":
         return {
-          title: "Thanh toán thất bại",
+          title: "Payment failed",
           description:
-            payment?.failureReason ?? "VNPAY không thể hoàn tất giao dịch.",
-          chipLabel: "Thất bại",
+            payment?.failureReason ??
+            "VNPAY could not complete the transaction.",
+          chipLabel: "Failed",
           chipColor: "error" as const,
         };
 
       case "CANCELED":
         return {
-          title: "Đã hủy thanh toán",
-          description: "Bạn đã hủy giao dịch thanh toán.",
-          chipLabel: "Đã hủy",
+          title: "Payment canceled",
+          description: "You canceled the payment transaction.",
+          chipLabel: "Canceled",
           chipColor: "warning" as const,
         };
 
       case "EXPIRED":
         return {
-          title: "Giao dịch đã hết hạn",
+          title: "Transaction expired",
           description:
-            "Thời gian thanh toán đã hết. Vui lòng tạo giao dịch mới.",
-          chipLabel: "Hết hạn",
+            "The payment time has expired. Please create a new transaction.",
+          chipLabel: "Expired",
           chipColor: "warning" as const,
         };
 
       case "REFUNDED":
         return {
-          title: "Giao dịch đã hoàn tiền",
-          description: "Khoản thanh toán đã được hoàn lại.",
-          chipLabel: "Đã hoàn tiền",
+          title: "Transaction refunded",
+          description: "The payment has been refunded.",
+          chipLabel: "Refunded",
           chipColor: "info" as const,
         };
 
       case "INVALID":
         return {
-          title: "Dữ liệu thanh toán không hợp lệ",
-          description: "Không thể xác minh kết quả trả về từ VNPAY.",
-          chipLabel: "Không hợp lệ",
+          title: "Invalid payment data",
+          description: "Unable to verify the result returned from VNPAY.",
+          chipLabel: "Invalid",
           chipColor: "error" as const,
         };
 
       case "ERROR":
         return {
-          title: "Có lỗi xảy ra",
-          description: "Không thể xử lý kết quả thanh toán.",
-          chipLabel: "Lỗi",
+          title: "An error occurred",
+          description: "Unable to process the payment result.",
+          chipLabel: "Error",
           chipColor: "error" as const,
         };
 
@@ -411,9 +410,10 @@ export default function PaymentResultPage() {
       case "PENDING":
       default:
         return {
-          title: "Đang xác nhận thanh toán",
-          description: "Hệ thống đang chờ VNPAY xác nhận giao dịch.",
-          chipLabel: "Đang xử lý",
+          title: "Payment confirmation in progress",
+          description:
+            "The system is waiting for VNPAY to confirm the transaction.",
+          chipLabel: "Processing",
           chipColor: "info" as const,
         };
     }
@@ -505,9 +505,9 @@ export default function PaymentResultPage() {
                 },
               }}
             >
-              Chưa nhận được xác nhận từ VNPAY. Giao dịch chưa hoàn tất và gói
-              đăng ký chưa được kích hoạt. Vui lòng quay lại trang gói để tạo
-              giao dịch mới.
+              No confirmation has been received from VNPAY. The transaction is
+              not completed and your subscription plan has not been activated.
+              Please return to the plan page to create a new transaction.
             </Alert>
           )}
 
@@ -538,32 +538,32 @@ export default function PaymentResultPage() {
         {/* PAYMENT DETAILS */}
         <Stack spacing={1.8}>
           <PaymentDetailRow
-            label="Mã giao dịch"
+            label="Transaction ID"
             value={payment?.orderCode ?? orderCode ?? "—"}
           />
 
           <PaymentDetailRow
-            label="Nhà cung cấp"
+            label="Provider"
             value={payment?.provider ?? "VNPAY"}
           />
 
           <PaymentDetailRow
-            label="Số tiền"
+            label="Amount"
             value={formatCurrency(payment?.amount, payment?.currency ?? "VND")}
           />
 
           <PaymentDetailRow
-            label="Thời gian tạo"
+            label="Created At"
             value={formatDateTime(payment?.createdAt)}
           />
 
           <PaymentDetailRow
-            label="Thời gian thanh toán"
+            label="Payment Time"
             value={formatDateTime(payment?.paidAt)}
           />
 
           <PaymentDetailRow
-            label="Mã giao dịch VNPAY"
+            label="VNPAY Transaction ID"
             value={payment?.providerTransactionId ?? "—"}
           />
         </Stack>
@@ -581,7 +581,7 @@ export default function PaymentResultPage() {
               textTransform: "none",
             }}
           >
-            Đăng nhập lại
+            Please log in again.
           </Button>
         )}
         <Stack
@@ -603,7 +603,7 @@ export default function PaymentResultPage() {
               textTransform: "none",
             }}
           >
-            {refreshing ? "Đang kiểm tra..." : "Kiểm tra lại"}
+            {refreshing ? "Checking..." : "Check again"}
           </Button>
 
           <Button
@@ -622,7 +622,7 @@ export default function PaymentResultPage() {
               },
             }}
           >
-            Quay lại trang gói
+            Back to plan
           </Button>
         </Stack>
       </Paper>

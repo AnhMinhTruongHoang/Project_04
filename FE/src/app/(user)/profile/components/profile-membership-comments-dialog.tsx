@@ -187,7 +187,7 @@ const ProfileMembershipCommentsDialog = ({
         const data = response?.data;
 
         if (!data) {
-          throw new Error(response?.message || "Không thể tải bình luận.");
+          throw new Error(response?.message || "Unable to load comments.");
         }
 
         setComments(Array.isArray(data.items) ? data.items : []);
@@ -201,7 +201,7 @@ const ProfileMembershipCommentsDialog = ({
         setError(
           requestError instanceof Error
             ? requestError.message
-            : "Không thể tải bình luận."
+            : "Unable to load comments."
         );
       } finally {
         setLoading(false);
@@ -309,7 +309,7 @@ const ProfileMembershipCommentsDialog = ({
       return true;
     }
 
-    setError("Vui lòng đăng nhập để bình luận.");
+    setError("Please log in to comment.");
 
     onRequireLogin?.();
 
@@ -329,7 +329,7 @@ const ProfileMembershipCommentsDialog = ({
     const normalizedContent = commentContent.trim();
 
     if (!normalizedContent) {
-      setError("Vui lòng nhập nội dung bình luận.");
+      setError("Please log in to comment.");
 
       return;
     }
@@ -347,7 +347,7 @@ const ProfileMembershipCommentsDialog = ({
       );
 
       if (!response?.data) {
-        throw new Error(response?.message || "Không thể tạo bình luận.");
+        throw new Error(response?.message || "“Unable to create comment.");
       }
 
       setCommentContent("");
@@ -369,7 +369,7 @@ const ProfileMembershipCommentsDialog = ({
       setError(
         requestError instanceof Error
           ? requestError.message
-          : "Không thể tạo bình luận."
+          : "Unable to create comment."
       );
     } finally {
       setSubmitting(false);
@@ -468,7 +468,7 @@ const ProfileMembershipCommentsDialog = ({
     const normalizedContent = editContent.trim();
 
     if (!normalizedContent) {
-      setError("Nội dung bình luận không được để trống.");
+      setError("Comment content cannot be empty.");
 
       return;
     }
@@ -488,7 +488,7 @@ const ProfileMembershipCommentsDialog = ({
       );
 
       if (!response?.data) {
-        throw new Error(response?.message || "Không thể cập nhật bình luận.");
+        throw new Error(response?.message || "Unable to update comment.");
       }
 
       setEditingCommentId(null);
@@ -506,7 +506,7 @@ const ProfileMembershipCommentsDialog = ({
       setError(
         requestError instanceof Error
           ? requestError.message
-          : "Không thể cập nhật bình luận."
+          : "Unable to update comment."
       );
     } finally {
       setActionCommentId(null);
@@ -523,7 +523,9 @@ const ProfileMembershipCommentsDialog = ({
       return;
     }
 
-    const confirmed = window.confirm("Bạn có chắc muốn xóa bình luận này?");
+    const confirmed = window.confirm(
+      "Are you sure you want to delete this comment?"
+    );
 
     if (!confirmed) {
       return;
@@ -541,7 +543,7 @@ const ProfileMembershipCommentsDialog = ({
       );
 
       if (!response?.data) {
-        throw new Error(response?.message || "Không thể xóa bình luận.");
+        throw new Error(response?.message || "Unable to delete comment.");
       }
 
       if (comment.parentCommentId) {
@@ -561,7 +563,7 @@ const ProfileMembershipCommentsDialog = ({
       setError(
         requestError instanceof Error
           ? requestError.message
-          : "Không thể xóa bình luận."
+          : "“Unable to delete comment."
       );
     } finally {
       setActionCommentId(null);
@@ -706,7 +708,7 @@ const ProfileMembershipCommentsDialog = ({
                       fontWeight: 800,
                     }}
                   >
-                    Nghệ sĩ
+                    Artist
                   </Typography>
                 )}
 
@@ -731,7 +733,7 @@ const ProfileMembershipCommentsDialog = ({
                       fontStyle: "italic",
                     }}
                   >
-                    Đã chỉnh sửa
+                    Edited
                   </Typography>
                 )}
               </Stack>
@@ -855,7 +857,7 @@ const ProfileMembershipCommentsDialog = ({
                     fontStyle: isDeleted ? "italic" : "normal",
                   }}
                 >
-                  {isDeleted ? "Bình luận đã bị xóa." : comment.content}
+                  {isDeleted ? "Comment has been deleted." : comment.content}
                 </Typography>
               )}
             </Paper>
@@ -906,7 +908,7 @@ const ProfileMembershipCommentsDialog = ({
                       },
                     }}
                   >
-                    Phản hồi
+                    Reply
                   </Button>
                 )}
 
@@ -935,7 +937,7 @@ const ProfileMembershipCommentsDialog = ({
                       },
                     }}
                   >
-                    Sửa
+                    Edit
                   </Button>
                 )}
 
@@ -976,7 +978,7 @@ const ProfileMembershipCommentsDialog = ({
                       },
                     }}
                   >
-                    Xóa
+                    Delete
                   </Button>
                 )}
 
@@ -1299,7 +1301,7 @@ const ProfileMembershipCommentsDialog = ({
                   whiteSpace: "nowrap",
                 }}
               >
-                Bình luận
+                Comments
               </Typography>
 
               <Typography
@@ -1309,7 +1311,7 @@ const ProfileMembershipCommentsDialog = ({
                   fontSize: 12,
                 }}
               >
-                {total} bình luận
+                {total} Comments
               </Typography>
             </Box>
           </Stack>
@@ -1399,7 +1401,7 @@ const ProfileMembershipCommentsDialog = ({
                 },
               }}
             >
-              Nghệ sĩ đã tắt bình luận cho bài đăng này.
+              The artist has disabled comments for this post.
             </Alert>
           )}
 
@@ -1430,9 +1432,7 @@ const ProfileMembershipCommentsDialog = ({
                 value={commentContent}
                 disabled={submitting}
                 placeholder={
-                  accessToken
-                    ? "Viết bình luận..."
-                    : "Đăng nhập để bình luận..."
+                  accessToken ? "Write a comment..." : "Log in to comment..."
                 }
                 onFocus={() => {
                   if (!accessToken) {
@@ -1541,7 +1541,7 @@ const ProfileMembershipCommentsDialog = ({
                     },
                   }}
                 >
-                  Gửi bình luận
+                  Post comment
                 </Button>
               </Stack>
             </Paper>
@@ -1632,7 +1632,7 @@ const ProfileMembershipCommentsDialog = ({
                   fontWeight: 800,
                 }}
               >
-                Chưa có bình luận
+                No comments yet
               </Typography>
 
               <Typography
@@ -1644,7 +1644,7 @@ const ProfileMembershipCommentsDialog = ({
                   fontSize: 13,
                 }}
               >
-                Hãy là người đầu tiên chia sẻ ý kiến.
+                Be the first to share your opinion.
               </Typography>
             </Box>
           ) : (

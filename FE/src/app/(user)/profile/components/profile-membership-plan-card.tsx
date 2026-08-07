@@ -44,26 +44,26 @@ const ProfileMembershipPlanCard = ({
 
   const getButtonLabel = () => {
     if (loading) {
-      return "Đang xử lý";
+      return "Processing";
     }
 
     if (isOwner) {
-      return "Gói của bạn";
+      return "Your plan";
     }
 
     if (!plan.active) {
-      return "Đã tạm ngừng";
+      return "Paused";
     }
 
     if (isCurrentPlan) {
-      return "Đang là hội viên";
+      return "Currently a member";
     }
 
     if (hasOtherActivePlan) {
-      return "Chuyển sang gói này";
+      return "Switch to this plan";
     }
 
-    return "Tham gia ngay";
+    return "Join now";
   };
 
   return (
@@ -208,7 +208,7 @@ const ProfileMembershipPlanCard = ({
             <Chip
               size="small"
               icon={<CheckCircleOutlineRoundedIcon />}
-              label="Hiện tại"
+              label="Current"
               sx={{
                 flexShrink: 0,
 
@@ -227,7 +227,7 @@ const ProfileMembershipPlanCard = ({
             <Chip
               size="small"
               icon={<LockOutlinedIcon />}
-              label="Tạm ngừng"
+              label="Paused"
               sx={{
                 flexShrink: 0,
 
@@ -284,7 +284,7 @@ const ProfileMembershipPlanCard = ({
           }}
         >
           {plan.description?.trim() ||
-            "Ủng hộ nghệ sĩ và truy cập các nội dung dành riêng cho hội viên."}
+            "Support the artist and access members-only content."}
         </Typography>
 
         {/* PLAN PRICE */}
@@ -325,7 +325,7 @@ const ProfileMembershipPlanCard = ({
                 fontWeight: 600,
               }}
             >
-              / 30 ngày
+              / 30 days
             </Typography>
           </Stack>
         </Box>
@@ -411,7 +411,7 @@ const ProfileMembershipPlanCard = ({
                 textAlign: "center",
               }}
             >
-              Hội viên sẽ kết thúc vào cuối chu kỳ hiện tại.
+              "Support this artist and unlock members-only content."
             </Typography>
           )}
         </Box>

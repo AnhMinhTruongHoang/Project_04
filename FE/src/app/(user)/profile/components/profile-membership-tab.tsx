@@ -26,6 +26,7 @@ import RefreshRoundedIcon from "@mui/icons-material/RefreshRounded";
 import WorkspacePremiumRoundedIcon from "@mui/icons-material/WorkspacePremiumRounded";
 import WarningAmberRoundedIcon from "@mui/icons-material/WarningAmberRounded";
 import SettingsRoundedIcon from "@mui/icons-material/SettingsRounded";
+import ArticleRoundedIcon from "@mui/icons-material/ArticleRounded";
 import AddRoundedIcon from "@mui/icons-material/AddRounded";
 
 import { useCallback, useEffect, useState } from "react";
@@ -41,6 +42,7 @@ import ProfileMembershipCommentsDialog from "./profile-membership-comments-dialo
 import ProfileMembershipFeed from "./profile-membership-feed";
 import ProfileMembershipManagePlansDialog from "./profile-membership-manage-plans-dialog";
 import ProfileMembershipCreatePostDialog from "./profile-membership-create-post-dialog";
+import ProfileMembershipManagePostsDialog from "./profile-membership-manage-posts-dialog";
 
 const createEmptyMembershipAccess = (
   artistId: string
@@ -116,6 +118,8 @@ const ProfileMembershipTab = ({
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
 
   const [managePlansOpen, setManagePlansOpen] = useState(false);
+
+  const [managePostsOpen, setManagePostsOpen] = useState(false);
 
   const [createPostOpen, setCreatePostOpen] = useState(false);
 
@@ -1087,6 +1091,46 @@ const ProfileMembershipTab = ({
                   Create post
                 </Button>
 
+                {/* MANAGE MEMBERSHIP POSTS */}
+                <Button
+                  variant="outlined"
+                  startIcon={<ArticleRoundedIcon />}
+                  onClick={() => {
+                    setManagePostsOpen(true);
+                  }}
+                  sx={{
+                    minHeight: 42,
+                    px: 2.25,
+
+                    width: {
+                      xs: "100%",
+                      sm: "auto",
+                    },
+
+                    color: "#E7E7E7",
+                    bgcolor: "#1B1B1B",
+
+                    borderColor: "rgba(255,255,255,0.13)",
+
+                    borderRadius: 2,
+
+                    fontSize: 13,
+                    fontWeight: 850,
+
+                    textTransform: "none",
+
+                    "&:hover": {
+                      color: "#FFFFFF",
+
+                      bgcolor: "#242424",
+
+                      borderColor: "rgba(255,255,255,0.26)",
+                    },
+                  }}
+                >
+                  Manage posts
+                </Button>
+
                 {/* MANAGE MEMBERSHIP PLANS */}
                 <Button
                   variant="outlined"
@@ -1176,6 +1220,20 @@ const ProfileMembershipTab = ({
           }}
           onChanged={() => {
             void loadMembershipData(false);
+          }}
+        />
+      )}
+
+      {/* MANAGE MEMBERSHIP POSTS DIALOG */}
+      {isOwner && (
+        <ProfileMembershipManagePostsDialog
+          open={managePostsOpen}
+          accessToken={accessToken}
+          onClose={() => {
+            setManagePostsOpen(false);
+          }}
+          onChanged={() => {
+            setFeedRefreshKey((previous) => previous + 1);
           }}
         />
       )}

@@ -1562,6 +1562,14 @@ declare global {
     status?: Extract<ArtistMembershipPostStatus, "DRAFT" | "PUBLISHED">;
   }
 
+  interface IArtistMembershipPostPage {
+    current: number;
+    pageSize: number;
+    total: number;
+    totalPages: number;
+    items: IArtistMembershipPost[];
+  }
+
   interface IUpdateArtistMembershipPostPayload {
     visibility?: ArtistMembershipVisibility;
 
@@ -1572,11 +1580,31 @@ declare global {
     trackId?: string;
 
     previewStartSeconds?: number;
+
     previewDurationSeconds?: number;
 
     allowComments?: boolean;
 
     status?: Extract<ArtistMembershipPostStatus, "DRAFT" | "PUBLISHED">;
+  }
+
+  interface IProfileMembershipManagePostsDialogProps {
+    open: boolean;
+    accessToken?: string;
+    onClose: () => void;
+    onChanged?: () => void;
+  }
+
+  interface IProfileMembershipEditPostDialogProps {
+    open: boolean;
+
+    post: IArtistMembershipPost | null;
+
+    accessToken?: string;
+
+    onClose: () => void;
+
+    onUpdated?: () => void;
   }
 
   interface ICreateArtistMembershipImagePostPayload {

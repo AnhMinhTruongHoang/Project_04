@@ -2110,20 +2110,14 @@ export const getArtistMembershipPostsApi = (
 };
 
 export const getMyArtistMembershipPostsApi = (
-  accessToken?: string,
-  params: IArtistMembershipPaginationParams = {}
+  accessToken: string,
+  current = 1,
+  pageSize = 10
 ) => {
-  return sendRequest<IBackendRes<IArtistMembershipFeedData>>({
-    url: "/api/v1/artist/membership-posts",
+  return sendRequest<IBackendRes<IArtistMembershipPostPage>>({
+    url: `/api/v1/artist/membership-posts?current=${current}&pageSize=${pageSize}`,
     method: "GET",
-    queryParams: {
-      current: params.current ?? 1,
-      pageSize: params.pageSize ?? 10,
-    },
     headers: authHeaders(accessToken),
-    nextOption: {
-      cache: "no-store",
-    },
   });
 };
 
@@ -2204,20 +2198,24 @@ export const createArtistMembershipPollApi = (
 export const updateArtistMembershipPostApi = (
   postId: string,
   payload: IUpdateArtistMembershipPostPayload,
-  accessToken?: string
+  accessToken: string
 ) => {
   return sendRequest<IBackendRes<IArtistMembershipPost>>({
     url: `/api/v1/artist/membership-posts/${encodeURIComponent(postId)}`,
     method: "PATCH",
-    body: payload,
     headers: authHeaders(accessToken),
+    body: payload,
   });
 };
+
+/* =========================
+   REPLACE MEMBERSHIP POST IMAGE
+========================= */
 
 export const replaceArtistMembershipPostImageApi = (
   postId: string,
   image: File,
-  accessToken?: string
+  accessToken: string
 ) => {
   const formData = new FormData();
 
@@ -2226,14 +2224,18 @@ export const replaceArtistMembershipPostImageApi = (
   return sendRequestFile<IBackendRes<IArtistMembershipPost>>({
     url: `/api/v1/artist/membership-posts/${encodeURIComponent(postId)}/image`,
     method: "PATCH",
-    body: formData,
     headers: authHeaders(accessToken),
+    body: formData,
   });
 };
 
+/* =========================
+   PUBLISH MEMBERSHIP POST
+========================= */
+
 export const publishArtistMembershipPostApi = (
   postId: string,
-  accessToken?: string
+  accessToken: string
 ) => {
   return sendRequest<IBackendRes<IArtistMembershipPost>>({
     url: `/api/v1/artist/membership-posts/${encodeURIComponent(
@@ -2244,9 +2246,13 @@ export const publishArtistMembershipPostApi = (
   });
 };
 
+/* =========================
+   ARCHIVE MEMBERSHIP POST
+========================= */
+
 export const archiveArtistMembershipPostApi = (
   postId: string,
-  accessToken?: string
+  accessToken: string
 ) => {
   return sendRequest<IBackendRes<IArtistMembershipPost>>({
     url: `/api/v1/artist/membership-posts/${encodeURIComponent(
@@ -2257,17 +2263,15 @@ export const archiveArtistMembershipPostApi = (
   });
 };
 
+/* =========================
+   DELETE MEMBERSHIP POST
+========================= */
+
 export const deleteArtistMembershipPostApi = (
   postId: string,
-  accessToken?: string
+  accessToken: string
 ) => {
-  return sendRequest<
-    IBackendRes<{
-      id: string;
-      artistId: string;
-      deleted: boolean;
-    }>
-  >({
+  return sendRequest<IBackendRes<IArtistMembershipPost>>({
     url: `/api/v1/artist/membership-posts/${encodeURIComponent(postId)}`,
     method: "DELETE",
     headers: authHeaders(accessToken),

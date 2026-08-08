@@ -34,6 +34,9 @@ public class SubscriptionPlan {
     private Boolean unlimitedUploads;
 
     @Column(nullable = false)
+    private Boolean hasTicketingBenefits = false;
+
+    @Column(nullable = false)
     private Integer advancedInsightsDays;
 
     @Column(nullable = false)
@@ -158,6 +161,16 @@ public class SubscriptionPlan {
     public void setHasMembershipBenefits(
             Boolean hasMembershipBenefits) {
         this.hasMembershipBenefits = hasMembershipBenefits;
+    }
+
+    public Boolean getHasTicketingBenefits() {
+        return hasTicketingBenefits;
+    }
+
+    public void setHasTicketingBenefits(
+            Boolean hasTicketingBenefits) {
+
+        this.hasTicketingBenefits = hasTicketingBenefits;
     }
 
     public Boolean getIsActive() {

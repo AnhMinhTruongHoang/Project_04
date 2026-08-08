@@ -491,6 +491,10 @@ public class SubscriptionService {
                                 Boolean.TRUE.equals(
                                                 plan.getHasMembershipBenefits()));
 
+                access.setHasTicketingBenefits(
+                                Boolean.TRUE.equals(
+                                                plan.getHasTicketingBenefits()));
+
                 access.setAdvancedInsightsDays(
                                 plan.getAdvancedInsightsDays());
 

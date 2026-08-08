@@ -27,7 +27,7 @@ public class ArtistWallet {
 
     /*
      * Tổng doanh thu đang trong thời gian giữ,
-     * bao gồm lượt nghe và membership.
+     * bao gồm lượt nghe, membership và ticket sales.
      */
     @Column(nullable = false)
     private Long pendingBalance = 0L;

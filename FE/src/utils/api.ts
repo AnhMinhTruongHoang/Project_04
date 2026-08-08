@@ -2425,6 +2425,197 @@ export const getArtistMembershipPaymentApi = (
   });
 };
 
+/* =====================================================
+   ARTIST TICKETING APIs
+===================================================== */
+
+/* =========================
+   PUBLIC ARTIST EVENTS
+========================= */
+
+export const getPublicArtistEventsApi = (
+  artistId: string,
+  current = 1,
+  pageSize = 10,
+  accessToken?: string
+) => {
+  return sendRequest<IBackendRes<IArtistEventPage>>({
+    url: `/api/v1/artists/${encodeURIComponent(artistId)}/events`,
+    method: "GET",
+    queryParams: {
+      current,
+      pageSize,
+    },
+    headers: authHeaders(accessToken),
+    nextOption: {
+      cache: "no-store",
+    },
+  });
+};
+
+export const getPublicArtistEventApi = (
+  eventId: string,
+  accessToken?: string
+) => {
+  return sendRequest<IBackendRes<IArtistEvent>>({
+    url: `/api/v1/events/${encodeURIComponent(eventId)}`,
+    method: "GET",
+    headers: authHeaders(accessToken),
+    nextOption: {
+      cache: "no-store",
+    },
+  });
+};
+
+/* =========================
+   ARTIST EVENT MANAGEMENT
+========================= */
+
+export const getMyArtistEventsApi = (
+  accessToken: string,
+  current = 1,
+  pageSize = 10
+) => {
+  return sendRequest<IBackendRes<IArtistManagedEventPage>>({
+    url: "/api/v1/artist/events",
+    method: "GET",
+    queryParams: {
+      current,
+      pageSize,
+    },
+    headers: authHeaders(accessToken),
+    nextOption: {
+      cache: "no-store",
+    },
+  });
+};
+
+export const createArtistEventApi = (
+  payload: ICreateArtistEventPayload,
+  accessToken: string
+) => {
+  const formData = new FormData();
+
+  formData.append("eventName", payload.eventName.trim());
+  formData.append("eventType", payload.eventType);
+
+  if (payload.description?.trim()) {
+    formData.append("description", payload.description.trim());
+  }
+
+  formData.append("venueName", payload.venueName.trim());
+  formData.append("venueAddress", payload.venueAddress.trim());
+
+  formData.append("eventStartAt", payload.eventStartAt);
+
+  if (payload.eventEndAt) {
+    formData.append("eventEndAt", payload.eventEndAt);
+  }
+
+  formData.append("saleStartAt", payload.saleStartAt);
+  formData.append("saleEndAt", payload.saleEndAt);
+
+  formData.append("ticketPrice", String(payload.ticketPrice));
+  formData.append("totalQuantity", String(payload.totalQuantity));
+
+  formData.append("ticketImage", payload.ticketImage);
+
+  return sendRequestFile<IBackendRes<IArtistManagedEvent>>({
+    url: "/api/v1/artist/events",
+    method: "POST",
+    headers: authHeaders(accessToken),
+    body: formData,
+  });
+};
+
+/* =========================
+   TICKET PAYMENT
+========================= */
+
+export const createTicketPaymentApi = (
+  payload: ICreateTicketPaymentPayload,
+  accessToken: string
+) => {
+  return sendRequest<IBackendRes<ITicketPayment>>({
+    url: "/api/v1/ticket-payments/vnpay/create",
+    method: "POST",
+    body: payload,
+    headers: authHeaders(accessToken),
+  });
+};
+
+export const getTicketPaymentApi = (orderCode: string, accessToken: string) => {
+  return sendRequest<IBackendRes<ITicketPayment>>({
+    url: `/api/v1/payments/${encodeURIComponent(orderCode)}`,
+    method: "GET",
+    headers: authHeaders(accessToken),
+    nextOption: {
+      cache: "no-store",
+    },
+  });
+};
+
+/* =========================
+   USER TICKET COLLECTION
+========================= */
+
+export const getMyTicketsApi = (
+  accessToken: string,
+  current = 1,
+  pageSize = 10
+) => {
+  return sendRequest<IBackendRes<IUserEventTicketPage>>({
+    url: "/api/v1/tickets/me",
+    method: "GET",
+    queryParams: {
+      current,
+      pageSize,
+    },
+    headers: authHeaders(accessToken),
+    nextOption: {
+      cache: "no-store",
+    },
+  });
+};
+
+export const getMyTicketApi = (ticketId: string, accessToken: string) => {
+  return sendRequest<IBackendRes<IUserEventTicket>>({
+    url: `/api/v1/tickets/${encodeURIComponent(ticketId)}`,
+    method: "GET",
+    headers: authHeaders(accessToken),
+    nextOption: {
+      cache: "no-store",
+    },
+  });
+};
+
+export const getMyTicketQrApi = (ticketId: string, accessToken: string) => {
+  return sendRequest<IBackendRes<IUserEventTicketQr>>({
+    url: `/api/v1/tickets/${encodeURIComponent(ticketId)}/qr`,
+    method: "GET",
+    headers: authHeaders(accessToken),
+    nextOption: {
+      cache: "no-store",
+    },
+  });
+};
+
+/* =========================
+   TICKET CHECK-IN
+========================= */
+
+export const checkInTicketApi = (
+  payload: ICheckInTicketPayload,
+  accessToken: string
+) => {
+  return sendRequest<IBackendRes<IUserEventTicket>>({
+    url: "/api/v1/tickets/check-in",
+    method: "POST",
+    body: payload,
+    headers: authHeaders(accessToken),
+  });
+};
+
 /* =========================
 
 ========================= */

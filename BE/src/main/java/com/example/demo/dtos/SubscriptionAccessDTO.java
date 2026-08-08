@@ -22,6 +22,8 @@ public class SubscriptionAccessDTO {
 
     private Integer advancedInsightsDays;
 
+    private Boolean hasTicketingBenefits;
+
     public String getPlanCode() {
         return planCode;
     }
@@ -110,5 +112,15 @@ public class SubscriptionAccessDTO {
     public void setAdvancedInsightsDays(
             Integer advancedInsightsDays) {
         this.advancedInsightsDays = advancedInsightsDays;
+    }
+
+    public Boolean getHasTicketingBenefits() {
+        return hasTicketingBenefits;
+    }
+
+    public void setHasTicketingBenefits(
+            Boolean hasTicketingBenefits) {
+
+        this.hasTicketingBenefits = hasTicketingBenefits;
     }
 }

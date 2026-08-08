@@ -16,6 +16,7 @@ import com.example.demo.repositories.UserRepository;
 import com.example.demo.responses.ApiResponse;
 import com.example.demo.services.MembershipPaymentService;
 import com.example.demo.services.PaymentService;
+import com.example.demo.services.TicketPaymentService;
 
 import io.jsonwebtoken.Claims;
 import jakarta.servlet.http.HttpServletRequest;
@@ -33,6 +34,8 @@ public class PaymentController {
 
         private final MembershipPaymentService membershipPaymentService;
 
+        private final TicketPaymentService ticketPaymentService;
+
         @Value("${app.frontend-url}")
 
         private String frontendUrl;
@@ -40,13 +43,16 @@ public class PaymentController {
         public PaymentController(
                         PaymentService paymentService,
                         UserRepository userRepository,
-                        MembershipPaymentService membershipPaymentService) {
+                        MembershipPaymentService membershipPaymentService,
+                        TicketPaymentService ticketPaymentService) {
 
                 this.paymentService = paymentService;
 
                 this.userRepository = userRepository;
 
                 this.membershipPaymentService = membershipPaymentService;
+
+                this.ticketPaymentService = ticketPaymentService;
         }
 
         /*
@@ -142,13 +148,39 @@ public class PaymentController {
                          * Phải kiểm tra SCM trước SC vì
                          * SCM cũng bắt đầu bằng hai ký tự SC.
                          */
-                        Map<String, String> result = orderCode.startsWith("SCM")
-                                        ? membershipPaymentService
-                                                        .processIpn(
-                                                                        parameters)
-                                        : paymentService
-                                                        .processIpn(
-                                                                        parameters);
+                        /*
+                         * =========================
+                         * ROUTE VNPAY IPN
+                         * =========================
+                         *
+                         * SCM = Membership
+                         * SCT = Ticket
+                         * SC = Account subscription
+                         *
+                         * SCM/SCT phải kiểm tra trước SC.
+                         */
+                        Map<String, String> result;
+
+                        if (orderCode.startsWith(
+                                        "SCM")) {
+
+                                result = membershipPaymentService
+                                                .processIpn(
+                                                                parameters);
+
+                        } else if (orderCode.startsWith(
+                                        "SCT")) {
+
+                                result = ticketPaymentService
+                                                .processIpn(
+                                                                parameters);
+
+                        } else {
+
+                                result = paymentService
+                                                .processIpn(
+                                                                parameters);
+                        }
 
                         return ResponseEntity.ok(
                                         result);
@@ -197,13 +229,33 @@ public class PaymentController {
                                 "");
 
                 try {
-                        Map<String, Object> data = orderCode.startsWith("SCM")
-                                        ? membershipPaymentService
-                                                        .handleReturn(
-                                                                        parameters)
-                                        : paymentService
-                                                        .handleReturn(
-                                                                        parameters);
+                        /*
+                         * =========================
+                         * ROUTE VNPAY RETURN
+                         * =========================
+                         */
+                        Map<String, Object> data;
+
+                        if (orderCode.startsWith(
+                                        "SCM")) {
+
+                                data = membershipPaymentService
+                                                .handleReturn(
+                                                                parameters);
+
+                        } else if (orderCode.startsWith(
+                                        "SCT")) {
+
+                                data = ticketPaymentService
+                                                .handleReturn(
+                                                                parameters);
+
+                        } else {
+
+                                data = paymentService
+                                                .handleReturn(
+                                                                parameters);
+                        }
 
                         URI redirectUri = buildPaymentResultRedirect(
                                         data);
@@ -460,15 +512,36 @@ public class PaymentController {
                          * ROUTE PAYMENT STATUS
                          * =========================
                          */
-                        Map<String, Object> data = orderCode.startsWith("SCM")
-                                        ? membershipPaymentService
-                                                        .getMemberPayment(
-                                                                        user.getId(),
-                                                                        orderCode)
-                                        : paymentService
-                                                        .getUserPayment(
-                                                                        user.getId(),
-                                                                        orderCode);
+                        /*
+                         * =========================
+                         * ROUTE PAYMENT STATUS
+                         * =========================
+                         */
+                        Map<String, Object> data;
+
+                        if (orderCode.startsWith(
+                                        "SCM")) {
+
+                                data = membershipPaymentService
+                                                .getMemberPayment(
+                                                                user.getId(),
+                                                                orderCode);
+
+                        } else if (orderCode.startsWith(
+                                        "SCT")) {
+
+                                data = ticketPaymentService
+                                                .getBuyerPayment(
+                                                                user.getId(),
+                                                                orderCode);
+
+                        } else {
+
+                                data = paymentService
+                                                .getUserPayment(
+                                                                user.getId(),
+                                                                orderCode);
+                        }
 
                         return ResponseEntity.ok(
                                         new ApiResponse<>(

@@ -12,125 +12,132 @@ import com.example.demo.repositories.SubscriptionPlanRepository;
 
 @Component
 public class SubscriptionPlanSeeder
-        implements CommandLineRunner {
+                implements CommandLineRunner {
 
-    @Autowired
-    private SubscriptionPlanRepository subscriptionPlanRepository;
+        @Autowired
+        private SubscriptionPlanRepository subscriptionPlanRepository;
 
-    private String generateId() {
-        return UUID.randomUUID()
-                .toString()
-                .replace("-", "")
-                .substring(0, 24);
-    }
-
-    @Override
-    public void run(
-            String... args) {
-
-        upsertPlan(
-                "BASIC",
-                "Basic",
-                "Free plan for listeners and new creators.",
-                0L,
-                180,
-                false,
-                7,
-                false,
-                false,
-                false,
-                false);
-
-        upsertPlan(
-                "ARTIST",
-                "Artist",
-                "More uploads, distribution and extended insights.",
-                49000L,
-                600,
-                false,
-                30,
-                true,
-                false,
-                true,
-                false);
-
-        upsertPlan(
-                "ARTIST_PRO",
-                "Artist Pro",
-                "Unlimited uploads and full creator tools.",
-                99000L,
-                0,
-                true,
-                0,
-                true,
-                true,
-                true,
-                true);
-    }
-
-    private void upsertPlan(
-            String code,
-            String name,
-            String description,
-            Long monthlyPrice,
-            Integer uploadMinutesLimit,
-            Boolean unlimitedUploads,
-            Integer advancedInsightsDays,
-            Boolean canDistribute,
-            Boolean canMonetize,
-            Boolean canScheduleRelease,
-            Boolean hasMembershipBenefits) {
-
-        SubscriptionPlan plan = subscriptionPlanRepository
-                .findByCode(code);
-
-        LocalDateTime now = LocalDateTime.now();
-
-        if (plan == null) {
-            plan = new SubscriptionPlan();
-
-            plan.setId(
-                    generateId());
-
-            plan.setCode(code);
-
-            plan.setCreatedAt(now);
+        private String generateId() {
+                return UUID.randomUUID()
+                                .toString()
+                                .replace("-", "")
+                                .substring(0, 24);
         }
 
-        plan.setName(name);
+        @Override
+        public void run(
+                        String... args) {
 
-        plan.setDescription(
-                description);
+                upsertPlan(
+                                "BASIC",
+                                "Basic",
+                                "Free plan for listeners and new creators.",
+                                0L,
+                                180,
+                                false,
+                                7,
+                                false,
+                                false,
+                                false,
+                                false,
+                                false);
 
-        plan.setMonthlyPrice(
-                monthlyPrice);
+                upsertPlan(
+                                "ARTIST",
+                                "Artist",
+                                "More uploads, distribution and extended insights.",
+                                49000L,
+                                600,
+                                false,
+                                30,
+                                true,
+                                false,
+                                true,
+                                false,
+                                false);
 
-        plan.setUploadMinutesLimit(
-                uploadMinutesLimit);
+                upsertPlan(
+                                "ARTIST_PRO",
+                                "Artist Pro",
+                                "Unlimited uploads and full creator tools.",
+                                99000L,
+                                0,
+                                true,
+                                0,
+                                true,
+                                true,
+                                true,
+                                true,
+                                true);
+        }
 
-        plan.setUnlimitedUploads(
-                unlimitedUploads);
+        private void upsertPlan(
+                        String code,
+                        String name,
+                        String description,
+                        Long monthlyPrice,
+                        Integer uploadMinutesLimit,
+                        Boolean unlimitedUploads,
+                        Integer advancedInsightsDays,
+                        Boolean canDistribute,
+                        Boolean canMonetize,
+                        Boolean canScheduleRelease,
+                        Boolean hasMembershipBenefits,
+                        Boolean hasTicketingBenefits) {
 
-        plan.setAdvancedInsightsDays(
-                advancedInsightsDays);
+                SubscriptionPlan plan = subscriptionPlanRepository
+                                .findByCode(code);
 
-        plan.setCanDistribute(
-                canDistribute);
+                LocalDateTime now = LocalDateTime.now();
 
-        plan.setCanMonetize(
-                canMonetize);
+                if (plan == null) {
+                        plan = new SubscriptionPlan();
 
-        plan.setCanScheduleRelease(
-                canScheduleRelease);
+                        plan.setId(
+                                        generateId());
 
-        plan.setHasMembershipBenefits(
-                hasMembershipBenefits);
+                        plan.setCode(code);
 
-        plan.setIsActive(true);
+                        plan.setCreatedAt(now);
+                }
 
-        plan.setUpdatedAt(now);
+                plan.setName(name);
 
-        subscriptionPlanRepository.save(
-                plan);
-    }
+                plan.setDescription(
+                                description);
+
+                plan.setMonthlyPrice(
+                                monthlyPrice);
+
+                plan.setUploadMinutesLimit(
+                                uploadMinutesLimit);
+
+                plan.setUnlimitedUploads(
+                                unlimitedUploads);
+
+                plan.setAdvancedInsightsDays(
+                                advancedInsightsDays);
+
+                plan.setCanDistribute(
+                                canDistribute);
+
+                plan.setCanMonetize(
+                                canMonetize);
+
+                plan.setCanScheduleRelease(
+                                canScheduleRelease);
+
+                plan.setHasMembershipBenefits(
+                                hasMembershipBenefits);
+
+                plan.setHasTicketingBenefits(
+                                hasTicketingBenefits);
+
+                plan.setIsActive(true);
+
+                plan.setUpdatedAt(now);
+
+                subscriptionPlanRepository.save(
+                                plan);
+        }
 }

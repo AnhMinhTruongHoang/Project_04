@@ -42,6 +42,7 @@ const PROFILE_TABS = [
   "Popular tracks",
   "Albums",
   "Playlists",
+  "Concerts / Tour",
   "Membership",
   "Support",
 ] as const;
@@ -145,7 +146,7 @@ const ProfileMain = ({ user, tracks }: Props) => {
     (session as any)?.access_token ||
     (session as any)?.user?.access_token;
 
-  const showMembershipTab =
+  const showArtistTabs =
     String(user?.type || "")
       .trim()
       .toUpperCase() === "ARTIST";
@@ -153,8 +154,11 @@ const ProfileMain = ({ user, tracks }: Props) => {
   const visibleProfileTabs = useMemo(
     () =>
       PROFILE_TABS.filter((tab) => {
-        /* MEMBERSHIP ONLY FOR ARTIST PROFILE */
-        if (tab === "Membership" && !showMembershipTab) {
+        /* ARTIST-ONLY PROFILE TABS */
+        if (
+          (tab === "Membership" || tab === "Concerts / Tour") &&
+          !showArtistTabs
+        ) {
           return false;
         }
 
@@ -165,7 +169,7 @@ const ProfileMain = ({ user, tracks }: Props) => {
 
         return true;
       }),
-    [isOwner, showMembershipTab]
+    [isOwner, showArtistTabs]
   );
 
   /*

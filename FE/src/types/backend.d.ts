@@ -1854,6 +1854,257 @@ declare global {
     onClose: () => void;
     onRequireLogin?: () => void;
   }
+
+  // ============================================
+  // ARTIST TICKETING
+  // ============================================
+
+  type ArtistEventType = "CONCERT" | "TOUR" | "FAN_MEETING" | "OTHER";
+
+  type ArtistEventSaleStatus =
+    | "UPCOMING"
+    | "ON_SALE"
+    | "SOLD_OUT"
+    | "SALE_ENDED"
+    | "ENDED"
+    | "CANCELLED";
+
+  type ArtistEventApprovalStatus = "PENDING_REVIEW" | "APPROVED" | "REJECTED";
+
+  interface IArtistEvent {
+    id: string;
+    artistId: string;
+
+    eventName: string;
+    eventType: ArtistEventType;
+
+    description?: string | null;
+
+    venueName: string;
+    venueAddress: string;
+
+    eventStartAt: string;
+    eventEndAt?: string | null;
+
+    saleStartAt: string;
+    saleEndAt: string;
+
+    ticketPrice: number;
+    currency: string;
+
+    totalQuantity: number;
+    soldQuantity: number;
+    remainingQuantity: number;
+
+    ticketImageUrl: string;
+
+    saleStatus: ArtistEventSaleStatus;
+    canPurchase: boolean;
+  }
+
+  interface IArtistEventPage {
+    current: number;
+    pageSize: number;
+    total: number;
+    totalPages: number;
+    items: IArtistEvent[];
+  }
+
+  // ============================================
+  // ARTIST EVENT MANAGEMENT
+  // ============================================
+
+  interface IArtistManagedEvent extends IArtistEvent {
+    reservedQuantity?: number;
+
+    approvalStatus: ArtistEventApprovalStatus;
+
+    rejectionReason?: string | null;
+
+    reviewedBy?: string | null;
+    reviewedAt?: string | null;
+
+    status: "ACTIVE" | "CANCELLED" | "ENDED";
+
+    createdAt: string;
+    updatedAt: string;
+  }
+
+  interface IArtistManagedEventPage {
+    current: number;
+    pageSize: number;
+    total: number;
+    totalPages: number;
+    items: IArtistManagedEvent[];
+  }
+
+  interface ICreateArtistEventPayload {
+    eventName: string;
+    eventType: ArtistEventType;
+
+    description?: string;
+
+    venueName: string;
+    venueAddress: string;
+
+    eventStartAt: string;
+    eventEndAt?: string;
+
+    saleStartAt: string;
+    saleEndAt: string;
+
+    ticketPrice: number;
+    totalQuantity: number;
+
+    ticketImage: File;
+  }
+
+  // ============================================
+  // TICKET PAYMENT
+  // ============================================
+
+  type TicketPaymentStatus =
+    | "PENDING"
+    | "PROCESSING"
+    | "PAID"
+    | "FAILED"
+    | "CANCELED"
+    | "EXPIRED"
+    | "REFUNDED";
+
+  interface ICreateTicketPaymentPayload {
+    eventId: string;
+    quantity: number;
+
+    locale?: "vn" | "en";
+    bankCode?: string;
+  }
+
+  interface ITicketPayment {
+    paymentId: string;
+    orderCode: string;
+
+    provider: "VNPAY";
+
+    buyerId: string;
+    artistId: string;
+    eventId: string;
+
+    eventName: string;
+
+    ticketImageUrl?: string | null;
+
+    quantity: number;
+
+    unitPrice: number;
+    grossAmount: number;
+
+    platformFeePercent: number;
+    platformFeeAmount: number;
+
+    artistNetAmount: number;
+
+    currency: string;
+
+    status: TicketPaymentStatus;
+
+    inventoryReserved: boolean;
+
+    primaryTicketId?: string | null;
+
+    paymentUrl?: string | null;
+
+    responseCode?: string | null;
+    transactionStatus?: string | null;
+
+    paidAt?: string | null;
+    expiresAt?: string | null;
+
+    createdAt: string;
+
+    reused?: boolean;
+  }
+
+  // ============================================
+  // USER TICKET COLLECTION
+  // ============================================
+
+  type UserEventTicketStatus = "VALID" | "USED" | "CANCELLED";
+
+  type UserEventTicketCollectionStatus =
+    | "UPCOMING"
+    | "PAST"
+    | "USED"
+    | "CANCELLED";
+
+  interface IUserEventTicket {
+    id: string;
+
+    ticketCode: string;
+
+    eventId: string;
+    artistId: string;
+
+    eventName: string;
+
+    venueName: string;
+    venueAddress: string;
+
+    eventStartAt: string;
+
+    ticketImageUrl: string;
+
+    purchasePrice: number;
+    currency: string;
+
+    status: UserEventTicketStatus;
+
+    collectionStatus: UserEventTicketCollectionStatus;
+
+    purchasedAt: string;
+
+    checkedInAt?: string | null;
+  }
+
+  interface IUserEventTicketPage {
+    current: number;
+    pageSize: number;
+    total: number;
+    totalPages: number;
+    items: IUserEventTicket[];
+  }
+
+  interface IUserEventTicketQr {
+    ticketId: string;
+    ticketCode: string;
+
+    eventId: string;
+    eventName: string;
+
+    status: UserEventTicketStatus;
+
+    qrValue: string;
+  }
+
+  // ============================================
+  // TICKET CHECK-IN
+  // ============================================
+
+  interface ICheckInTicketPayload {
+    qrToken: string;
+  }
+
+  // ============================================
+  // PROFILE CONCERTS / TOUR
+  // ============================================
+
+  interface IProfileConcertsTabProps {
+    artistId: string;
+    artistName?: string;
+    accessToken?: string;
+    isOwner?: boolean;
+    onRequireLogin?: () => void;
+  }
   /* =====================================================
 ===================================================== */
 }

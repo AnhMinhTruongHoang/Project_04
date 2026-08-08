@@ -260,86 +260,38 @@ const ProfileMembershipPlansDialog = ({
           }}
         >
           {/* MEMBERSHIP HEADER INFO */}
-          <Stack direction="row" spacing={1.4} alignItems="center" minWidth={0}>
-            <Box
+          <Box
+            sx={{
+              minWidth: 0,
+              width: "100%",
+              display: "flex",
+              justifyContent: "center",
+              textAlign: "center",
+            }}
+          >
+            <Typography
               sx={{
-                width: {
-                  xs: 42,
-                  sm: 46,
+                color: "#FFFFFF",
+
+                fontSize: {
+                  xs: 21,
+                  sm: 25,
+                  mt: 2,
                 },
 
-                height: {
-                  xs: 42,
-                  sm: 46,
-                },
+                fontWeight: 900,
+                lineHeight: 1.2,
 
-                flexShrink: 0,
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                whiteSpace: "nowrap",
 
-                display: "grid",
-                placeItems: "center",
-
-                color: "#FF6A1A",
-
-                bgcolor: "rgba(255,85,0,0.12)",
-
-                border: "1px solid rgba(255,85,0,0.28)",
-
-                borderRadius: 2.25,
+                textAlign: "center",
               }}
             >
-              <WorkspacePremiumRoundedIcon
-                sx={{
-                  fontSize: {
-                    xs: 24,
-                    sm: 27,
-                  },
-                }}
-              />
-            </Box>
-
-            <Box minWidth={0}>
-              <Typography
-                sx={{
-                  color: "#FFFFFF",
-
-                  fontSize: {
-                    xs: 17,
-                    sm: 20,
-                  },
-
-                  fontWeight: 900,
-                  lineHeight: 1.2,
-
-                  overflow: "hidden",
-                  textOverflow: "ellipsis",
-                  whiteSpace: "nowrap",
-                }}
-              >
-                Membership
-              </Typography>
-
-              <Typography
-                sx={{
-                  mt: 0.3,
-
-                  color: "#8E8E8E",
-
-                  fontSize: {
-                    xs: 11.5,
-                    sm: 12.5,
-                  },
-
-                  fontWeight: 600,
-
-                  overflow: "hidden",
-                  textOverflow: "ellipsis",
-                  whiteSpace: "nowrap",
-                }}
-              >
-                Support {artistName}
-              </Typography>
-            </Box>
-          </Stack>
+              Choose a membership plans
+            </Typography>
+          </Box>
 
           {/* CLOSE MEMBERSHIP DIALOG */}
           <IconButton
@@ -438,27 +390,12 @@ const ProfileMembershipPlansDialog = ({
               mb: {
                 xs: 2.5,
                 sm: 3,
+                mt: 5,
               },
 
               textAlign: "center",
             }}
           >
-            <Typography
-              sx={{
-                color: "#FFFFFF",
-
-                fontSize: {
-                  xs: 21,
-                  sm: 25,
-                },
-
-                fontWeight: 950,
-                lineHeight: 1.25,
-              }}
-            >
-              Choose a membership plan
-            </Typography>
-
             <Typography
               sx={{
                 maxWidth: 520,

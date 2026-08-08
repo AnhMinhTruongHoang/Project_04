@@ -28,19 +28,38 @@ type PaymentStatus =
   | "INVALID"
   | "ERROR";
 
+type PaymentType = "SUBSCRIPTION" | "MEMBERSHIP" | "TICKET";
+
 type PaymentData = {
   id?: string;
+  paymentId?: string;
+
   orderCode?: string;
+
   planId?: string;
   subscriptionId?: string | null;
+
+  eventId?: string;
+  eventName?: string;
+  quantity?: number;
+
   provider?: string;
+
   amount?: number;
+  grossAmount?: number;
+
   currency?: string;
+
   status?: PaymentStatus;
+
   responseCode?: string | null;
   transactionStatus?: string | null;
   providerTransactionId?: string | null;
+
   failureReason?: string | null;
+
+  primaryTicketId?: string | null;
+
   paidAt?: string | null;
   expiresAt?: string | null;
   createdAt?: string | null;
@@ -84,6 +103,35 @@ const normalizeStatus = (value: string | null): PaymentStatus => {
     : "PENDING";
 };
 
+const normalizePaymentType = (
+  value: string | null,
+  orderCode: string
+): PaymentType => {
+  const normalizedOrderCode = orderCode.trim().toUpperCase();
+
+  /* TICKET ORDER */
+  if (normalizedOrderCode.startsWith("SCT")) {
+    return "TICKET";
+  }
+
+  /* MEMBERSHIP ORDER */
+  if (normalizedOrderCode.startsWith("SCM")) {
+    return "MEMBERSHIP";
+  }
+
+  const normalizedValue = value?.trim().toUpperCase();
+
+  if (normalizedValue === "TICKET") {
+    return "TICKET";
+  }
+
+  if (normalizedValue === "MEMBERSHIP") {
+    return "MEMBERSHIP";
+  }
+
+  return "SUBSCRIPTION";
+};
+
 const getAccessToken = (session: unknown): string | null => {
   if (!session || typeof session !== "object") {
     return null;
@@ -109,6 +157,24 @@ const getAccessToken = (session: unknown): string | null => {
   }
 
   return null;
+};
+
+const getCurrentUserId = (session: unknown): string => {
+  if (!session || typeof session !== "object") {
+    return "";
+  }
+
+  const sessionData = session as Record<string, unknown>;
+
+  if (!sessionData.user || typeof sessionData.user !== "object") {
+    return "";
+  }
+
+  const userData = sessionData.user as Record<string, unknown>;
+
+  const userId = userData.id ?? userData._id;
+
+  return typeof userId === "string" ? userId.trim() : "";
 };
 
 const formatCurrency = (amount?: number, currency = "VND"): string => {
@@ -147,6 +213,8 @@ export default function PaymentResultPage() {
 
   const [orderCode, setOrderCode] = useState("");
 
+  const [paymentType, setPaymentType] = useState<PaymentType>("SUBSCRIPTION");
+
   const [paymentStatus, setPaymentStatus] = useState<PaymentStatus>("PENDING");
 
   const [payment, setPayment] = useState<PaymentData | null>(null);
@@ -165,6 +233,8 @@ export default function PaymentResultPage() {
 
   const accessToken = getAccessToken(session);
 
+  const currentUserId = getCurrentUserId(session);
+
   /*
    * =========================
    * READ VNPAY RETURN PARAMS
@@ -177,11 +247,17 @@ export default function PaymentResultPage() {
 
     const returnedStatus = normalizeStatus(parameters.get("status"));
 
+    const returnedPaymentType = normalizePaymentType(
+      parameters.get("paymentType"),
+      returnedOrderCode
+    );
+
     setOrderCode(returnedOrderCode);
     setPaymentStatus(returnedStatus);
+    setPaymentType(returnedPaymentType);
 
     if (!returnedOrderCode) {
-      setError("Không tìm thấy mã giao dịch thanh toán.");
+      setError("Payment transaction ID was not found.");
 
       setPaymentStatus("INVALID");
       setLoading(false);
@@ -301,7 +377,7 @@ export default function PaymentResultPage() {
         setError(
           fetchError instanceof Error
             ? fetchError.message
-            : "Không thể kiểm tra trạng thái thanh toán."
+            : "Unable to check the payment status."
         );
       }
     };
@@ -350,7 +426,14 @@ export default function PaymentResultPage() {
       case "PAID":
         return {
           title: "Payment successful",
-          description: "Your subscription plan has been activated.",
+
+          description:
+            paymentType === "TICKET"
+              ? "Your tickets have been issued successfully."
+              : paymentType === "MEMBERSHIP"
+              ? "Your artist membership has been activated."
+              : "Your subscription plan has been activated.",
+
           chipLabel: "Paid",
           chipColor: "success" as const,
         };
@@ -358,9 +441,11 @@ export default function PaymentResultPage() {
       case "FAILED":
         return {
           title: "Payment failed",
+
           description:
             payment?.failureReason ??
             "VNPAY could not complete the transaction.",
+
           chipLabel: "Failed",
           chipColor: "error" as const,
         };
@@ -368,7 +453,9 @@ export default function PaymentResultPage() {
       case "CANCELED":
         return {
           title: "Payment canceled",
+
           description: "You canceled the payment transaction.",
+
           chipLabel: "Canceled",
           chipColor: "warning" as const,
         };
@@ -376,8 +463,10 @@ export default function PaymentResultPage() {
       case "EXPIRED":
         return {
           title: "Transaction expired",
+
           description:
             "The payment time has expired. Please create a new transaction.",
+
           chipLabel: "Expired",
           chipColor: "warning" as const,
         };
@@ -385,7 +474,9 @@ export default function PaymentResultPage() {
       case "REFUNDED":
         return {
           title: "Transaction refunded",
+
           description: "The payment has been refunded.",
+
           chipLabel: "Refunded",
           chipColor: "info" as const,
         };
@@ -393,7 +484,9 @@ export default function PaymentResultPage() {
       case "INVALID":
         return {
           title: "Invalid payment data",
+
           description: "Unable to verify the result returned from VNPAY.",
+
           chipLabel: "Invalid",
           chipColor: "error" as const,
         };
@@ -401,7 +494,9 @@ export default function PaymentResultPage() {
       case "ERROR":
         return {
           title: "An error occurred",
+
           description: "Unable to process the payment result.",
+
           chipLabel: "Error",
           chipColor: "error" as const,
         };
@@ -411,258 +506,317 @@ export default function PaymentResultPage() {
       default:
         return {
           title: "Payment confirmation in progress",
+
           description:
             "The system is waiting for VNPAY to confirm the transaction.",
+
           chipLabel: "Processing",
           chipColor: "info" as const,
         };
     }
-  }, [payment?.failureReason, paymentStatus]);
+  }, [payment?.failureReason, paymentStatus, paymentType]);
 
-  return (
-    <Box
-      sx={{
-        minHeight: "100vh",
-        bgcolor: "#0d0d0d",
-        color: "#ffffff",
-        px: {
-          xs: 2,
-          sm: 3,
-        },
-        py: {
-          xs: 4,
-          md: 8,
-        },
-      }}
-    >
-      <Paper
-        elevation={0}
+  /*
+   * =========================
+   * SECONDARY PAYMENT ACTION
+   * =========================
+   */
+  const handleSecondaryAction = () => {
+    const handleSecondaryAction = () => {
+      if (paymentType === "TICKET") {
+        if (!currentUserId) {
+          router.push("/");
+          return;
+        }
+
+        router.push(
+          `/profile/${encodeURIComponent(currentUserId)}?tab=Tickets`
+        );
+
+        return;
+      }
+
+      router.push("/plans");
+    };
+
+    const secondaryActionLabel =
+      paymentType === "TICKET"
+        ? paymentStatus === "PAID"
+          ? "View my tickets"
+          : "Back to profile"
+        : "Back to plan";
+
+    return (
+      <Box
         sx={{
-          width: "100%",
-          maxWidth: 680,
-          mx: "auto",
-          bgcolor: "#171717",
+          minHeight: "100vh",
+          bgcolor: "#0d0d0d",
           color: "#ffffff",
-          border: "1px solid #2c2c2c",
-          borderRadius: 3,
-          p: {
-            xs: 2.5,
-            sm: 4,
+          px: {
+            xs: 2,
+            sm: 3,
+          },
+          py: {
+            xs: 4,
+            md: 8,
           },
         }}
       >
-        {/* PAYMENT STATUS HEADER */}
-        <Stack spacing={2} alignItems="center" textAlign="center">
-          {(loading ||
-            (!pollingTimedOut &&
-              (paymentStatus === "PENDING" ||
-                paymentStatus === "PROCESSING"))) && (
-            <CircularProgress size={46} thickness={4} />
-          )}
+        <Paper
+          elevation={0}
+          sx={{
+            width: "100%",
+            maxWidth: 680,
+            mx: "auto",
+            bgcolor: "#171717",
+            color: "#ffffff",
+            border: "1px solid #2c2c2c",
+            borderRadius: 3,
+            p: {
+              xs: 2.5,
+              sm: 4,
+            },
+          }}
+        >
+          {/* PAYMENT STATUS HEADER */}
+          <Stack spacing={2} alignItems="center" textAlign="center">
+            {(loading ||
+              (!pollingTimedOut &&
+                (paymentStatus === "PENDING" ||
+                  paymentStatus === "PROCESSING"))) && (
+              <CircularProgress size={46} thickness={4} />
+            )}
 
-          <Chip
-            label={statusContent.chipLabel}
-            color={statusContent.chipColor}
-            variant="filled"
-          />
+            <Chip
+              label={statusContent.chipLabel}
+              color={statusContent.chipColor}
+              variant="filled"
+            />
 
-          <Typography
-            component="h1"
-            variant="h4"
-            fontWeight={700}
-            sx={{
-              fontSize: {
-                xs: "1.65rem",
-                sm: "2.125rem",
-              },
-            }}
-          >
-            {statusContent.title}
-          </Typography>
-
-          <Typography
-            color="#bdbdbd"
-            sx={{
-              maxWidth: 520,
-            }}
-          >
-            {statusContent.description}
-          </Typography>
-        </Stack>
-
-        {pollingTimedOut &&
-          !error &&
-          (paymentStatus === "PENDING" || paymentStatus === "PROCESSING") && (
-            <Alert
-              severity="warning"
+            <Typography
+              component="h1"
+              variant="h4"
+              fontWeight={700}
               sx={{
-                mt: 3,
-                bgcolor: "rgba(237, 108, 2, 0.14)",
-                color: "#ffffff",
-                border: "1px solid rgba(255, 167, 38, 0.45)",
-                "& .MuiAlert-icon": {
-                  color: "#ffa726",
+                fontSize: {
+                  xs: "1.65rem",
+                  sm: "2.125rem",
                 },
               }}
             >
-              No confirmation has been received from VNPAY. The transaction is
-              not completed and your subscription plan has not been activated.
-              Please return to the plan page to create a new transaction.
+              {statusContent.title}
+            </Typography>
+
+            <Typography
+              color="#bdbdbd"
+              sx={{
+                maxWidth: 520,
+              }}
+            >
+              {statusContent.description}
+            </Typography>
+          </Stack>
+
+          {pollingTimedOut &&
+            !error &&
+            (paymentStatus === "PENDING" || paymentStatus === "PROCESSING") && (
+              <Alert
+                severity="warning"
+                sx={{
+                  mt: 3,
+                  bgcolor: "rgba(237, 108, 2, 0.14)",
+                  color: "#ffffff",
+
+                  border: "1px solid rgba(255, 167, 38, 0.45)",
+
+                  "& .MuiAlert-icon": {
+                    color: "#ffa726",
+                  },
+                }}
+              >
+                {paymentType === "TICKET"
+                  ? "No confirmation has been received from VNPAY. Your tickets have not been issued yet. Please check the payment again before creating another transaction."
+                  : paymentType === "MEMBERSHIP"
+                  ? "No confirmation has been received from VNPAY. Your artist membership has not been activated yet."
+                  : "No confirmation has been received from VNPAY. Your subscription plan has not been activated yet."}
+              </Alert>
+            )}
+
+          {error && (
+            <Alert
+              severity="error"
+              sx={{
+                mt: 3,
+                bgcolor: "rgba(211, 47, 47, 0.14)",
+                color: "#ffffff",
+                border: "1px solid rgba(239, 83, 80, 0.45)",
+                "& .MuiAlert-icon": {
+                  color: "#ef5350",
+                },
+              }}
+            >
+              {error}
             </Alert>
           )}
 
-        {error && (
-          <Alert
-            severity="error"
+          <Divider
             sx={{
-              mt: 3,
-              bgcolor: "rgba(211, 47, 47, 0.14)",
-              color: "#ffffff",
-              border: "1px solid rgba(239, 83, 80, 0.45)",
-              "& .MuiAlert-icon": {
-                color: "#ef5350",
-              },
+              my: 3,
+              borderColor: "#303030",
             }}
-          >
-            {error}
-          </Alert>
-        )}
-
-        <Divider
-          sx={{
-            my: 3,
-            borderColor: "#303030",
-          }}
-        />
-
-        {/* PAYMENT DETAILS */}
-        <Stack spacing={1.8}>
-          <PaymentDetailRow
-            label="Transaction ID"
-            value={payment?.orderCode ?? orderCode ?? "—"}
           />
 
-          <PaymentDetailRow
-            label="Provider"
-            value={payment?.provider ?? "VNPAY"}
-          />
+          {/* PAYMENT DETAILS */}
+          <Stack spacing={1.8}>
+            <PaymentDetailRow
+              label="Transaction ID"
+              value={payment?.providerTransactionId ?? "—"}
+            />
 
-          <PaymentDetailRow
-            label="Amount"
-            value={formatCurrency(payment?.amount, payment?.currency ?? "VND")}
-          />
+            <PaymentDetailRow
+              label="Provider"
+              value={payment?.provider ?? "VNPAY"}
+            />
 
-          <PaymentDetailRow
-            label="Created At"
-            value={formatDateTime(payment?.createdAt)}
-          />
+            <PaymentDetailRow
+              label="Amount"
+              value={formatCurrency(
+                payment?.amount ?? payment?.grossAmount,
+                payment?.currency ?? "VND"
+              )}
+            />
 
-          <PaymentDetailRow
-            label="Payment Time"
-            value={formatDateTime(payment?.paidAt)}
-          />
+            {/* TICKET PAYMENT DETAILS */}
+            {paymentType === "TICKET" && payment?.eventName && (
+              <PaymentDetailRow label="Event" value={payment.eventName} />
+            )}
 
-          <PaymentDetailRow
-            label="VNPAY Transaction ID"
-            value={payment?.providerTransactionId ?? "—"}
-          />
-        </Stack>
+            {paymentType === "TICKET" &&
+              typeof payment?.quantity === "number" && (
+                <PaymentDetailRow
+                  label="Tickets"
+                  value={String(payment.quantity)}
+                />
+              )}
 
-        {/* MOBILE AND DESKTOP ACTIONS */}
-        {sessionStatus === "unauthenticated" && (
-          <Button
-            fullWidth
-            variant="contained"
-            color="error"
-            onClick={handleSignInAgain}
-            sx={{
-              minHeight: 46,
-              fontWeight: 700,
-              textTransform: "none",
+            <PaymentDetailRow
+              label="Created At"
+              value={formatDateTime(payment?.createdAt)}
+            />
+
+            <PaymentDetailRow
+              label="Payment Time"
+              value={formatDateTime(payment?.paidAt)}
+            />
+
+            <PaymentDetailRow
+              label="VNPAY Transaction ID"
+              value={payment?.providerTransactionId ?? "—"}
+            />
+          </Stack>
+
+          {/* MOBILE AND DESKTOP ACTIONS */}
+          {sessionStatus === "unauthenticated" && (
+            <Button
+              fullWidth
+              variant="contained"
+              color="error"
+              onClick={handleSignInAgain}
+              sx={{
+                minHeight: 46,
+                fontWeight: 700,
+                textTransform: "none",
+              }}
+            >
+              Please log in again.
+            </Button>
+          )}
+          <Stack
+            direction={{
+              xs: "column",
+              sm: "row",
             }}
+            spacing={1.5}
+            mt={4}
           >
-            Please log in again.
-          </Button>
-        )}
-        <Stack
-          direction={{
-            xs: "column",
-            sm: "row",
-          }}
-          spacing={1.5}
-          mt={4}
-        >
-          <Button
-            fullWidth
-            variant="contained"
-            onClick={handleRefresh}
-            disabled={refreshing || sessionStatus === "loading"}
-            sx={{
-              minHeight: 46,
-              fontWeight: 700,
-              textTransform: "none",
-            }}
-          >
-            {refreshing ? "Checking..." : "Check again"}
-          </Button>
+            <Button
+              fullWidth
+              variant="contained"
+              onClick={handleRefresh}
+              disabled={refreshing || sessionStatus === "loading"}
+              sx={{
+                minHeight: 46,
+                fontWeight: 700,
+                textTransform: "none",
+              }}
+            >
+              {refreshing ? "Checking..." : "Check again"}
+            </Button>
 
-          <Button
-            fullWidth
-            variant="outlined"
-            onClick={() => router.push("/plans")}
-            sx={{
-              minHeight: 46,
-              color: "#ffffff",
-              borderColor: "#555555",
-              fontWeight: 700,
-              textTransform: "none",
-              "&:hover": {
-                borderColor: "#ffffff",
-                bgcolor: "rgba(255,255,255,0.06)",
-              },
-            }}
-          >
-            Back to plan
-          </Button>
-        </Stack>
-      </Paper>
-    </Box>
-  );
-}
+            <Button
+              fullWidth
+              variant="outlined"
+              onClick={handleSecondaryAction}
+              sx={{
+                minHeight: 46,
+                color: "#ffffff",
+                borderColor: "#555555",
+                fontWeight: 700,
+                textTransform: "none",
+                "&:hover": {
+                  borderColor: "#ffffff",
+                  bgcolor: "rgba(255,255,255,0.06)",
+                },
+              }}
+            >
+              {secondaryActionLabel}
+            </Button>
+          </Stack>
+        </Paper>
+      </Box>
+    );
+  };
 
-function PaymentDetailRow({ label, value }: { label: string; value: string }) {
-  return (
-    <Stack
-      direction={{
-        xs: "column",
-        sm: "row",
-      }}
-      spacing={{
-        xs: 0.5,
-        sm: 2,
-      }}
-      justifyContent="space-between"
-      sx={{
-        py: 0.75,
-      }}
-    >
-      <Typography color="#9e9e9e" fontSize="0.95rem">
-        {label}
-      </Typography>
-
-      <Typography
-        fontWeight={600}
+  function PaymentDetailRow({
+    label,
+    value,
+  }: {
+    label: string;
+    value: string;
+  }) {
+    return (
+      <Stack
+        direction={{
+          xs: "column",
+          sm: "row",
+        }}
+        spacing={{
+          xs: 0.5,
+          sm: 2,
+        }}
+        justifyContent="space-between"
         sx={{
-          color: "#ffffff",
-          textAlign: {
-            xs: "left",
-            sm: "right",
-          },
-          wordBreak: "break-word",
+          py: 0.75,
         }}
       >
-        {value}
-      </Typography>
-    </Stack>
-  );
+        <Typography color="#9e9e9e" fontSize="0.95rem">
+          {label}
+        </Typography>
+
+        <Typography
+          fontWeight={600}
+          sx={{
+            color: "#ffffff",
+            textAlign: {
+              xs: "left",
+              sm: "right",
+            },
+            wordBreak: "break-word",
+          }}
+        >
+          {value}
+        </Typography>
+      </Stack>
+    );
+  }
 }

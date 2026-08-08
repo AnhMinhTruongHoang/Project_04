@@ -2578,6 +2578,59 @@ export const getMyTicketsApi = (
   });
 };
 
+/* =====================================================
+   ADMIN TICKET EVENT MODERATION APIs
+===================================================== */
+
+export const getAdminTicketEventsApi = (
+  accessToken: string,
+  current = 1,
+  pageSize = 10,
+  approvalStatus?: ArtistEventApprovalStatus
+) => {
+  return sendRequest<IBackendRes<IAdminArtistEventPage>>({
+    url: "/api/v1/admin/ticket-events",
+    method: "GET",
+    queryParams: {
+      current,
+      pageSize,
+      ...(approvalStatus
+        ? {
+            approvalStatus,
+          }
+        : {}),
+    },
+    headers: authHeaders(accessToken),
+    nextOption: {
+      cache: "no-store",
+    },
+  });
+};
+
+export const approveArtistTicketEventApi = (
+  eventId: string,
+  accessToken: string
+) => {
+  return sendRequest<IBackendRes<IAdminArtistEvent>>({
+    url: `/api/v1/admin/ticket-events/${encodeURIComponent(eventId)}/approve`,
+    method: "PATCH",
+    headers: authHeaders(accessToken),
+  });
+};
+
+export const rejectArtistTicketEventApi = (
+  eventId: string,
+  payload: IRejectArtistEventPayload,
+  accessToken: string
+) => {
+  return sendRequest<IBackendRes<IAdminArtistEvent>>({
+    url: `/api/v1/admin/ticket-events/${encodeURIComponent(eventId)}/reject`,
+    method: "PATCH",
+    headers: authHeaders(accessToken),
+    body: payload,
+  });
+};
+
 export const getMyTicketApi = (ticketId: string, accessToken: string) => {
   return sendRequest<IBackendRes<IUserEventTicket>>({
     url: `/api/v1/tickets/${encodeURIComponent(ticketId)}`,

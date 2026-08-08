@@ -21,7 +21,8 @@ type SearchDropdownProps = {
 };
 
 const SearchDropdown = ({ onEmptySearch }: SearchDropdownProps) => {
-  const DEFAULT_IMAGE = "https://res.cloudinary.com/eybmkz9z/image/upload/v1784726300/default_djtlyj.png";
+  const DEFAULT_IMAGE =
+    "https://res.cloudinary.com/eybmkz9z/image/upload/v1784726300/default_djtlyj.png";
   const DEFAULT_AUDIO = "/audio/DemoS.mp3";
   const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "";
 
@@ -424,7 +425,7 @@ const SearchDropdown = ({ onEmptySearch }: SearchDropdownProps) => {
                   fontWeight: 900,
                 }}
               >
-                â€œ{searchValue}â€
+                {searchValue}
               </Box>
             </Box>
 
@@ -692,4 +693,3 @@ const SearchDropdown = ({ onEmptySearch }: SearchDropdownProps) => {
 };
 
 export default SearchDropdown;
-

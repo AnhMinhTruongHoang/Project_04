@@ -12,7 +12,6 @@ import Typography from "@mui/material/Typography";
 import EditRoundedIcon from "@mui/icons-material/EditRounded";
 import QueueMusicRoundedIcon from "@mui/icons-material/QueueMusicRounded";
 import ShareRoundedIcon from "@mui/icons-material/ShareRounded";
-import WorkspacePremiumRoundedIcon from "@mui/icons-material/WorkspacePremiumRounded";
 
 import {
   followUserApi,
@@ -25,31 +24,31 @@ import ProfileAllTab from "./profile-all-tab";
 import ProfilePopularTracksTab from "./profile-popular-tracks-tab";
 import ProfileTracksTab from "./profile-tracks-tab";
 import ProfilePlaylistsTab from "./profile-playlists-tab";
-import ProfileSupportTab from "./profile-support-tab";
 import ProfileShareDialog from "./profile-share-dialog";
 import ProfileEditDialog from "./profile-edit-dialog";
 import { useTrackContext } from "@/lib/track.wrapper";
+import { useSearchParams } from "next/navigation";
 import ProfileMembershipTab from "./profile-membership-tab";
 import ProfileMembershipPlansDialog from "./profile-membership-plans-dialog";
+import ProfileConcertsTab from "./profile-concerts-tab";
+import ProfileTicketsTab from "./profile-tickets-tab";
 
 type Props = {
   user: Partial<IUser> | null;
   tracks: ITrackTop[];
 };
-
 const PROFILE_TABS = [
   "All",
   "Popular tracks",
-  "Albums",
   "Playlists",
   "Concerts / Tour",
   "Membership",
-  "Support",
+  "Tickets",
 ] as const;
 
 type ProfileTab = (typeof PROFILE_TABS)[number];
 
-const OWNER_ONLY_PROFILE_TABS: ProfileTab[] = ["All"];
+const OWNER_ONLY_PROFILE_TABS: ProfileTab[] = ["All", "Tickets"];
 
 const getItemId = (item?: any) => {
   return item?._id || item?.id || "";
@@ -88,30 +87,6 @@ const ProfileEmptyTab = ({
           mb: 1,
         }}
       />
-
-      <Typography
-        sx={{
-          color: "#ffffff",
-          fontSize: 19,
-          fontWeight: 900,
-        }}
-      >
-        No albums yet
-      </Typography>
-
-      <Typography
-        sx={{
-          mt: 0.6,
-          maxWidth: 430,
-          color: "#999999",
-          fontSize: 14,
-          lineHeight: 1.55,
-        }}
-      >
-        {isOwner
-          ? "Albums created by you will appear here."
-          : `${displayName} has not published any albums.`}
-      </Typography>
     </Box>
   );
 };
@@ -119,7 +94,7 @@ const ProfileEmptyTab = ({
 const ProfileMain = ({ user, tracks }: Props) => {
   const toast = useToast();
   const { data: session } = useSession();
-
+  const searchParams = useSearchParams();
   const { currentTrack, setCurrentTrack } = useTrackContext() as ITrackContext;
 
   const [activeTab, setActiveTab] = useState<ProfileTab>("All");
@@ -174,6 +149,27 @@ const ProfileMain = ({ user, tracks }: Props) => {
 
   /*
    * =========================
+   * OPEN PROFILE TAB FROM URL
+   * =========================
+   */
+  useEffect(() => {
+    const requestedTab = searchParams.get("tab");
+
+    if (!requestedTab) {
+      return;
+    }
+
+    const matchedTab = visibleProfileTabs.find((tab) => tab === requestedTab);
+
+    if (!matchedTab) {
+      return;
+    }
+
+    setActiveTab(matchedTab);
+  }, [searchParams, visibleProfileTabs]);
+
+  /*
+   * =========================
    * RESET HIDDEN PROFILE TAB
    * =========================
    */
@@ -185,7 +181,10 @@ const ProfileMain = ({ user, tracks }: Props) => {
     setActiveTab(visibleProfileTabs[0] ?? "Popular tracks");
   }, [activeTab, visibleProfileTabs]);
 
-  const isMembershipTab = activeTab === "Membership";
+  const isWideProfileTab =
+    activeTab === "Membership" ||
+    activeTab === "Concerts / Tour" ||
+    activeTab === "Tickets";
 
   const authoredTracks = useMemo(() => {
     if (!profileUserId) {
@@ -413,16 +412,33 @@ const ProfileMain = ({ user, tracks }: Props) => {
           />
         );
 
-      case "Albums":
-        return <ProfileEmptyTab isOwner={isOwner} displayName={displayName} />;
-
       case "Playlists":
         return <ProfilePlaylistsTab user={user} isOwner={isOwner} />;
+
+      case "Tickets":
+        return <ProfileTicketsTab accessToken={accessToken} />;
 
       case "Membership":
         if (!profileUserId) {
           return null;
         }
+
+      case "Concerts / Tour":
+        if (!profileUserId) {
+          return null;
+        }
+
+        return (
+          <ProfileConcertsTab
+            artistId={profileUserId}
+            artistName={displayName}
+            accessToken={accessToken}
+            isOwner={isOwner}
+            onRequireLogin={() => {
+              toast.error("Please login first.");
+            }}
+          />
+        );
 
         return (
           <ProfileMembershipTab
@@ -437,9 +453,6 @@ const ProfileMain = ({ user, tracks }: Props) => {
           />
         );
 
-      case "Support":
-        return <ProfileSupportTab />;
-
       default:
         return null;
     }
@@ -452,7 +465,7 @@ const ProfileMain = ({ user, tracks }: Props) => {
         gridTemplateColumns: {
           xs: "1fr",
 
-          lg: isMembershipTab ? "minmax(0, 1fr)" : "minmax(0, 1fr) 330px",
+          lg: isWideProfileTab ? "minmax(0, 1fr)" : "minmax(0, 1fr) 330px",
         },
         gap: 4,
         px: {
@@ -567,10 +580,9 @@ const ProfileMain = ({ user, tracks }: Props) => {
               </Button>
             )}
 
-            {/* MEMBERSHIP ACTION */}
-            {showMembershipTab && (
+            {/* ARTIST MEMBERSHIP ACTION */}
+            {showArtistTabs && (
               <Button
-                startIcon={<WorkspacePremiumRoundedIcon />}
                 onClick={() => {
                   setOpenMembershipPlans(true);
                 }}
@@ -593,7 +605,6 @@ const ProfileMain = ({ user, tracks }: Props) => {
                 Membership
               </Button>
             )}
-
             {/* SHARE ACTION */}
             <Button
               startIcon={<ShareRoundedIcon />}
@@ -650,7 +661,7 @@ const ProfileMain = ({ user, tracks }: Props) => {
       </Box>
 
       {/* PROFILE SIDEBAR */}
-      {!isMembershipTab && (
+      {!isWideProfileTab && (
         <Box
           sx={{
             borderLeft: "1px solid rgba(255,255,255,0.08)",

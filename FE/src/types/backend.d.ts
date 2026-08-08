@@ -2105,6 +2105,71 @@ declare global {
     isOwner?: boolean;
     onRequireLogin?: () => void;
   }
+
+  // ============================================
+  // CREATE ARTIST EVENT DIALOG
+  // ============================================
+
+  interface IProfileCreateArtistEventDialogProps {
+    open: boolean;
+    accessToken?: string;
+    onClose: () => void;
+    onCreated?: () => void;
+  }
+  // ============================================
+  // MANAGE ARTIST EVENTS DIALOG
+  // ============================================
+
+  interface IProfileManageArtistEventsDialogProps {
+    open: boolean;
+    accessToken?: string;
+    onClose: () => void;
+  }
+  // ============================================
+  // ADMIN TICKET EVENT MODERATION
+  // ============================================
+
+  interface IAdminArtistEvent extends IArtistManagedEvent {
+    artistName?: string | null;
+    artistUsername?: string | null;
+    artistEmail?: string | null;
+  }
+
+  interface IAdminArtistEventPage {
+    current: number;
+    pageSize: number;
+    total: number;
+    totalPages: number;
+    items: IAdminArtistEvent[];
+  }
+
+  interface IRejectArtistEventPayload {
+    reason: string;
+  }
+  // ============================================
+  // PROFILE TICKET COLLECTION
+  // ============================================
+
+  interface IProfileTicketsTabProps {
+    accessToken?: string;
+  }
+
+  interface IProfileTicketQrDialogProps {
+    open: boolean;
+    ticket: IUserEventTicket | null;
+    accessToken?: string;
+    onClose: () => void;
+  }
+
+  // ============================================
+  // TICKET CHECK-IN DIALOG
+  // ============================================
+
+  interface ITicketCheckInDialogProps {
+    open: boolean;
+    accessToken?: string;
+    onClose: () => void;
+  }
   /* =====================================================
 ===================================================== */
 }

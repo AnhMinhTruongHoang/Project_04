@@ -25,11 +25,13 @@ import LocationOnRoundedIcon from "@mui/icons-material/LocationOnRounded";
 import RefreshRoundedIcon from "@mui/icons-material/RefreshRounded";
 import RemoveRoundedIcon from "@mui/icons-material/RemoveRounded";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { createTicketPaymentApi, getPublicArtistEventsApi } from "@/utils/api";
 
 import { useToast } from "@/utils/toast";
+import ProfileCreateArtistEventDialog from "./profile-create-artist-event-dialog";
+import ProfileManageArtistEventsDialog from "./profile-manage-artist-events-dialog";
 
 /*
  * =========================
@@ -152,6 +154,12 @@ const ProfileConcertsTab = ({
 }: IProfileConcertsTabProps) => {
   const toast = useToast();
 
+  const toastRef = useRef(toast);
+
+  useEffect(() => {
+    toastRef.current = toast;
+  }, [toast]);
+
   const [events, setEvents] = useState<IArtistEvent[]>([]);
 
   const [loading, setLoading] = useState(true);
@@ -164,6 +172,10 @@ const ProfileConcertsTab = ({
 
   const [paymentLoading, setPaymentLoading] = useState(false);
 
+  const [createEventOpen, setCreateEventOpen] = useState(false);
+
+  const [manageEventsOpen, setManageEventsOpen] = useState(false);
+
   /*
    * =========================
    * LOAD PUBLIC EVENTS
@@ -174,6 +186,7 @@ const ProfileConcertsTab = ({
       if (!artistId?.trim()) {
         setEvents([]);
         setLoading(false);
+        setRefreshing(false);
         return;
       }
 
@@ -191,23 +204,22 @@ const ProfileConcertsTab = ({
           accessToken
         );
 
-        setEvents(
-          Array.isArray(response?.data?.items) ? response.data.items : []
-        );
+        const items = response?.data?.items;
+
+        setEvents(Array.isArray(items) ? items : []);
       } catch (error) {
         console.error("Cannot load artist events:", error);
 
         setEvents([]);
 
-        toast.error("Unable to load concerts and tours.");
+        toastRef.current.error("Unable to load concerts and tours.");
       } finally {
         setLoading(false);
         setRefreshing(false);
       }
     },
-    [accessToken, artistId, toast]
+    [accessToken, artistId]
   );
-
   /*
    * =========================
    * RESET ON ARTIST CHANGE
@@ -428,6 +440,7 @@ const ProfileConcertsTab = ({
             }}
             spacing={2}
           >
+            {/* CONCERTS TITLE */}
             <Stack direction="row" spacing={1.5} alignItems="flex-start">
               <Box
                 sx={{
@@ -494,54 +507,142 @@ const ProfileConcertsTab = ({
               </Box>
             </Stack>
 
-            <Button
-              variant="outlined"
-              disabled={refreshing}
-              onClick={() => {
-                void loadEvents(false);
+            {/* EVENT ACTIONS */}
+            <Stack
+              direction={{
+                xs: "column",
+                sm: "row",
               }}
-              startIcon={
-                refreshing ? (
-                  <CircularProgress
-                    size={15}
-                    thickness={5}
-                    sx={{
-                      color: "inherit",
-                    }}
-                  />
-                ) : (
-                  <RefreshRoundedIcon />
-                )
-              }
+              spacing={1}
               sx={{
-                minHeight: 40,
-
-                color: "#CFCFCF",
-
-                borderColor: "#484848",
-
-                borderRadius: 2,
-
-                textTransform: "none",
-                fontWeight: 800,
-
-                "&:hover": {
-                  color: "#FFFFFF",
-
-                  bgcolor: "#1D1D1D",
-
-                  borderColor: "#626262",
-                },
-
-                "&.Mui-disabled": {
-                  color: "#666666",
-
-                  borderColor: "#333333",
+                width: {
+                  xs: "100%",
+                  sm: "auto",
                 },
               }}
             >
-              Refresh
-            </Button>
+              {/* OWNER MANAGE EVENTS */}
+              {isOwner && (
+                <Button
+                  variant="outlined"
+                  onClick={() => {
+                    if (!accessToken) {
+                      toast.error("Please sign in again.");
+                      return;
+                    }
+
+                    setManageEventsOpen(true);
+                  }}
+                  sx={{
+                    minHeight: 40,
+                    px: 2,
+
+                    color: "#FFFFFF",
+
+                    borderColor: "#484848",
+
+                    borderRadius: 2,
+
+                    textTransform: "none",
+                    fontWeight: 850,
+
+                    "&:hover": {
+                      bgcolor: "#1D1D1D",
+                      borderColor: "#626262",
+                    },
+                  }}
+                >
+                  Manage events
+                </Button>
+              )}
+
+              {/* OWNER CREATE EVENT */}
+              {isOwner && (
+                <Button
+                  variant="contained"
+                  startIcon={<AddRoundedIcon />}
+                  onClick={() => {
+                    if (!accessToken) {
+                      toast.error("Please sign in again.");
+                      return;
+                    }
+
+                    setCreateEventOpen(true);
+                  }}
+                  sx={{
+                    minHeight: 40,
+                    px: 2,
+
+                    color: "#FFFFFF",
+                    bgcolor: "#FF5500",
+
+                    borderRadius: 2,
+
+                    textTransform: "none",
+                    fontWeight: 900,
+
+                    boxShadow: "none",
+
+                    "&:hover": {
+                      bgcolor: "#FF6A1A",
+                      boxShadow: "none",
+                    },
+                  }}
+                >
+                  Create event
+                </Button>
+              )}
+
+              {/* REFRESH EVENTS */}
+              <Button
+                variant="outlined"
+                disabled={refreshing}
+                onClick={() => {
+                  void loadEvents(false);
+                }}
+                startIcon={
+                  refreshing ? (
+                    <CircularProgress
+                      size={15}
+                      thickness={5}
+                      sx={{
+                        color: "inherit",
+                      }}
+                    />
+                  ) : (
+                    <RefreshRoundedIcon />
+                  )
+                }
+                sx={{
+                  minHeight: 40,
+
+                  color: "#CFCFCF",
+
+                  borderColor: "#484848",
+
+                  borderRadius: 2,
+
+                  textTransform: "none",
+                  fontWeight: 800,
+
+                  "&:hover": {
+                    color: "#FFFFFF",
+
+                    bgcolor: "#1D1D1D",
+
+                    borderColor: "#626262",
+                  },
+
+                  "&.Mui-disabled": {
+                    color: "#666666",
+
+                    borderColor: "#333333",
+                  },
+                }}
+              >
+                Refresh
+              </Button>
+            </Stack>
           </Stack>
         </Paper>
 
@@ -963,54 +1064,67 @@ const ProfileConcertsTab = ({
           sx: {
             bgcolor: "#121212",
             backgroundImage: "none",
-
             color: "#FFFFFF",
 
             border: "1px solid rgba(255,255,255,0.12)",
-
             borderRadius: 3,
 
             boxShadow: "0 24px 70px rgba(0,0,0,0.65)",
+
+            overflow: "hidden",
           },
         }}
       >
-        <DialogTitle>
-          <Stack direction="row" spacing={1.25} alignItems="center">
+        {/* BUY TICKET HEADER */}
+        <DialogTitle
+          sx={{
+            px: {
+              xs: 2,
+              sm: 3,
+            },
+
+            pt: 2.5,
+            pb: 2,
+          }}
+        >
+          <Stack spacing={1} alignItems="center" textAlign="center">
             <Box
               sx={{
-                width: 42,
-                height: 42,
+                width: 46,
+                height: 46,
 
                 display: "grid",
                 placeItems: "center",
 
-                flexShrink: 0,
-
                 color: "#FF6A1A",
-
                 bgcolor: "rgba(255,85,0,0.12)",
 
+                border: "1px solid rgba(255,85,0,0.22)",
                 borderRadius: 2,
               }}
             >
               <ConfirmationNumberRoundedIcon />
             </Box>
 
-            <Box minWidth={0}>
+            <Box>
               <Typography
                 sx={{
                   color: "#FFFFFF",
-                  fontSize: 19,
-                  fontWeight: 900,
+
+                  fontSize: {
+                    xs: 19,
+                    sm: 21,
+                  },
+
+                  fontWeight: 950,
                 }}
               >
                 Buy tickets
               </Typography>
 
               <Typography
-                noWrap
                 sx={{
-                  mt: 0.2,
+                  mt: 0.3,
 
                   color: "#888888",
 
@@ -1023,40 +1137,86 @@ const ProfileConcertsTab = ({
           </Stack>
         </DialogTitle>
 
-        <DialogContent>
+        <DialogContent
+          sx={{
+            px: {
+              xs: 2,
+              sm: 3,
+            },
+
+            pb: 2,
+          }}
+        >
           {selectedEvent && (
-            <Stack spacing={2}>
+            <Stack
+              spacing={2.5}
+              alignItems="center"
+              sx={{
+                width: "100%",
+              }}
+            >
               {/* EVENT SUMMARY */}
               <Paper
                 elevation={0}
                 sx={{
+                  width: "100%",
+
                   overflow: "hidden",
 
                   bgcolor: "#181818",
 
                   border: "1px solid #303030",
-
                   borderRadius: 2.5,
                 }}
               >
+                {/* EVENT ARTWORK */}
                 <Box
-                  component="img"
-                  src={selectedEvent.ticketImageUrl}
-                  alt={`${selectedEvent.eventName} ticket`}
                   sx={{
                     width: "100%",
-                    height: {
-                      xs: 160,
-                      sm: 190,
+
+                    display: "flex",
+                    justifyContent: "center",
+
+                    bgcolor: "#0B0B0B",
+
+                    p: {
+                      xs: 1,
+                      sm: 1.5,
                     },
-
-                    display: "block",
-
-                    objectFit: "cover",
                   }}
-                />
+                >
+                  <Box
+                    component="img"
+                    src={selectedEvent.ticketImageUrl}
+                    alt={`${selectedEvent.eventName} ticket`}
+                    sx={{
+                      width: "100%",
+                      maxWidth: 470,
 
-                <Box sx={{ p: 1.75 }}>
+                      height: {
+                        xs: 155,
+                        sm: 190,
+                      },
+
+                      display: "block",
+
+                      objectFit: "contain",
+
+                      borderRadius: 2,
+                    }}
+                  />
+                </Box>
+
+                {/* EVENT DETAILS */}
+                <Stack
+                  spacing={0.5}
+                  alignItems="center"
+                  textAlign="center"
+                  sx={{
+                    px: 2,
+                    py: 1.75,
+                  }}
+                >
                   <Typography
                     sx={{
                       color: "#FFFFFF",
@@ -1070,10 +1230,7 @@ const ProfileConcertsTab = ({
 
                   <Typography
                     sx={{
-                      mt: 0.45,
-
                       color: "#898989",
-
                       fontSize: 12,
                     }}
                   >
@@ -1082,38 +1239,50 @@ const ProfileConcertsTab = ({
 
                   <Typography
                     sx={{
-                      mt: 0.25,
-
                       color: "#898989",
-
                       fontSize: 12,
                     }}
                   >
                     {selectedEvent.venueName}
                   </Typography>
-                </Box>
+                </Stack>
               </Paper>
 
               {/* QUANTITY */}
-              <Box>
+              <Stack
+                spacing={1.2}
+                alignItems="center"
+                sx={{
+                  width: "100%",
+                }}
+              >
                 <Typography
                   sx={{
                     color: "#B7B7B7",
 
                     fontSize: 12,
-                    fontWeight: 800,
+                    fontWeight: 900,
 
-                    mb: 0.8,
+                    textAlign: "center",
                   }}
                 >
                   Quantity
                 </Typography>
 
-                <Stack direction="row" spacing={1} alignItems="center">
+                {/* QUANTITY CONTROLS */}
+                <Stack
+                  direction="row"
+                  spacing={1.2}
+                  alignItems="center"
+                  justifyContent="center"
+                >
                   <IconButton
                     disabled={paymentLoading || quantity <= 1}
                     onClick={() => updateQuantity(quantity - 1)}
                     sx={{
+                      width: 44,
+                      height: 44,
+
                       color: "#FFFFFF",
 
                       bgcolor: "#242424",
@@ -1122,12 +1291,13 @@ const ProfileConcertsTab = ({
 
                       "&:hover": {
                         bgcolor: "#303030",
+                        borderColor: "#555555",
                       },
 
                       "&.Mui-disabled": {
                         color: "#555555",
-
                         bgcolor: "#1A1A1A",
+                        borderColor: "#292929",
                       },
                     }}
                   >
@@ -1144,14 +1314,23 @@ const ProfileConcertsTab = ({
                     inputProps={{
                       min: 1,
                       max: maximumQuantity,
+
+                      style: {
+                        textAlign: "center",
+                        fontWeight: 900,
+                        fontSize: 16,
+                      },
                     }}
                     sx={{
                       width: 90,
 
                       "& .MuiOutlinedInput-root": {
-                        color: "#FFFFFF",
+                        height: 48,
 
+                        color: "#FFFFFF",
                         bgcolor: "#181818",
+
+                        borderRadius: 2,
 
                         "& fieldset": {
                           borderColor: "#3A3A3A",
@@ -1172,6 +1351,9 @@ const ProfileConcertsTab = ({
                     disabled={paymentLoading || quantity >= maximumQuantity}
                     onClick={() => updateQuantity(quantity + 1)}
                     sx={{
+                      width: 44,
+                      height: 44,
+
                       color: "#FFFFFF",
 
                       bgcolor: "#242424",
@@ -1180,51 +1362,57 @@ const ProfileConcertsTab = ({
 
                       "&:hover": {
                         bgcolor: "#303030",
+                        borderColor: "#555555",
                       },
 
                       "&.Mui-disabled": {
                         color: "#555555",
-
                         bgcolor: "#1A1A1A",
+                        borderColor: "#292929",
                       },
                     }}
                   >
                     <AddRoundedIcon />
                   </IconButton>
-
-                  <Typography
-                    sx={{
-                      ml: 0.5,
-
-                      color: "#777777",
-
-                      fontSize: 12,
-                    }}
-                  >
-                    {selectedEvent.remainingQuantity} available
-                  </Typography>
                 </Stack>
-              </Box>
+
+                {/* AVAILABLE TICKETS */}
+                <Typography
+                  sx={{
+                    color: "#777777",
+
+                    fontSize: 11,
+
+                    textAlign: "center",
+                  }}
+                >
+                  {selectedEvent.remainingQuantity} tickets available
+                </Typography>
+              </Stack>
 
               <Divider
                 sx={{
+                  width: "100%",
                   borderColor: "#292929",
                 }}
               />
 
               {/* ORDER TOTAL */}
               <Stack
-                direction="row"
-                justifyContent="space-between"
+                spacing={0.5}
                 alignItems="center"
-                spacing={2}
+                sx={{
+                  width: "100%",
+                }}
               >
                 <Typography
                   sx={{
-                    color: "#A0A0A0",
+                    color: "#888888",
 
-                    fontSize: 14,
-                    fontWeight: 700,
+                    fontSize: 12,
+                    fontWeight: 800,
+
+                    textAlign: "center",
                   }}
                 >
                   Total
@@ -1234,24 +1422,34 @@ const ProfileConcertsTab = ({
                   sx={{
                     color: "#FFFFFF",
 
-                    fontSize: 21,
+                    fontSize: {
+                      xs: 24,
+                      sm: 27,
+                    },
+
                     fontWeight: 950,
+
+                    textAlign: "center",
                   }}
                 >
                   {formatMoney(
                     selectedEvent.ticketPrice * quantity,
-
                     selectedEvent.currency
                   )}
                 </Typography>
               </Stack>
 
+              {/* VNPAY NOTICE */}
               <Typography
                 sx={{
+                  maxWidth: 420,
+
                   color: "#6F6F6F",
 
                   fontSize: 11,
                   lineHeight: 1.6,
+
+                  textAlign: "center",
                 }}
               >
                 You will be redirected to VNPay to complete your payment
@@ -1261,13 +1459,26 @@ const ProfileConcertsTab = ({
           )}
         </DialogContent>
 
+        {/* PAYMENT ACTIONS */}
         <DialogActions
           sx={{
-            px: 3,
-            pb: 2.5,
+            px: {
+              xs: 2,
+              sm: 3,
+            },
+
             pt: 1,
+            pb: 2.5,
+
+            display: "flex",
+            justifyContent: "center",
 
             gap: 1,
+
+            flexDirection: {
+              xs: "column-reverse",
+              sm: "row",
+            },
           }}
         >
           {/* CANCEL PAYMENT */}
@@ -1277,7 +1488,18 @@ const ProfileConcertsTab = ({
               setSelectedEvent(null);
             }}
             sx={{
-              minHeight: 42,
+              minHeight: 44,
+
+              width: {
+                xs: "100%",
+                sm: "auto",
+              },
+
+              minWidth: {
+                sm: 110,
+              },
+
+              px: 2.5,
 
               color: "#FFFFFF",
 
@@ -1286,7 +1508,7 @@ const ProfileConcertsTab = ({
               borderRadius: 2,
 
               textTransform: "none",
-              fontWeight: 800,
+              fontWeight: 900,
 
               "&:hover": {
                 bgcolor: "#303030",
@@ -1317,9 +1539,18 @@ const ProfileConcertsTab = ({
               )
             }
             sx={{
-              minHeight: 42,
+              minHeight: 44,
 
-              px: 2,
+              width: {
+                xs: "100%",
+                sm: "auto",
+              },
+
+              minWidth: {
+                sm: 190,
+              },
+
+              px: 2.5,
 
               color: "#FFFFFF",
 
@@ -1339,7 +1570,6 @@ const ProfileConcertsTab = ({
 
               "&.Mui-disabled": {
                 color: "#777777",
-
                 bgcolor: "#292929",
               },
             }}
@@ -1348,6 +1578,28 @@ const ProfileConcertsTab = ({
           </Button>
         </DialogActions>
       </Dialog>
+
+      {/* CREATE ARTIST EVENT DIALOG */}
+      {isOwner && (
+        <ProfileCreateArtistEventDialog
+          open={createEventOpen}
+          accessToken={accessToken}
+          onClose={() => {
+            setCreateEventOpen(false);
+          }}
+        />
+      )}
+
+      {/* MANAGE ARTIST EVENTS DIALOG */}
+      {isOwner && (
+        <ProfileManageArtistEventsDialog
+          open={manageEventsOpen}
+          accessToken={accessToken}
+          onClose={() => {
+            setManageEventsOpen(false);
+          }}
+        />
+      )}
     </>
   );
 };

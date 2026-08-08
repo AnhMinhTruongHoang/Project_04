@@ -26,6 +26,7 @@ import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
 import ArticleOutlinedIcon from "@mui/icons-material/ArticleOutlined";
 import PaymentsRoundedIcon from "@mui/icons-material/PaymentsRounded";
 import CurrencyExchangeRoundedIcon from "@mui/icons-material/CurrencyExchangeRounded";
+import ConfirmationNumberRoundedIcon from "@mui/icons-material/ConfirmationNumberRounded";
 
 type Props = {
   collapsed: boolean;
@@ -47,6 +48,11 @@ const menuItems = [
     label: "Tracks",
     href: "/dashboard/tracks",
     icon: <LibraryMusicRoundedIcon />,
+  },
+  {
+    label: "Ticket Events",
+    href: "/dashboard/ticket-events",
+    icon: <ConfirmationNumberRoundedIcon />,
   },
   {
     label: "Users",

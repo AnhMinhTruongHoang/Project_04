@@ -24,7 +24,8 @@ export const metadata: Metadata = {
 };
 
 const getTrackImage = (imgUrl?: string | null) => {
-  if (!imgUrl) return "https://res.cloudinary.com/eybmkz9z/image/upload/v1784726300/default_djtlyj.png";
+  if (!imgUrl)
+    return "https://res.cloudinary.com/eybmkz9z/image/upload/v1784726300/default_djtlyj.png";
 
   return getImageUrl(imgUrl);
 };
@@ -131,7 +132,7 @@ const LikePage = async () => {
                 mb: 0.8,
               }}
             >
-              You havenâ€™t liked any songs yet !.
+              no songs liked yet !.
             </Typography>
 
             <Typography
@@ -318,4 +319,3 @@ const LikePage = async () => {
 };
 
 export default LikePage;
-

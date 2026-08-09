@@ -400,9 +400,11 @@ const ProfileMain = ({ user, tracks }: Props) => {
 
   const renderActiveTab = () => {
     switch (activeTab) {
+      /* ALL TAB */
       case "All":
         return <ProfileAllTab user={user} tracks={tracks} isOwner={isOwner} />;
 
+      /* POPULAR TRACKS TAB */
       case "Popular tracks":
         return (
           <ProfilePopularTracksTab
@@ -412,17 +414,11 @@ const ProfileMain = ({ user, tracks }: Props) => {
           />
         );
 
+      /* PLAYLISTS TAB */
       case "Playlists":
         return <ProfilePlaylistsTab user={user} isOwner={isOwner} />;
 
-      case "Tickets":
-        return <ProfileTicketsTab accessToken={accessToken} />;
-
-      case "Membership":
-        if (!profileUserId) {
-          return null;
-        }
-
+      /* CONCERTS / TOUR TAB */
       case "Concerts / Tour":
         if (!profileUserId) {
           return null;
@@ -440,6 +436,12 @@ const ProfileMain = ({ user, tracks }: Props) => {
           />
         );
 
+      /* MEMBERSHIP TAB */
+      case "Membership":
+        if (!profileUserId) {
+          return null;
+        }
+
         return (
           <ProfileMembershipTab
             artistId={profileUserId}
@@ -452,6 +454,10 @@ const ProfileMain = ({ user, tracks }: Props) => {
             }}
           />
         );
+
+      /* TICKET COLLECTION TAB */
+      case "Tickets":
+        return <ProfileTicketsTab accessToken={accessToken} />;
 
       default:
         return null;

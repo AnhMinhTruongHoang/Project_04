@@ -266,7 +266,7 @@ declare global {
   }
 
   interface UpdateMyProfilePayload {
-    name: string;
+    name?: string;
     website?: string;
     bio?: string;
     avatarUrl?: string;

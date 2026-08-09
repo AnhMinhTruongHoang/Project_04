@@ -15,7 +15,12 @@ import FavoriteRoundedIcon from "@mui/icons-material/FavoriteRounded";
 import HeadphonesRoundedIcon from "@mui/icons-material/HeadphonesRounded";
 import { Avatar, Chip, Tooltip } from "@mui/material";
 import { getUserAvatarUrl, getUserCoverUrl } from "@/utils/actions/getImages";
-import { getUserBadgesApi, updateUserApi, uploadImageApi } from "@/utils/api";
+import {
+  getUserBadgesApi,
+  sendRequest,
+  updateMyProfileApi,
+  uploadImageApi,
+} from "@/utils/api";
 import { useToast } from "@/utils/toast";
 
 type Props = {
@@ -132,7 +137,7 @@ const ProfileHero = ({ user }: Props) => {
 
     return value.slice(0, 2).toUpperCase();
   };
-
+  ///
   const handleCoverChange = async (
     event: React.ChangeEvent<HTMLInputElement>
   ) => {
@@ -146,53 +151,66 @@ const ProfileHero = ({ user }: Props) => {
       return;
     }
 
-    ///no token return
     if (!accessToken) {
       toast.error("Please login first.");
       event.target.value = "";
       return;
     }
 
-    if (!profileUserId) {
-      toast.error("User not found.");
-      event.target.value = "";
-      return;
-    }
-
     try {
+      /* UPLOAD HEADER IMAGE */
       const uploadResponse = await uploadImageApi(file, accessToken);
 
       const coverUrl = uploadResponse?.data?.url;
 
       if (!coverUrl) {
-        toast.error(uploadResponse?.message || "Upload cover failed.");
+        toast.error(uploadResponse?.message || "Upload header image failed.");
         return;
       }
 
-      const updateResponse = await updateUserApi(
+      /* UPDATE CURRENT USER PROFILE */
+      const updateResponse = await updateMyProfileApi(
         {
-          _id: profileUserId,
           coverUrl,
         },
         accessToken
       );
 
       if (!updateResponse?.data) {
-        toast.error(updateResponse?.message || "Update cover failed.");
+        toast.error(updateResponse?.message || "Update header image failed.");
         return;
       }
 
-      setCoverSrc(coverUrl);
-      toast.success("Cover updated.");
+      /* UPDATE UI IMMEDIATELY */
+      setCoverSrc(updateResponse.data.coverUrl || coverUrl);
+
+      /* CLEAR PROFILE CACHE */
+      try {
+        await sendRequest<IBackendRes<any>>({
+          url: "/api/revalidate",
+          method: "POST",
+          queryParams: {
+            tag: "profile-user",
+            secret: "justArandomString",
+          },
+        });
+      } catch (error) {
+        console.error("Profile revalidation failed:", error);
+      }
+
+      toast.success("Header image updated.");
+
       router.refresh();
     } catch (error) {
-      console.error(error);
-      toast.error("Upload cover failed.");
+      console.error("UPDATE HEADER IMAGE ERROR:", error);
+
+      toast.error("Update header image failed.");
     } finally {
       event.target.value = "";
     }
   };
 
+  ///
   const verifiedArtistBadge = userBadges.find(
     (item) => item.badge.code === "VERIFIED_ARTIST"
   );

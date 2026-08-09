@@ -121,6 +121,7 @@ const ProfileManageArtistEventsDialog = ({
         setLoading(true);
       }
 
+      /// null able
       try {
         const response = await getMyArtistEventsApi(accessToken, 1, 50);
 

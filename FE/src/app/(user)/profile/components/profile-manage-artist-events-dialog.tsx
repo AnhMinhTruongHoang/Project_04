@@ -20,7 +20,7 @@ import EventAvailableRoundedIcon from "@mui/icons-material/EventAvailableRounded
 import RefreshRoundedIcon from "@mui/icons-material/RefreshRounded";
 import QrCodeScannerRoundedIcon from "@mui/icons-material/QrCodeScannerRounded";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import { getMyArtistEventsApi } from "@/utils/api";
 import { useToast } from "@/utils/toast";
@@ -87,6 +87,12 @@ const ProfileManageArtistEventsDialog = ({
 }: IProfileManageArtistEventsDialogProps) => {
   const toast = useToast();
 
+  const toastRef = useRef(toast);
+
+  useEffect(() => {
+    toastRef.current = toast;
+  }, [toast]);
+
   const [events, setEvents] = useState<IArtistManagedEvent[]>([]);
 
   const [loading, setLoading] = useState(false);
@@ -126,13 +132,13 @@ const ProfileManageArtistEventsDialog = ({
 
         setEvents([]);
 
-        toast.error("Unable to load your events.");
+        toastRef.current.error("Unable to load your events.");
       } finally {
         setLoading(false);
         setRefreshing(false);
       }
     },
-    [accessToken, toast]
+    [accessToken]
   );
 
   useEffect(() => {

@@ -121,6 +121,11 @@ export default async function HomePage() {
         sx={{
           display: "flex",
 
+          flexDirection: {
+            xs: "column",
+            lg: "row",
+          },
+
           gap: {
             xs: 0,
             lg: 3,
@@ -187,19 +192,8 @@ export default async function HomePage() {
           )}
         </Box>
 
-        {/* DESKTOP RIGHT SIDEBAR */}
-        <Box
-          sx={{
-            display: {
-              xs: "none",
-              lg: "block",
-            },
-
-            flexShrink: 0,
-          }}
-        >
-          <RightSidebar />
-        </Box>
+        {/* RESPONSIVE RIGHT SIDEBAR */}
+        <RightSidebar />
       </Container>
     </Box>
   );

@@ -9,19 +9,57 @@ const RightSidebar = () => {
     <Box
       component="aside"
       sx={{
-        width: 330,
+        width: {
+          xs: "100%",
+          lg: 330,
+        },
+
         flexShrink: 0,
+
         backgroundColor: "#181A1B",
         color: "#ffffff",
-        borderLeft: "1px solid rgba(255,255,255,0.06)",
-        px: 2,
-        py: 2,
-        display: { xs: "none", lg: "block" },
+
+        /* MOBILE SEPARATOR */
+        borderTop: {
+          xs: "1px solid rgba(255,255,255,0.08)",
+          lg: "none",
+        },
+
+        /* DESKTOP SIDEBAR BORDER */
+        borderLeft: {
+          xs: "none",
+          lg: "1px solid rgba(255,255,255,0.06)",
+        },
+
+        px: {
+          xs: 2,
+          sm: 2.5,
+          lg: 2,
+        },
+
+        pt: {
+          xs: 3,
+          lg: 2,
+        },
+
+        pb: {
+          xs: 3,
+          lg: 2,
+        },
+
+        display: "block",
       }}
     >
+      {/* MOBILE / DESKTOP ARTIST TOOLS */}
       <ArtistTools />
+
+      {/* SUGGESTED ARTISTS */}
       <SuggestedArtists />
+
+      {/* LISTENING HISTORY */}
       <ListeningHistory />
+
+      {/* SIDEBAR FOOTER */}
       <SidebarFooter />
     </Box>
   );

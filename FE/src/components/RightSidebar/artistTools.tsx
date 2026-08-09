@@ -55,6 +55,7 @@ const ArtistTools = () => {
           color: "#d8d8d8",
           mb: 1.2,
           textTransform: "uppercase",
+          textAlign: "center",
         }}
       >
         Artist Tools
@@ -63,8 +64,16 @@ const ArtistTools = () => {
       <Box
         sx={{
           display: "grid",
-          gridTemplateColumns: "repeat(4, 1fr)",
-          gap: 0.8,
+
+          gridTemplateColumns: {
+            xs: "repeat(2, minmax(0, 1fr))",
+            sm: "repeat(4, minmax(0, 1fr))",
+          },
+
+          gap: {
+            xs: 1,
+            sm: 0.8,
+          },
         }}
       >
         {tools.map((item) => (
@@ -72,7 +81,10 @@ const ArtistTools = () => {
             key={item.title}
             sx={{
               position: "relative",
-              height: 76,
+              height: {
+                xs: 82,
+                sm: 76,
+              },
               borderRadius: "8px",
               backgroundColor: "#111315",
               border: "1px solid rgba(255,255,255,0.06)",

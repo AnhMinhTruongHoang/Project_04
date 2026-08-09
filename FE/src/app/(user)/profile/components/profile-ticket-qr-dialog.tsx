@@ -14,7 +14,7 @@ import {
 import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
 import QrCode2RoundedIcon from "@mui/icons-material/QrCode2Rounded";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { getMyTicketQrApi } from "@/utils/api";
 import { useToast } from "@/utils/toast";
@@ -28,13 +28,42 @@ const ProfileTicketQrDialog = ({
 }: IProfileTicketQrDialogProps) => {
   const toast = useToast();
 
+  /* =========================
+   STABLE TOAST REFERENCE
+========================= */
+  const toastRef = useRef(toast);
+
+  useEffect(() => {
+    toastRef.current = toast;
+  }, [toast]);
+
+  /* =========================
+   QR STATE
+========================= */
   const [qrData, setQrData] = useState<IUserEventTicketQr | null>(null);
 
   const [loading, setLoading] = useState(false);
 
+  /* =========================
+   STABLE TICKET ID
+========================= */
+  const ticketId = ticket?.id ?? "";
+
+  /*
+   * =========================
+   * LOAD TICKET QR
+   * =========================
+   */
   useEffect(() => {
-    if (!open || !ticket || !accessToken) {
+    if (!open) {
       setQrData(null);
+      setLoading(false);
+      return;
+    }
+
+    if (!ticketId || !accessToken) {
+      setQrData(null);
+      setLoading(false);
       return;
     }
 
@@ -43,19 +72,26 @@ const ProfileTicketQrDialog = ({
     const loadQr = async () => {
       try {
         setLoading(true);
-        setQrData(null);
 
-        const response = await getMyTicketQrApi(ticket.id, accessToken);
+        const response = await getMyTicketQrApi(ticketId, accessToken);
 
-        if (!cancelled && response?.data) {
-          setQrData(response.data);
+        if (cancelled) {
+          return;
         }
+
+        const data = response?.data;
+
+        setQrData(data ?? null);
       } catch (error) {
         console.error("Cannot load ticket QR:", error);
 
-        if (!cancelled) {
-          toast.error("Unable to load the ticket QR.");
+        if (cancelled) {
+          return;
         }
+
+        setQrData(null);
+
+        toastRef.current.error("Unable to load the ticket QR.");
       } finally {
         if (!cancelled) {
           setLoading(false);
@@ -68,7 +104,7 @@ const ProfileTicketQrDialog = ({
     return () => {
       cancelled = true;
     };
-  }, [accessToken, open, ticket, toast]);
+  }, [accessToken, open, ticketId]);
 
   return (
     <Dialog
@@ -280,7 +316,9 @@ const ProfileTicketQrDialog = ({
               {/* TICKET SCAN INSTRUCTION */}
               <Typography
                 sx={{
+                  width: "100%",
                   maxWidth: 280,
+                  mx: "auto",
 
                   color: "#777777",
 

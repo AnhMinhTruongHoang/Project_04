@@ -24,6 +24,7 @@ import EventAvailableRoundedIcon from "@mui/icons-material/EventAvailableRounded
 import LocationOnRoundedIcon from "@mui/icons-material/LocationOnRounded";
 import RefreshRoundedIcon from "@mui/icons-material/RefreshRounded";
 import RemoveRoundedIcon from "@mui/icons-material/RemoveRounded";
+import ScienceRoundedIcon from "@mui/icons-material/ScienceRounded";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
@@ -32,6 +33,9 @@ import { createTicketPaymentApi, getPublicArtistEventsApi } from "@/utils/api";
 import { useToast } from "@/utils/toast";
 import ProfileCreateArtistEventDialog from "./profile-create-artist-event-dialog";
 import ProfileManageArtistEventsDialog from "./profile-manage-artist-events-dialog";
+import TestTicketPaymentDialog from "./test-ticket-payment-dialog";
+
+const PAYMENT_TEST_MODE = process.env.NEXT_PUBLIC_PAYMENT_TEST_MODE === "true";
 
 /*
  * =========================
@@ -175,6 +179,9 @@ const ProfileConcertsTab = ({
   const [createEventOpen, setCreateEventOpen] = useState(false);
 
   const [manageEventsOpen, setManageEventsOpen] = useState(false);
+
+  /* TEST PAYMENT */
+  const [testPaymentOrderCode, setTestPaymentOrderCode] = useState("");
 
   /*
    * =========================
@@ -388,6 +395,94 @@ const ProfileConcertsTab = ({
       </Stack>
     );
   }
+
+  /*
+   * =========================
+   * TEST TICKET PAYMENT
+   * =========================
+   */
+  const handleTestPayment = async () => {
+    if (!PAYMENT_TEST_MODE) {
+      toast.error("Test payment is disabled.");
+      return;
+    }
+
+    if (!accessToken) {
+      if (onRequireLogin) {
+        onRequireLogin();
+      } else {
+        toast.error("Please login first.");
+      }
+
+      return;
+    }
+
+    if (!selectedEvent) {
+      toast.error("Please select an event.");
+      return;
+    }
+
+    if (!selectedEvent.canPurchase) {
+      toast.error("Tickets are not available for this event.");
+      return;
+    }
+
+    if (quantity < 1 || quantity > maximumQuantity) {
+      toast.error("Invalid ticket quantity.");
+      return;
+    }
+
+    if (paymentLoading) {
+      return;
+    }
+
+    try {
+      setPaymentLoading(true);
+
+      /*
+       * CREATE REAL TICKET ORDER
+       *
+       * This still creates:
+       * SCT order
+       * reservation
+       * amount snapshot
+       * ticket quantity snapshot
+       */
+      const response = await createTicketPaymentApi(
+        {
+          eventId: selectedEvent.id,
+          quantity,
+        },
+        accessToken
+      );
+
+      const payment = response?.data;
+
+      if (!payment?.orderCode) {
+        throw new Error(
+          response?.message || "Unable to create ticket payment."
+        );
+      }
+
+      /*
+       * DO NOT REDIRECT TO VNPAY.
+       * OPEN INTERNAL TEST PAYMENT INSTEAD.
+       */
+      setTestPaymentOrderCode(payment.orderCode);
+
+      setSelectedEvent(null);
+    } catch (error) {
+      console.error("CREATE TEST TICKET PAYMENT ERROR:", error);
+
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Unable to create test payment."
+      );
+    } finally {
+      setPaymentLoading(false);
+    }
+  };
 
   return (
     <>
@@ -1458,7 +1553,6 @@ const ProfileConcertsTab = ({
             </Stack>
           )}
         </DialogContent>
-
         {/* PAYMENT ACTIONS */}
         <DialogActions
           sx={{
@@ -1471,13 +1565,19 @@ const ProfileConcertsTab = ({
             pb: 2.5,
 
             display: "flex",
+
+            alignItems: "center",
             justifyContent: "center",
 
             gap: 1,
 
             flexDirection: {
-              xs: "column-reverse",
+              xs: "column",
               sm: "row",
+            },
+
+            "& > :not(style) ~ :not(style)": {
+              ml: 0,
             },
           }}
         >
@@ -1496,19 +1596,18 @@ const ProfileConcertsTab = ({
               },
 
               minWidth: {
-                sm: 110,
+                sm: 100,
               },
 
-              px: 2.5,
+              px: 2,
 
               color: "#FFFFFF",
-
               bgcolor: "#252525",
 
               borderRadius: 2,
 
               textTransform: "none",
-              fontWeight: 900,
+              fontWeight: 850,
 
               "&:hover": {
                 bgcolor: "#303030",
@@ -1517,6 +1616,70 @@ const ProfileConcertsTab = ({
           >
             Cancel
           </Button>
+
+          {/* TEST PAYMENT - DEVELOPMENT ONLY */}
+          {PAYMENT_TEST_MODE && (
+            <Button
+              variant="outlined"
+              disabled={paymentLoading || !selectedEvent}
+              onClick={() => {
+                void handleTestPayment();
+              }}
+              startIcon={
+                paymentLoading ? (
+                  <CircularProgress
+                    size={15}
+                    thickness={5}
+                    sx={{
+                      color: "inherit",
+                    }}
+                  />
+                ) : (
+                  <ScienceRoundedIcon />
+                )
+              }
+              sx={{
+                minHeight: 44,
+
+                width: {
+                  xs: "100%",
+                  sm: "auto",
+                },
+
+                minWidth: {
+                  sm: 145,
+                },
+
+                px: 2,
+
+                color: "#FF8A4C",
+
+                borderColor: "rgba(255,85,0,0.45)",
+
+                bgcolor: "rgba(255,85,0,0.05)",
+
+                borderRadius: 2,
+
+                textTransform: "none",
+                fontWeight: 900,
+
+                "&:hover": {
+                  color: "#FFFFFF",
+
+                  borderColor: "#FF5500",
+
+                  bgcolor: "rgba(255,85,0,0.12)",
+                },
+
+                "&.Mui-disabled": {
+                  color: "#666666",
+                  borderColor: "#333333",
+                },
+              }}
+            >
+              Test Payment
+            </Button>
+          )}
 
           {/* CONTINUE TO VNPAY */}
           <Button
@@ -1553,7 +1716,6 @@ const ProfileConcertsTab = ({
               px: 2.5,
 
               color: "#FFFFFF",
-
               bgcolor: "#FF5500",
 
               borderRadius: 2,
@@ -1597,6 +1759,18 @@ const ProfileConcertsTab = ({
           accessToken={accessToken}
           onClose={() => {
             setManageEventsOpen(false);
+          }}
+        />
+      )}
+
+      {/* TEST TICKET PAYMENT DIALOG */}
+      {PAYMENT_TEST_MODE && (
+        <TestTicketPaymentDialog
+          open={Boolean(testPaymentOrderCode)}
+          orderCode={testPaymentOrderCode}
+          accessToken={accessToken || ""}
+          onClose={() => {
+            setTestPaymentOrderCode("");
           }}
         />
       )}

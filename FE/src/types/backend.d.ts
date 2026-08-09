@@ -2170,6 +2170,18 @@ declare global {
     accessToken?: string;
     onClose: () => void;
   }
+
+  interface ITestPaymentPayload {
+    orderCode: string;
+    testCode: string;
+  }
+
+  interface ITestTicketPaymentDialogProps {
+    open: boolean;
+    orderCode: string;
+    accessToken: string;
+    onClose: () => void;
+  }
   /* =====================================================
 ===================================================== */
 }

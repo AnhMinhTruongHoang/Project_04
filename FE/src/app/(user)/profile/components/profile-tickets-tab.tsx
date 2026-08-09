@@ -20,8 +20,14 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 import { getMyTicketsApi } from "@/utils/api";
 import { useToast } from "@/utils/toast";
+
 import ProfileTicketQrDialog from "./profile-ticket-qr-dialog";
 
+/*
+ * =========================
+ * TICKET DATE FORMAT
+ * =========================
+ */
 const formatTicketDate = (value?: string | null) => {
   if (!value) {
     return "Date unavailable";
@@ -42,12 +48,22 @@ const formatTicketDate = (value?: string | null) => {
   }).format(date);
 };
 
+/*
+ * =========================
+ * TICKET MONEY FORMAT
+ * =========================
+ */
 const formatTicketMoney = (value?: number | null, currency?: string | null) => {
   return `${new Intl.NumberFormat("en-US").format(Number(value || 0))} ${
     currency || "VND"
   }`;
 };
 
+/*
+ * =========================
+ * TICKET STATUS STYLE
+ * =========================
+ */
 const getTicketStatusStyle = (status: UserEventTicketStatus) => {
   switch (status) {
     case "VALID":
@@ -87,12 +103,22 @@ const getTicketStatusStyle = (status: UserEventTicketStatus) => {
 const ProfileTicketsTab = ({ accessToken }: IProfileTicketsTabProps) => {
   const toast = useToast();
 
+  /*
+   * =========================
+   * STABLE TOAST REFERENCE
+   * =========================
+   */
   const toastRef = useRef(toast);
 
   useEffect(() => {
     toastRef.current = toast;
   }, [toast]);
 
+  /*
+   * =========================
+   * TICKET COLLECTION STATE
+   * =========================
+   */
   const [tickets, setTickets] = useState<IUserEventTicket[]>([]);
 
   const [loading, setLoading] = useState(true);
@@ -143,10 +169,20 @@ const ProfileTicketsTab = ({ accessToken }: IProfileTicketsTabProps) => {
     [accessToken]
   );
 
+  /*
+   * =========================
+   * INITIAL TICKET LOAD
+   * =========================
+   */
   useEffect(() => {
     void loadTickets(false);
   }, [loadTickets]);
 
+  /*
+   * =========================
+   * TICKET COLLECTION LOADING
+   * =========================
+   */
   if (loading) {
     return (
       <Stack
@@ -200,6 +236,7 @@ const ProfileTicketsTab = ({ accessToken }: IProfileTicketsTabProps) => {
               "linear-gradient(135deg, rgba(255,85,0,0.14), rgba(255,85,0,0.025) 55%, rgba(59,130,246,0.06))",
 
             border: "1px solid #303030",
+
             borderRadius: 3,
           }}
         >
@@ -215,6 +252,7 @@ const ProfileTicketsTab = ({ accessToken }: IProfileTicketsTabProps) => {
             }}
             spacing={2}
           >
+            {/* TICKET COLLECTION TITLE */}
             <Stack direction="row" spacing={1.5} alignItems="center">
               <Box
                 sx={{
@@ -245,7 +283,7 @@ const ProfileTicketsTab = ({ accessToken }: IProfileTicketsTabProps) => {
                 <ConfirmationNumberRoundedIcon />
               </Box>
 
-              <Box>
+              <Box minWidth={0}>
                 <Typography
                   sx={{
                     color: "#FFFFFF",
@@ -301,7 +339,13 @@ const ProfileTicketsTab = ({ accessToken }: IProfileTicketsTabProps) => {
               sx={{
                 minHeight: 40,
 
+                width: {
+                  xs: "100%",
+                  sm: "auto",
+                },
+
                 color: "#CFCFCF",
+
                 borderColor: "#484848",
 
                 borderRadius: 2,
@@ -311,8 +355,16 @@ const ProfileTicketsTab = ({ accessToken }: IProfileTicketsTabProps) => {
 
                 "&:hover": {
                   color: "#FFFFFF",
+
                   bgcolor: "#1D1D1D",
+
                   borderColor: "#626262",
+                },
+
+                "&.Mui-disabled": {
+                  color: "#666666",
+
+                  borderColor: "#333333",
                 },
               }}
             >
@@ -374,6 +426,7 @@ const ProfileTicketsTab = ({ accessToken }: IProfileTicketsTabProps) => {
                   color: "#777777",
 
                   fontSize: 12,
+
                   lineHeight: 1.6,
                 }}
               >
@@ -389,6 +442,7 @@ const ProfileTicketsTab = ({ accessToken }: IProfileTicketsTabProps) => {
 
               gridTemplateColumns: {
                 xs: "1fr",
+
                 md: "repeat(2, minmax(0, 1fr))",
               },
 
@@ -403,6 +457,8 @@ const ProfileTicketsTab = ({ accessToken }: IProfileTicketsTabProps) => {
                   key={ticket.id}
                   elevation={0}
                   sx={{
+                    minWidth: 0,
+
                     overflow: "hidden",
 
                     bgcolor: "#111111",
@@ -431,6 +487,8 @@ const ProfileTicketsTab = ({ accessToken }: IProfileTicketsTabProps) => {
                       },
 
                       bgcolor: "#080808",
+
+                      overflow: "hidden",
                     }}
                   >
                     <Box
@@ -447,6 +505,7 @@ const ProfileTicketsTab = ({ accessToken }: IProfileTicketsTabProps) => {
                       }}
                     />
 
+                    {/* TICKET STATUS */}
                     <Chip
                       size="small"
                       label={status.label}
@@ -479,15 +538,19 @@ const ProfileTicketsTab = ({ accessToken }: IProfileTicketsTabProps) => {
                       },
                     }}
                   >
-                    <Box>
+                    {/* EVENT NAME AND TICKET CODE */}
+                    <Box minWidth={0}>
                       <Typography
                         sx={{
                           color: "#FFFFFF",
 
                           fontSize: 18,
+
                           fontWeight: 950,
 
                           lineHeight: 1.3,
+
+                          overflowWrap: "anywhere",
                         }}
                       >
                         {ticket.eventName}
@@ -502,6 +565,8 @@ const ProfileTicketsTab = ({ accessToken }: IProfileTicketsTabProps) => {
                           fontSize: 11,
 
                           fontFamily: "monospace",
+
+                          overflowWrap: "anywhere",
                         }}
                       >
                         {ticket.ticketCode}
@@ -518,6 +583,8 @@ const ProfileTicketsTab = ({ accessToken }: IProfileTicketsTabProps) => {
                         sx={{
                           mt: "1px",
 
+                          flexShrink: 0,
+
                           color: "#8D8D8D",
 
                           fontSize: 18,
@@ -526,6 +593,8 @@ const ProfileTicketsTab = ({ accessToken }: IProfileTicketsTabProps) => {
 
                       <Typography
                         sx={{
+                          minWidth: 0,
+
                           color: "#BEBEBE",
 
                           fontSize: 12,
@@ -547,19 +616,24 @@ const ProfileTicketsTab = ({ accessToken }: IProfileTicketsTabProps) => {
                         sx={{
                           mt: "1px",
 
+                          flexShrink: 0,
+
                           color: "#8D8D8D",
 
                           fontSize: 18,
                         }}
                       />
 
-                      <Box>
+                      <Box minWidth={0}>
                         <Typography
                           sx={{
                             color: "#D0D0D0",
 
                             fontSize: 12,
+
                             fontWeight: 800,
+
+                            overflowWrap: "anywhere",
                           }}
                         >
                           {ticket.venueName}
@@ -572,6 +646,8 @@ const ProfileTicketsTab = ({ accessToken }: IProfileTicketsTabProps) => {
                             color: "#777777",
 
                             fontSize: 11,
+
+                            overflowWrap: "anywhere",
                           }}
                         >
                           {ticket.venueAddress}
@@ -579,16 +655,25 @@ const ProfileTicketsTab = ({ accessToken }: IProfileTicketsTabProps) => {
                       </Box>
                     </Stack>
 
+                    {/* PRICE AND QR ACTION */}
                     <Stack
-                      direction="row"
+                      direction={{
+                        xs: "column",
+                        sm: "row",
+                      }}
                       justifyContent="space-between"
-                      alignItems="center"
+                      alignItems={{
+                        xs: "stretch",
+                        sm: "center",
+                      }}
                       spacing={2}
                     >
+                      {/* PURCHASE PRICE */}
                       <Box>
                         <Typography
                           sx={{
                             color: "#666666",
+
                             fontSize: 10,
                           }}
                         >
@@ -602,6 +687,7 @@ const ProfileTicketsTab = ({ accessToken }: IProfileTicketsTabProps) => {
                             color: "#FFFFFF",
 
                             fontSize: 14,
+
                             fontWeight: 900,
                           }}
                         >
@@ -623,6 +709,13 @@ const ProfileTicketsTab = ({ accessToken }: IProfileTicketsTabProps) => {
                         sx={{
                           minHeight: 40,
 
+                          width: {
+                            xs: "100%",
+                            sm: "auto",
+                          },
+
+                          flexShrink: 0,
+
                           color: "#FFFFFF",
 
                           bgcolor: "#FF5500",
@@ -632,15 +725,18 @@ const ProfileTicketsTab = ({ accessToken }: IProfileTicketsTabProps) => {
                           boxShadow: "none",
 
                           textTransform: "none",
+
                           fontWeight: 900,
 
                           "&:hover": {
                             bgcolor: "#FF6A1A",
+
                             boxShadow: "none",
                           },
 
                           "&.Mui-disabled": {
                             color: "#666666",
+
                             bgcolor: "#242424",
                           },
                         }}

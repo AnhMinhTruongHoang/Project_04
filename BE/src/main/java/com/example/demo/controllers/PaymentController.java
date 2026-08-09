@@ -10,6 +10,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.util.UriComponentsBuilder;
 
 import com.example.demo.dtos.CreatePaymentDTO;
+import com.example.demo.dtos.TestPaymentDTO;
 import com.example.demo.entities.User;
 import com.example.demo.helpers.JwtHelper;
 import com.example.demo.repositories.UserRepository;
@@ -627,7 +628,107 @@ public class PaymentController {
 
                 return token.isBlank()
                                 ? null
+
                                 : token;
+        }
+
+        /*
+         * =========================
+         * TEST PAYMENT
+         * =========================
+         */
+        @PostMapping("/test/complete")
+        public ResponseEntity<?> completeTestPayment(
+                        @RequestBody TestPaymentDTO dto,
+                        HttpServletRequest request) {
+
+                try {
+
+                        User user = getCurrentUser(
+                                        request);
+
+                        if (user == null) {
+                                return ResponseEntity
+                                                .status(401)
+                                                .body(
+                                                                new ApiResponse<>(
+                                                                                401,
+                                                                                "Unauthorized",
+                                                                                null));
+                        }
+
+                        if (dto == null) {
+                                return ResponseEntity
+                                                .badRequest()
+                                                .body(
+                                                                new ApiResponse<>(
+                                                                                400,
+                                                                                "Test payment information is required",
+                                                                                null));
+                        }
+
+                        String orderCode = dto.getOrderCode() == null
+                                        ? ""
+                                        : dto.getOrderCode()
+                                                        .trim();
+
+                        if (!orderCode
+                                        .toUpperCase()
+                                        .startsWith("SCT")) {
+
+                                return ResponseEntity
+                                                .badRequest()
+                                                .body(
+                                                                new ApiResponse<>(
+                                                                                400,
+                                                                                "Only ticket payments are supported in test mode",
+                                                                                null));
+                        }
+
+                        Map<String, Object> data = ticketPaymentService
+                                        .completeTestPayment(
+                                                        user.getId(),
+                                                        orderCode,
+                                                        dto.getTestCode());
+
+                        return ResponseEntity.ok(
+                                        new ApiResponse<>(
+                                                        200,
+                                                        "Test payment processed successfully",
+                                                        data));
+
+                } catch (IllegalArgumentException e) {
+
+                        return ResponseEntity
+                                        .badRequest()
+                                        .body(
+                                                        new ApiResponse<>(
+                                                                        400,
+                                                                        e.getMessage(),
+                                                                        null));
+
+                } catch (IllegalStateException e) {
+
+                        return ResponseEntity
+                                        .status(409)
+                                        .body(
+                                                        new ApiResponse<>(
+                                                                        409,
+                                                                        e.getMessage(),
+                                                                        null));
+
+                } catch (Exception e) {
+
+                        e.printStackTrace();
+
+                        return ResponseEntity
+                                        .internalServerError()
+                                        .body(
+                                                        new ApiResponse<>(
+                                                                        500,
+                                                                        "Unable to process test payment",
+                                                                        null));
+                }
         }
 
         /*
@@ -658,4 +759,5 @@ public class PaymentController {
 
                 return result;
         }
+
 }

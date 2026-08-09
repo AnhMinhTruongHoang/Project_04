@@ -2669,6 +2669,17 @@ export const checkInTicketApi = (
   });
 };
 
+export const completeTestPaymentApi = (
+  payload: ITestPaymentPayload,
+  accessToken: string
+) => {
+  return sendRequest<IBackendRes<ITicketPayment>>({
+    url: "/api/v1/payments/test/complete",
+    method: "POST",
+    headers: authHeaders(accessToken),
+    body: payload,
+  });
+};
 /* =========================
 
 ========================= */

@@ -54,6 +54,9 @@ public class TicketPaymentService {
         @Value("${ticketing.platform-fee-percent:10}")
         private int platformFeePercent;
 
+        @Value("${soundclone.payment.test-mode:false}")
+        private boolean testPaymentModeEnabled;
+
         public TicketPaymentService(
                         VNPayConfig vnPayConfig,
                         TicketPaymentTransactionRepository ticketPaymentTransactionRepository,
@@ -540,6 +543,266 @@ public class TicketPaymentService {
                 return buildPaymentResponse(
                                 payment,
                                 false);
+        }
+
+        /*
+         * =========================
+         * COMPLETE TEST PAYMENT
+         * =========================
+         */
+        @Transactional
+        public Map<String, Object> completeTestPayment(
+                        String buyerId,
+                        String orderCode,
+                        String testCode) {
+
+                if (!testPaymentModeEnabled) {
+                        throw new IllegalStateException(
+                                        "Test payment mode is disabled");
+                }
+
+                String normalizedBuyerId = normalizeRequired(
+                                buyerId,
+                                "Buyer ID");
+
+                String normalizedOrderCode = normalizeRequired(
+                                orderCode,
+                                "Payment order code");
+
+                String normalizedTestCode = normalizeRequired(
+                                testCode,
+                                "Test payment code")
+                                .trim()
+                                .toUpperCase(Locale.ROOT);
+
+                if (!normalizedOrderCode
+                                .toUpperCase(Locale.ROOT)
+                                .startsWith("SCT")) {
+
+                        throw new IllegalArgumentException(
+                                        "This test payment endpoint only supports ticket payments");
+                }
+
+                TicketPaymentTransaction payment = ticketPaymentTransactionRepository
+                                .findByOrderCode(
+                                                normalizedOrderCode)
+                                .orElseThrow(
+                                                () -> new IllegalArgumentException(
+                                                                "Ticket payment not found"));
+
+                if (!normalizedBuyerId.equals(
+                                payment.getBuyerId())) {
+
+                        throw new IllegalArgumentException(
+                                        "Ticket payment not found");
+                }
+
+                /*
+                 * =========================
+                 * IDEMPOTENCY
+                 * =========================
+                 */
+                if (TicketPaymentTransaction.STATUS_PAID
+                                .equalsIgnoreCase(
+                                                payment.getStatus())) {
+
+                        return buildPaymentResponse(
+                                        payment,
+                                        false);
+                }
+
+                boolean canProcess = TicketPaymentTransaction.STATUS_PENDING
+                                .equalsIgnoreCase(
+                                                payment.getStatus())
+                                ||
+                                TicketPaymentTransaction.STATUS_PROCESSING
+                                                .equalsIgnoreCase(
+                                                                payment.getStatus());
+
+                if (!canProcess) {
+                        throw new IllegalStateException(
+                                        "This ticket payment can no longer be processed");
+                }
+
+                ArtistEvent event = artistEventRepository
+                                .findById(
+                                                payment.getEventId())
+                                .orElseThrow(
+                                                () -> new IllegalStateException(
+                                                                "Ticket event not found"));
+
+                /*
+                 * =========================
+                 * TEST PAYMENT METADATA
+                 * =========================
+                 */
+                String testTransactionId = "TEST-"
+                                + UUID.randomUUID()
+                                                .toString()
+                                                .replace("-", "");
+
+                payment.setProvider("TEST");
+
+                payment.setProviderTransactionId(
+                                testTransactionId);
+
+                payment.setBankCode("TEST");
+
+                payment.setBankTransactionNo(
+                                testTransactionId);
+
+                payment.setCardType(
+                                "SOUNDCLONE_TEST");
+
+                payment.setCallbackPayload(
+                                "TEST_PAYMENT:"
+                                                + normalizedTestCode);
+
+                /*
+                 * =========================
+                 * TEST SUCCESS
+                 * =========================
+                 */
+                if ("SC_TEST_SUCCESS_123456"
+                                .equals(normalizedTestCode)) {
+
+                        LocalDateTime paidAt = LocalDateTime.now();
+
+                        List<com.example.demo.entities.UserEventTicket> tickets = ticketFulfillmentService
+                                        .fulfillPaidPayment(
+                                                        payment,
+                                                        paidAt);
+
+                        if (tickets.isEmpty()) {
+                                throw new IllegalStateException(
+                                                "Ticket payment completed but no ticket was issued");
+                        }
+
+                        payment.setStatus(
+                                        TicketPaymentTransaction.STATUS_PAID);
+
+                        payment.setPaidAt(
+                                        paidAt);
+
+                        payment.setResponseCode(
+                                        "00");
+
+                        payment.setTransactionStatus(
+                                        "00");
+
+                        payment.setFailureReason(
+                                        null);
+
+                        ticketPaymentTransactionRepository
+                                        .saveAndFlush(
+                                                        payment);
+
+                        return buildPaymentResponse(
+                                        payment,
+                                        false);
+                }
+
+                /*
+                 * =========================
+                 * TEST FAILED
+                 * =========================
+                 */
+                if ("SC_TEST_FAILED_123456"
+                                .equals(normalizedTestCode)) {
+
+                        releaseReservation(
+                                        event,
+                                        payment);
+
+                        payment.setStatus(
+                                        TicketPaymentTransaction.STATUS_FAILED);
+
+                        payment.setResponseCode(
+                                        "99");
+
+                        payment.setTransactionStatus(
+                                        "FAILED");
+
+                        payment.setFailureReason(
+                                        "Test payment failed");
+
+                        ticketPaymentTransactionRepository
+                                        .saveAndFlush(
+                                                        payment);
+
+                        return buildPaymentResponse(
+                                        payment,
+                                        false);
+                }
+
+                /*
+                 * =========================
+                 * TEST CANCELED
+                 * =========================
+                 */
+                if ("SC_TEST_CANCEL_123456"
+                                .equals(normalizedTestCode)) {
+
+                        releaseReservation(
+                                        event,
+                                        payment);
+
+                        payment.setStatus(
+                                        TicketPaymentTransaction.STATUS_CANCELED);
+
+                        payment.setResponseCode(
+                                        "24");
+
+                        payment.setTransactionStatus(
+                                        "CANCELED");
+
+                        payment.setFailureReason(
+                                        "Test payment canceled");
+
+                        ticketPaymentTransactionRepository
+                                        .saveAndFlush(
+                                                        payment);
+
+                        return buildPaymentResponse(
+                                        payment,
+                                        false);
+                }
+
+                /*
+                 * =========================
+                 * TEST EXPIRED
+                 * =========================
+                 */
+                if ("SC_TEST_EXPIRED_123456"
+                                .equals(normalizedTestCode)) {
+
+                        releaseReservation(
+                                        event,
+                                        payment);
+
+                        payment.setStatus(
+                                        TicketPaymentTransaction.STATUS_EXPIRED);
+
+                        payment.setResponseCode(
+                                        "EXPIRED");
+
+                        payment.setTransactionStatus(
+                                        "EXPIRED");
+
+                        payment.setFailureReason(
+                                        "Test payment expired");
+
+                        ticketPaymentTransactionRepository
+                                        .saveAndFlush(
+                                                        payment);
+
+                        return buildPaymentResponse(
+                                        payment,
+                                        false);
+                }
+
+                throw new IllegalArgumentException(
+                                "Invalid test payment code");
         }
 
         /*

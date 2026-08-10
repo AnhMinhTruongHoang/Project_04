@@ -5,8 +5,6 @@ import 'package:soundclone_mobile/core/config/api_config.dart';
 import 'package:soundclone_mobile/core/network/dio_client.dart';
 import 'package:soundclone_mobile/core/storage/token_storage.dart';
 
-
-
 /*
  * ============================================================
  * SOUNDCLONE MOBILE - API SERVICE
@@ -2146,7 +2144,11 @@ class ApiService {
    * - SC_TEST_CANCEL_123456
    * - SC_TEST_EXPIRED_123456
    *
-   * Current Backend implementation was added for SCT ticket payments.
+   * Backend hiện tại hỗ trợ test payment cho:
+   * - SCT... -> Ticket payment
+   * - SCM... -> Artist membership payment
+   *
+   * SC... account subscription hiện KHÔNG dùng endpoint test này.
    */
   Future<ApiResponse<dynamic>> completeTestPaymentApi({
     required String orderCode,
@@ -2157,5 +2159,226 @@ class ApiService {
       path: '/payments/test/complete',
       data: {'orderCode': orderCode.trim(), 'testCode': testCode.trim()},
     );
+  }
+
+  /*
+   * ============================================================
+   * WEB PARITY / COMPATIBILITY HELPERS
+   * ============================================================
+   *
+   * Các method dưới đây được bổ sung sau khi đối chiếu trực tiếp
+   * với Web src/utils/api.ts ngày 10/08/2026.
+   *
+   * Mục tiêu:
+   * - giảm chênh lệch tên helper giữa Web và Mobile;
+   * - giữ cùng business flow;
+   * - KHÔNG port API nội bộ Next.js /api/revalidate.
+   */
+
+  /*
+   * Alias tương thích với Web registerWithOtpAPI.
+   * Backend vẫn dùng cùng POST /auth/register.
+   */
+  Future<ApiResponse<dynamic>> registerWithOtpApi({
+    required String name,
+    required String email,
+    required String password,
+    int? age,
+    String? gender,
+  }) {
+    return registerApi(
+      name: name,
+      email: email,
+      password: password,
+      age: age,
+      gender: gender,
+    );
+  }
+
+  /*
+   * Alias tương thích code cũ:
+   *
+   * Web có createCommentApi(payload), trong đó payload phải có trackId.
+   * Mobile ưu tiên createTrackCommentApi(...) vì rõ endpoint hơn.
+   */
+  Future<ApiResponse<dynamic>> createCommentApi(Map<String, dynamic> payload) {
+    final trackId = (payload['trackId'] ?? payload['track_id'])
+        ?.toString()
+        .trim();
+
+    if (trackId == null || trackId.isEmpty) {
+      return Future.value(
+        const ApiResponse<dynamic>(
+          statusCode: 400,
+          message: 'trackId is required',
+          error: 'BAD_REQUEST',
+        ),
+      );
+    }
+
+    final content = payload['content']?.toString().trim() ?? '';
+
+    if (content.isEmpty) {
+      return Future.value(
+        const ApiResponse<dynamic>(
+          statusCode: 400,
+          message: 'content is required',
+          error: 'BAD_REQUEST',
+        ),
+      );
+    }
+
+    final rawMoment = payload['moment'];
+    final moment = rawMoment is num
+        ? rawMoment.toDouble()
+        : double.tryParse(rawMoment?.toString() ?? '');
+
+    return createTrackCommentApi(
+      trackId: trackId,
+      content: content,
+      moment: moment,
+    );
+  }
+
+  /*
+   * Alias tương thích Web getPlaylistsByUserApi().
+   *
+   * Lưu ý tên cũ hơi gây hiểu nhầm:
+   * endpoint thực tế chỉ lấy playlist của tài khoản hiện tại.
+   */
+  Future<ApiResponse<dynamic>> getPlaylistsByUserApi() {
+    return getMyPlaylistsApi();
+  }
+
+  /*
+   * Helper tương đương Web getCategoryId().
+   */
+  String getCategoryId(dynamic category) {
+    if (category is! Map) {
+      return '';
+    }
+
+    return (category['_id'] ?? category['id'] ?? '').toString().trim();
+  }
+
+  /*
+   * Helper tương đương Web normalizeTrack().
+   *
+   * Chỉ normalize id/_id để code Mobile có thể xử lý response cũ/mới.
+   */
+  Map<String, dynamic>? normalizeTrack(dynamic track) {
+    if (track is! Map) {
+      return null;
+    }
+
+    final result = Map<String, dynamic>.from(track);
+    final id = (result['id'] ?? result['_id'] ?? '').toString().trim();
+
+    result['id'] = id;
+    result['_id'] = id;
+
+    return result;
+  }
+
+  /*
+   * ============================================================
+   * ADMIN - GET ALL PAID PAYOUTS
+   * ============================================================
+   *
+   * Web có helper getAllPaidAdminArtistPayoutsApi().
+   * Backend không có endpoint "all" riêng, vì vậy helper này:
+   *
+   * 1. GET page 1 với status=PAID, pageSize=100
+   * 2. đọc totalPages/meta.pages nếu có
+   * 3. fetch tuần tự các page còn lại
+   * 4. trả về List<dynamic> duy nhất
+   *
+   * Chỉ dùng khi thật sự cần toàn bộ PAID payouts, ví dụ chart/report.
+   * UI table bình thường vẫn nên dùng pagination.
+   */
+  Future<ApiResponse<dynamic>> getAllPaidAdminArtistPayoutsApi() async {
+    const pageSize = 100;
+
+    final firstResponse = await getAdminArtistPayoutsApi(
+      status: 'PAID',
+      current: 1,
+      pageSize: pageSize,
+    );
+
+    if (!firstResponse.isSuccess) {
+      return firstResponse;
+    }
+
+    final firstData = _asMap(firstResponse.data);
+
+    final allPayouts = <dynamic>[...extractResultList(firstResponse)];
+
+    final meta = _asMap(firstData['meta']);
+
+    final totalPages =
+        int.tryParse(firstData['totalPages']?.toString() ?? '') ??
+        int.tryParse(firstData['pages']?.toString() ?? '') ??
+        int.tryParse(meta['pages']?.toString() ?? '') ??
+        int.tryParse(meta['totalPages']?.toString() ?? '') ??
+        1;
+
+    for (var current = 2; current <= totalPages; current += 1) {
+      final response = await getAdminArtistPayoutsApi(
+        status: 'PAID',
+        current: current,
+        pageSize: pageSize,
+      );
+
+      if (!response.isSuccess) {
+        return ApiResponse<dynamic>(
+          statusCode: response.statusCode,
+          message: response.message.isNotEmpty
+              ? response.message
+              : 'Cannot fetch paid payouts page $current',
+          error: response.error ?? 'FETCH_PAID_PAYOUTS_FAILED',
+          data: null,
+        );
+      }
+
+      allPayouts.addAll(extractResultList(response));
+    }
+
+    return ApiResponse<dynamic>(
+      statusCode: 200,
+      message: 'Fetch all paid artist payouts success',
+      data: allPayouts,
+    );
+  }
+
+  /*
+   * ============================================================
+   * MEMBERSHIP TEST PAYMENT - DEV/LOCAL ONLY
+   * ============================================================
+   *
+   * Endpoint dùng chung:
+   * POST /payments/test/complete
+   *
+   * Backend route theo prefix:
+   * - SCT... -> TicketPaymentService
+   * - SCM... -> MembershipPaymentService
+   *
+   * Method này chỉ là alias rõ nghĩa cho flow Membership.
+   * VNPay vẫn là provider chính.
+   */
+  Future<ApiResponse<dynamic>> completeTestMembershipPaymentApi({
+    required String orderCode,
+    required String testCode,
+  }) {
+    return completeTestPaymentApi(orderCode: orderCode, testCode: testCode);
+  }
+
+  /*
+   * Alias rõ nghĩa cho flow Ticket.
+   */
+  Future<ApiResponse<dynamic>> completeTestTicketPaymentApi({
+    required String orderCode,
+    required String testCode,
+  }) {
+    return completeTestPaymentApi(orderCode: orderCode, testCode: testCode);
   }
 }

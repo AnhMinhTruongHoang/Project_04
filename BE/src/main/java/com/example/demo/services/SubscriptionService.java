@@ -44,6 +44,10 @@ public class SubscriptionService {
 
         private static final String PLAN_ARTIST_PRO = "ARTIST_PRO";
 
+        private static final String PLAN_ARTIST_PRO_DEMO = "ARTIST_PRO_DEMO";
+
+        private static final int ARTIST_PRO_DEMO_DAYS = 7;
+
         @Autowired
         private SubscriptionPlanRepository subscriptionPlanRepository;
 
@@ -139,8 +143,8 @@ public class SubscriptionService {
 
                                         artistCount++;
 
-                                } else if (PLAN_ARTIST_PRO.equals(
-                                                planCode)) {
+                                } else if (PLAN_ARTIST_PRO.equals(planCode)
+                                                || PLAN_ARTIST_PRO_DEMO.equals(planCode)) {
 
                                         artistProCount++;
                                 }
@@ -180,8 +184,8 @@ public class SubscriptionService {
 
                                 activeArtist++;
 
-                        } else if (PLAN_ARTIST_PRO.equals(
-                                        planCode)) {
+                        } else if (PLAN_ARTIST_PRO.equals(planCode)
+                                        || PLAN_ARTIST_PRO_DEMO.equals(planCode)) {
 
                                 activeArtistPro++;
                         }
@@ -352,39 +356,220 @@ public class SubscriptionService {
 
         /*
          * =========================
-         * LEGACY DIRECT SUBSCRIPTION
+         * DIRECT SUBSCRIPTION
          * =========================
+         *
+         * BASIC:
+         * → direct activation
+         *
+         * ARTIST_PRO_DEMO:
+         * → direct activation
+         * → 7 days
+         * → same benefits as Artist Pro
+         *
+         * ARTIST / ARTIST_PRO:
+         * → must use verified payment
          */
-        @Deprecated(forRemoval = true)
-        @Transactional(readOnly = true)
+        @Transactional
         public Map<String, Object> subscribe(
                         String userId,
                         String planCode) {
 
                 String normalizedPlanCode = planCode == null
                                 ? ""
-                                : planCode.trim().toUpperCase();
+                                : planCode
+                                                .trim()
+                                                .toUpperCase(
+                                                                Locale.ROOT);
 
-                if (userId == null || userId.isBlank()) {
+                if (userId == null
+                                || userId.isBlank()) {
+
                         throw new IllegalArgumentException(
                                         "User ID is required");
                 }
 
                 if (normalizedPlanCode.isBlank()) {
+
                         throw new IllegalArgumentException(
                                         "Plan code is required");
                 }
 
                 /*
-                 * Không cho bất kỳ controller/service nào
-                 * kích hoạt subscription trực tiếp.
+                 * =========================
+                 * PAID PLAN SECURITY
+                 * =========================
                  *
-                 * BASIC được hệ thống tự tạo.
-                 * ARTIST và ARTIST_PRO phải qua VNPAY.
+                 * Real paid plans still require VNPay.
                  */
-                throw new IllegalStateException(
-                                "Direct subscription activation is disabled. "
-                                                + "Paid plans must be activated through a verified VNPAY IPN.");
+                if (PLAN_ARTIST.equals(
+                                normalizedPlanCode)
+                                || PLAN_ARTIST_PRO.equals(
+                                                normalizedPlanCode)) {
+
+                        throw new IllegalArgumentException(
+                                        "Paid plans must be activated through a verified payment");
+                }
+
+                /*
+                 * Only BASIC and DEMO can be activated directly.
+                 */
+                if (!PLAN_BASIC.equals(
+                                normalizedPlanCode)
+                                && !PLAN_ARTIST_PRO_DEMO.equals(
+                                                normalizedPlanCode)) {
+
+                        throw new IllegalArgumentException(
+                                        "Subscription plan is invalid");
+                }
+
+                SubscriptionPlan targetPlan = subscriptionPlanRepository
+                                .findByCodeAndIsActiveTrue(
+                                                normalizedPlanCode);
+
+                if (targetPlan == null) {
+
+                        throw new IllegalArgumentException(
+                                        "Subscription plan not found");
+                }
+
+                /*
+                 * Lock account to avoid concurrent plan changes.
+                 */
+                User user = lockUser(
+                                userId);
+
+                LocalDateTime now = LocalDateTime.now();
+
+                UserSubscription currentSubscription = userSubscriptionRepository
+                                .findFirstByUserIdAndStatusOrderByCreatedAtDesc(
+                                                userId,
+                                                STATUS_ACTIVE)
+                                .orElse(null);
+
+                /*
+                 * =========================
+                 * ALREADY ACTIVE
+                 * =========================
+                 */
+                if (currentSubscription != null) {
+
+                        SubscriptionPlan currentPlan = getPlan(
+                                        currentSubscription.getPlanId());
+
+                        boolean stillActive = currentSubscription.getCurrentPeriodEnd() == null
+                                        || now.isBefore(
+                                                        currentSubscription
+                                                                        .getCurrentPeriodEnd());
+
+                        if (stillActive
+                                        && normalizedPlanCode.equalsIgnoreCase(
+                                                        currentPlan.getCode())) {
+
+                                SubscriptionUsage currentUsage = getOrCreateUsage(
+                                                currentSubscription);
+
+                                return buildSubscriptionResponse(
+                                                currentSubscription,
+                                                currentPlan,
+                                                currentUsage);
+                        }
+
+                        /*
+                         * Expire previous subscription before switching.
+                         */
+                        currentSubscription.setStatus(
+                                        STATUS_EXPIRED);
+
+                        currentSubscription.setCancelAtPeriodEnd(
+                                        false);
+
+                        currentSubscription.setUpdatedAt(
+                                        now);
+
+                        userSubscriptionRepository.save(
+                                        currentSubscription);
+                }
+
+                /*
+                 * =========================
+                 * SUBSCRIPTION PERIOD
+                 * =========================
+                 */
+                LocalDateTime periodEnd;
+
+                if (PLAN_ARTIST_PRO_DEMO.equals(
+                                normalizedPlanCode)) {
+
+                        periodEnd = now.plusDays(
+                                        ARTIST_PRO_DEMO_DAYS);
+
+                } else {
+
+                        periodEnd = now.plusMonths(
+                                        1);
+                }
+
+                UserSubscription subscription = createSubscriptionForPeriod(
+                                userId,
+                                targetPlan,
+                                now,
+                                now,
+                                periodEnd);
+
+                SubscriptionUsage usage = createUsage(
+                                subscription,
+                                0L);
+
+                /*
+                 * =========================
+                 * LEGACY TIER COMPATIBILITY
+                 * =========================
+                 *
+                 * Some existing parts of SoundClone still check:
+                 *
+                 * subscriptionTier == ARTIST_PRO
+                 *
+                 * Therefore Demo uses ARTIST_PRO as its effective
+                 * permission tier while subscription plan remains
+                 * ARTIST_PRO_DEMO.
+                 */
+                String effectiveTier = PLAN_ARTIST_PRO_DEMO.equals(
+                                normalizedPlanCode)
+                                                ? PLAN_ARTIST_PRO
+                                                : PLAN_BASIC.equals(
+                                                                normalizedPlanCode)
+                                                                                ? "FREE"
+                                                                                : normalizedPlanCode;
+
+                user.setSubscriptionTier(
+                                effectiveTier);
+
+                user.setUpdatedAt(
+                                new Date());
+
+                userRepository.save(
+                                user);
+
+                /*
+                 * Demo should behave as a real activated plan.
+                 */
+                if (PLAN_ARTIST_PRO_DEMO.equals(
+                                normalizedPlanCode)) {
+
+                        scheduleNotificationAfterCommit(
+                                        () -> notificationService
+                                                        .notifySubscriptionActivated(
+                                                                        subscription,
+                                                                        targetPlan.getName()),
+                                        subscription.getId(),
+                                        "activated");
+                }
+
+                return buildSubscriptionResponse(
+                                subscription,
+                                targetPlan,
+                                usage);
         }
 
         ///

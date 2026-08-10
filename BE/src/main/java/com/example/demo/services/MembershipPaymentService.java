@@ -53,6 +53,27 @@ public class MembershipPaymentService {
         @Value("${membership.period-days:30}")
         private int membershipPeriodDays;
 
+        /*
+         * =========================
+         * TEST PAYMENT CONFIG
+         * =========================
+         *
+         * DEV/LOCAL only.
+         * Production phải để false.
+         */
+        @Value("${soundclone.payment.test-mode:false}")
+        private boolean testPaymentModeEnabled;
+
+        private static final String PROVIDER_TEST = "TEST";
+
+        private static final String TEST_SUCCESS = "SC_TEST_SUCCESS_123456";
+
+        private static final String TEST_FAILED = "SC_TEST_FAILED_123456";
+
+        private static final String TEST_CANCELED = "SC_TEST_CANCEL_123456";
+
+        private static final String TEST_EXPIRED = "SC_TEST_EXPIRED_123456";
+
         public MembershipPaymentService(
                         VNPayConfig vnPayConfig,
 
@@ -431,6 +452,336 @@ public class MembershipPaymentService {
 
                 return buildPaymentResponse(
                                 payment,
+                                false);
+        }
+
+        /*
+         * =========================
+         * COMPLETE TEST MEMBERSHIP PAYMENT
+         * =========================
+         *
+         * DEV/LOCAL only.
+         *
+         * Đây KHÔNG phải fake membership ở frontend.
+         *
+         * Flow:
+         *
+         * SCM order
+         * → TEST payment
+         * → ArtistMembershipActivationService
+         * → subscription thật
+         * → ledger/wallet thật
+         * → payment PAID
+         */
+        @Transactional
+        public Map<String, Object> completeTestPayment(
+                        String memberId,
+                        String orderCode,
+                        String testCode) {
+
+                if (!testPaymentModeEnabled) {
+                        throw new IllegalStateException(
+                                        "Test payment mode is disabled");
+                }
+
+                validateMemberId(
+                                memberId);
+
+                String normalizedOrderCode = normalizeRequired(
+                                orderCode,
+                                "Payment order code");
+
+                String normalizedTestCode = normalizeRequired(
+                                testCode,
+                                "Test payment code")
+                                .toUpperCase(
+                                                Locale.ROOT);
+
+                if (!normalizedOrderCode
+                                .toUpperCase(Locale.ROOT)
+                                .startsWith("SCM")) {
+
+                        throw new IllegalArgumentException(
+                                        "Only membership payments are supported");
+                }
+
+                /*
+                 * Lock payment giống callback VNPay để tránh
+                 * double-click / hai request xử lý cùng lúc.
+                 */
+                MembershipPaymentTransaction payment = membershipPaymentTransactionRepository
+                                .findByOrderCodeForUpdate(
+                                                normalizedOrderCode)
+                                .orElseThrow(
+                                                () -> new IllegalArgumentException(
+                                                                "Membership payment not found"));
+
+                /*
+                 * User chỉ được test payment của chính mình.
+                 */
+                if (!memberId.trim().equals(
+                                payment.getMemberId())) {
+
+                        throw new IllegalArgumentException(
+                                        "Membership payment not found");
+                }
+
+                /*
+                 * =========================
+                 * IDEMPOTENT TERMINAL STATUS
+                 * =========================
+                 */
+
+                if (MembershipPaymentTransaction.STATUS_PAID
+                                .equalsIgnoreCase(
+                                                payment.getStatus())) {
+
+                        return buildPaymentResponse(
+                                        payment,
+                                        false);
+                }
+
+                if (MembershipPaymentTransaction.STATUS_FAILED
+                                .equalsIgnoreCase(
+                                                payment.getStatus())
+                                || MembershipPaymentTransaction.STATUS_CANCELED
+                                                .equalsIgnoreCase(
+                                                                payment.getStatus())
+                                || MembershipPaymentTransaction.STATUS_EXPIRED
+                                                .equalsIgnoreCase(
+                                                                payment.getStatus())
+                                || MembershipPaymentTransaction.STATUS_REFUNDED
+                                                .equalsIgnoreCase(
+                                                                payment.getStatus())) {
+
+                        return buildPaymentResponse(
+                                        payment,
+                                        false);
+                }
+
+                if (!MembershipPaymentTransaction.STATUS_PENDING
+                                .equalsIgnoreCase(
+                                                payment.getStatus())
+                                && !MembershipPaymentTransaction.STATUS_PROCESSING
+                                                .equalsIgnoreCase(
+                                                                payment.getStatus())) {
+
+                        throw new IllegalStateException(
+                                        "Membership payment cannot be processed");
+                }
+
+                LocalDateTime now = LocalDateTime.now(
+                                VIETNAM_ZONE);
+
+                /*
+                 * Đơn thực tế đã hết hạn thì không cho
+                 * SC_TEST_SUCCESS revive lại đơn.
+                 */
+                if (payment.getExpiresAt() != null
+                                && !payment.getExpiresAt()
+                                                .isAfter(now)) {
+
+                        payment.setProvider(
+                                        PROVIDER_TEST);
+
+                        payment.setStatus(
+                                        MembershipPaymentTransaction.STATUS_EXPIRED);
+
+                        payment.setResponseCode(
+                                        "99");
+
+                        payment.setTransactionStatus(
+                                        "02");
+
+                        payment.setFailureReason(
+                                        "Test payment order has expired");
+
+                        membershipPaymentTransactionRepository
+                                        .saveAndFlush(
+                                                        payment);
+
+                        return buildPaymentResponse(
+                                        payment,
+                                        false);
+                }
+
+                /*
+                 * =========================
+                 * TEST PROVIDER METADATA
+                 * =========================
+                 */
+
+                payment.setProvider(
+                                PROVIDER_TEST);
+
+                payment.setProviderTransactionId(
+                                "TEST-"
+                                                + UUID.randomUUID()
+                                                                .toString()
+                                                                .replace("-", "")
+                                                                .toUpperCase(
+                                                                                Locale.ROOT));
+
+                payment.setBankCode(
+                                "TEST");
+
+                payment.setBankTransactionNo(
+                                payment.getProviderTransactionId());
+
+                payment.setCardType(
+                                "TEST");
+
+                payment.setCallbackPayload(
+                                "provider=TEST&testCode="
+                                                + normalizedTestCode);
+
+                /*
+                 * =========================
+                 * TEST FAILED
+                 * =========================
+                 */
+                if (TEST_FAILED.equals(
+                                normalizedTestCode)) {
+
+                        payment.setStatus(
+                                        MembershipPaymentTransaction.STATUS_FAILED);
+
+                        payment.setResponseCode(
+                                        "99");
+
+                        payment.setTransactionStatus(
+                                        "02");
+
+                        payment.setFailureReason(
+                                        "Test membership payment failed");
+
+                        membershipPaymentTransactionRepository
+                                        .saveAndFlush(
+                                                        payment);
+
+                        return buildPaymentResponse(
+                                        payment,
+                                        false);
+                }
+
+                /*
+                 * =========================
+                 * TEST CANCELED
+                 * =========================
+                 */
+                if (TEST_CANCELED.equals(
+                                normalizedTestCode)) {
+
+                        payment.setStatus(
+                                        MembershipPaymentTransaction.STATUS_CANCELED);
+
+                        payment.setResponseCode(
+                                        "24");
+
+                        payment.setTransactionStatus(
+                                        "02");
+
+                        payment.setFailureReason(
+                                        "Test membership payment was canceled");
+
+                        membershipPaymentTransactionRepository
+                                        .saveAndFlush(
+                                                        payment);
+
+                        return buildPaymentResponse(
+                                        payment,
+                                        false);
+                }
+
+                /*
+                 * =========================
+                 * TEST EXPIRED
+                 * =========================
+                 */
+                if (TEST_EXPIRED.equals(
+                                normalizedTestCode)) {
+
+                        payment.setStatus(
+                                        MembershipPaymentTransaction.STATUS_EXPIRED);
+
+                        payment.setResponseCode(
+                                        "99");
+
+                        payment.setTransactionStatus(
+                                        "02");
+
+                        payment.setFailureReason(
+                                        "Test membership payment expired");
+
+                        membershipPaymentTransactionRepository
+                                        .saveAndFlush(
+                                                        payment);
+
+                        return buildPaymentResponse(
+                                        payment,
+                                        false);
+                }
+
+                /*
+                 * =========================
+                 * TEST SUCCESS
+                 * =========================
+                 */
+                if (!TEST_SUCCESS.equals(
+                                normalizedTestCode)) {
+
+                        throw new IllegalArgumentException(
+                                        "Invalid test payment code");
+                }
+
+                /*
+                 * Khóa artist giống VNPay flow thật.
+                 *
+                 * ActivationService sẽ xử lý:
+                 *
+                 * membership
+                 * ledger
+                 * artist wallet
+                 */
+                userRepository
+                                .findByIdForUpdate(
+                                                payment.getArtistId())
+                                .orElseThrow(
+                                                () -> new IllegalStateException(
+                                                                "Artist account not found"));
+
+                payment.setResponseCode(
+                                "00");
+
+                payment.setTransactionStatus(
+                                "00");
+
+                payment.setFailureReason(
+                                null);
+
+                payment.setStatus(
+                                MembershipPaymentTransaction.STATUS_PROCESSING);
+
+                ArtistMembershipSubscription subscription = artistMembershipActivationService
+                                .activatePaidMembership(
+                                                payment,
+                                                now);
+
+                payment.setSubscriptionId(
+                                subscription.getId());
+
+                payment.setStatus(
+                                MembershipPaymentTransaction.STATUS_PAID);
+
+                payment.setPaidAt(
+                                now);
+
+                MembershipPaymentTransaction savedPayment = membershipPaymentTransactionRepository
+                                .saveAndFlush(
+                                                payment);
+
+                return buildPaymentResponse(
+                                savedPayment,
                                 false);
         }
 

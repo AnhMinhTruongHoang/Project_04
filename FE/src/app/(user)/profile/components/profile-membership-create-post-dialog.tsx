@@ -1,7 +1,6 @@
 "use client";
 
 import {
-  Alert,
   Box,
   Button,
   Checkbox,
@@ -27,7 +26,7 @@ import DeleteOutlineRoundedIcon from "@mui/icons-material/DeleteOutlineRounded";
 import UploadRoundedIcon from "@mui/icons-material/UploadRounded";
 import AddRoundedIcon from "@mui/icons-material/AddRounded";
 import { useToast } from "@/utils/toast";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   createArtistMembershipImagePostApi,
   createArtistMembershipPollApi,
@@ -44,6 +43,15 @@ const ProfileMembershipCreatePostDialog = ({
   onCreated,
 }: IProfileMembershipCreatePostDialogProps) => {
   const toast = useToast();
+
+  /* =========================
+   STABLE TOAST REFERENCE
+========================= */
+  const toastRef = useRef(toast);
+
+  useEffect(() => {
+    toastRef.current = toast;
+  }, [toast]);
 
   const [postType, setPostType] = useState<ArtistMembershipPostType>("TEXT");
 
@@ -118,15 +126,19 @@ const ProfileMembershipCreatePostDialog = ({
     try {
       const response = await getMyTracksApi(accessToken);
 
-      setTracks(Array.isArray(response?.data) ? response.data : []);
+      const items = response?.data;
+
+      setTracks(Array.isArray(items) ? items : []);
     } catch (requestError) {
       console.error("Cannot load artist tracks:", requestError);
 
-      toast.error("Unable to load your tracks.");
+      setTracks([]);
+
+      toastRef.current.error("Unable to load your tracks.");
     } finally {
       setLoadingTracks(false);
     }
-  }, [accessToken, open, toast]);
+  }, [accessToken, open]);
 
   useEffect(() => {
     if (!open) {

@@ -672,24 +672,50 @@ public class PaymentController {
                                         : dto.getOrderCode()
                                                         .trim();
 
-                        if (!orderCode
-                                        .toUpperCase()
-                                        .startsWith("SCT")) {
+                        /*
+                         * =========================
+                         * ROUTE TEST PAYMENT
+                         * =========================
+                         *
+                         * SCM = Membership
+                         * SCT = Ticket
+                         *
+                         * VNPay vẫn là payment chính.
+                         * TEST chỉ dùng DEV/LOCAL.
+                         */
+                        String normalizedOrderCode = orderCode
+                                        .toUpperCase();
+
+                        Map<String, Object> data;
+
+                        if (normalizedOrderCode.startsWith(
+                                        "SCM")) {
+
+                                data = membershipPaymentService
+                                                .completeTestPayment(
+                                                                user.getId(),
+                                                                orderCode,
+                                                                dto.getTestCode());
+
+                        } else if (normalizedOrderCode.startsWith(
+                                        "SCT")) {
+
+                                data = ticketPaymentService
+                                                .completeTestPayment(
+                                                                user.getId(),
+                                                                orderCode,
+                                                                dto.getTestCode());
+
+                        } else {
 
                                 return ResponseEntity
                                                 .badRequest()
                                                 .body(
                                                                 new ApiResponse<>(
                                                                                 400,
-                                                                                "Only ticket payments are supported in test mode",
+                                                                                "Unsupported test payment order code",
                                                                                 null));
                         }
-
-                        Map<String, Object> data = ticketPaymentService
-                                        .completeTestPayment(
-                                                        user.getId(),
-                                                        orderCode,
-                                                        dto.getTestCode());
 
                         return ResponseEntity.ok(
                                         new ApiResponse<>(

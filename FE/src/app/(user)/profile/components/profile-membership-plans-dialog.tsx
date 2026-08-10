@@ -18,12 +18,16 @@ import WorkspacePremiumRoundedIcon from "@mui/icons-material/WorkspacePremiumRou
 import { useCallback, useEffect, useState } from "react";
 
 import {
+  completeTestMembershipPaymentApi,
   createArtistMembershipPaymentApi,
   getArtistMembershipAccessApi,
   getArtistMembershipPlansApi,
 } from "@/utils/api";
 
 import ProfileMembershipPlanCard from "./profile-membership-plan-card";
+import { useToast } from "@/utils/toast";
+
+const PAYMENT_TEST_MODE = process.env.NEXT_PUBLIC_PAYMENT_TEST_MODE === "true";
 
 const createEmptyMembershipAccess = (
   artistId: string
@@ -70,7 +74,11 @@ const ProfileMembershipPlansDialog = ({
 
   const [joiningPlanId, setJoiningPlanId] = useState<string | null>(null);
 
+  const [testingPlanId, setTestingPlanId] = useState<string | null>(null);
+
   const [error, setError] = useState<string | null>(null);
+
+  const toast = useToast();
 
   /*
    * =========================
@@ -177,6 +185,99 @@ const ProfileMembershipPlansDialog = ({
       );
 
       setJoiningPlanId(null);
+    }
+  };
+
+  /*
+   * =========================
+   * TEST MEMBERSHIP PURCHASE
+   * DEV ONLY
+   * =========================
+   */
+  const handleTestJoinPlan = async (plan: IArtistMembershipPlan) => {
+    if (!PAYMENT_TEST_MODE) {
+      return;
+    }
+
+    if (isOwner) {
+      setError("Artists cannot join their own membership plan.");
+
+      return;
+    }
+
+    if (!accessToken) {
+      onRequireLogin?.();
+
+      return;
+    }
+
+    if (joiningPlanId || testingPlanId || !plan.active) {
+      return;
+    }
+
+    setTestingPlanId(plan.id);
+    setError(null);
+
+    try {
+      /*
+       * STEP 1:
+       * Create a REAL SCM membership order.
+       */
+      const createResponse = await createArtistMembershipPaymentApi(
+        {
+          planId: plan.id,
+          locale: "en",
+        },
+        accessToken
+      );
+
+      const payment = createResponse?.data;
+
+      if (!payment?.orderCode) {
+        throw new Error(
+          createResponse?.message ||
+            "Unable to create the test membership payment."
+        );
+      }
+
+      /*
+       * STEP 2:
+       * Complete the real SCM order with TEST provider.
+       */
+      const completeResponse = await completeTestMembershipPaymentApi(
+        {
+          orderCode: payment.orderCode,
+          testCode: "SC_TEST_SUCCESS_123456",
+        },
+        accessToken
+      );
+
+      const completedPayment = completeResponse?.data;
+
+      if (!completedPayment || completedPayment.status !== "PAID") {
+        throw new Error(
+          completeResponse?.message ||
+            "The test membership payment was not completed."
+        );
+      }
+
+      /*
+       * STEP 3:
+       * Reload access.
+       *
+       * Membership should now become ACTIVE.
+       */
+      await loadPlans();
+    } catch (requestError) {
+      console.error("Cannot complete test membership purchase:", requestError);
+
+      setError(
+        requestError instanceof Error
+          ? requestError.message
+          : "Unable to complete the test membership purchase."
+      );
+    } finally {
+      setTestingPlanId(null);
     }
   };
 
@@ -552,7 +653,10 @@ const ProfileMembershipPlansDialog = ({
                   membershipAccess={membershipAccess}
                   isOwner={isOwner}
                   loading={joiningPlanId === plan.id}
+                  testLoading={testingPlanId === plan.id}
+                  showTestPurchase={PAYMENT_TEST_MODE}
                   onJoin={handleJoinPlan}
+                  onTestJoin={handleTestJoinPlan}
                 />
               ))}
             </Box>

@@ -166,8 +166,19 @@ public class SubscriptionController {
 
         /*
          * =========================
-         * LEGACY SUBSCRIPTION ENDPOINT
+         * SUBSCRIPTION CHANGE PLAN
          * =========================
+         *
+         * BASIC:
+         * → assigned automatically
+         *
+         * ARTIST / ARTIST_PRO:
+         * → must purchase through VNPay
+         *
+         * ARTIST_PRO_DEMO:
+         * → activate directly
+         * → no VNPay
+         * → SubscriptionService controls 7-day duration
          */
         @PostMapping({
                         "/subscribe",
@@ -177,55 +188,143 @@ public class SubscriptionController {
                         @RequestBody(required = false) SubscribePlanDTO dto,
                         HttpServletRequest request) {
 
-                User user = getCurrentUser(request);
+                try {
+                        User user = getCurrentUser(request);
 
-                if (user == null) {
-                        return ResponseEntity
-                                        .status(401)
-                                        .body(
-                                                        new ApiResponse<>(
-                                                                        401,
-                                                                        "Unauthorized",
-                                                                        null));
-                }
+                        if (user == null) {
+                                return ResponseEntity
+                                                .status(401)
+                                                .body(
+                                                                new ApiResponse<>(
+                                                                                401,
+                                                                                "Unauthorized",
+                                                                                null));
+                        }
 
-                String planCode = dto == null
-                                || dto.getPlanCode() == null
-                                                ? ""
-                                                : dto.getPlanCode()
-                                                                .trim()
-                                                                .toUpperCase();
+                        String planCode = dto == null
+                                        || dto.getPlanCode() == null
+                                                        ? ""
+                                                        : dto.getPlanCode()
+                                                                        .trim()
+                                                                        .toUpperCase();
 
-                /*
-                 * BASIC được hệ thống tự tạo.
-                 * User đang dùng gói trả phí phải dùng /cancel
-                 * để hủy vào cuối chu kỳ.
-                 */
-                if ("BASIC".equals(planCode)) {
+                        if (planCode.isBlank()) {
+                                return ResponseEntity
+                                                .badRequest()
+                                                .body(
+                                                                new ApiResponse<>(
+                                                                                400,
+                                                                                "Subscription plan code is required.",
+                                                                                null));
+                        }
+
+                        /*
+                         * =========================
+                         * BASIC PLAN
+                         * =========================
+                         *
+                         * BASIC is assigned automatically after
+                         * cancellation or subscription expiration.
+                         */
+                        if ("BASIC".equals(planCode)) {
+                                return ResponseEntity
+                                                .badRequest()
+                                                .body(
+                                                                new ApiResponse<>(
+                                                                                400,
+                                                                                "Basic plan is assigned automatically. Use /api/v1/subscriptions/cancel to cancel a paid subscription.",
+                                                                                null));
+                        }
+
+                        /*
+                         * =========================
+                         * PAID PLANS
+                         * =========================
+                         *
+                         * ARTIST and ARTIST_PRO must still use VNPay.
+                         */
+                        if ("ARTIST".equals(planCode)
+                                        || "ARTIST_PRO".equals(planCode)) {
+
+                                return ResponseEntity
+                                                .status(409)
+                                                .body(
+                                                                new ApiResponse<>(
+                                                                                409,
+                                                                                "Paid subscription plans must be purchased through VNPAY.",
+                                                                                Map.of(
+                                                                                                "paymentEndpoint",
+                                                                                                "/api/v1/payments/vnpay/create",
+                                                                                                "requestedPlan",
+                                                                                                planCode)));
+                        }
+
+                        /*
+                         * =========================
+                         * ARTIST PRO DEMO
+                         * =========================
+                         *
+                         * Direct activation.
+                         * No VNPay.
+                         */
+                        if ("ARTIST_PRO_DEMO".equals(planCode)) {
+
+                                Map<String, Object> data = subscriptionService.subscribe(
+                                                user.getId(),
+                                                planCode);
+
+                                return ResponseEntity.ok(
+                                                new ApiResponse<>(
+                                                                200,
+                                                                "Artist Pro Demo activated successfully.",
+                                                                data));
+                        }
+
+                        /*
+                         * =========================
+                         * UNKNOWN PLAN
+                         * =========================
+                         */
                         return ResponseEntity
                                         .badRequest()
                                         .body(
                                                         new ApiResponse<>(
                                                                         400,
-                                                                        "Basic plan is assigned automatically. Use /api/v1/subscriptions/cancel to cancel a paid subscription.",
+                                                                        "Subscription plan is invalid.",
+                                                                        null));
+
+                } catch (IllegalArgumentException e) {
+
+                        return ResponseEntity
+                                        .badRequest()
+                                        .body(
+                                                        new ApiResponse<>(
+                                                                        400,
+                                                                        e.getMessage(),
+                                                                        null));
+
+                } catch (IllegalStateException e) {
+
+                        return ResponseEntity
+                                        .status(409)
+                                        .body(
+                                                        new ApiResponse<>(
+                                                                        409,
+                                                                        e.getMessage(),
+                                                                        null));
+
+                } catch (Exception e) {
+
+                        e.printStackTrace();
+
+                        return ResponseEntity
+                                        .internalServerError()
+                                        .body(
+                                                        new ApiResponse<>(
+                                                                        500,
+                                                                        "Unable to change subscription plan.",
                                                                         null));
                 }
-
-                /*
-                 * Không cho kích hoạt ARTIST hoặc ARTIST_PRO
-                 * trực tiếp từ endpoint subscription cũ.
-                 */
-                return ResponseEntity
-                                .status(409)
-                                .body(
-                                                new ApiResponse<>(
-                                                                409,
-                                                                "Paid subscription plans must be purchased through VNPAY.",
-                                                                Map.of(
-                                                                                "paymentEndpoint",
-                                                                                "/api/v1/payments/vnpay/create",
-                                                                                "requestedPlan",
-                                                                                planCode)));
         }
         ///
 

@@ -14,6 +14,7 @@ import {
 import CheckCircleOutlineRoundedIcon from "@mui/icons-material/CheckCircleOutlineRounded";
 import LockOutlinedIcon from "@mui/icons-material/LockOutlined";
 import WorkspacePremiumOutlinedIcon from "@mui/icons-material/WorkspacePremiumOutlined";
+import ScienceRoundedIcon from "@mui/icons-material/ScienceRounded";
 
 const formatMembershipPrice = (value: number) => {
   return new Intl.NumberFormat("vi-VN", {
@@ -27,8 +28,14 @@ const ProfileMembershipPlanCard = ({
   plan,
   membershipAccess,
   isOwner = false,
+
   loading = false,
+  testLoading = false,
+
+  showTestPurchase = false,
+
   onJoin,
+  onTestJoin,
 }: IProfileMembershipPlanCardProps) => {
   const accentColor = /^#[0-9A-F]{6}$/i.test(plan.badgeColor || "")
     ? plan.badgeColor
@@ -40,7 +47,8 @@ const ProfileMembershipPlanCard = ({
   const hasOtherActivePlan =
     Boolean(membershipAccess?.active) && membershipAccess?.planId !== plan.id;
 
-  const isDisabled = loading || isOwner || !plan.active || isCurrentPlan;
+  const isDisabled =
+    loading || testLoading || isOwner || !plan.active || isCurrentPlan;
 
   const getButtonLabel = () => {
     if (loading) {
@@ -336,69 +344,133 @@ const ProfileMembershipPlanCard = ({
             mt: "auto !important",
           }}
         >
-          <Button
-            fullWidth
-            variant={isCurrentPlan ? "outlined" : "contained"}
-            disabled={isDisabled}
-            onClick={() => {
-              onJoin?.(plan);
-            }}
-            startIcon={
-              loading ? (
-                <CircularProgress
-                  size={17}
-                  thickness={5}
-                  sx={{
-                    color: "inherit",
-                  }}
-                />
-              ) : isCurrentPlan ? (
-                <CheckCircleOutlineRoundedIcon />
-              ) : (
-                <WorkspacePremiumOutlinedIcon />
-              )
-            }
-            sx={{
-              minHeight: 46,
+          <Stack spacing={1}>
+            {/* VNPAY - MAIN PAYMENT */}
+            <Button
+              fullWidth
+              variant={isCurrentPlan ? "outlined" : "contained"}
+              disabled={isDisabled}
+              onClick={() => {
+                onJoin?.(plan);
+              }}
+              startIcon={
+                loading ? (
+                  <CircularProgress
+                    size={17}
+                    thickness={5}
+                    sx={{
+                      color: "inherit",
+                    }}
+                  />
+                ) : isCurrentPlan ? (
+                  <CheckCircleOutlineRoundedIcon />
+                ) : (
+                  <WorkspacePremiumOutlinedIcon />
+                )
+              }
+              sx={{
+                minHeight: 46,
 
-              borderRadius: 2,
+                borderRadius: 2,
 
-              fontSize: 14,
-              fontWeight: 800,
+                fontSize: 14,
+                fontWeight: 800,
 
-              textTransform: "none",
+                textTransform: "none",
 
-              color: isCurrentPlan ? accentColor : "#FFFFFF",
+                color: isCurrentPlan ? accentColor : "#FFFFFF",
 
-              bgcolor: isCurrentPlan ? "transparent" : accentColor,
+                bgcolor: isCurrentPlan ? "transparent" : accentColor,
 
-              borderColor: alpha(accentColor, 0.62),
-
-              boxShadow: "none",
-
-              "&:hover": {
-                bgcolor: isCurrentPlan
-                  ? alpha(accentColor, 0.08)
-                  : alpha(accentColor, 0.86),
-
-                borderColor: accentColor,
+                borderColor: alpha(accentColor, 0.62),
 
                 boxShadow: "none",
-              },
 
-              "&.Mui-disabled": {
-                color: isCurrentPlan ? alpha(accentColor, 0.7) : "#777777",
+                "&:hover": {
+                  bgcolor: isCurrentPlan
+                    ? alpha(accentColor, 0.08)
+                    : alpha(accentColor, 0.86),
 
-                bgcolor: isCurrentPlan ? alpha(accentColor, 0.06) : "#252525",
+                  borderColor: accentColor,
 
-                borderColor: isCurrentPlan
-                  ? alpha(accentColor, 0.28)
-                  : "#383838",
-              },
-            }}
-          >
-            {getButtonLabel()}
-          </Button>
+                  boxShadow: "none",
+                },
+
+                "&.Mui-disabled": {
+                  color: isCurrentPlan ? alpha(accentColor, 0.7) : "#777777",
+
+                  bgcolor: isCurrentPlan ? alpha(accentColor, 0.06) : "#252525",
+
+                  borderColor: isCurrentPlan
+                    ? alpha(accentColor, 0.28)
+                    : "#383838",
+                },
+              }}
+            >
+              {loading
+                ? "Processing..."
+                : isCurrentPlan
+                ? "Currently a member"
+                : "Purchase with VNPay"}
+            </Button>
+
+            {/* TEST PURCHASE - DEV ONLY */}
+            {showTestPurchase && !isCurrentPlan && !isOwner && plan.active && (
+              <Button
+                fullWidth
+                variant="outlined"
+                disabled={isDisabled}
+                onClick={() => {
+                  onTestJoin?.(plan);
+                }}
+                startIcon={
+                  testLoading ? (
+                    <CircularProgress
+                      size={16}
+                      thickness={5}
+                      sx={{
+                        color: "inherit",
+                      }}
+                    />
+                  ) : (
+                    <ScienceRoundedIcon />
+                  )
+                }
+                sx={{
+                  minHeight: 42,
+
+                  color: "#B8B8B8",
+
+                  borderColor: "rgba(255,255,255,0.16)",
+
+                  bgcolor: "rgba(255,255,255,0.025)",
+
+                  borderRadius: 2,
+
+                  fontSize: 13,
+                  fontWeight: 800,
+
+                  textTransform: "none",
+
+                  "&:hover": {
+                    color: "#FFFFFF",
+
+                    bgcolor: "rgba(255,255,255,0.06)",
+
+                    borderColor: "rgba(255,255,255,0.28)",
+                  },
+
+                  "&.Mui-disabled": {
+                    color: "#555555",
+
+                    borderColor: "rgba(255,255,255,0.08)",
+                  },
+                }}
+              >
+                {testLoading ? "Processing test purchase..." : "Test Purchase"}
+              </Button>
+            )}
+          </Stack>
 
           {isCurrentPlan && membershipAccess?.cancelAtPeriodEnd && (
             <Typography
@@ -406,12 +478,14 @@ const ProfileMembershipPlanCard = ({
                 mt: 1.25,
 
                 color: "#F0A84B",
+
                 fontSize: 12,
                 lineHeight: 1.5,
+
                 textAlign: "center",
               }}
             >
-              "Support this artist and unlock members-only content."
+              Your membership will end at the end of the current billing period.
             </Typography>
           )}
         </Box>

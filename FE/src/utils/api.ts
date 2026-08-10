@@ -2680,6 +2680,23 @@ export const completeTestPaymentApi = (
     body: payload,
   });
 };
+
+/* =========================
+   MEMBERSHIP TEST PAYMENT
+   DEV ONLY
+========================= */
+
+export const completeTestMembershipPaymentApi = (
+  payload: ITestPaymentPayload,
+  accessToken: string
+) => {
+  return sendRequest<IBackendRes<IArtistMembershipPayment>>({
+    url: "/api/v1/payments/test/complete",
+    method: "POST",
+    headers: authHeaders(accessToken),
+    body: payload,
+  });
+};
 /* =========================
 
 ========================= */

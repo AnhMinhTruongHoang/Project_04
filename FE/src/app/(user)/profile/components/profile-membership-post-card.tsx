@@ -562,7 +562,7 @@ const ProfileMembershipPostCard = ({
                       fontSize: 12,
                     }}
                   >
-                    Bản nghe thử ·{" "}
+                    Play test ·{" "}
                     {formatPreviewDuration(post.track.previewDurationSeconds)}
                   </Typography>
                 </Box>
@@ -621,7 +621,7 @@ const ProfileMembershipPostCard = ({
                       },
                     }}
                   >
-                    Nghe thử
+                    Play
                   </Box>
                 </Button>
               </Stack>

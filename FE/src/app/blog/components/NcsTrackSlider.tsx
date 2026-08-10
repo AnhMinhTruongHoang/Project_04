@@ -52,12 +52,15 @@ export default function NcsTrackSlider() {
   const [tracks, setTracks] = React.useState<ITrackTop[]>([]);
   const { setCurrentTrack } = useTrackContext() as ITrackContext;
 
+  ///
   React.useEffect(() => {
     const fetchTracks = async () => {
       try {
         const res = await fetch(
-          `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/v1/tracks/top?category=ncs`,
-          { cache: "no-store" }
+          `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/v1/tracks/top?category=ncs&limit=6`,
+          {
+            cache: "no-store",
+          }
         );
 
         const json = await res.json();
@@ -66,14 +69,15 @@ export default function NcsTrackSlider() {
           ? json.data
           : json?.data?.result || [];
 
-        setTracks(data.slice(0, 10));
+        setTracks(data);
       } catch (error) {
         console.error("Fetch NCS tracks failed:", error);
       }
     };
 
-    fetchTracks();
+    void fetchTracks();
   }, []);
+  ///
 
   const scroll = (direction: "left" | "right") => {
     if (!scrollRef.current) return;

@@ -140,4 +140,91 @@ public class SubscriptionPlanSeeder
                 subscriptionPlanRepository.save(
                                 plan);
         }
+
+        /*
+         * =========================
+         * ARTIST PRO DEMO
+         * =========================
+         *
+         * Same benefits as Artist Pro.
+         * Free direct activation.
+         * Subscription duration is controlled by SubscriptionService.
+         */
+        private void upsertArtistProDemo() {
+
+                SubscriptionPlan artistPro = subscriptionPlanRepository.findByCode(
+                                "ARTIST_PRO");
+
+                if (artistPro == null) {
+                        throw new IllegalStateException(
+                                        "ARTIST_PRO plan must exist before creating demo plan");
+                }
+
+                SubscriptionPlan demo = subscriptionPlanRepository.findByCode(
+                                "ARTIST_PRO_DEMO");
+
+                LocalDateTime now = LocalDateTime.now();
+
+                if (demo == null) {
+
+                        demo = new SubscriptionPlan();
+
+                        demo.setId(
+                                        generateId());
+
+                        demo.setCode(
+                                        "ARTIST_PRO_DEMO");
+
+                        demo.setCreatedAt(
+                                        now);
+                }
+
+                demo.setName(
+                                "Artist Pro Demo");
+
+                demo.setDescription(
+                                "Try all Artist Pro creator tools free for 7 days.");
+
+                /*
+                 * Demo does not require VNPay.
+                 */
+                demo.setMonthlyPrice(
+                                0L);
+
+                /*
+                 * Copy Artist Pro permissions.
+                 */
+                demo.setUploadMinutesLimit(
+                                artistPro.getUploadMinutesLimit());
+
+                demo.setUnlimitedUploads(
+                                artistPro.getUnlimitedUploads());
+
+                demo.setAdvancedInsightsDays(
+                                artistPro.getAdvancedInsightsDays());
+
+                demo.setCanDistribute(
+                                artistPro.getCanDistribute());
+
+                demo.setCanMonetize(
+                                artistPro.getCanMonetize());
+
+                demo.setCanScheduleRelease(
+                                artistPro.getCanScheduleRelease());
+
+                demo.setHasMembershipBenefits(
+                                artistPro.getHasMembershipBenefits());
+
+                demo.setHasTicketingBenefits(
+                                artistPro.getHasTicketingBenefits());
+
+                demo.setIsActive(
+                                true);
+
+                demo.setUpdatedAt(
+                                now);
+
+                subscriptionPlanRepository.save(
+                                demo);
+        }
 }

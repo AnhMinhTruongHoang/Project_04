@@ -1,10 +1,11 @@
 import 'dart:io';
 
 import 'package:dio/dio.dart';
+import 'package:soundclone_mobile/core/config/api_config.dart';
+import 'package:soundclone_mobile/core/network/dio_client.dart';
+import 'package:soundclone_mobile/core/storage/token_storage.dart';
 
-import '../config/api_config.dart';
-import '../storage/token_storage.dart';
-import 'dio_client.dart';
+
 
 /*
  * ============================================================

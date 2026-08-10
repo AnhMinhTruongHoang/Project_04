@@ -801,7 +801,11 @@ declare global {
   }
   ///subscriptions
 
-  type SubscriptionPlanCode = "BASIC" | "ARTIST" | "ARTIST_PRO";
+  type SubscriptionPlanCode =
+    | "BASIC"
+    | "ARTIST"
+    | "ARTIST_PRO"
+    | "ARTIST_PRO_DEMO";
 
   type SubscriptionStatus = "ACTIVE" | "EXPIRED" | "CANCELED" | "PENDING";
 
@@ -1696,13 +1700,17 @@ declare global {
 
   interface IProfileMembershipPlanCardProps {
     plan: IArtistMembershipPlan;
-
     membershipAccess?: IArtistMembershipAccess | null;
 
     isOwner?: boolean;
+
     loading?: boolean;
+    testLoading?: boolean;
+
+    showTestPurchase?: boolean;
 
     onJoin?: (plan: IArtistMembershipPlan) => void;
+    onTestJoin?: (plan: IArtistMembershipPlan) => void;
   }
   /* =====================================================
    PROFILE MEMBERSHIP POST CARD

@@ -137,6 +137,16 @@ const getPlanAccent = (code: SubscriptionPlanCode) => {
     };
   }
 
+  if (code === "ARTIST_PRO_DEMO") {
+    return {
+      main: "#22C55E",
+      soft: "rgba(34,197,94,0.12)",
+      border: "rgba(34,197,94,0.64)",
+      gradient:
+        "linear-gradient(135deg, rgba(34,197,94,0.14), rgba(255,255,255,0.02))",
+    };
+  }
+
   return {
     main: "#c4c4c4",
     soft: "rgba(255,255,255,0.06)",
@@ -434,12 +444,16 @@ const SubscriptionPlansView = () => {
 
   const paidPlans = useMemo(() => {
     return sortedPlans.filter(
-      (plan) => plan.code === "ARTIST" || plan.code === "ARTIST_PRO"
+      (plan) =>
+        plan.code === "ARTIST" ||
+        plan.code === "ARTIST_PRO" ||
+        plan.code === "ARTIST_PRO_DEMO"
     );
   }, [sortedPlans]);
 
   const currentPlanCode = mySubscription?.plan?.code || "";
 
+  ///
   const handleChoosePlan = async (plan: ISubscriptionPlan) => {
     if (currentPlanCode === plan.code) {
       return;
@@ -453,8 +467,18 @@ const SubscriptionPlansView = () => {
     try {
       setChangingPlanCode(plan.code);
 
-      /* BASIC PLAN: CHANGE DIRECTLY */
-      if (plan.code === "BASIC") {
+      /*
+       * =========================
+       * DIRECT PLANS
+       * =========================
+       *
+       * BASIC
+       * ARTIST_PRO_DEMO
+       *
+       * Demo activates immediately for 7 days.
+       * No VNPay.
+       */
+      if (plan.code === "BASIC" || plan.code === "ARTIST_PRO_DEMO") {
         const response = await changeSubscriptionPlanApi(
           plan.code,
           accessToken
@@ -468,7 +492,7 @@ const SubscriptionPlansView = () => {
           setNotice({
             open: true,
             type: "error",
-            message: response?.message || "Cannot change subscription plan.",
+            message: response?.message || "Cannot activate subscription plan.",
           });
 
           return;
@@ -479,13 +503,25 @@ const SubscriptionPlansView = () => {
         setNotice({
           open: true,
           type: "success",
-          message: `Your plan is now ${response.data.plan.name}.`,
+          message:
+            plan.code === "ARTIST_PRO_DEMO"
+              ? "Artist Pro Demo is active for 7 days."
+              : `Your plan is now ${response.data.plan.name}.`,
         });
 
         return;
       }
 
-      /* PAID PLANS: CREATE VNPAY PAYMENT */
+      /*
+       * =========================
+       * PAID PLANS
+       * =========================
+       *
+       * ARTIST
+       * ARTIST_PRO
+       *
+       * VNPay remains the real payment flow.
+       */
       const paymentResponse = await createVnPayPaymentApi(
         plan.code,
         accessToken
@@ -537,6 +573,7 @@ const SubscriptionPlansView = () => {
       setChangingPlanCode("");
     }
   };
+  ///
 
   return (
     <Box
@@ -568,6 +605,9 @@ const SubscriptionPlansView = () => {
           mx: "auto",
         }}
       >
+        {/* =========================
+            PLANS HEADER
+        ========================= */}
         <Box
           sx={{
             textAlign: "center",
@@ -581,10 +621,12 @@ const SubscriptionPlansView = () => {
             component="h1"
             sx={{
               color: "#ffffff",
+
               fontSize: {
                 xs: 30,
                 md: 42,
               },
+
               fontWeight: 950,
               letterSpacing: "-0.045em",
             }}
@@ -595,17 +637,21 @@ const SubscriptionPlansView = () => {
           <Typography
             sx={{
               mt: 1,
+
               color: "#9ca3af",
+
               fontSize: {
                 xs: 13,
                 md: 15,
               },
+
               fontWeight: 650,
             }}
           >
             Choose the creator tools that match your music journey.
           </Typography>
 
+          {/* CURRENT SUBSCRIPTION LOADER */}
           {loadingSubscription && (
             <CircularProgress
               size={18}
@@ -616,13 +662,16 @@ const SubscriptionPlansView = () => {
             />
           )}
 
+          {/* CURRENT SUBSCRIPTION */}
           {mySubscription && (
             <Box
               sx={{
                 mt: 2,
+
                 display: "flex",
                 justifyContent: "center",
                 alignItems: "center",
+
                 gap: 1,
                 flexWrap: "wrap",
               }}
@@ -632,8 +681,17 @@ const SubscriptionPlansView = () => {
                 label={`Current plan: ${mySubscription.plan.name}`}
                 sx={{
                   color: "#ffffff",
-                  backgroundColor: "rgba(255,85,0,0.16)",
-                  border: "1px solid rgba(255,85,0,0.42)",
+
+                  bgcolor:
+                    mySubscription.plan.code === "ARTIST_PRO_DEMO"
+                      ? "rgba(34,197,94,0.14)"
+                      : "rgba(255,85,0,0.16)",
+
+                  border:
+                    mySubscription.plan.code === "ARTIST_PRO_DEMO"
+                      ? "1px solid rgba(34,197,94,0.42)"
+                      : "1px solid rgba(255,85,0,0.42)",
+
                   fontWeight: 900,
                 }}
               />
@@ -644,17 +702,21 @@ const SubscriptionPlansView = () => {
                   fontSize: 12,
                 }}
               >
-                Renews until{" "}
+                Active until{" "}
                 {formatDate(mySubscription.subscription.currentPeriodEnd)}
               </Typography>
             </Box>
           )}
         </Box>
 
+        {/* =========================
+            LOADING PLANS
+        ========================= */}
         {loadingPlans && (
           <Box
             sx={{
               minHeight: 300,
+
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
@@ -668,38 +730,55 @@ const SubscriptionPlansView = () => {
           </Box>
         )}
 
+        {/* =========================
+            LOAD ERROR
+        ========================= */}
         {!loadingPlans && loadError && (
           <Alert
             severity="error"
             sx={{
               maxWidth: 700,
               mx: "auto",
+
               color: "#ffffff",
-              backgroundColor: "rgba(211,47,47,0.14)",
+
+              bgcolor: "rgba(211,47,47,0.14)",
             }}
           >
             {loadError}
           </Alert>
         )}
 
+        {/* =========================
+            PLAN CARDS
+        ========================= */}
         {!loadingPlans && !loadError && (
           <Box
             sx={{
               display: "grid",
+
               gridTemplateColumns: {
                 xs: "1fr",
-                md: "repeat(2, minmax(0, 1fr))",
+                sm: "repeat(2, minmax(0, 1fr))",
+                lg: "repeat(3, minmax(0, 1fr))",
               },
+
               gap: 2.5,
-              maxWidth: 820,
+
+              maxWidth: 1160,
               mx: "auto",
             }}
           >
             {paidPlans.map((plan) => {
               const accent = getPlanAccent(plan.code);
+
               const isCurrent = currentPlanCode === plan.code;
+
               const isChanging = changingPlanCode === plan.code;
+
               const isPopular = plan.code === "ARTIST_PRO";
+
+              const isDemo = plan.code === "ARTIST_PRO_DEMO";
 
               return (
                 <Box
@@ -707,40 +786,57 @@ const SubscriptionPlansView = () => {
                   sx={{
                     position: "relative",
                     overflow: "hidden",
-                    minHeight: 390,
+
+                    minHeight: 410,
+
                     borderRadius: "10px",
+
                     border: `1px solid ${
                       isCurrent ? accent.main : accent.border
                     }`,
+
                     background: accent.gradient,
+
                     boxShadow: isPopular
                       ? "0 22px 60px rgba(215,169,40,0.13)"
+                      : isDemo
+                      ? "0 22px 60px rgba(34,197,94,0.10)"
                       : "0 22px 60px rgba(0,0,0,0.24)",
+
                     p: {
                       xs: 2.5,
                       md: 3,
                     },
 
-                    /* CENTER CONTENT: align items and center text */
                     display: "flex",
                     flexDirection: "column",
+
                     alignItems: "center",
+
                     textAlign: "center",
                   }}
                 >
+                  {/* MOST POPULAR BADGE */}
                   {isPopular && (
                     <Box
                       sx={{
                         position: "absolute",
+
                         top: 0,
                         right: 0,
+
                         px: 1.4,
                         py: 0.55,
+
                         color: "#111111",
-                        backgroundColor: accent.main,
+
+                        bgcolor: accent.main,
+
                         fontSize: 9,
                         fontWeight: 950,
+
                         letterSpacing: "0.05em",
+
                         textTransform: "uppercase",
                       }}
                     >
@@ -748,18 +844,49 @@ const SubscriptionPlansView = () => {
                     </Box>
                   )}
 
-                  {/* Header: icon + title centered */}
+                  {/* DEMO BADGE */}
+                  {isDemo && (
+                    <Box
+                      sx={{
+                        position: "absolute",
+
+                        top: 0,
+                        right: 0,
+
+                        px: 1.4,
+                        py: 0.55,
+
+                        color: "#07150C",
+
+                        bgcolor: accent.main,
+
+                        fontSize: 9,
+                        fontWeight: 950,
+
+                        letterSpacing: "0.05em",
+
+                        textTransform: "uppercase",
+                      }}
+                    >
+                      7-day demo
+                    </Box>
+                  )}
+
+                  {/* PLAN HEADER */}
                   <Box
                     sx={{
                       display: "flex",
                       alignItems: "center",
-                      gap: 1,
+
                       justifyContent: "center",
+
+                      gap: 1,
                     }}
                   >
                     <WorkspacePremiumRoundedIcon
                       sx={{
                         color: accent.main,
+
                         fontSize: 20,
                       }}
                     />
@@ -767,6 +894,7 @@ const SubscriptionPlansView = () => {
                     <Typography
                       sx={{
                         color: "#ffffff",
+
                         fontSize: 19,
                         fontWeight: 950,
                       }}
@@ -775,78 +903,127 @@ const SubscriptionPlansView = () => {
                     </Typography>
                   </Box>
 
+                  {/* PLAN DESCRIPTION */}
                   <Typography
                     sx={{
                       mt: 1,
+
                       minHeight: 44,
+
                       color: "#aeb4bd",
+
                       fontSize: 12,
                       fontWeight: 650,
+
                       lineHeight: 1.6,
                     }}
                   >
                     {plan.description}
                   </Typography>
 
-                  {/* Price centered */}
+                  {/* =========================
+                        PLAN PRICE
+                    ========================= */}
                   <Box
                     sx={{
                       mt: 2.5,
+
                       display: "flex",
                       alignItems: "baseline",
-                      gap: 0.7,
+
                       justifyContent: "center",
+
+                      gap: 0.7,
                     }}
                   >
                     <Typography
                       sx={{
                         color: "#ffffff",
+
                         fontSize: 31,
                         fontWeight: 950,
+
                         letterSpacing: "-0.045em",
                       }}
                     >
-                      {formatPrice(plan.monthlyPrice)}
+                      {isDemo ? "Free" : formatPrice(plan.monthlyPrice)}
                     </Typography>
 
-                    {plan.monthlyPrice > 0 && (
+                    {isDemo ? (
                       <Typography
                         sx={{
-                          color: "#8b949e",
+                          color: accent.main,
+
                           fontSize: 11,
-                          fontWeight: 750,
+                          fontWeight: 850,
                         }}
                       >
-                        VNĐ / month
+                        / 7 days
                       </Typography>
+                    ) : (
+                      plan.monthlyPrice > 0 && (
+                        <Typography
+                          sx={{
+                            color: "#8b949e",
+
+                            fontSize: 11,
+                            fontWeight: 750,
+                          }}
+                        >
+                          VNĐ / month
+                        </Typography>
+                      )
                     )}
                   </Box>
 
-                  {/* Button stays full width but constrained visually; center container */}
-                  <Box sx={{ width: "100%", maxWidth: 360, mt: 2, mb: 2.5 }}>
+                  {/* =========================
+                        PLAN ACTION
+                    ========================= */}
+                  <Box
+                    sx={{
+                      width: "100%",
+                      maxWidth: 360,
+
+                      mt: 2,
+                      mb: 2.5,
+                    }}
+                  >
                     <Button
                       fullWidth
                       disabled={isCurrent || isChanging}
                       onClick={() => void handleChoosePlan(plan)}
                       sx={{
                         height: 42,
+
                         borderRadius: "999px",
+
                         color: isCurrent ? "#a0a0a0" : "#ffffff",
-                        backgroundColor: isCurrent
+
+                        bgcolor: isCurrent
                           ? "rgba(255,255,255,0.06)"
+                          : isDemo
+                          ? "rgba(34,197,94,0.16)"
                           : "#050505",
-                        border: "1px solid rgba(255,255,255,0.2)",
+
+                        border: isDemo
+                          ? "1px solid rgba(34,197,94,0.55)"
+                          : "1px solid rgba(255,255,255,0.2)",
+
                         textTransform: "none",
+
                         fontSize: 13,
                         fontWeight: 950,
+
                         "&:hover": {
-                          backgroundColor: accent.main,
-                          color:
-                            plan.code === "ARTIST_PRO" ? "#111111" : "#ffffff",
+                          bgcolor: accent.main,
+
+                          color: isPopular || isDemo ? "#111111" : "#ffffff",
                         },
+
                         "&.Mui-disabled": {
                           color: "#8c8c8c",
-                          backgroundColor: "rgba(255,255,255,0.05)",
+
+                          bgcolor: "rgba(255,255,255,0.05)",
                         },
                       }}
                     >
@@ -859,22 +1036,30 @@ const SubscriptionPlansView = () => {
                         />
                       ) : isCurrent ? (
                         "Current plan"
-                      ) : accessToken ? (
-                        `Choose ${plan.name}`
-                      ) : (
+                      ) : !accessToken ? (
                         "Sign in to upgrade"
+                      ) : isDemo ? (
+                        "Activate 7-day demo"
+                      ) : (
+                        `Choose ${plan.name}`
                       )}
                     </Button>
                   </Box>
 
-                  {/* Features: center the list */}
+                  {/* =========================
+                        PLAN FEATURES
+                    ========================= */}
                   <Box
                     sx={{
                       display: "flex",
                       flexDirection: "column",
+
                       gap: 1.25,
+
                       alignItems: "center",
+
                       mt: 1,
+
                       width: "100%",
                       maxWidth: 420,
                     }}
@@ -915,6 +1100,9 @@ const SubscriptionPlansView = () => {
           </Box>
         )}
 
+        {/* =========================
+            FEATURE COMPARISON
+        ========================= */}
         {!loadingPlans && !loadError && sortedPlans.length > 0 && (
           <Box
             sx={{
@@ -928,13 +1116,18 @@ const SubscriptionPlansView = () => {
               component="h2"
               sx={{
                 mb: 4,
+
                 color: "#ffffff",
+
                 fontSize: {
                   xs: 28,
                   md: 38,
                 },
+
                 fontWeight: 950,
+
                 textAlign: "center",
+
                 letterSpacing: "-0.04em",
               }}
             >
@@ -944,38 +1137,55 @@ const SubscriptionPlansView = () => {
             <Box
               sx={{
                 overflowX: "auto",
+
                 borderRadius: "10px",
+
                 border: "1px solid rgba(255,255,255,0.1)",
-                backgroundColor: "rgba(13,15,16,0.88)",
+
+                bgcolor: "rgba(13,15,16,0.88)",
+
                 "&::-webkit-scrollbar": {
                   height: 8,
                 },
+
                 "&::-webkit-scrollbar-thumb": {
-                  backgroundColor: "rgba(255,255,255,0.18)",
+                  bgcolor: "rgba(255,255,255,0.18)",
+
                   borderRadius: "999px",
                 },
               }}
             >
               <Box
                 sx={{
-                  minWidth: 850,
+                  minWidth: 980,
                 }}
               >
+                {/* COMPARE HEADER */}
                 <Box
                   sx={{
                     display: "grid",
-                    gridTemplateColumns:
-                      "minmax(280px,1.5fr) repeat(3,minmax(160px,1fr))",
+
+                    gridTemplateColumns: `minmax(280px,1.5fr) repeat(${sortedPlans.length}, minmax(160px,1fr))`,
+
                     minHeight: 130,
+
                     alignItems: "center",
+
                     borderBottom: "1px solid rgba(255,255,255,0.14)",
                   }}
                 >
-                  <Box sx={{ px: 3 }} />
+                  <Box
+                    sx={{
+                      px: 3,
+                    }}
+                  />
 
                   {sortedPlans.map((plan) => {
                     const accent = getPlanAccent(plan.code);
+
                     const isCurrent = currentPlanCode === plan.code;
+
+                    const isDemo = plan.code === "ARTIST_PRO_DEMO";
 
                     return (
                       <Box
@@ -983,12 +1193,14 @@ const SubscriptionPlansView = () => {
                         sx={{
                           px: 2,
                           py: 2.5,
+
                           textAlign: "center",
                         }}
                       >
                         <Typography
                           sx={{
                             color: "#ffffff",
+
                             fontSize: 15,
                             fontWeight: 950,
                           }}
@@ -999,12 +1211,17 @@ const SubscriptionPlansView = () => {
                         <Typography
                           sx={{
                             mt: 0.5,
-                            color: "#8b949e",
+
+                            color: isDemo ? accent.main : "#8b949e",
+
                             fontSize: 10.5,
+
                             fontWeight: 700,
                           }}
                         >
-                          {plan.monthlyPrice > 0
+                          {isDemo
+                            ? "Free · 7 days"
+                            : plan.monthlyPrice > 0
                             ? `${formatPrice(plan.monthlyPrice)} VNĐ / month`
                             : "Free"}
                         </Typography>
@@ -1014,22 +1231,31 @@ const SubscriptionPlansView = () => {
                           label={
                             isCurrent
                               ? "Current"
+                              : isDemo
+                              ? "7-day demo"
                               : plan.code === "BASIC"
                               ? "Get started"
                               : "Select"
                           }
                           sx={{
                             mt: 1.2,
+
                             height: 22,
+
                             color: isCurrent ? accent.main : "#ffffff",
-                            backgroundColor: isCurrent
+
+                            bgcolor: isCurrent
                               ? accent.soft
+                              : isDemo
+                              ? "rgba(34,197,94,0.08)"
                               : "rgba(255,255,255,0.06)",
+
                             border: `1px solid ${
-                              isCurrent
+                              isCurrent || isDemo
                                 ? accent.border
                                 : "rgba(255,255,255,0.12)"
                             }`,
+
                             fontSize: 9,
                             fontWeight: 900,
                           }}
@@ -1039,14 +1265,18 @@ const SubscriptionPlansView = () => {
                   })}
                 </Box>
 
+                {/* COMPARE GROUPS */}
                 {compareGroups.map((group) => (
                   <Box key={group.title}>
                     <Box
                       sx={{
                         px: 3,
                         py: 1.4,
+
                         color: "#ffffff",
-                        backgroundColor: "rgba(255,255,255,0.035)",
+
+                        bgcolor: "rgba(255,255,255,0.035)",
+
                         borderBottom: "1px solid rgba(255,255,255,0.1)",
                       }}
                     >
@@ -1054,7 +1284,9 @@ const SubscriptionPlansView = () => {
                         sx={{
                           fontSize: 12,
                           fontWeight: 950,
+
                           textTransform: "uppercase",
+
                           letterSpacing: "0.045em",
                         }}
                       >
@@ -1067,20 +1299,29 @@ const SubscriptionPlansView = () => {
                         key={feature.key}
                         sx={{
                           display: "grid",
-                          gridTemplateColumns:
-                            "minmax(280px,1.5fr) repeat(3,minmax(160px,1fr))",
+
+                          gridTemplateColumns: `minmax(280px,1.5fr) repeat(${sortedPlans.length}, minmax(160px,1fr))`,
+
                           minHeight: 78,
+
                           alignItems: "center",
+
                           borderBottom:
                             featureIndex === group.features.length - 1
                               ? "none"
                               : "1px solid rgba(255,255,255,0.075)",
                         }}
                       >
-                        <Box sx={{ px: 3, py: 1.5 }}>
+                        <Box
+                          sx={{
+                            px: 3,
+                            py: 1.5,
+                          }}
+                        >
                           <Typography
                             sx={{
                               color: "#ffffff",
+
                               fontSize: 12,
                               fontWeight: 900,
                             }}
@@ -1091,10 +1332,15 @@ const SubscriptionPlansView = () => {
                           <Typography
                             sx={{
                               mt: 0.35,
+
                               maxWidth: 340,
+
                               color: "#777f89",
+
                               fontSize: 9.5,
+
                               fontWeight: 650,
+
                               lineHeight: 1.45,
                             }}
                           >
@@ -1108,10 +1354,15 @@ const SubscriptionPlansView = () => {
                             sx={{
                               px: 2,
                               py: 1.5,
+
                               minHeight: 78,
+
                               display: "flex",
+
                               alignItems: "center",
+
                               justifyContent: "center",
+
                               borderLeft: "1px solid rgba(255,255,255,0.055)",
                             }}
                           >
@@ -1133,6 +1384,7 @@ const SubscriptionPlansView = () => {
           sx={{
             mt: 8,
             mb: 3,
+
             borderColor: "rgba(255,255,255,0.08)",
           }}
         />
@@ -1140,17 +1392,21 @@ const SubscriptionPlansView = () => {
         <Typography
           sx={{
             color: "#747b84",
+
             fontSize: 11,
+
             textAlign: "center",
             lineHeight: 1.8,
           }}
         >
-          Subscription changes are activated directly while the payment module
-          is still in test mode. AI mastering is not included in SoundClone
-          plans.
+          Artist Pro Demo provides 7 days of Artist Pro access. Artist and
+          Artist Pro purchases continue to use VNPay.
         </Typography>
       </Box>
 
+      {/* =========================
+          PLAN NOTICE
+      ========================= */}
       <Snackbar
         open={notice.open}
         autoHideDuration={4000}

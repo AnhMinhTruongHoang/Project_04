@@ -541,6 +541,8 @@ const TicketCheckInDialog = ({
 
               fontSize: 11,
               lineHeight: 1.6,
+              textAlign: "center",
+              justifyContent: "center",
             }}
           >
             Scan the QR code from the guest's ticket or paste the ticket token

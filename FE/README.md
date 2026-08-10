@@ -2,7 +2,7 @@
 
 <p align="center">
   <img
-    src="./public/commercial/home.png"
+    src="https://res.cloudinary.com/eybmkz9z/image/upload/v1786382306/home_nfxqtj.png"
     alt="SoundClone Home"
     width="100%"
   />
@@ -61,7 +61,7 @@ The SoundClone Home page focuses on music discovery, listening history, recommen
 
 <p align="center">
   <img
-    src="./public/commercial/home.png"
+    src="https://res.cloudinary.com/eybmkz9z/image/upload/v1786382306/home_nfxqtj.png"
     alt="SoundClone Home Page"
     width="100%"
   />
@@ -75,7 +75,7 @@ Users can sign in to access personalized music, playlists, subscriptions, member
 
 <p align="center">
   <img
-    src="./public/commercial/login.png"
+    src="https://res.cloudinary.com/eybmkz9z/image/upload/v1786382306/login_hid1sw.png"
     alt="SoundClone Login"
     width="900"
   />
@@ -91,7 +91,7 @@ Artists can upload music, provide track information, artwork, categories, and li
 
 <p align="center">
   <img
-    src="./public/commercial/track-upload.png"
+    src="https://res.cloudinary.com/eybmkz9z/image/upload/v1786382309/track-upload_sjxoxd.png"
     alt="SoundClone Track Upload"
     width="900"
   />
@@ -105,7 +105,7 @@ The track detail experience provides playback, metadata, social interaction, wav
 
 <p align="center">
   <img
-    src="./public/commercial/track-detail.png"
+    src="https://res.cloudinary.com/eybmkz9z/image/upload/v1786382309/track-detail_ezczzh.png"
     alt="SoundClone Track Detail"
     width="900"
   />
@@ -119,7 +119,7 @@ The global player allows music to continue playing while users navigate through 
 
 <p align="center">
   <img
-    src="./public/commercial/global-player.png"
+    src="https://res.cloudinary.com/eybmkz9z/image/upload/v1786382308/global-player_sdun16.png"
     alt="SoundClone Global Music Player"
     width="900"
   />
@@ -133,7 +133,7 @@ Artist profiles bring together music, playlists, popular tracks, creator identit
 
 <p align="center">
   <img
-    src="./public/commercial/artist-profile.png"
+    src="https://res.cloudinary.com/eybmkz9z/image/upload/v1786382303/artist-profile_fpdns7.png"
     alt="SoundClone Artist Profile"
     width="900"
   />
@@ -147,7 +147,7 @@ Artist Studio provides creators with tools for managing tracks, reviewing perfor
 
 <p align="center">
   <img
-    src="./public/commercial/artist-studio.png"
+    src="https://res.cloudinary.com/eybmkz9z/image/upload/v1786382303/artist-studio_iyetnd.png"
     alt="SoundClone Artist Studio"
     width="900"
   />
@@ -161,7 +161,7 @@ SoundClone includes creator subscription plans that control access to creator fe
 
 <p align="center">
   <img
-    src="./public/commercial/subscription-plans.png"
+    src="https://res.cloudinary.com/eybmkz9z/image/upload/v1786382308/subscription-plans_u3q2ho.png"
     alt="SoundClone Subscription Plans"
     width="900"
   />
@@ -173,7 +173,7 @@ Artist Pro Demo provides a direct seven-day demonstration of Artist Pro-level cr
 
 <p align="center">
   <img
-    src="./public/commercial/artist-pro-demo.png"
+    src="https://res.cloudinary.com/eybmkz9z/image/upload/v1786382303/artist-pro-demo_fghyzb.png"
     alt="SoundClone Artist Pro Demo"
     width="900"
   />
@@ -189,7 +189,7 @@ Artists can create membership plans that allow listeners to support creators and
 
 <p align="center">
   <img
-    src="./public/commercial/membership-plans.png"
+    src="https://res.cloudinary.com/eybmkz9z/image/upload/v1786382306/membership-plans.png_gv8u60.png"
     alt="SoundClone Artist Membership Plans"
     width="900"
   />
@@ -203,7 +203,7 @@ Members can access artist community content based on membership permissions.
 
 <p align="center">
   <img
-    src="./public/commercial/membership-community.png"
+    src="https://res.cloudinary.com/eybmkz9z/image/upload/v1786382306/membership-community_bleugp.png"
     alt="SoundClone Membership Community"
     width="900"
   />
@@ -217,7 +217,7 @@ Artists can publish interactive polls for their community.
 
 <p align="center">
   <img
-    src="./public/commercial/membership-poll.png"
+    src="https://res.cloudinary.com/eybmkz9z/image/upload/v1786382306/membership-poll_qwgw2e.png"
     alt="SoundClone Membership Poll"
     width="900"
   />
@@ -231,7 +231,7 @@ Artists can share limited track previews with eligible members.
 
 <p align="center">
   <img
-    src="./public/commercial/membership-track-preview.png"
+    src="https://res.cloudinary.com/eybmkz9z/image/upload/v1786382306/membership-track-preview_fslbbo.png"
     alt="SoundClone Membership Track Preview"
     width="900"
   />
@@ -249,7 +249,7 @@ Artist profiles can display available concerts and ticketed events.
 
 <p align="center">
   <img
-    src="./public/commercial/concerts.png"
+    src="https://res.cloudinary.com/eybmkz9z/image/upload/v1786382303/concerts_mwn7xc.png"
     alt="SoundClone Concerts"
     width="900"
   />
@@ -263,7 +263,7 @@ Eligible artists can create ticketed events with venue information, dates, sale 
 
 <p align="center">
   <img
-    src="./public/commercial/event-create.png"
+    src="https://res.cloudinary.com/eybmkz9z/image/upload/v1786382303/event-create_itr7fw.png"
     alt="SoundClone Create Ticketed Event"
     width="900"
   />
@@ -277,7 +277,7 @@ Listeners can select ticket quantities and begin the payment process.
 
 <p align="center">
   <img
-    src="./public/commercial/ticket-purchase.png"
+    src="https://res.cloudinary.com/eybmkz9z/image/upload/v1786382309/ticket-purchase_ls8man.png"
     alt="SoundClone Ticket Purchase"
     width="900"
   />
@@ -291,7 +291,7 @@ Purchased tickets are stored in the user's Ticket Collection.
 
 <p align="center">
   <img
-    src="./public/commercial/ticket-collection.png"
+    src="https://res.cloudinary.com/eybmkz9z/image/upload/v1786382308/ticket-collection_ap0es9.png"
     alt="SoundClone Ticket Collection"
     width="900"
   />
@@ -305,7 +305,7 @@ Each valid ticket can provide QR data for event check-in.
 
 <p align="center">
   <img
-    src="./public/commercial/ticket-qr.png"
+    src="https://res.cloudinary.com/eybmkz9z/image/upload/v1786382309/ticket-qr_zkrvr3.png"
     alt="SoundClone Ticket QR"
     width="700"
   />
@@ -319,7 +319,7 @@ Authorized staff can scan ticket QR codes and validate check-in through the back
 
 <p align="center">
   <img
-    src="./public/commercial/qr-checkin.png"
+    src="https://res.cloudinary.com/eybmkz9z/image/upload/v1786382307/qr-checkin_hlqnvc.png"
     alt="SoundClone QR Ticket Check-in"
     width="500"
   />
@@ -333,7 +333,7 @@ SoundClone provides in-app notifications for relevant account, social, creator, 
 
 <p align="center">
   <img
-    src="./public/commercial/notifications.png"
+    src="https://res.cloudinary.com/eybmkz9z/image/upload/v1786382307/notifications_kzs1nc.png"
     alt="SoundClone Notifications"
     width="900"
   />
@@ -347,7 +347,7 @@ Users and artists can display badges awarded through the SoundClone platform.
 
 <p align="center">
   <img
-    src="./public/commercial/badges.png"
+    src="https://res.cloudinary.com/eybmkz9z/image/upload/v1786382303/badges_o5d6nf.png"
     alt="SoundClone Profile Badges"
     width="900"
   />
@@ -361,7 +361,7 @@ The creator experience includes wallet and earnings information for supported mo
 
 <p align="center">
   <img
-    src="./public/commercial/artist-wallet.png"
+    src="https://res.cloudinary.com/eybmkz9z/image/upload/v1786382303/artist-wallet_pmnq76.png"
     alt="SoundClone Artist Wallet"
     width="900"
   />
@@ -375,7 +375,7 @@ Artist payout workflows allow eligible creator earnings to be reviewed and proce
 
 <p align="center">
   <img
-    src="./public/commercial/payouts.png"
+    src="https://res.cloudinary.com/eybmkz9z/image/upload/v1786382307/payouts_fm2coc.png"
     alt="SoundClone Artist Payouts"
     width="900"
   />
@@ -389,7 +389,7 @@ The SoundClone admin interface provides management and moderation tools for plat
 
 <p align="center">
   <img
-    src="./public/commercial/admin-dashboard.png"
+    src="https://res.cloudinary.com/eybmkz9z/image/upload/v1786382302/admin-dashboard_hzv0rn.png"
     alt="SoundClone Admin Dashboard"
     width="100%"
   />
@@ -405,13 +405,13 @@ The mobile project is developed separately under the repository's `Mobile` direc
 
 <p align="center">
   <img
-    src="./public/commercial/mobile-home.png"
+    src="https://res.cloudinary.com/eybmkz9z/image/upload/v1786382306/mobile-home_ieg8oq.png"
     alt="SoundClone Mobile Home"
     width="330"
   />
   &nbsp;&nbsp;&nbsp;&nbsp;
   <img
-    src="./public/commercial/mobile-player.png"
+    src="https://res.cloudinary.com/eybmkz9z/image/upload/v1786382307/mobile-player_ecq3we.png"
     alt="SoundClone Mobile Player"
     width="330"
   />
@@ -421,17 +421,17 @@ The mobile project is developed separately under the repository's `Mobile` direc
 
 # 🧱 Frontend Technology Stack
 
-| Area              | Technology                  |
-| ----------------- | --------------------------- |
-| Framework         | Next.js                     |
-| Language          | TypeScript                  |
-| UI                | React + Material UI         |
-| Routing           | Next.js App Router          |
-| Authentication    | NextAuth                    |
-| API Communication | REST API                    |
-| Music Playback    | Global player / audio state |
-| Backend           | Spring Boot REST API        |
-| Mobile Client     | Flutter                     |
+| Area | Technology |
+|---|---|
+| Framework | Next.js |
+| Language | TypeScript |
+| UI | React + Material UI |
+| Routing | Next.js App Router |
+| Authentication | NextAuth |
+| API Communication | REST API |
+| Music Playback | Global player / audio state |
+| Backend | Spring Boot REST API |
+| Mobile Client | Flutter |
 
 ---
 
@@ -475,13 +475,25 @@ public/commercial/
 └── mobile-player.png
 ```
 
-Because this README is located inside the `FE` directory, GitHub image references use:
+The screenshots used by this README are delivered through **Cloudinary** so the documentation can display images independently of the local repository structure.
 
-```text
-./public/commercial/<filename>
+README image example:
+
+```html
+<img
+  src="https://res.cloudinary.com/eybmkz9z/image/upload/.../home.png"
+  alt="SoundClone Home"
+  width="900"
+/>
 ```
 
-Inside the Next.js application itself, the same file is referenced as:
+The original local screenshot files can still be kept in:
+
+```text
+FE/public/commercial/
+```
+
+Inside the Next.js application, local files from that directory are referenced as:
 
 ```text
 /commercial/<filename>
@@ -865,7 +877,7 @@ All third-party product names, libraries, services, payment providers, and trade
 
 <p align="center">
   <img
-    src="./public/commercial/home.png"
+    src="https://res.cloudinary.com/eybmkz9z/image/upload/v1786382306/home_nfxqtj.png"
     alt="SoundClone"
     width="100%"
   />

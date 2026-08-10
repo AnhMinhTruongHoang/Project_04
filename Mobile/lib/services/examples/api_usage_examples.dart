@@ -9,28 +9,53 @@ import '../services/api_service.dart';
  * SOUNDCLONE MOBILE - API USAGE EXAMPLES
  * ============================================================
  *
- * File này dùng để tham khảo cách gọi ApiService.
+ * SOURCE:
+ * - Flutter ApiService mirrors current Web src/utils/api.ts.
  *
- * Không bắt buộc phải gọi trực tiếp toàn bộ class này trong UI.
- * Khi làm từng màn hình, copy phần API tương ứng vào:
+ * PURPOSE:
+ * - Show how each Flutter screen/repository can call ApiService.
+ * - This file is documentation/example code, not UI state management.
  *
- * - LoginScreen
- * - RegisterScreen
- * - HomeScreen
- * - ProfileScreen
- * - TrackDetailScreen
- * - PlaylistScreen
- * - ArtistStudioScreen
+ * IMPORTANT ARCHITECTURE NOTE:
  *
- * ApiService đã quản lý:
+ * Widget
+ *   -> Controller / Provider / Repository
+ *   -> ApiService
+ *   -> DioClient
+ *   -> Spring Boot Backend
  *
- * - Base URL
- * - Access token
- * - Refresh token
- * - Authorization header
- * - Auto refresh token khi gặp 401
- * - Parse response
- * - Upload multipart
+ * Do NOT create a separate Dio instance inside each screen.
+ *
+ * ============================================================
+ * IMPORTANT WEB -> MOBILE DIFFERENCES
+ * ============================================================
+ *
+ * [1] Next.js /api/revalidate
+ *     -> WEB ONLY.
+ *     -> Flutter does NOT call it.
+ *
+ * [2] getTracksByUserApi / getUserPlaylistsApi / getUserAlbumsApi
+ *     -> Current Web compatibility fallbacks.
+ *     -> Backend does not currently provide dedicated public endpoints.
+ *     -> Flutter ApiService keeps equivalent helpers but marks them clearly.
+ *
+ * [3] Payment
+ *     -> VNPay remains the main provider.
+ *     -> Test Payment is DEV ONLY and does not replace VNPay.
+ *
+ * [4] Payment status
+ *     -> Use unified:
+ *
+ *        GET /api/v1/payments/{orderCode}
+ *
+ *     -> Prefix routing:
+ *        SC...  = Subscription
+ *        SCM... = Membership
+ *        SCT... = Ticket
+ *
+ * [5] Token
+ *     -> DioClient automatically adds Bearer token and refreshes once on 401.
+ *     -> UI should not manually attach Authorization headers.
  */
 
 class ApiUsageExamples {
@@ -44,20 +69,13 @@ class ApiUsageExamples {
    * ============================================================
    */
 
-  /// Hàm hỗ trợ in kết quả API khi development.
   static void printResponse(String apiName, ApiResponse<dynamic> response) {
     debugPrint('========== $apiName ==========');
-
     debugPrint('Status: ${response.statusCode}');
-
     debugPrint('Message: ${response.message}');
-
     debugPrint('Data: ${response.data}');
-
     debugPrint('Error: ${response.error}');
-
     debugPrint('Success: ${response.isSuccess}');
-
     debugPrint('==============================');
   }
 
@@ -67,12 +85,6 @@ class ApiUsageExamples {
    * ============================================================
    */
 
-  /// Đăng nhập bằng email và mật khẩu.
-  ///
-  /// Khi đăng nhập thành công, ApiService tự lưu:
-  ///
-  /// - access_token
-  /// - refresh_token
   static Future<ApiResponse<dynamic>> loginExample({
     required String email,
     required String password,
@@ -84,19 +96,16 @@ class ApiUsageExamples {
     if (response.isSuccess) {
       debugPrint('Login successful.');
 
-      debugPrint('Access token: ${api.accessToken}');
-    } else if (response.isUnauthorized) {
-      debugPrint('Email or password is incorrect.');
-    } else {
-      debugPrint(response.message);
+      /*
+       * ApiService saves access/refresh token automatically.
+       * DioClient reads token from secure storage for later requests.
+       */
+      debugPrint('Access token loaded: ${api.accessToken != null}');
     }
 
     return response;
   }
 
-  /// Đăng ký tài khoản local mới.
-  ///
-  /// Backend sẽ gửi OTP về email sau khi đăng ký thành công.
   static Future<ApiResponse<dynamic>> registerExample({
     required String name,
     required String email,
@@ -110,20 +119,9 @@ class ApiUsageExamples {
 
     printResponse('REGISTER', response);
 
-    if (response.statusCode == 201) {
-      debugPrint('Registration successful. Open OTP screen.');
-    } else if (response.isConflict) {
-      final data = response.data;
-
-      debugPrint('Email already exists.');
-
-      debugPrint('Conflict data: $data');
-    }
-
     return response;
   }
 
-  /// Xác thực OTP đăng ký.
   static Future<ApiResponse<dynamic>> verifyOtpExample({
     required String email,
     required String otp,
@@ -132,14 +130,9 @@ class ApiUsageExamples {
 
     printResponse('VERIFY OTP', response);
 
-    if (response.isSuccess) {
-      debugPrint('Account verified successfully.');
-    }
-
     return response;
   }
 
-  /// Gửi lại OTP đăng ký.
   static Future<ApiResponse<dynamic>> resendOtpExample({
     required String email,
   }) async {
@@ -150,7 +143,6 @@ class ApiUsageExamples {
     return response;
   }
 
-  /// Gửi OTP quên mật khẩu.
   static Future<ApiResponse<dynamic>> forgotPasswordExample({
     required String email,
   }) async {
@@ -161,7 +153,6 @@ class ApiUsageExamples {
     return response;
   }
 
-  /// Đặt lại mật khẩu bằng OTP.
   static Future<ApiResponse<dynamic>> resetPasswordExample({
     required String email,
     required String otp,
@@ -178,39 +169,28 @@ class ApiUsageExamples {
     return response;
   }
 
-  /// Lấy tài khoản hiện đang đăng nhập.
   static Future<ApiResponse<dynamic>> getAccountExample() async {
     final response = await api.getAccountApi();
 
     printResponse('GET ACCOUNT', response);
 
-    if (response.isSuccess) {
-      final data = response.data;
-
-      debugPrint('Account data: $data');
-    }
-
     return response;
   }
 
-  /// Đăng xuất và xóa token trên thiết bị.
   static Future<ApiResponse<dynamic>> logoutExample() async {
     final response = await api.logoutApi();
 
     printResponse('LOGOUT', response);
-
-    debugPrint('Access token after logout: ${api.accessToken}');
 
     return response;
   }
 
   /*
    * ============================================================
-   * PROFILE EXAMPLES
+   * PROFILE / USER EXAMPLES
    * ============================================================
    */
 
-  /// Lấy thông tin user theo ID.
   static Future<ApiResponse<dynamic>> getUserByIdExample({
     required String userId,
   }) async {
@@ -221,16 +201,20 @@ class ApiUsageExamples {
     return response;
   }
 
-  /// User tự cập nhật profile của mình.
-  ///
-  /// Backend nhận user hiện tại từ access token,
-  /// vì vậy không cần truyền userId.
+  /*
+   * PATCH /users/me is PARTIAL.
+   *
+   * name is NOT required.
+   * This allows avatar-only or cover-only updates.
+   */
   static Future<ApiResponse<dynamic>> updateMyProfileExample({
-    required String name,
+    String? name,
     String? bio,
     String? website,
     String? avatarUrl,
     String? coverUrl,
+    String? city,
+    String? country,
   }) async {
     final response = await api.updateMyProfileApi(
       name: name,
@@ -238,30 +222,22 @@ class ApiUsageExamples {
       website: website,
       avatarUrl: avatarUrl,
       coverUrl: coverUrl,
+      city: city,
+      country: country,
     );
 
     printResponse('UPDATE MY PROFILE', response);
 
-    if (response.isSuccess) {
-      debugPrint('Profile updated successfully.');
-    } else if (response.isForbidden) {
-      debugPrint('Account is not allowed to update this profile.');
-    }
-
     return response;
   }
 
-  /// Upload avatar rồi cập nhật profile.
+  /*
+   * Example:
+   * Upload image first, then PATCH only avatarUrl.
+   */
   static Future<ApiResponse<dynamic>> uploadAndUpdateAvatarExample({
     required File avatarFile,
-    required String currentName,
-    String? currentBio,
-    String? currentWebsite,
   }) async {
-    /*
-     * Bước 1:
-     * Upload file ảnh.
-     */
     final uploadResponse = await api.uploadImageApi(avatarFile);
 
     printResponse('UPLOAD AVATAR', uploadResponse);
@@ -270,20 +246,16 @@ class ApiUsageExamples {
       return uploadResponse;
     }
 
-    /*
-     * Bước 2:
-     * Lấy URL ảnh từ response upload.
-     */
-    final uploadData = uploadResponse.data;
+    final data = uploadResponse.data;
 
     String? avatarUrl;
 
-    if (uploadData is Map) {
+    if (data is Map) {
       avatarUrl =
-          uploadData['url']?.toString() ??
-          uploadData['path']?.toString() ??
-          uploadData['fileUrl']?.toString() ??
-          uploadData['filePath']?.toString();
+          data['url']?.toString() ??
+          data['path']?.toString() ??
+          data['fileUrl']?.toString() ??
+          data['filePath']?.toString();
     }
 
     if (avatarUrl == null || avatarUrl.trim().isEmpty) {
@@ -294,20 +266,102 @@ class ApiUsageExamples {
       );
     }
 
-    /*
-     * Bước 3:
-     * Lưu URL ảnh mới vào profile user.
-     */
-    final updateResponse = await api.updateMyProfileApi(
-      name: currentName,
-      bio: currentBio,
-      website: currentWebsite,
-      avatarUrl: avatarUrl,
-    );
+    final updateResponse = await api.updateMyProfileApi(avatarUrl: avatarUrl);
 
     printResponse('UPDATE PROFILE AVATAR', updateResponse);
 
     return updateResponse;
+  }
+
+  /*
+   * Same flow for cover image.
+   */
+  static Future<ApiResponse<dynamic>> uploadAndUpdateCoverExample({
+    required File coverFile,
+  }) async {
+    final uploadResponse = await api.uploadImageApi(coverFile);
+
+    if (!uploadResponse.isSuccess) {
+      return uploadResponse;
+    }
+
+    final data = uploadResponse.data;
+
+    String? coverUrl;
+
+    if (data is Map) {
+      coverUrl =
+          data['url']?.toString() ??
+          data['path']?.toString() ??
+          data['fileUrl']?.toString() ??
+          data['filePath']?.toString();
+    }
+
+    if (coverUrl == null || coverUrl.trim().isEmpty) {
+      return const ApiResponse<dynamic>(
+        statusCode: 400,
+        message: 'Cannot resolve uploaded cover URL.',
+        error: 'INVALID_UPLOAD_RESPONSE',
+      );
+    }
+
+    final response = await api.updateMyProfileApi(coverUrl: coverUrl);
+
+    printResponse('UPDATE PROFILE COVER', response);
+
+    return response;
+  }
+
+  /*
+   * ============================================================
+   * FOLLOW EXAMPLES
+   * ============================================================
+   */
+
+  static Future<ApiResponse<dynamic>> followUserExample({
+    required String userId,
+  }) async {
+    final response = await api.followUserApi(userId);
+
+    printResponse('FOLLOW USER', response);
+
+    return response;
+  }
+
+  static Future<ApiResponse<dynamic>> unfollowUserExample({
+    required String userId,
+  }) async {
+    final response = await api.unfollowUserApi(userId);
+
+    printResponse('UNFOLLOW USER', response);
+
+    return response;
+  }
+
+  static Future<ApiResponse<dynamic>> getFollowStatusExample({
+    required String userId,
+  }) async {
+    final response = await api.getFollowStatusApi(userId);
+
+    printResponse('FOLLOW STATUS', response);
+
+    return response;
+  }
+
+  static Future<ApiResponse<dynamic>> getMyFollowingExample() async {
+    final response = await api.getMyFollowingApi();
+
+    printResponse('GET MY FOLLOWING', response);
+
+    return response;
+  }
+
+  static Future<ApiResponse<dynamic>> getMyFollowersExample() async {
+    final response = await api.getMyFollowersApi();
+
+    printResponse('GET MY FOLLOWERS', response);
+
+    return response;
   }
 
   /*
@@ -316,7 +370,6 @@ class ApiUsageExamples {
    * ============================================================
    */
 
-  /// Lấy danh sách track có phân trang.
   static Future<ApiResponse<dynamic>> getTracksExample({
     int current = 1,
     int pageSize = 10,
@@ -332,16 +385,11 @@ class ApiUsageExamples {
       final tracks = api.extractResultList(response);
 
       debugPrint('Track count: ${tracks.length}');
-
-      for (final track in tracks) {
-        debugPrint('Track: $track');
-      }
     }
 
     return response;
   }
 
-  /// Lấy toàn bộ track approved/public.
   static Future<ApiResponse<dynamic>> getAllTracksExample() async {
     final response = await api.getAllTracksApi();
 
@@ -350,7 +398,6 @@ class ApiUsageExamples {
     return response;
   }
 
-  /// Lấy chi tiết track theo ID.
   static Future<ApiResponse<dynamic>> getTrackDetailExample({
     required String trackId,
   }) async {
@@ -361,7 +408,6 @@ class ApiUsageExamples {
     return response;
   }
 
-  /// Tìm kiếm track theo từ khóa.
   static Future<ApiResponse<dynamic>> searchTrackExample({
     required String keyword,
   }) async {
@@ -372,47 +418,28 @@ class ApiUsageExamples {
     return response;
   }
 
-  /// Like một track.
-  static Future<ApiResponse<dynamic>> likeTrackExample({
-    required String trackId,
+  /*
+   * WEB COMPATIBILITY EXAMPLE.
+   *
+   * This currently downloads public tracks and filters by uploaderId
+   * locally because Backend does not expose /users/{userId}/tracks.
+   *
+   * Do NOT treat this as a dedicated Backend endpoint.
+   */
+  static Future<ApiResponse<dynamic>> getArtistTracksCompatibilityExample({
+    required String artistId,
   }) async {
-    final response = await api.likeTrackApi(trackId);
+    final response = await api.getTracksByUserApi(
+      userId: artistId,
+      current: 1,
+      pageSize: 20,
+    );
 
-    printResponse('LIKE TRACK', response);
-
-    return response;
-  }
-
-  /// Bỏ like hoặc dislike track.
-  static Future<ApiResponse<dynamic>> dislikeTrackExample({
-    required String trackId,
-  }) async {
-    final response = await api.dislikeTrackApi(trackId);
-
-    printResponse('DISLIKE TRACK', response);
+    printResponse('GET ARTIST TRACKS - COMPATIBILITY', response);
 
     return response;
   }
 
-  /// Lấy danh sách track current user đã like.
-  static Future<ApiResponse<dynamic>> getLikedTracksExample() async {
-    final response = await api.getLikedTracksApi();
-
-    printResponse('GET LIKED TRACKS', response);
-
-    return response;
-  }
-
-  /// Lấy track do current user upload.
-  static Future<ApiResponse<dynamic>> getMyTracksExample() async {
-    final response = await api.getMyTracksApi();
-
-    printResponse('GET MY TRACKS', response);
-
-    return response;
-  }
-
-  /// Tạo track mới bằng audio, ảnh và metadata.
   static Future<ApiResponse<dynamic>> createTrackExample({
     required String title,
     required File audioFile,
@@ -422,8 +449,8 @@ class ApiUsageExamples {
   }) async {
     final files = <String, File>{
       /*
-       * Tên field phải đúng với MultipartFile
-       * mà TrackController Backend đang nhận.
+       * IMPORTANT:
+       * Keep these multipart keys synchronized with TrackController.
        */
       'audioFile': audioFile,
     };
@@ -438,7 +465,9 @@ class ApiUsageExamples {
       'categoryId': categoryId?.trim(),
     };
 
-    fields.removeWhere((_, value) => value == null);
+    fields.removeWhere((_, value) {
+      return value == null || (value is String && value.trim().isEmpty);
+    });
 
     final response = await api.createTrackApi(fields: fields, files: files);
 
@@ -449,67 +478,38 @@ class ApiUsageExamples {
 
   /*
    * ============================================================
-   * FOLLOW EXAMPLES
+   * LIKE / COMMENT EXAMPLES
    * ============================================================
    */
 
-  /// Follow một user.
-  static Future<ApiResponse<dynamic>> followUserExample({
-    required String userId,
+  static Future<ApiResponse<dynamic>> likeTrackExample({
+    required String trackId,
   }) async {
-    final response = await api.followUserApi(userId);
+    final response = await api.likeTrackApi(trackId);
 
-    printResponse('FOLLOW USER', response);
+    printResponse('LIKE TRACK', response);
 
     return response;
   }
 
-  /// Bỏ follow một user.
-  static Future<ApiResponse<dynamic>> unfollowUserExample({
-    required String userId,
+  static Future<ApiResponse<dynamic>> dislikeTrackExample({
+    required String trackId,
   }) async {
-    final response = await api.unfollowUserApi(userId);
+    final response = await api.dislikeTrackApi(trackId);
 
-    printResponse('UNFOLLOW USER', response);
-
-    return response;
-  }
-
-  /// Kiểm tra đã follow user hay chưa.
-  static Future<ApiResponse<dynamic>> getFollowStatusExample({
-    required String userId,
-  }) async {
-    final response = await api.getFollowStatusApi(userId);
-
-    printResponse('GET FOLLOW STATUS', response);
-
-    if (response.isSuccess && response.data is Map) {
-      final data = response.data as Map;
-
-      final isFollowing = data['following'] ?? data['isFollowing'] ?? false;
-
-      debugPrint('Following: $isFollowing');
-    }
+    printResponse('DISLIKE TRACK', response);
 
     return response;
   }
 
-  /// Lấy danh sách user current user đang follow.
-  static Future<ApiResponse<dynamic>> getMyFollowingExample() async {
-    final response = await api.getMyFollowingApi();
+  static Future<ApiResponse<dynamic>> getLikedTracksExample() async {
+    final response = await api.getLikedTracksApi();
 
-    printResponse('GET MY FOLLOWING', response);
+    printResponse('GET LIKED TRACKS', response);
 
     return response;
   }
 
-  /*
-   * ============================================================
-   * COMMENT EXAMPLES
-   * ============================================================
-   */
-
-  /// Lấy comment của một track.
   static Future<ApiResponse<dynamic>> getTrackCommentsExample({
     required String trackId,
   }) async {
@@ -520,10 +520,10 @@ class ApiUsageExamples {
     return response;
   }
 
-  /// Tạo comment cho một track.
   static Future<ApiResponse<dynamic>> createCommentExample({
     required String trackId,
     required String content,
+    double? moment,
   }) async {
     if (content.trim().isEmpty) {
       return const ApiResponse<dynamic>(
@@ -536,20 +536,10 @@ class ApiUsageExamples {
     final response = await api.createTrackCommentApi(
       trackId: trackId,
       content: content,
+      moment: moment,
     );
 
     printResponse('CREATE COMMENT', response);
-
-    return response;
-  }
-
-  /// Xóa comment theo ID.
-  static Future<ApiResponse<dynamic>> deleteCommentExample({
-    required String commentId,
-  }) async {
-    final response = await api.deleteCommentApi(commentId);
-
-    printResponse('DELETE COMMENT', response);
 
     return response;
   }
@@ -560,7 +550,6 @@ class ApiUsageExamples {
    * ============================================================
    */
 
-  /// Lấy playlist của current user.
   static Future<ApiResponse<dynamic>> getMyPlaylistsExample() async {
     final response = await api.getMyPlaylistsApi();
 
@@ -569,7 +558,6 @@ class ApiUsageExamples {
     return response;
   }
 
-  /// Tạo playlist rỗng.
   static Future<ApiResponse<dynamic>> createPlaylistExample({
     required String title,
     bool isPublic = true,
@@ -584,7 +572,6 @@ class ApiUsageExamples {
     return response;
   }
 
-  /// Cập nhật playlist.
   static Future<ApiResponse<dynamic>> updatePlaylistExample({
     required String playlistId,
     required String title,
@@ -600,7 +587,6 @@ class ApiUsageExamples {
     return response;
   }
 
-  /// Xóa playlist.
   static Future<ApiResponse<dynamic>> deletePlaylistExample({
     required String playlistId,
   }) async {
@@ -617,7 +603,6 @@ class ApiUsageExamples {
    * ============================================================
    */
 
-  /// Lưu tiến độ nghe track.
   static Future<ApiResponse<dynamic>> saveListeningProgressExample({
     required String trackId,
     required double position,
@@ -640,11 +625,18 @@ class ApiUsageExamples {
     return response;
   }
 
-  /// Lấy lịch sử nghe ở trang Home.
   static Future<ApiResponse<dynamic>> getListeningHistoryExample() async {
     final response = await api.getHomeListeningHistoryApi(limit: 10);
 
     printResponse('GET LISTENING HISTORY', response);
+
+    return response;
+  }
+
+  static Future<ApiResponse<dynamic>> getBecauseYouListenedExample() async {
+    final response = await api.getBecauseYouListenedApi(limit: 10);
+
+    printResponse('GET BECAUSE YOU LISTENED', response);
 
     return response;
   }
@@ -655,7 +647,6 @@ class ApiUsageExamples {
    * ============================================================
    */
 
-  /// Lấy notification của current user.
   static Future<ApiResponse<dynamic>> getNotificationsExample({
     int page = 0,
     int size = 20,
@@ -672,7 +663,6 @@ class ApiUsageExamples {
     return response;
   }
 
-  /// Lấy số notification chưa đọc.
   static Future<ApiResponse<dynamic>> getUnreadCountExample() async {
     final response = await api.getUnreadNotificationCountApi();
 
@@ -681,7 +671,6 @@ class ApiUsageExamples {
     return response;
   }
 
-  /// Đánh dấu notification đã đọc.
   static Future<ApiResponse<dynamic>> readNotificationExample({
     required String notificationId,
   }) async {
@@ -692,13 +681,20 @@ class ApiUsageExamples {
     return response;
   }
 
+  static Future<ApiResponse<dynamic>> readAllNotificationsExample() async {
+    final response = await api.markAllNotificationsAsReadApi();
+
+    printResponse('READ ALL NOTIFICATIONS', response);
+
+    return response;
+  }
+
   /*
    * ============================================================
-   * SUBSCRIPTION & PAYMENT EXAMPLES
+   * SUBSCRIPTION + VNPAY EXAMPLES
    * ============================================================
    */
 
-  /// Lấy danh sách gói subscription.
   static Future<ApiResponse<dynamic>> getSubscriptionPlansExample() async {
     final response = await api.getSubscriptionPlansApi();
 
@@ -707,7 +703,6 @@ class ApiUsageExamples {
     return response;
   }
 
-  /// Lấy subscription hiện tại.
   static Future<ApiResponse<dynamic>> getMySubscriptionExample() async {
     final response = await api.getMySubscriptionApi();
 
@@ -716,13 +711,15 @@ class ApiUsageExamples {
     return response;
   }
 
-  /// Tạo URL thanh toán VNPay.
-  static Future<ApiResponse<dynamic>> createVnPayPaymentExample({
+  /*
+   * MAIN paid subscription payment flow.
+   */
+  static Future<ApiResponse<dynamic>> createVnPaySubscriptionExample({
     required String planCode,
   }) async {
     final response = await api.createVnPayPaymentApi(planCode);
 
-    printResponse('CREATE VNPAY PAYMENT', response);
+    printResponse('CREATE SUBSCRIPTION VNPAY', response);
 
     if (response.isSuccess && response.data is Map) {
       final data = response.data as Map;
@@ -730,19 +727,47 @@ class ApiUsageExamples {
       final paymentUrl =
           data['paymentUrl']?.toString() ?? data['url']?.toString();
 
+      final orderCode = data['orderCode']?.toString();
+
+      debugPrint('Order code: $orderCode');
       debugPrint('VNPay URL: $paymentUrl');
+
+      /*
+       * Mobile next step:
+       * Open paymentUrl using url_launcher/webview/external browser.
+       *
+       * After return/deep-link:
+       * GET /payments/{orderCode}
+       */
     }
 
     return response;
   }
 
   /*
+   * Unified payment status example.
+   *
+   * Works for:
+   * SC...
+   * SCM...
+   * SCT...
+   */
+  static Future<ApiResponse<dynamic>> getPaymentStatusExample({
+    required String orderCode,
+  }) async {
+    final response = await api.getPaymentApi(orderCode);
+
+    printResponse('GET PAYMENT STATUS', response);
+
+    return response;
+  }
+
+  /*
    * ============================================================
-   * ARTIST STUDIO EXAMPLES
+   * ARTIST STUDIO / EARNINGS EXAMPLES
    * ============================================================
    */
 
-  /// Lấy thống kê Artist Studio.
   static Future<ApiResponse<dynamic>> getArtistStudioStatsExample() async {
     final response = await api.getArtistStudioStatsApi();
 
@@ -751,7 +776,14 @@ class ApiUsageExamples {
     return response;
   }
 
-  /// Lấy số dư ví artist.
+  static Future<ApiResponse<dynamic>> getArtistBenefitsExample() async {
+    final response = await api.getArtistBenefitsApi();
+
+    printResponse('GET ARTIST BENEFITS', response);
+
+    return response;
+  }
+
   static Future<ApiResponse<dynamic>> getArtistWalletExample() async {
     final response = await api.getArtistWalletApi();
 
@@ -760,7 +792,6 @@ class ApiUsageExamples {
     return response;
   }
 
-  /// Lấy lịch sử earnings.
   static Future<ApiResponse<dynamic>> getArtistEarningsExample() async {
     final response = await api.getArtistEarningHistoryApi(
       current: 1,
@@ -771,4 +802,443 @@ class ApiUsageExamples {
 
     return response;
   }
+
+  static Future<ApiResponse<dynamic>> getArtistEarningSummaryExample() async {
+    final response = await api.getArtistEarningSummaryApi();
+
+    printResponse('GET ARTIST EARNING SUMMARY', response);
+
+    return response;
+  }
+
+  /*
+   * ============================================================
+   * ARTIST MEMBERSHIP EXAMPLES
+   * ============================================================
+   */
+
+  static Future<ApiResponse<dynamic>> getArtistMembershipPlansExample({
+    required String artistId,
+  }) async {
+    final response = await api.getArtistMembershipPlansApi(artistId);
+
+    printResponse('GET ARTIST MEMBERSHIP PLANS', response);
+
+    return response;
+  }
+
+  static Future<ApiResponse<dynamic>> getMembershipAccessExample({
+    required String artistId,
+  }) async {
+    final response = await api.getArtistMembershipAccessApi(artistId);
+
+    printResponse('GET MEMBERSHIP ACCESS', response);
+
+    return response;
+  }
+
+  static Future<ApiResponse<dynamic>> getMembershipFeedExample({
+    required String artistId,
+    int current = 1,
+    int pageSize = 10,
+  }) async {
+    final response = await api.getArtistMembershipPostsApi(
+      artistId: artistId,
+      current: current,
+      pageSize: pageSize,
+    );
+
+    printResponse('GET MEMBERSHIP FEED', response);
+
+    return response;
+  }
+
+  static Future<ApiResponse<dynamic>> createMembershipTextPostExample({
+    required String visibility,
+    required String content,
+    String? requiredPlanId,
+  }) async {
+    final response = await api.createArtistMembershipPostApi({
+      'visibility': visibility,
+      'content': content.trim(),
+      if (requiredPlanId != null) 'requiredPlanId': requiredPlanId,
+      'allowComments': true,
+      'status': 'PUBLISHED',
+    });
+
+    printResponse('CREATE MEMBERSHIP TEXT POST', response);
+
+    return response;
+  }
+
+  static Future<ApiResponse<dynamic>> createMembershipImagePostExample({
+    required String visibility,
+    required File image,
+    String? content,
+    String? requiredPlanId,
+  }) async {
+    final response = await api.createArtistMembershipImagePostApi(
+      visibility: visibility,
+      image: image,
+      content: content,
+      requiredPlanId: requiredPlanId,
+      allowComments: true,
+      status: 'PUBLISHED',
+    );
+
+    printResponse('CREATE MEMBERSHIP IMAGE POST', response);
+
+    return response;
+  }
+
+  /*
+   * Membership purchase via VNPay.
+   *
+   * The exact payload fields must follow the current Backend DTO.
+   * Web sends an ICreateArtistMembershipPaymentPayload.
+   */
+  static Future<ApiResponse<dynamic>> createMembershipPaymentExample({
+    required String artistId,
+    required String planId,
+  }) async {
+    final response = await api.createArtistMembershipPaymentApi({
+      'artistId': artistId,
+      'planId': planId,
+    });
+
+    printResponse('CREATE MEMBERSHIP VNPAY PAYMENT', response);
+
+    return response;
+  }
+
+  /*
+   * Membership payment status uses unified /payments/{orderCode}.
+   */
+  static Future<ApiResponse<dynamic>> getMembershipPaymentExample({
+    required String orderCode,
+  }) async {
+    final response = await api.getArtistMembershipPaymentApi(orderCode);
+
+    printResponse('GET MEMBERSHIP PAYMENT', response);
+
+    return response;
+  }
+
+  /*
+   * ============================================================
+   * ARTIST EVENT / TICKETING EXAMPLES
+   * ============================================================
+   */
+
+  static Future<ApiResponse<dynamic>> getPublicArtistEventsExample({
+    required String artistId,
+  }) async {
+    final response = await api.getPublicArtistEventsApi(
+      artistId: artistId,
+      current: 1,
+      pageSize: 20,
+    );
+
+    printResponse('GET PUBLIC ARTIST EVENTS', response);
+
+    return response;
+  }
+
+  /*
+   * ARTIST_PRO creates an event.
+   * Backend performs the real permission check.
+   *
+   * ticketImage is multipart.
+   */
+  static Future<ApiResponse<dynamic>> createArtistEventExample({
+    required String eventName,
+    required String eventType,
+    required String venueName,
+    required String venueAddress,
+    required String eventStartAt,
+    required String saleStartAt,
+    required String saleEndAt,
+    required num ticketPrice,
+    required int totalQuantity,
+    required File ticketImage,
+    String? description,
+    String? eventEndAt,
+  }) async {
+    final response = await api.createArtistEventApi(
+      eventName: eventName,
+      eventType: eventType,
+      description: description,
+      venueName: venueName,
+      venueAddress: venueAddress,
+      eventStartAt: eventStartAt,
+      eventEndAt: eventEndAt,
+      saleStartAt: saleStartAt,
+      saleEndAt: saleEndAt,
+      ticketPrice: ticketPrice,
+      totalQuantity: totalQuantity,
+      ticketImage: ticketImage,
+    );
+
+    printResponse('CREATE ARTIST EVENT', response);
+
+    return response;
+  }
+
+  /*
+   * ============================================================
+   * TICKET PURCHASE - MAIN VNPAY FLOW
+   * ============================================================
+   *
+   * VNPay remains the normal payment method.
+   *
+   * Flow:
+   *
+   * 1. POST /ticket-payments/vnpay/create
+   * 2. Backend reserves ticket quantity
+   * 3. Response returns:
+   *      orderCode = SCT...
+   *      paymentUrl = VNPay URL
+   * 4. Open VNPay
+   * 5. VNPay return/IPN
+   * 6. GET /payments/{SCT...}
+   * 7. PAID -> ticket fulfillment already executed by Backend
+   * 8. GET /tickets/me
+   */
+  static Future<ApiResponse<dynamic>> createTicketVnPayPaymentExample({
+    required String eventId,
+    int quantity = 1,
+  }) async {
+    final response = await api.createTicketPaymentApi(
+      eventId: eventId,
+      quantity: quantity,
+    );
+
+    printResponse('CREATE TICKET VNPAY PAYMENT', response);
+
+    if (response.isSuccess && response.data is Map) {
+      final data = response.data as Map;
+
+      debugPrint('Ticket order: ${data['orderCode']}');
+
+      debugPrint('VNPay URL: ${data['paymentUrl']}');
+    }
+
+    return response;
+  }
+
+  /*
+   * ============================================================
+   * TEST PAYMENT - DEV ONLY
+   * ============================================================
+   *
+   * IMPORTANT:
+   * Test Payment DOES NOT replace VNPay.
+   *
+   * It is a second development-only way to confirm an SCT ticket order
+   * without depending on VNPay Sandbox.
+   *
+   * Backend must have:
+   *
+   *   soundclone.payment.test-mode=true
+   *
+   * Production:
+   *
+   *   soundclone.payment.test-mode=false
+   *
+   * Recommended mobile UI:
+   *
+   * [ Continue to VNPay ]  <- normal
+   * [ Test Payment ]       <- only visible in dev
+   */
+  static Future<ApiResponse<dynamic>> completeTicketTestPaymentExample({
+    required String orderCode,
+    String testCode = 'SC_TEST_SUCCESS_123456',
+  }) async {
+    final response = await api.completeTestPaymentApi(
+      orderCode: orderCode,
+      testCode: testCode,
+    );
+
+    printResponse('COMPLETE TEST TICKET PAYMENT', response);
+
+    /*
+     * On SUCCESS:
+     * navigate directly to current user's Ticket Collection.
+     *
+     * Mobile route example:
+     * /profile/<currentUserId>?tab=Tickets
+     *
+     * Do NOT navigate there for FAILED/CANCELED/EXPIRED.
+     */
+    return response;
+  }
+
+  /*
+   * Full DEV ticket flow:
+   *
+   * createTicketPaymentApi()
+   * -> SCT order + reservation
+   * -> completeTestPaymentApi()
+   * -> Backend calls real TicketFulfillmentService
+   * -> getMyTicketsApi()
+   */
+  static Future<ApiResponse<dynamic>> ticketDevHappyPathExample({
+    required String eventId,
+    int quantity = 1,
+  }) async {
+    final createResponse = await api.createTicketPaymentApi(
+      eventId: eventId,
+      quantity: quantity,
+    );
+
+    printResponse('1. CREATE TICKET ORDER', createResponse);
+
+    if (!createResponse.isSuccess || createResponse.data is! Map) {
+      return createResponse;
+    }
+
+    final data = createResponse.data as Map;
+
+    final orderCode = data['orderCode']?.toString() ?? '';
+
+    if (orderCode.isEmpty) {
+      return const ApiResponse<dynamic>(
+        statusCode: 400,
+        message: 'Ticket orderCode is missing.',
+        error: 'INVALID_TICKET_PAYMENT_RESPONSE',
+      );
+    }
+
+    final payResponse = await api.completeTestPaymentApi(
+      orderCode: orderCode,
+      testCode: 'SC_TEST_SUCCESS_123456',
+    );
+
+    printResponse('2. COMPLETE TEST PAYMENT', payResponse);
+
+    if (!payResponse.isSuccess) {
+      return payResponse;
+    }
+
+    final ticketsResponse = await api.getMyTicketsApi(current: 1, pageSize: 50);
+
+    printResponse('3. GET MY TICKETS', ticketsResponse);
+
+    return ticketsResponse;
+  }
+
+  /*
+   * ============================================================
+   * TICKET COLLECTION / QR / CHECK-IN
+   * ============================================================
+   */
+
+  static Future<ApiResponse<dynamic>> getMyTicketsExample() async {
+    final response = await api.getMyTicketsApi(current: 1, pageSize: 50);
+
+    printResponse('GET MY TICKETS', response);
+
+    return response;
+  }
+
+  static Future<ApiResponse<dynamic>> getTicketQrExample({
+    required String ticketId,
+  }) async {
+    final response = await api.getMyTicketQrApi(ticketId);
+
+    printResponse('GET TICKET QR', response);
+
+    return response;
+  }
+
+  /*
+   * QR scanner should read the qrValue/token and send the exact payload
+   * expected by Backend ICheckInTicketPayload.
+   *
+   * Current common form:
+   * {
+   *   "qrValue": "<signed token>"
+   * }
+   *
+   * If your Backend DTO uses "qrToken" instead, use that exact field.
+   */
+  static Future<ApiResponse<dynamic>> checkInTicketExample({
+    required String qrValue,
+  }) async {
+    final response = await api.checkInTicketApi({'qrValue': qrValue});
+
+    printResponse('CHECK IN TICKET', response);
+
+    return response;
+  }
+
+  /*
+   * ============================================================
+   * ADMIN TICKET MODERATION EXAMPLES
+   * ============================================================
+   */
+
+  static Future<ApiResponse<dynamic>> getPendingTicketEventsExample() async {
+    final response = await api.getAdminTicketEventsApi(
+      current: 1,
+      pageSize: 20,
+      approvalStatus: 'PENDING_REVIEW',
+    );
+
+    printResponse('ADMIN GET PENDING TICKET EVENTS', response);
+
+    return response;
+  }
+
+  static Future<ApiResponse<dynamic>> approveTicketEventExample({
+    required String eventId,
+  }) async {
+    final response = await api.approveArtistTicketEventApi(eventId);
+
+    printResponse('ADMIN APPROVE TICKET EVENT', response);
+
+    return response;
+  }
+
+  static Future<ApiResponse<dynamic>> rejectTicketEventExample({
+    required String eventId,
+    required String reason,
+  }) async {
+    final response = await api.rejectArtistTicketEventApi(
+      eventId: eventId,
+      reason: reason,
+    );
+
+    printResponse('ADMIN REJECT TICKET EVENT', response);
+
+    return response;
+  }
+
+  /*
+   * ============================================================
+   * FINAL MOBILE INTEGRATION NOTE
+   * ============================================================
+   *
+   * Before building a screen:
+   *
+   * 1. Find the matching method in ApiService.
+   * 2. Confirm payload field names with current Backend DTO/controller.
+   * 3. Call ApiService from repository/provider/controller.
+   * 4. UI handles:
+   *      loading
+   *      empty
+   *      success
+   *      error
+   * 5. Do not duplicate API URLs inside widgets.
+   *
+   * For payment:
+   *
+   * VNPay:
+   *   create -> open URL -> deep-link/return -> GET payment -> refresh UI
+   *
+   * Test Ticket Payment:
+   *   create SCT -> test complete -> GET tickets -> open Tickets tab
+   *
+   * Test mode is DEV ONLY.
+   */
 }

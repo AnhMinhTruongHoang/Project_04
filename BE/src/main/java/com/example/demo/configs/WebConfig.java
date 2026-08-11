@@ -36,28 +36,22 @@ public class WebConfig implements WebMvcConfigurer {
 	// =====================================================
 
 	@Override
-	public void addCorsMappings(
-			CorsRegistry registry) {
+	public void addCorsMappings(CorsRegistry registry) {
 
 		registry.addMapping("/**")
 				.allowedOriginPatterns(
+						// Next.js local
 						"http://localhost:3000",
 						"http://127.0.0.1:3000",
 
-						/*
-						 * Domain production chính.
-						 *
-						 * Local:
-						 * FRONTEND_URL=http://localhost:3000
-						 *
-						 * Render:
-						 * FRONTEND_URL=https://your-app.vercel.app
-						 */
+						// Flutter Web local
+						"http://localhost:*",
+						"http://127.0.0.1:*",
+
+						// Production frontend
 						frontendUrl,
 
-						/*
-						 * Cho phép Vercel Preview deployments.
-						 */
+						// Vercel Preview
 						"https://*.vercel.app")
 				.allowedMethods(
 						"GET",

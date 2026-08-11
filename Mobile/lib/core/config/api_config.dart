@@ -1,41 +1,102 @@
 class ApiConfig {
   ApiConfig._();
 
-  /*
-   * ============================================================
-   * SOUNDCLONE MOBILE API CONFIG
-   * ============================================================
-   *
-   * Web:
-   * http://localhost:8000
-   *
-   * Android Emulator:
-   * localhost của máy Windows phải dùng 10.0.2.2.
-   *
-   * Vì vậy:
-   * http://10.0.2.2:8000
-   */
+  // ==========================================================
+  // BACKEND
+  // ==========================================================
 
   static const String baseUrl = String.fromEnvironment(
     'API_BASE_URL',
-    defaultValue: 'http://10.0.2.2:8000',
+    defaultValue: 'https://soundclone-backend.onrender.com',
   );
 
   static const String apiV1 = '$baseUrl/api/v1';
 
-  /*
-   * ============================================================
-   * TEST PAYMENT
-   * ============================================================
-   *
-   * Chỉ dùng DEV/LOCAL.
-   *
-   * false ở production.
-   *
-   * Test Payment KHÔNG thay thế VNPay.
-   */
+
+
+  // ==========================================================
+  // AUTH
+  // ==========================================================
+
+  static const String auth = '$apiV1/auth';
+
+  static const String login = '$auth/login';
+
+  static const String register = '$auth/register';
+
+  static const String verifyOtp = '$auth/verify-otp';
+
+  static const String resendOtp = '$auth/resend-otp';
+
+  static const String forgotPassword = '$auth/forgot-password';
+
+  static const String resetPassword = '$auth/reset-password';
+
+  // ==========================================================
+  // TRACKS
+  // ==========================================================
+
+  static const String tracks = '$apiV1/tracks';
+
+  // ==========================================================
+  // USERS
+  // ==========================================================
+
+  static const String users = '$apiV1/users';
+
+  // ==========================================================
+  // PLAYLISTS
+  // ==========================================================
+
+  static const String playlists = '$apiV1/playlists';
+
+  // ==========================================================
+  // COMMENTS
+  // ==========================================================
+
+  static const String comments = '$apiV1/comments';
+
+  // ==========================================================
+  // HISTORY
+  // ==========================================================
+
+  static const String history = '$apiV1/history';
+
+  // ==========================================================
+  // PAYMENTS
+  // ==========================================================
+
+  static const String payments = '$apiV1/payments';
+
+  static const String vnpay = '$payments/vnpay';
+
+  static const String vnpayCreate = '$vnpay/create';
+
+  // ==========================================================
+  // FRONTEND
+  // ==========================================================
+
+  static const String frontendUrl = String.fromEnvironment(
+    'FRONTEND_URL',
+    defaultValue: 'http://localhost:3000',
+  );
+
+  // ==========================================================
+  // TEST PAYMENT
+  // ==========================================================
+
   static const bool paymentTestMode = bool.fromEnvironment(
     'PAYMENT_TEST_MODE',
-    defaultValue: true,
+    defaultValue: false,
   );
+
+  // ==========================================================
+  // LEGACY MEDIA
+  // ==========================================================
+
+  static const String imagesUrl =
+      '$baseUrl/uploads/images/';
+
+  static const String audioUrl =
+      '$baseUrl/uploads/audio/';
 }

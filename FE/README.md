@@ -1,5 +1,7 @@
 # 🎵 SoundClone Frontend
 
+# live demo: https://soundclone-music.vercel.app/
+
 <p align="center">
   <img
     src="https://res.cloudinary.com/eybmkz9z/image/upload/v1786382306/home_nfxqtj.png"
@@ -421,17 +423,17 @@ The mobile project is developed separately under the repository's `Mobile` direc
 
 # 🧱 Frontend Technology Stack
 
-| Area | Technology |
-|---|---|
-| Framework | Next.js |
-| Language | TypeScript |
-| UI | React + Material UI |
-| Routing | Next.js App Router |
-| Authentication | NextAuth |
-| API Communication | REST API |
-| Music Playback | Global player / audio state |
-| Backend | Spring Boot REST API |
-| Mobile Client | Flutter |
+| Area              | Technology                  |
+| ----------------- | --------------------------- |
+| Framework         | Next.js                     |
+| Language          | TypeScript                  |
+| UI                | React + Material UI         |
+| Routing           | Next.js App Router          |
+| Authentication    | NextAuth                    |
+| API Communication | REST API                    |
+| Music Playback    | Global player / audio state |
+| Backend           | Spring Boot REST API        |
+| Mobile Client     | Flutter                     |
 
 ---
 

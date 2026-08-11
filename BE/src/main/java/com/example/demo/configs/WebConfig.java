@@ -44,7 +44,7 @@ public class WebConfig implements WebMvcConfigurer {
 						"http://localhost:3000",
 						"http://127.0.0.1:3000",
 
-						// Flutter Web local
+						// Flutter Web local (add your port if different)
 						"http://localhost:*",
 						"http://127.0.0.1:*",
 

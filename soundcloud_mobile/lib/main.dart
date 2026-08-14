@@ -1,0 +1,34 @@
+import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+
+import 'core/network/api_client.dart';
+import 'core/theme/app_theme.dart';
+import 'providers/auth_provider.dart';
+import 'screens/splash/splash_screen.dart';
+
+void main() {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  ApiClient.instance.initialize();
+
+  runApp(
+    ChangeNotifierProvider(
+      create: (_) => AuthProvider(),
+      child: const SoundApp(),
+    ),
+  );
+}
+
+class SoundApp extends StatelessWidget {
+  const SoundApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      title: 'SoundApp',
+      theme: AppTheme.darkTheme,
+      home: const SplashScreen(),
+    );
+  }
+}

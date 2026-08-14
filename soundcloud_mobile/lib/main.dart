@@ -6,6 +6,7 @@ import 'core/theme/app_theme.dart';
 import 'providers/auth_provider.dart';
 import 'providers/home_provider.dart';
 import 'screens/splash/splash_screen.dart';
+import 'providers/player_provider.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -18,8 +19,13 @@ void main() {
         ChangeNotifierProvider(
           create: (_) => AuthProvider(),
         ),
+
         ChangeNotifierProvider(
           create: (_) => HomeProvider(),
+        ),
+
+        ChangeNotifierProvider(
+          create: (_) => PlayerProvider(),
         ),
       ],
       child: const SoundApp(),

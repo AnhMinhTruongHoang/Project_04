@@ -42,25 +42,22 @@ class BecauseYouListenedResult {
   final TrackModel? basedOn;
   final List<TrackModel> tracks;
 
-  const BecauseYouListenedResult({
-    this.basedOn,
-    this.tracks = const [],
-  });
+  const BecauseYouListenedResult({this.basedOn, this.tracks = const []});
 }
 
 class TrackService {
   final ApiClient _apiClient;
 
   TrackService({ApiClient? apiClient})
-      : _apiClient = apiClient ?? ApiClient.instance;
+    : _apiClient = apiClient ?? ApiClient.instance;
 
-  Future<List<TrackModel>> getTracks({int current = 1, int pageSize = 20}) async {
+  Future<List<TrackModel>> getTracks({
+    int current = 1,
+    int pageSize = 20,
+  }) async {
     final response = await _apiClient.get(
       '/tracks',
-      queryParameters: {
-        'current': current,
-        'pageSize': pageSize,
-      },
+      queryParameters: {'current': current, 'pageSize': pageSize},
     );
 
     final data = _data(response.data);
@@ -100,7 +97,9 @@ class TrackService {
     );
   }
 
-  Future<BecauseYouListenedResult> getBecauseYouListened({int limit = 10}) async {
+  Future<BecauseYouListenedResult> getBecauseYouListened({
+    int limit = 10,
+  }) async {
     final response = await _apiClient.get(
       '/tracks/because-you-listened',
       queryParameters: {'limit': limit},
@@ -117,13 +116,13 @@ class TrackService {
     );
   }
 
-  Future<List<TrackModel>> getHiddenGems({int limit = 10, int maxPlays = 1000}) async {
+  Future<List<TrackModel>> getHiddenGems({
+    int limit = 10,
+    int maxPlays = 1000,
+  }) async {
     final response = await _apiClient.get(
       '/tracks/hidden-gems',
-      queryParameters: {
-        'limit': limit,
-        'maxPlays': maxPlays,
-      },
+      queryParameters: {'limit': limit, 'maxPlays': maxPlays},
     );
 
     return _trackList(_unwrapData(response.data));
@@ -165,8 +164,67 @@ class TrackService {
 
     return value
         .whereType<Map>()
-        .map((item) => ListeningHistoryItem.fromJson(Map<String, dynamic>.from(item)))
+        .map(
+          (item) =>
+              ListeningHistoryItem.fromJson(Map<String, dynamic>.from(item)),
+        )
         .toList();
+  }
+
+  Future<void> increasePlayCount(String trackId) async {
+    await _apiClient.post('/tracks/$trackId/play');
+  }
+
+  Future<void> saveListeningHistory(
+    String trackId, {
+    required double position,
+    required double duration,
+    required bool completed,
+    required bool playing,
+    String? sessionId,
+  }) async {
+    await _apiClient.post(
+      '/tracks/$trackId/history',
+      data: {
+        if (sessionId != null && sessionId.isNotEmpty) 'sessionId': sessionId,
+        'position': position,
+        'duration': duration,
+        'completed': completed,
+        'playing': playing,
+      },
+    );
+  }
+
+  Future<TrackModel?> likeTrack(String trackId) async {
+    final response = await _apiClient.post('/tracks/$trackId/like');
+
+    final data = _unwrapData(response.data);
+
+    if (data is Map) {
+      return TrackModel.fromJson(Map<String, dynamic>.from(data));
+    }
+
+    return null;
+  }
+
+  Future<TrackModel?> dislikeTrack(String trackId) async {
+    final response = await _apiClient.post('/tracks/$trackId/dislike');
+
+    final data = _unwrapData(response.data);
+
+    if (data is Map) {
+      return TrackModel.fromJson(Map<String, dynamic>.from(data));
+    }
+
+    return null;
+  }
+
+  Future<List<TrackModel>> getLikedTracks() async {
+    final response = await _apiClient.get('/tracks/liked');
+
+    final data = _unwrapData(response.data);
+
+    return _trackList(data);
   }
 }
 

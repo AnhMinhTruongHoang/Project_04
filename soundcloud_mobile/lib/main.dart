@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import 'core/network/api_client.dart';
 import 'core/theme/app_theme.dart';
 import 'providers/auth_provider.dart';
+import 'providers/home_provider.dart';
 import 'screens/splash/splash_screen.dart';
 
 void main() {
@@ -12,8 +13,15 @@ void main() {
   ApiClient.instance.initialize();
 
   runApp(
-    ChangeNotifierProvider(
-      create: (_) => AuthProvider(),
+    MultiProvider(
+      providers: [
+        ChangeNotifierProvider(
+          create: (_) => AuthProvider(),
+        ),
+        ChangeNotifierProvider(
+          create: (_) => HomeProvider(),
+        ),
+      ],
       child: const SoundApp(),
     ),
   );

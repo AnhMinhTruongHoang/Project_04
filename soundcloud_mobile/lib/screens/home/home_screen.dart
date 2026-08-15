@@ -1,7 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:soundcloud_mobile/providers/player_provider.dart';
+import 'package:soundcloud_mobile/screens/auth/login_screen.dart';
+import 'package:soundcloud_mobile/screens/library/library_screen.dart';
 import 'package:soundcloud_mobile/screens/player/player_screen.dart';
+import 'package:soundcloud_mobile/screens/profile/profile_screen.dart';
+import 'package:soundcloud_mobile/widgets/add_to_playlist_sheet.dart';
 import 'package:soundcloud_mobile/widgets/mini_player.dart';
 
 import '../../models/artist_model.dart';
@@ -42,6 +46,63 @@ class _HomeScreenState extends State<HomeScreen> {
     });
   }
 
+  void _openProfile() {
+    Navigator.of(
+      context,
+    ).push(MaterialPageRoute(builder: (_) => const ProfileScreen()));
+  }
+
+  void _openGetPro() {
+    _showComingSoon('GET PRO');
+  }
+
+  void _openSettings() {
+    _showComingSoon('Settings');
+  }
+
+  Future<void> _logout() async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          backgroundColor: const Color(0xFF242424),
+          title: const Text('Log out?'),
+          content: const Text('Are you sure you want to log out?'),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.pop(dialogContext, false);
+              },
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () {
+                Navigator.pop(dialogContext, true);
+              },
+              child: const Text(
+                'Log out',
+                style: TextStyle(color: Color(0xFFFF5500)),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (confirm != true || !mounted) {
+      return;
+    }
+
+    await context.read<AuthProvider>().logout();
+
+    if (!mounted) return;
+
+    Navigator.of(context).pushAndRemoveUntil(
+      MaterialPageRoute(builder: (_) => const LoginScreen()),
+      (route) => false,
+    );
+  }
+
   Future<void> _refresh() async {
     await context.read<HomeProvider>().loadHome();
   }
@@ -52,19 +113,14 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Future<void> _onTrackTap(TrackModel track) async {
+  Future<void> _onTrackTap(
+    TrackModel track, {
+    required List<TrackModel> queue,
+  }) async {
     final player = context.read<PlayerProvider>();
 
-    await player.playTrack(
-      track,
-      queue: context.read<HomeProvider>().trendingTracks,
-    );
+    await player.playTrack(track, queue: queue);
 
-    if (!mounted) return;
-
-    Navigator.of(
-      context,
-    ).push(MaterialPageRoute(builder: (_) => const PlayerScreen()));
   }
 
   @override
@@ -104,6 +160,17 @@ class _HomeScreenState extends State<HomeScreen> {
                 ? provider.genreTracks
                 : provider.trendingTracks;
 
+            final moreTracks = moreOfWhatYouLike.take(10).toList();
+
+            final visibleMixTracks = mixTracks.take(6).toList();
+
+            final curatedTracks = provider.hiddenGems.take(10).toList();
+
+            final recentTracks = provider.recentlyPlayed
+                .map((item) => item.track)
+                .take(10)
+                .toList();
+
             return RefreshIndicator(
               color: const Color(0xFFFF5500),
               onRefresh: _refresh,
@@ -117,12 +184,15 @@ class _HomeScreenState extends State<HomeScreen> {
                   // ==================================================
                   SliverToBoxAdapter(
                     child: _TopHeader(
+                      avatarUrl: user?.avatarUrl,
+                      userName: userName,
+                      onProfileTap: _openProfile,
+                      onGetProTap: _openGetPro,
+                      onSettingsTap: _openSettings,
+                      onLogoutTap: _logout,
                       onCastTap: () => _showComingSoon('Cast'),
-
                       onUploadTap: () => _showComingSoon('Upload'),
-
                       onMessageTap: () => _showComingSoon('Messages'),
-
                       onNotificationTap: () => _showComingSoon('Notifications'),
                     ),
                   ),
@@ -151,9 +221,8 @@ class _HomeScreenState extends State<HomeScreen> {
                   if (moreOfWhatYouLike.isNotEmpty)
                     SliverToBoxAdapter(
                       child: _LargeTrackCarousel(
-                        tracks: moreOfWhatYouLike.take(10).toList(),
-
-                        onTap: _onTrackTap,
+                        tracks: moreTracks,
+                        onTap: (track) => _onTrackTap(track, queue: moreTracks),
                       ),
                     ),
 
@@ -184,9 +253,9 @@ class _HomeScreenState extends State<HomeScreen> {
                   if (mixTracks.isNotEmpty)
                     SliverToBoxAdapter(
                       child: _MixCarousel(
-                        tracks: mixTracks,
-
-                        onTap: _onTrackTap,
+                        tracks: visibleMixTracks,
+                        onTap: (track) =>
+                            _onTrackTap(track, queue: visibleMixTracks),
                       ),
                     ),
 
@@ -272,9 +341,12 @@ class _HomeScreenState extends State<HomeScreen> {
                           return _TrendingTrackTile(
                             track: track,
 
-                            onTap: () => _onTrackTap(track),
+                            onTap: () =>
+                                _onTrackTap(track, queue: displayedGenreTracks),
 
-                            onMoreTap: () => _showComingSoon('Track options'),
+                            onMoreTap: () {
+                              showAddToPlaylistSheet(context, track: track);
+                            },
                           );
                         },
 
@@ -299,9 +371,9 @@ class _HomeScreenState extends State<HomeScreen> {
                   if (provider.hiddenGems.isNotEmpty)
                     SliverToBoxAdapter(
                       child: _LargeTrackCarousel(
-                        tracks: provider.hiddenGems.take(10).toList(),
-
-                        onTap: _onTrackTap,
+                        tracks: curatedTracks,
+                        onTap: (track) =>
+                            _onTrackTap(track, queue: curatedTracks),
                       ),
                     ),
 
@@ -360,12 +432,9 @@ class _HomeScreenState extends State<HomeScreen> {
                   if (provider.recentlyPlayed.isNotEmpty)
                     SliverToBoxAdapter(
                       child: _LargeTrackCarousel(
-                        tracks: provider.recentlyPlayed
-                            .map((item) => item.track)
-                            .take(10)
-                            .toList(),
-
-                        onTap: _onTrackTap,
+                        tracks: recentTracks,
+                        onTap: (track) =>
+                            _onTrackTap(track, queue: recentTracks),
                       ),
                     ),
 
@@ -388,6 +457,14 @@ class _HomeScreenState extends State<HomeScreen> {
                 return;
               }
 
+              if (index == 4) {
+                Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const LibraryScreen()),
+                );
+
+                return;
+              }
+
               const pages = ['Home', 'Feed', 'Upload', 'Search', 'Library'];
 
               _showComingSoon(pages[index]);
@@ -404,12 +481,26 @@ class _HomeScreenState extends State<HomeScreen> {
 // ============================================================
 
 class _TopHeader extends StatelessWidget {
+  final String? avatarUrl;
+  final String userName;
+
+  final VoidCallback onProfileTap;
+  final VoidCallback onGetProTap;
+  final VoidCallback onSettingsTap;
+  final VoidCallback onLogoutTap;
+
   final VoidCallback onCastTap;
   final VoidCallback onUploadTap;
   final VoidCallback onMessageTap;
   final VoidCallback onNotificationTap;
 
   const _TopHeader({
+    required this.avatarUrl,
+    required this.userName,
+    required this.onProfileTap,
+    required this.onGetProTap,
+    required this.onSettingsTap,
+    required this.onLogoutTap,
     required this.onCastTap,
     required this.onUploadTap,
     required this.onMessageTap,
@@ -419,14 +510,12 @@ class _TopHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 18, 10, 20),
-
+      padding: const EdgeInsets.fromLTRB(20, 18, 12, 20),
       child: Row(
         children: [
           const Expanded(
             child: Text(
               'Home',
-
               style: TextStyle(
                 fontSize: 32,
                 color: Colors.white,
@@ -446,6 +535,17 @@ class _TopHeader extends StatelessWidget {
             icon: Icons.notifications_none_rounded,
             onTap: onNotificationTap,
           ),
+
+          const SizedBox(width: 6),
+
+          _UserMenu(
+            avatarUrl: avatarUrl,
+            userName: userName,
+            onProfileTap: onProfileTap,
+            onGetProTap: onGetProTap,
+            onSettingsTap: onSettingsTap,
+            onLogoutTap: onLogoutTap,
+          ),
         ],
       ),
     );
@@ -462,8 +562,204 @@ class _HeaderButton extends StatelessWidget {
   Widget build(BuildContext context) {
     return IconButton(
       onPressed: onTap,
-
       icon: Icon(icon, color: Colors.white70, size: 27),
+    );
+  }
+}
+
+class _UserMenu extends StatelessWidget {
+  final String? avatarUrl;
+  final String userName;
+
+  final VoidCallback onProfileTap;
+  final VoidCallback onGetProTap;
+  final VoidCallback onSettingsTap;
+  final VoidCallback onLogoutTap;
+
+  const _UserMenu({
+    required this.avatarUrl,
+    required this.userName,
+    required this.onProfileTap,
+    required this.onGetProTap,
+    required this.onSettingsTap,
+    required this.onLogoutTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return PopupMenuButton<String>(
+      tooltip: 'Account',
+      color: const Color(0xFF242424),
+      offset: const Offset(0, 52),
+
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+
+      onSelected: (value) {
+        switch (value) {
+          case 'profile':
+            onProfileTap();
+            break;
+
+          case 'pro':
+            onGetProTap();
+            break;
+
+          case 'settings':
+            onSettingsTap();
+            break;
+
+          case 'logout':
+            onLogoutTap();
+            break;
+        }
+      },
+
+      itemBuilder: (context) => [
+        // ================================================
+        // USER
+        // ================================================
+        PopupMenuItem<String>(
+          enabled: false,
+          child: Row(
+            children: [
+              _SmallAvatar(avatarUrl: avatarUrl, size: 38),
+
+              const SizedBox(width: 12),
+
+              Expanded(
+                child: Text(
+                  userName,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+
+        const PopupMenuDivider(),
+
+        // ================================================
+        // PROFILE
+        // ================================================
+        const PopupMenuItem<String>(
+          value: 'profile',
+          child: Row(
+            children: [
+              Icon(Icons.person_outline_rounded, color: Colors.white),
+
+              SizedBox(width: 12),
+
+              Text('Profile'),
+            ],
+          ),
+        ),
+
+        // ================================================
+        // GET PRO
+        // ================================================
+        const PopupMenuItem<String>(
+          value: 'pro',
+          child: Row(
+            children: [
+              Icon(Icons.workspace_premium_outlined, color: Color(0xFFFF5500)),
+
+              SizedBox(width: 12),
+
+              Text(
+                'GET PRO',
+                style: TextStyle(
+                  color: Color(0xFFFF5500),
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ],
+          ),
+        ),
+
+        // ================================================
+        // SETTINGS
+        // ================================================
+        const PopupMenuItem<String>(
+          value: 'settings',
+          child: Row(
+            children: [
+              Icon(Icons.settings_outlined, color: Colors.white),
+
+              SizedBox(width: 12),
+
+              Text('Settings', style: TextStyle(color: Colors.white)),
+            ],
+          ),
+        ),
+
+        const PopupMenuDivider(),
+
+        // ================================================
+        // LOGOUT
+        // ================================================
+        const PopupMenuItem<String>(
+          value: 'logout',
+          child: Row(
+            children: [
+              Icon(Icons.logout_rounded, color: Colors.redAccent),
+
+              SizedBox(width: 12),
+
+              Text('Log out', style: TextStyle(color: Colors.redAccent)),
+            ],
+          ),
+        ),
+      ],
+
+      child: _SmallAvatar(avatarUrl: avatarUrl, size: 42),
+    );
+  }
+}
+
+class _SmallAvatar extends StatelessWidget {
+  final String? avatarUrl;
+  final double size;
+
+  const _SmallAvatar({required this.avatarUrl, required this.size});
+
+  @override
+  Widget build(BuildContext context) {
+    final hasAvatar = avatarUrl != null && avatarUrl!.trim().isNotEmpty;
+
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        border: Border.all(color: Colors.white24),
+      ),
+      child: ClipOval(
+        child: hasAvatar
+            ? Image.network(
+                avatarUrl!,
+                fit: BoxFit.cover,
+                errorBuilder: (_, __, ___) => _placeholder(),
+              )
+            : _placeholder(),
+      ),
+    );
+  }
+
+  Widget _placeholder() {
+    return Container(
+      color: const Color(0xFF292929),
+      alignment: Alignment.center,
+      child: Icon(
+        Icons.person_rounded,
+        color: Colors.white54,
+        size: size * 0.58,
+      ),
     );
   }
 }

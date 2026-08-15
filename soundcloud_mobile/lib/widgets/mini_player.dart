@@ -19,73 +19,70 @@ class MiniPlayer extends StatelessWidget {
 
         return Material(
           color: const Color(0xFF242424),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // ==================================================
+              // PROGRESS
+              // ==================================================
+              LinearProgressIndicator(
+                value: player.progress,
+                minHeight: 2,
+                backgroundColor: Colors.white10,
+                color: const Color(0xFFFF5500),
+              ),
 
-          child: InkWell(
-            onTap: () {
-              Navigator.of(
-                context,
-              ).push(MaterialPageRoute(builder: (_) => const PlayerScreen()));
-            },
-
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-
-              children: [
-                LinearProgressIndicator(
-                  value: player.progress,
-
-                  minHeight: 2,
-
-                  backgroundColor: Colors.white10,
-
-                  color: const Color(0xFFFF5500),
-                ),
-
-                SizedBox(
-                  height: 64,
-
+              // ==================================================
+              // MINI PLAYER
+              // ==================================================
+              InkWell(
+                onTap: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(builder: (_) => const PlayerScreen()),
+                  );
+                },
+                child: SizedBox(
+                  height: 68,
                   child: Row(
                     children: [
+                      // ==========================================
+                      // COVER
+                      // ==========================================
                       SizedBox(
-                        width: 64,
-                        height: 64,
-
+                        width: 68,
+                        height: 68,
                         child: _MiniArtwork(url: track.imgUrl),
                       ),
 
                       const SizedBox(width: 12),
 
+                      // ==========================================
+                      // INFO
+                      // ==========================================
                       Expanded(
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
-
                           crossAxisAlignment: CrossAxisAlignment.start,
-
                           children: [
                             Text(
                               track.title,
-
                               maxLines: 1,
-
                               overflow: TextOverflow.ellipsis,
-
                               style: const TextStyle(
+                                color: Colors.white,
                                 fontWeight: FontWeight.w700,
+                                fontSize: 14,
                               ),
                             ),
 
-                            const SizedBox(height: 3),
+                            const SizedBox(height: 4),
 
                             Text(
                               track.artistName,
-
                               maxLines: 1,
-
                               overflow: TextOverflow.ellipsis,
-
                               style: const TextStyle(
                                 color: Colors.white54,
-
                                 fontSize: 12,
                               ),
                             ),
@@ -93,7 +90,11 @@ class MiniPlayer extends StatelessWidget {
                         ),
                       ),
 
+                      // ==========================================
+                      // LIKE
+                      // ==========================================
                       IconButton(
+                        tooltip: player.isCurrentTrackLiked ? 'Unlike' : 'Like',
                         onPressed: player.isLikeLoading
                             ? null
                             : () async {
@@ -101,50 +102,93 @@ class MiniPlayer extends StatelessWidget {
                                   await player.toggleLike();
                                 } catch (_) {}
                               },
-
                         icon: Icon(
                           player.isCurrentTrackLiked
                               ? Icons.favorite
                               : Icons.favorite_border,
-
-                          size: 23,
-
+                          size: 22,
                           color: player.isCurrentTrackLiked
                               ? const Color(0xFFFF5500)
                               : Colors.white70,
                         ),
                       ),
 
+                      // ==========================================
+                      // PREVIOUS
+                      // ==========================================
                       IconButton(
-                        onPressed: player.previous,
-
-                        icon: const Icon(Icons.skip_previous_rounded),
-                      ),
-
-                      IconButton(
-                        onPressed: player.togglePlayPause,
-
+                        tooltip: 'Previous',
+                        onPressed: player.isLoading
+                            ? null
+                            : () async {
+                                await player.previous();
+                              },
                         icon: Icon(
-                          player.isPlaying
-                              ? Icons.pause_rounded
-                              : Icons.play_arrow_rounded,
-
-                          size: 30,
+                          Icons.skip_previous_rounded,
+                          color: player.isLoading
+                              ? Colors.white24
+                              : Colors.white,
                         ),
                       ),
 
-                      IconButton(
-                        onPressed: player.next,
+                      // ==========================================
+                      // PLAY / PAUSE
+                      // ==========================================
+                      SizedBox(
+                        width: 44,
+                        height: 44,
+                        child: player.isLoading
+                            ? const Padding(
+                                padding: EdgeInsets.all(12),
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: Colors.white,
+                                ),
+                              )
+                            : IconButton(
+                                tooltip: player.isPlaying ? 'Pause' : 'Play',
+                                onPressed: () async {
+                                  await player.togglePlayPause();
+                                },
+                                icon: Icon(
+                                  player.isPlaying
+                                      ? Icons.pause_rounded
+                                      : Icons.play_arrow_rounded,
+                                  size: 30,
+                                ),
+                              ),
+                      ),
 
-                        icon: const Icon(Icons.skip_next_rounded),
+                      // ==========================================
+                      // NEXT
+                      // ==========================================
+                      IconButton(
+                        tooltip: 'Next',
+                        onPressed: player.hasNext && !player.isLoading
+                            ? () async {
+                                debugPrint(
+                                  'MINI NEXT -> '
+                                  'index=${player.currentIndex}, '
+                                  'queue=${player.queue.length}',
+                                );
+
+                                await player.next();
+                              }
+                            : null,
+                        icon: Icon(
+                          Icons.skip_next_rounded,
+                          color: player.hasNext && !player.isLoading
+                              ? Colors.white
+                              : Colors.white24,
+                        ),
                       ),
 
                       const SizedBox(width: 4),
                     ],
                   ),
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
         );
       },
@@ -165,9 +209,7 @@ class _MiniArtwork extends StatelessWidget {
 
     return Image.network(
       url!,
-
       fit: BoxFit.cover,
-
       errorBuilder: (_, __, ___) => _placeholder(),
     );
   }
@@ -175,9 +217,7 @@ class _MiniArtwork extends StatelessWidget {
   Widget _placeholder() {
     return Container(
       color: const Color(0xFF333333),
-
       alignment: Alignment.center,
-
       child: const Icon(Icons.music_note, color: Colors.white30),
     );
   }

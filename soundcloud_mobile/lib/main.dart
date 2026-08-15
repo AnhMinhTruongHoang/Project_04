@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:soundcloud_mobile/providers/playlist_provider.dart';
 
 import 'core/network/api_client.dart';
 import 'core/theme/app_theme.dart';
@@ -14,22 +15,30 @@ void main() {
   ApiClient.instance.initialize();
 
   runApp(
-    MultiProvider(
-      providers: [
-        ChangeNotifierProvider(
-          create: (_) => AuthProvider(),
-        ),
+      MultiProvider(
+        providers: [
+          ChangeNotifierProvider(
+            create: (_) =>
+                AuthProvider(),
+          ),
 
-        ChangeNotifierProvider(
-          create: (_) => HomeProvider(),
-        ),
+          ChangeNotifierProvider(
+            create: (_) =>
+                HomeProvider(),
+          ),
 
-        ChangeNotifierProvider(
-          create: (_) => PlayerProvider(),
-        ),
-      ],
-      child: const SoundApp(),
-    ),
+          ChangeNotifierProvider(
+            create: (_) =>
+                PlayerProvider(),
+          ),
+
+          ChangeNotifierProvider(
+            create: (_) =>
+                PlaylistProvider(),
+          ),
+        ],
+        child: const SoundApp(),
+      )
   );
 }
 

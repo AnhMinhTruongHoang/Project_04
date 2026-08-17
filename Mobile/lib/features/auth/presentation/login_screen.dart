@@ -369,46 +369,89 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     );
   }
 
-  Widget _buildRememberMe(bool loading) {
-    return InkWell(
-      borderRadius: BorderRadius.circular(8),
-      onTap: loading
-          ? null
-          : () {
-        setState(() {
-          _rememberMe = !_rememberMe;
-        });
-      },
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Checkbox(
-            value: _rememberMe,
-            onChanged: loading
+  Widget _buildRememberMe(
+      bool loading,
+      ) {
+    return Row(
+      children: [
+        Expanded(
+          child: InkWell(
+            borderRadius:
+            BorderRadius.circular(8),
+            onTap: loading
                 ? null
-                : (value) {
+                : () {
               setState(() {
-                _rememberMe = value ?? false;
+                _rememberMe =
+                !_rememberMe;
               });
             },
-            activeColor: _cyan,
-            checkColor: const Color(0xFF07110F),
-            side: const BorderSide(
-              color: Color(0xFF8B949E),
+            child: Row(
+              mainAxisSize:
+              MainAxisSize.min,
+              children: [
+                Checkbox(
+                  value: _rememberMe,
+                  onChanged: loading
+                      ? null
+                      : (value) {
+                    setState(() {
+                      _rememberMe =
+                          value ??
+                              false;
+                    });
+                  },
+                  activeColor: _cyan,
+                  checkColor:
+                  const Color(
+                    0xFF07110F,
+                  ),
+                  side:
+                  const BorderSide(
+                    color:
+                    Color(
+                      0xFF8B949E,
+                    ),
+                  ),
+                ),
+                const Flexible(
+                  child: Text(
+                    'Remember me',
+                    style: TextStyle(
+                      color:
+                      Color(
+                        0xFFB8B8B8,
+                      ),
+                      fontSize: 14,
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
-          const Text(
-            'Remember me',
+        ),
+
+        TextButton(
+          onPressed: loading
+              ? null
+              : () {
+            context.go(
+              '/auth/forgot-password',
+            );
+          },
+          child: const Text(
+            'Forgot password?',
             style: TextStyle(
-              color: Color(0xFFB8B8B8),
-              fontSize: 14,
+              color: _cyan,
+              fontSize: 13,
+              fontWeight:
+              FontWeight.w800,
             ),
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
-
   Widget _buildLoginButton(bool loading) {
     return SizedBox(
       height: 52,

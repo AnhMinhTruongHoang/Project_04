@@ -3,7 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../features/auth/presentation/auth_gate.dart';
+import '../../features/auth/presentation/forgot_password_screen.dart';
 import '../../features/auth/presentation/login_screen.dart';
+import '../../features/auth/presentation/reset_password_screen.dart';
 import '../../features/auth/presentation/signup_screen.dart';
 import '../../features/auth/presentation/splash_screen.dart';
 import '../../features/auth/providers/auth_provider.dart';
@@ -15,8 +17,12 @@ final GoRouter appRouter = GoRouter(
 
   routes: [
     // ============================================================
-    // AUTH ROUTES
+    // GUEST AUTH ROUTES
     // ============================================================
+
+    // ------------------------------------------------------------
+    // LOGIN
+    // ------------------------------------------------------------
 
     GoRoute(
       path: '/login',
@@ -25,10 +31,44 @@ final GoRouter appRouter = GoRouter(
       },
     ),
 
+    // ------------------------------------------------------------
+    // SIGN UP
+    // ------------------------------------------------------------
+
     GoRoute(
       path: '/auth/signup',
       builder: (context, state) {
         return const SignupScreen();
+      },
+    ),
+
+    // ------------------------------------------------------------
+    // FORGOT PASSWORD
+    // ------------------------------------------------------------
+
+    GoRoute(
+      path: '/auth/forgot-password',
+      builder: (context, state) {
+        return const ForgotPasswordScreen();
+      },
+    ),
+
+    // ------------------------------------------------------------
+    // RESET PASSWORD
+    //
+    // URL:
+    // /auth/reset-password?email=user@gmail.com
+    // ------------------------------------------------------------
+
+    GoRoute(
+      path: '/auth/reset-password',
+      builder: (context, state) {
+        final email =
+            state.uri.queryParameters['email'] ?? '';
+
+        return ResetPasswordScreen(
+          initialEmail: email,
+        );
       },
     ),
 
@@ -37,7 +77,11 @@ final GoRouter appRouter = GoRouter(
     // ============================================================
 
     StatefulShellRoute.indexedStack(
-      builder: (context, state, navigationShell) {
+      builder: (
+          context,
+          state,
+          navigationShell,
+          ) {
         return _AuthenticatedShell(
           navigationShell: navigationShell,
         );
@@ -118,7 +162,7 @@ final GoRouter appRouter = GoRouter(
 );
 
 // ================================================================
-// AUTH SHELL
+// AUTHENTICATED SHELL
 // ================================================================
 
 class _AuthenticatedShell extends ConsumerWidget {
@@ -129,17 +173,36 @@ class _AuthenticatedShell extends ConsumerWidget {
   final StatefulNavigationShell navigationShell;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final authState = ref.watch(authProvider);
+  Widget build(
+      BuildContext context,
+      WidgetRef ref,
+      ) {
+    final authState =
+    ref.watch(authProvider);
 
     return authState.when(
+      // ----------------------------------------------------------
+      // LOADING
+      // ----------------------------------------------------------
+
       loading: () {
         return const SplashScreen();
       },
 
-      error: (error, stackTrace) {
+      // ----------------------------------------------------------
+      // ERROR
+      // ----------------------------------------------------------
+
+      error: (
+          error,
+          stackTrace,
+          ) {
         return const LoginScreen();
       },
+
+      // ----------------------------------------------------------
+      // DATA
+      // ----------------------------------------------------------
 
       data: (user) {
         if (user == null) {
@@ -147,7 +210,8 @@ class _AuthenticatedShell extends ConsumerWidget {
         }
 
         return AppShell(
-          navigationShell: navigationShell,
+          navigationShell:
+          navigationShell,
           user: user,
         );
       },
@@ -156,12 +220,14 @@ class _AuthenticatedShell extends ConsumerWidget {
 }
 
 // ================================================================
-// TEMP SCREEN
+// TEMPORARY SCREEN
 //
-// Sau này Search / Library / Profile làm thật thì xóa class này.
+// Sau này làm Search / Library / Profile thật
+// thì có thể xóa class này.
 // ================================================================
 
-class _PlaceholderScreen extends StatelessWidget {
+class _PlaceholderScreen
+    extends StatelessWidget {
   const _PlaceholderScreen({
     required this.title,
     required this.icon,
@@ -171,27 +237,37 @@ class _PlaceholderScreen extends StatelessWidget {
   final IconData icon;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(
+      BuildContext context,
+      ) {
     return ColoredBox(
-      color: const Color(0xFF0D0D0D),
+      color: const Color(
+        0xFF0D0D0D,
+      ),
       child: Center(
         child: Column(
-          mainAxisSize: MainAxisSize.min,
+          mainAxisSize:
+          MainAxisSize.min,
           children: [
             Icon(
               icon,
               size: 42,
-              color: const Color(0xFFFF5500),
+              color: const Color(
+                0xFFFF5500,
+              ),
             ),
 
-            const SizedBox(height: 12),
+            const SizedBox(
+              height: 12,
+            ),
 
             Text(
               title,
               style: const TextStyle(
                 color: Colors.white,
                 fontSize: 24,
-                fontWeight: FontWeight.w800,
+                fontWeight:
+                FontWeight.w800,
               ),
             ),
           ],

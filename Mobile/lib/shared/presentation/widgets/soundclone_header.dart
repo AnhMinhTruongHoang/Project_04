@@ -637,7 +637,6 @@ class SoundCloneHeader extends ConsumerWidget
                     child: _AccountMenuItem(
                       icon: Icons.dashboard_rounded,
                       text: 'Dashboard',
-                      highlighted: true,
                     ),
                   ),
 

@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../features/auth/presentation/auth_gate.dart';
 import '../../features/auth/presentation/login_screen.dart';
+import '../../features/auth/presentation/signup_screen.dart';
 import '../../features/auth/presentation/splash_screen.dart';
 import '../../features/auth/providers/auth_provider.dart';
 import '../../shared/presentation/app_shell.dart';
@@ -12,7 +13,12 @@ final GoRouter appRouter = GoRouter(
   initialLocation: '/home',
   routes: [
     GoRoute(path: '/login', builder: (context, state) => const LoginScreen()),
-
+    GoRoute(
+      path: '/auth/signup',
+      builder: (context, state) {
+        return const SignupScreen();
+      },
+    ),
     // AUTHENTICATED MOBILE SHELL
     StatefulShellRoute.indexedStack(
       builder: (context, state, navigationShell) {

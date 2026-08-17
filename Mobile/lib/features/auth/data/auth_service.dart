@@ -23,7 +23,9 @@ class AuthService {
         },
       );
 
-      final authResponse = AuthResponse.fromApi(response.data);
+      final authResponse = AuthResponse.fromApi(
+        response.data,
+      );
 
       await TokenStorage.saveAccessToken(
         authResponse.accessToken,
@@ -54,10 +56,12 @@ class AuthService {
     required String email,
     required String password,
   }) async {
-    final normalizedEmail = email.trim().toLowerCase();
+    final normalizedEmail =
+    email.trim().toLowerCase();
 
     try {
-      final response = await DioClient.instance.post<dynamic>(
+      final response =
+      await DioClient.instance.post<dynamic>(
         '/auth/register',
         data: {
           'name': name.trim(),
@@ -66,24 +70,31 @@ class AuthService {
         },
       );
 
-      final root = _asMapOrEmpty(response.data);
+      final root =
+      _asMapOrEmpty(response.data);
 
-      final statusCode = _parseStatusCode(
+      final statusCode =
+      _parseStatusCode(
         root['statusCode'],
         fallback: response.statusCode,
       );
 
-      final message = _parseMessage(
+      final message =
+      _parseMessage(
         root['message'],
       );
 
-      final data = _asMapOrEmpty(
+      final data =
+      _asMapOrEmpty(
         root['data'],
       );
 
-      if (statusCode == 200 || statusCode == 201) {
+      if (_isSuccessStatus(statusCode)) {
         final responseEmail =
-        data['email']?.toString().trim().toLowerCase();
+        data['email']
+            ?.toString()
+            .trim()
+            .toLowerCase();
 
         return RegisterResult(
           email: responseEmail != null &&
@@ -111,20 +122,24 @@ class AuthService {
     } on DioException catch (error) {
       final response = error.response;
 
-      final root = _asMapOrEmpty(
+      final root =
+      _asMapOrEmpty(
         response?.data,
       );
 
-      final data = _asMapOrEmpty(
+      final data =
+      _asMapOrEmpty(
         root['data'],
       );
 
-      final statusCode = _parseStatusCode(
+      final statusCode =
+      _parseStatusCode(
         root['statusCode'],
         fallback: response?.statusCode,
       );
 
-      final message = _parseMessage(
+      final message =
+      _parseMessage(
         root['message'],
       );
 
@@ -146,10 +161,270 @@ class AuthService {
       throw AuthRegisterException(
         message: error.message,
       );
-    } catch (error) {
-      throw AuthRegisterException(
+    } catch (_) {
+      throw const AuthRegisterException(
         message:
         'Registration failed. Please try again.',
+      );
+    }
+  }
+
+  // ============================================================
+  // VERIFY REGISTER OTP
+  // ============================================================
+
+  Future<OtpResult> verifyRegisterOtp({
+    required String email,
+    required String otp,
+  }) async {
+    final normalizedEmail =
+    email.trim().toLowerCase();
+
+    final normalizedOtp =
+    otp.trim();
+
+    try {
+      final response =
+      await DioClient.instance.post<dynamic>(
+        '/auth/verify-otp',
+        data: {
+          'email': normalizedEmail,
+          'otp': normalizedOtp,
+        },
+      );
+
+      final root =
+      _asMapOrEmpty(
+        response.data,
+      );
+
+      final statusCode =
+      _parseStatusCode(
+        root['statusCode'],
+        fallback: response.statusCode,
+      );
+
+      final message =
+      _parseMessage(
+        root['message'],
+      );
+
+      if (_isSuccessStatus(statusCode)) {
+        return OtpResult(
+          email: normalizedEmail,
+          message: message.isNotEmpty
+              ? message
+              : 'Verify OTP success.',
+        );
+      }
+
+      throw AuthException(
+        message.isNotEmpty
+            ? message
+            : 'Verify OTP failed.',
+      );
+    } on DioException catch (error) {
+      throw AuthException(
+        _extractMessage(error),
+      );
+    } on AuthException {
+      rethrow;
+    } catch (_) {
+      throw const AuthException(
+        'Verify OTP failed. Please try again.',
+      );
+    }
+  }
+
+  // ============================================================
+  // RESEND REGISTER OTP
+  // ============================================================
+
+  Future<OtpResult> resendRegisterOtp({
+    required String email,
+  }) async {
+    final normalizedEmail =
+    email.trim().toLowerCase();
+
+    try {
+      final response =
+      await DioClient.instance.post<dynamic>(
+        '/auth/resend-otp',
+        data: {
+          'email': normalizedEmail,
+        },
+      );
+
+      final root =
+      _asMapOrEmpty(
+        response.data,
+      );
+
+      final statusCode =
+      _parseStatusCode(
+        root['statusCode'],
+        fallback: response.statusCode,
+      );
+
+      final message =
+      _parseMessage(
+        root['message'],
+      );
+
+      if (_isSuccessStatus(statusCode)) {
+        return OtpResult(
+          email: normalizedEmail,
+          message: message.isNotEmpty
+              ? message
+              : 'OTP has been resent to your email.',
+        );
+      }
+
+      throw AuthException(
+        message.isNotEmpty
+            ? message
+            : 'Resend OTP failed.',
+      );
+    } on DioException catch (error) {
+      throw AuthException(
+        _extractMessage(error),
+      );
+    } on AuthException {
+      rethrow;
+    } catch (_) {
+      throw const AuthException(
+        'Resend OTP failed. Please try again.',
+      );
+    }
+  }
+
+  // ============================================================
+  // FORGOT PASSWORD
+  // ============================================================
+
+  Future<ForgotPasswordResult> forgotPassword({
+    required String email,
+  }) async {
+    final normalizedEmail =
+    email.trim().toLowerCase();
+
+    try {
+      final response =
+      await DioClient.instance.post<dynamic>(
+        '/auth/forgot-password',
+        data: {
+          'email': normalizedEmail,
+        },
+      );
+
+      final root =
+      _asMapOrEmpty(
+        response.data,
+      );
+
+      final statusCode =
+      _parseStatusCode(
+        root['statusCode'],
+        fallback: response.statusCode,
+      );
+
+      final message =
+      _parseMessage(
+        root['message'],
+      );
+
+      if (_isSuccessStatus(statusCode)) {
+        return ForgotPasswordResult(
+          email: normalizedEmail,
+          message: message.isNotEmpty
+              ? message
+              : 'OTP has been sent to your email.',
+        );
+      }
+
+      throw AuthException(
+        message.isNotEmpty
+            ? message
+            : 'Send OTP failed. Please try again.',
+      );
+    } on DioException catch (error) {
+      throw AuthException(
+        _extractMessage(error),
+      );
+    } on AuthException {
+      rethrow;
+    } catch (_) {
+      throw const AuthException(
+        'Send OTP failed. Please try again.',
+      );
+    }
+  }
+
+  // ============================================================
+  // RESET PASSWORD
+  // ============================================================
+
+  Future<ResetPasswordResult> resetPassword({
+    required String email,
+    required String otp,
+    required String newPassword,
+  }) async {
+    final normalizedEmail =
+    email.trim().toLowerCase();
+
+    final normalizedOtp =
+    otp.trim();
+
+    try {
+      final response =
+      await DioClient.instance.post<dynamic>(
+        '/auth/reset-password',
+        data: {
+          'email': normalizedEmail,
+          'otp': normalizedOtp,
+          'newPassword': newPassword,
+        },
+      );
+
+      final root =
+      _asMapOrEmpty(
+        response.data,
+      );
+
+      final statusCode =
+      _parseStatusCode(
+        root['statusCode'],
+        fallback: response.statusCode,
+      );
+
+      final message =
+      _parseMessage(
+        root['message'],
+      );
+
+      if (_isSuccessStatus(statusCode)) {
+        return ResetPasswordResult(
+          email: normalizedEmail,
+          message: message.isNotEmpty
+              ? message
+              : 'Reset password success.',
+        );
+      }
+
+      throw AuthException(
+        message.isNotEmpty
+            ? message
+            : 'Reset password failed. Please try again.',
+      );
+    } on DioException catch (error) {
+      throw AuthException(
+        _extractMessage(error),
+      );
+    } on AuthException {
+      rethrow;
+    } catch (_) {
+      throw const AuthException(
+        'Reset password failed. Please try again.',
       );
     }
   }
@@ -165,11 +440,24 @@ class AuthService {
         '/auth/account',
       );
 
-      final root = _asMap(response.data);
-      final data = _asMap(root['data']);
-      final user = _asMap(data['user']);
+      final root =
+      _asMap(
+        response.data,
+      );
 
-      return UserModel.fromJson(user);
+      final data =
+      _asMap(
+        root['data'],
+      );
+
+      final user =
+      _asMap(
+        data['user'],
+      );
+
+      return UserModel.fromJson(
+        user,
+      );
     } on DioException catch (error) {
       throw AuthException(
         _extractMessage(error),
@@ -191,7 +479,7 @@ class AuthService {
         '/auth/logout',
       );
     } catch (_) {
-      // Backend logout lỗi vẫn xóa token local.
+      // Dù backend logout lỗi vẫn xóa token local.
     } finally {
       await TokenStorage.clearTokens();
     }
@@ -204,15 +492,40 @@ class AuthService {
   String _extractMessage(
       DioException error,
       ) {
-    final responseData = error.response?.data;
+    final responseData =
+        error.response?.data;
 
     if (responseData is Map) {
-      final message = _parseMessage(
+      final message =
+      _parseMessage(
         responseData['message'],
       );
 
       if (message.isNotEmpty) {
         return message;
+      }
+
+      final data =
+      _asMapOrEmpty(
+        responseData['data'],
+      );
+
+      final nestedMessage =
+      _parseMessage(
+        data['message'],
+      );
+
+      if (nestedMessage.isNotEmpty) {
+        return nestedMessage;
+      }
+
+      final errorMessage =
+      _parseMessage(
+        responseData['error'],
+      );
+
+      if (errorMessage.isNotEmpty) {
+        return errorMessage;
       }
     }
 
@@ -259,6 +572,48 @@ class RegisterResult {
 }
 
 // ============================================================
+// OTP RESULT
+// ============================================================
+
+class OtpResult {
+  const OtpResult({
+    required this.email,
+    required this.message,
+  });
+
+  final String email;
+  final String message;
+}
+
+// ============================================================
+// FORGOT PASSWORD RESULT
+// ============================================================
+
+class ForgotPasswordResult {
+  const ForgotPasswordResult({
+    required this.email,
+    required this.message,
+  });
+
+  final String email;
+  final String message;
+}
+
+// ============================================================
+// RESET PASSWORD RESULT
+// ============================================================
+
+class ResetPasswordResult {
+  const ResetPasswordResult({
+    required this.email,
+    required this.message,
+  });
+
+  final String email;
+  final String message;
+}
+
+// ============================================================
 // AUTH EXCEPTION
 // ============================================================
 
@@ -277,7 +632,8 @@ class AuthException implements Exception {
 // REGISTER EXCEPTION
 // ============================================================
 
-class AuthRegisterException extends AuthException {
+class AuthRegisterException
+    extends AuthException {
   const AuthRegisterException({
     required String message,
     this.statusCode,
@@ -286,9 +642,7 @@ class AuthRegisterException extends AuthException {
   }) : super(message);
 
   final int? statusCode;
-
   final bool requiresVerification;
-
   final String? email;
 }
 
@@ -343,7 +697,8 @@ String _parseMessage(
           (item) => item != null,
     )
         .map(
-          (item) => item.toString().trim(),
+          (item) =>
+          item.toString().trim(),
     )
         .where(
           (item) => item.isNotEmpty,
@@ -373,6 +728,14 @@ int? _parseStatusCode(
   }
 
   return fallback;
+}
+
+bool _isSuccessStatus(
+    int? statusCode,
+    ) {
+  return statusCode != null &&
+      statusCode >= 200 &&
+      statusCode < 300;
 }
 
 bool _parseRequiresVerification({

@@ -89,6 +89,30 @@ const ProfileMembershipCreatePostDialog = ({
   const [previewDurationSeconds, setPreviewDurationSeconds] = useState("60");
 
   /*
+   * Prevent duplicate publish requests.
+   *
+   * State is used for UI/loading.
+   * Ref locks immediately before React re-renders.
+   */
+  const publishLockRef = useRef(false);
+
+  const startPublishing = () => {
+    if (publishLockRef.current) {
+      return false;
+    }
+
+    publishLockRef.current = true;
+    setPublishing(true);
+
+    return true;
+  };
+
+  const stopPublishing = () => {
+    publishLockRef.current = false;
+    setPublishing(false);
+  };
+
+  /*
    * =========================
    * LOAD ARTIST PLANS
    * =========================
@@ -145,6 +169,9 @@ const ProfileMembershipCreatePostDialog = ({
       return;
     }
 
+    publishLockRef.current = false;
+    setPublishing(false);
+
     setPostType("TEXT");
 
     setContent("");
@@ -161,7 +188,6 @@ const ProfileMembershipCreatePostDialog = ({
     setPollQuestion("");
     setPollOptions(["", ""]);
 
-    /* TRACK PREVIEW */
     setSelectedTrackId("");
     setPreviewStartSeconds("0");
     setPreviewDurationSeconds("60");
@@ -258,7 +284,7 @@ const ProfileMembershipCreatePostDialog = ({
    * =========================
    */
   const handlePublishTextPost = async () => {
-    if (!accessToken || publishing) {
+    if (!accessToken) {
       return;
     }
 
@@ -274,7 +300,13 @@ const ProfileMembershipCreatePostDialog = ({
       return;
     }
 
-    setPublishing(true);
+    /*
+     * Lock immediately.
+     * Prevents double-click duplicate requests.
+     */
+    if (!startPublishing()) {
+      return;
+    }
 
     try {
       const response = await createArtistMembershipPostApi(
@@ -289,6 +321,8 @@ const ProfileMembershipCreatePostDialog = ({
           content: normalizedContent,
 
           allowComments,
+
+          status: "PUBLISHED",
         },
         accessToken
       );
@@ -296,6 +330,8 @@ const ProfileMembershipCreatePostDialog = ({
       if (!response?.data) {
         throw new Error(response?.message || "Unable to publish the post.");
       }
+
+      toast.success("Post published successfully.");
 
       onCreated?.();
 
@@ -308,6 +344,8 @@ const ProfileMembershipCreatePostDialog = ({
           ? requestError.message
           : "Unable to publish the post."
       );
+    } finally {
+      stopPublishing();
     }
   };
   /*
@@ -316,7 +354,15 @@ const ProfileMembershipCreatePostDialog = ({
    * =========================
    */
   const handlePublishImagePost = async () => {
-    if (!accessToken || publishing) {
+    /*
+     * HARD LOCK
+     * Chặn ngay lập tức trước cả React re-render.
+     */
+    if (publishLockRef.current) {
+      return;
+    }
+
+    if (!accessToken) {
       return;
     }
 
@@ -329,6 +375,12 @@ const ProfileMembershipCreatePostDialog = ({
       toast.error("Please select a membership plan.");
       return;
     }
+
+    /*
+     * Lock BEFORE starting upload.
+     */
+    publishLockRef.current = true;
+    setPublishing(true);
 
     try {
       const response = await createArtistMembershipImagePostApi(
@@ -355,8 +407,19 @@ const ProfileMembershipCreatePostDialog = ({
         );
       }
 
+      toast.success("Image published successfully.");
+
+      /*
+       * Refresh feed.
+       */
       onCreated?.();
 
+      /*
+       * IMPORTANT:
+       *
+       * KHÔNG unlock ở đây.
+       * Giữ lock cho tới khi dialog đóng hoàn toàn.
+       */
       onClose();
     } catch (requestError) {
       console.error("Cannot publish membership image post:", requestError);
@@ -366,6 +429,13 @@ const ProfileMembershipCreatePostDialog = ({
           ? requestError.message
           : "Unable to publish the image post."
       );
+
+      /*
+       * Chỉ unlock khi lỗi
+       * để user có thể thử Publish lại.
+       */
+      publishLockRef.current = false;
+      setPublishing(false);
     }
   };
 
@@ -420,7 +490,7 @@ const ProfileMembershipCreatePostDialog = ({
    * =========================
    */
   const handlePublishPoll = async () => {
-    if (!accessToken || publishing) {
+    if (!accessToken) {
       return;
     }
 
@@ -474,7 +544,9 @@ const ProfileMembershipCreatePostDialog = ({
       return;
     }
 
-    setPublishing(true);
+    if (!startPublishing()) {
+      return;
+    }
 
     try {
       const response = await createArtistMembershipPollApi(
@@ -513,7 +585,7 @@ const ProfileMembershipCreatePostDialog = ({
           : "Unable to publish the poll."
       );
     } finally {
-      setPublishing(false);
+      stopPublishing();
     }
   };
 
@@ -523,7 +595,7 @@ const ProfileMembershipCreatePostDialog = ({
    * =========================
    */
   const handlePublishTrackPreview = async () => {
-    if (!accessToken || publishing) {
+    if (!accessToken) {
       return;
     }
 
@@ -588,7 +660,9 @@ const ProfileMembershipCreatePostDialog = ({
       return;
     }
 
-    setPublishing(true);
+    if (!startPublishing()) {
+      return;
+    }
 
     try {
       const response = await createArtistMembershipPostApi(
@@ -635,7 +709,7 @@ const ProfileMembershipCreatePostDialog = ({
           : "Unable to publish the track preview."
       );
     } finally {
-      setPublishing(false);
+      stopPublishing();
     }
   };
 
@@ -680,7 +754,13 @@ const ProfileMembershipCreatePostDialog = ({
   return (
     <Dialog
       open={open}
-      onClose={onClose}
+      onClose={(_, reason) => {
+        if (publishing) {
+          return;
+        }
+
+        onClose();
+      }}
       fullWidth
       maxWidth="md"
       PaperProps={{
@@ -753,6 +833,7 @@ const ProfileMembershipCreatePostDialog = ({
 
           <IconButton
             aria-label="Close create post"
+            disabled={publishing}
             onClick={onClose}
             sx={{
               color: "#A0A0A0",
@@ -1976,118 +2057,118 @@ const ProfileMembershipCreatePostDialog = ({
             {publishing ? "Publishing..." : "Publish image"}
           </Button>
         )}
+
+        {/* PUBLISH POLL */}
+        {postType === "POLL" && (
+          <Button
+            variant="contained"
+            disabled={
+              publishing ||
+              !pollQuestion.trim() ||
+              pollOptions.some((option) => !option.trim()) ||
+              (visibility === "TIER_ONLY" && !requiredPlanId)
+            }
+            onClick={() => {
+              void handlePublishPoll();
+            }}
+            startIcon={
+              publishing ? (
+                <CircularProgress
+                  size={16}
+                  thickness={5}
+                  sx={{
+                    color: "inherit",
+                  }}
+                />
+              ) : (
+                <PollRoundedIcon />
+              )
+            }
+            sx={{
+              minHeight: 42,
+              px: 2.5,
+
+              color: "#FFFFFF",
+              bgcolor: "#FF5500",
+
+              borderRadius: 2,
+
+              fontWeight: 850,
+              textTransform: "none",
+
+              boxShadow: "none",
+
+              "&:hover": {
+                bgcolor: "#FF6A1A",
+                boxShadow: "none",
+              },
+
+              "&.Mui-disabled": {
+                color: "#777777",
+                bgcolor: "#292929",
+              },
+            }}
+          >
+            {publishing ? "Publishing..." : "Publish poll"}
+          </Button>
+        )}
+
+        {/* PUBLISH TRACK PREVIEW */}
+        {postType === "TRACK_PREVIEW" && (
+          <Button
+            variant="contained"
+            disabled={
+              publishing ||
+              loadingTracks ||
+              !selectedTrackId ||
+              !previewDurationSeconds ||
+              (visibility === "TIER_ONLY" && !requiredPlanId)
+            }
+            onClick={() => {
+              void handlePublishTrackPreview();
+            }}
+            startIcon={
+              publishing ? (
+                <CircularProgress
+                  size={16}
+                  thickness={5}
+                  sx={{
+                    color: "inherit",
+                  }}
+                />
+              ) : (
+                <GraphicEqRoundedIcon />
+              )
+            }
+            sx={{
+              minHeight: 42,
+              px: 2.5,
+
+              color: "#FFFFFF",
+              bgcolor: "#FF5500",
+
+              borderRadius: 2,
+
+              fontWeight: 850,
+              textTransform: "none",
+
+              boxShadow: "none",
+
+              "&:hover": {
+                bgcolor: "#FF6A1A",
+                boxShadow: "none",
+              },
+
+              "&.Mui-disabled": {
+                color: "#777777",
+                bgcolor: "#292929",
+              },
+            }}
+          >
+            {publishing ? "Publishing..." : "Publish preview"}
+          </Button>
+        )}
       </DialogActions>
-
-      {/* PUBLISH POLL */}
-      {postType === "POLL" && (
-        <Button
-          variant="contained"
-          disabled={
-            publishing ||
-            !pollQuestion.trim() ||
-            pollOptions.some((option) => !option.trim()) ||
-            (visibility === "TIER_ONLY" && !requiredPlanId)
-          }
-          onClick={() => {
-            void handlePublishPoll();
-          }}
-          startIcon={
-            publishing ? (
-              <CircularProgress
-                size={16}
-                thickness={5}
-                sx={{
-                  color: "inherit",
-                }}
-              />
-            ) : (
-              <PollRoundedIcon />
-            )
-          }
-          sx={{
-            minHeight: 42,
-            px: 2.5,
-
-            color: "#FFFFFF",
-            bgcolor: "#FF5500",
-
-            borderRadius: 2,
-
-            fontWeight: 850,
-            textTransform: "none",
-
-            boxShadow: "none",
-
-            "&:hover": {
-              bgcolor: "#FF6A1A",
-              boxShadow: "none",
-            },
-
-            "&.Mui-disabled": {
-              color: "#777777",
-              bgcolor: "#292929",
-            },
-          }}
-        >
-          {publishing ? "Publishing..." : "Publish poll"}
-        </Button>
-      )}
-
-      {/* PUBLISH TRACK PREVIEW */}
-      {postType === "TRACK_PREVIEW" && (
-        <Button
-          variant="contained"
-          disabled={
-            publishing ||
-            loadingTracks ||
-            !selectedTrackId ||
-            !previewDurationSeconds ||
-            (visibility === "TIER_ONLY" && !requiredPlanId)
-          }
-          onClick={() => {
-            void handlePublishTrackPreview();
-          }}
-          startIcon={
-            publishing ? (
-              <CircularProgress
-                size={16}
-                thickness={5}
-                sx={{
-                  color: "inherit",
-                }}
-              />
-            ) : (
-              <GraphicEqRoundedIcon />
-            )
-          }
-          sx={{
-            minHeight: 42,
-            px: 2.5,
-
-            color: "#FFFFFF",
-            bgcolor: "#FF5500",
-
-            borderRadius: 2,
-
-            fontWeight: 850,
-            textTransform: "none",
-
-            boxShadow: "none",
-
-            "&:hover": {
-              bgcolor: "#FF6A1A",
-              boxShadow: "none",
-            },
-
-            "&.Mui-disabled": {
-              color: "#777777",
-              bgcolor: "#292929",
-            },
-          }}
-        >
-          {publishing ? "Publishing..." : "Publish preview"}
-        </Button>
-      )}
     </Dialog>
   );
 };

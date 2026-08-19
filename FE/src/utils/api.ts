@@ -2697,6 +2697,59 @@ export const completeTestMembershipPaymentApi = (
     body: payload,
   });
 };
+
+/* =========================
+   ARTIST STUDIO COMMENTS
+========================= */
+
+export const getArtistStudioCommentsApi = (
+  accessToken?: string,
+  params: {
+    current?: number;
+    pageSize?: number;
+    keyword?: string;
+    trackId?: string;
+  } = {}
+) => {
+  return sendRequest<
+    IBackendRes<{
+      result: ITrackComment[];
+      current: number;
+      pageSize: number;
+      total: number;
+      totalPages: number;
+    }>
+  >({
+    url: "/api/v1/artist-studio/comments",
+
+    method: "GET",
+
+    queryParams: {
+      current: params.current ?? 1,
+
+      pageSize: params.pageSize ?? 20,
+
+      keyword: params.keyword || "",
+
+      trackId: params.trackId || "",
+    },
+
+    headers: authHeaders(accessToken),
+  });
+};
+
+export const deleteArtistStudioCommentApi = (
+  commentId: string,
+  accessToken?: string
+) => {
+  return sendRequest<IBackendRes<boolean>>({
+    url: `/api/v1/artist-studio/comments/${encodeURIComponent(commentId)}`,
+
+    method: "DELETE",
+
+    headers: authHeaders(accessToken),
+  });
+};
 /* =========================
 
 ========================= */

@@ -10,70 +10,13 @@ import {
   useState,
 } from "react";
 
-/*
- * ============================================================
- * SOUNDCLONE - BACKEND STARTUP LOADER
- * ============================================================
- *
- * Mục đích:
- * - Hiển thị full-screen loading khi Backend Spring Boot đang cold start.
- * - Poll Backend thật thay vì dùng progress của asset/Three.js.
- * - Progress chạy kiểu "game loading screen":
- *      0% -> ~92%: tăng giả có kiểm soát.
- *      Backend ready -> 100%.
- * - Nếu Backend khởi động quá lâu:
- *      hiển thị "Still waking up..." + nút Retry.
- *
- * Logo:
- *   FE/public/images/logo/Sc.png
- *
- * Cách dùng:
- *
- *   <BackendStartupLoader>
- *     {children}
- *   </BackendStartupLoader>
- *
- * Nên đặt ở root layout/client provider để loader bao toàn bộ app.
- *
- * LƯU Ý:
- * - NEXT_PUBLIC_BACKEND_URL ví dụ:
- *     http://localhost:8000
- * - Loader mặc định ping:
- *     /api/v1/auth/account
- *
- * Endpoint này có thể trả 401 khi chưa login.
- * 401 vẫn có nghĩa là Backend đã sống và nhận request,
- * nên loader xem BẤT KỲ HTTP response nào là "ready".
- * Chỉ network error / connection refused / timeout mới là "not ready".
- */
+import { Box, Button, LinearProgress, Stack, Typography } from "@mui/material";
 
 interface BackendStartupLoaderProps {
   children: ReactNode;
-
-  /*
-   * Nếu sau này Backend có endpoint health public riêng,
-   * chỉ cần truyền:
-   *
-   *   healthPath="/actuator/health"
-   *
-   * hoặc endpoint khác.
-   */
   healthPath?: string;
-
-  /*
-   * Thời gian giữa các lần ping Backend.
-   */
   pollIntervalMs?: number;
-
-  /*
-   * Timeout của từng request ping.
-   */
   requestTimeoutMs?: number;
-
-  /*
-   * Sau bao lâu thì đổi UI sang "Still waking up..."
-   * nhưng VẪN tiếp tục poll Backend.
-   */
   slowStartupAfterMs?: number;
 }
 
@@ -134,14 +77,11 @@ const STATUS_STEPS = [
   },
 ];
 
-function getStatus(progress: number) {
-  return (
-    STATUS_STEPS.find((step) => progress >= step.min && progress <= step.max) ??
-    STATUS_STEPS[0]
-  );
-}
+const getStatus = (progress: number) =>
+  STATUS_STEPS.find((step) => progress >= step.min && progress <= step.max) ??
+  STATUS_STEPS[0];
 
-function formatElapsed(milliseconds: number) {
+const formatElapsed = (milliseconds: number) => {
   const totalSeconds = Math.max(0, Math.floor(milliseconds / 1000));
 
   if (totalSeconds < 60) {
@@ -151,8 +91,8 @@ function formatElapsed(milliseconds: number) {
   const minutes = Math.floor(totalSeconds / 60);
   const seconds = totalSeconds % 60;
 
-  return `${minutes}m ${seconds.toString().padStart(2, "0")}s`;
-}
+  return `${minutes}m ${String(seconds).padStart(2, "0")}s`;
+};
 
 export default function BackendStartupLoader({
   children,
@@ -162,16 +102,25 @@ export default function BackendStartupLoader({
   slowStartupAfterMs = 20000,
 }: BackendStartupLoaderProps) {
   const [isReady, setIsReady] = useState(false);
+
   const [isVisible, setIsVisible] = useState(true);
+
   const [progress, setProgress] = useState(4);
+
   const [attempt, setAttempt] = useState(0);
+
   const [tipIndex, setTipIndex] = useState(0);
+
   const [elapsedMs, setElapsedMs] = useState(0);
+
   const [isSlowStartup, setIsSlowStartup] = useState(false);
+
   const [manualRetryKey, setManualRetryKey] = useState(0);
 
   const mountedRef = useRef(true);
+
   const checkingRef = useRef(false);
+
   const startedAtRef = useRef(Date.now());
 
   const healthUrl = useMemo(() => {
@@ -189,20 +138,9 @@ export default function BackendStartupLoader({
   const status = useMemo(() => getStatus(progress), [progress]);
 
   /*
-   * ============================================================
-   * BACKEND HEALTH CHECK
-   * ============================================================
-   *
-   * Quan trọng:
-   * fetch() chỉ throw khi network fail/timeout.
-   *
-   * Nếu server trả:
-   * 200, 400, 401, 403, 404, 409, 500...
-   *
-   * thì Backend đã accept connection => xem là READY.
-   *
-   * Loader không dùng response.ok vì /auth/account có thể trả 401
-   * khi user chưa login.
+   * =========================================
+   * CHECK BACKEND
+   * =========================================
    */
   const checkBackend = useCallback(async () => {
     if (checkingRef.current || isReady) {
@@ -212,14 +150,20 @@ export default function BackendStartupLoader({
     checkingRef.current = true;
 
     const controller = new AbortController();
-    const timeoutId = window.setTimeout(
-      () => controller.abort(),
-      requestTimeoutMs
-    );
+
+    const timeoutId = window.setTimeout(() => {
+      controller.abort();
+    }, requestTimeoutMs);
 
     try {
       setAttempt((current) => current + 1);
 
+      /*
+       * Any HTTP response means Spring Boot
+       * has accepted the connection.
+       *
+       * 401 from /auth/account is also READY.
+       */
       await fetch(healthUrl, {
         method: "GET",
         cache: "no-store",
@@ -235,29 +179,27 @@ export default function BackendStartupLoader({
         return;
       }
 
-      setIsReady(true);
       setProgress(100);
+
+      setIsReady(true);
+
       setIsSlowStartup(false);
     } catch {
       /*
-       * Backend chưa nhận connection:
-       * - ECONNREFUSED
-       * - Failed to fetch
-       * - timeout
-       *
-       * Không hiển thị error cứng ngay.
-       * Loader tiếp tục poll.
+       * Connection refused / timeout / network error.
+       * Continue polling.
        */
     } finally {
       window.clearTimeout(timeoutId);
+
       checkingRef.current = false;
     }
   }, [healthUrl, isReady, requestTimeoutMs]);
 
   /*
-   * ============================================================
-   * INITIAL + REPEATED BACKEND POLLING
-   * ============================================================
+   * =========================================
+   * BACKEND POLLING
+   * =========================================
    */
   useEffect(() => {
     void checkBackend();
@@ -270,18 +212,15 @@ export default function BackendStartupLoader({
       void checkBackend();
     }, pollIntervalMs);
 
-    return () => window.clearInterval(intervalId);
+    return () => {
+      window.clearInterval(intervalId);
+    };
   }, [checkBackend, isReady, manualRetryKey, pollIntervalMs]);
 
   /*
-   * ============================================================
-   * GAME-LIKE FAKE PROGRESS
-   * ============================================================
-   *
-   * Không bao giờ fake lên 100%.
-   * Backend chưa ready => progress tối đa 92%.
-   *
-   * Càng gần 92% càng tăng chậm để tạo cảm giác tự nhiên.
+   * =========================================
+   * FAKE LOADING PROGRESS
+   * =========================================
    */
   useEffect(() => {
     if (isReady) {
@@ -312,32 +251,40 @@ export default function BackendStartupLoader({
       });
     }, 420);
 
-    return () => window.clearInterval(intervalId);
+    return () => {
+      window.clearInterval(intervalId);
+    };
   }, [isReady]);
 
   /*
-   * ============================================================
-   * ELAPSED TIME + SLOW STARTUP STATE
-   * ============================================================
+   * =========================================
+   * ELAPSED TIME
+   * =========================================
    */
   useEffect(() => {
+    if (isReady) {
+      return;
+    }
+
     const intervalId = window.setInterval(() => {
       const elapsed = Date.now() - startedAtRef.current;
 
       setElapsedMs(elapsed);
 
-      if (!isReady && elapsed >= slowStartupAfterMs) {
+      if (elapsed >= slowStartupAfterMs) {
         setIsSlowStartup(true);
       }
     }, 1000);
 
-    return () => window.clearInterval(intervalId);
+    return () => {
+      window.clearInterval(intervalId);
+    };
   }, [isReady, slowStartupAfterMs]);
 
   /*
-   * ============================================================
-   * ROTATING GAME TIPS
-   * ============================================================
+   * =========================================
+   * ROTATE TIPS
+   * =========================================
    */
   useEffect(() => {
     if (isReady) {
@@ -348,13 +295,15 @@ export default function BackendStartupLoader({
       setTipIndex((current) => (current + 1) % TIPS.length);
     }, 4300);
 
-    return () => window.clearInterval(intervalId);
+    return () => {
+      window.clearInterval(intervalId);
+    };
   }, [isReady]);
 
   /*
-   * ============================================================
-   * READY TRANSITION
-   * ============================================================
+   * =========================================
+   * READY FADE OUT
+   * =========================================
    */
   useEffect(() => {
     if (!isReady) {
@@ -365,15 +314,17 @@ export default function BackendStartupLoader({
       if (mountedRef.current) {
         setIsVisible(false);
       }
-    }, 900);
+    }, 850);
 
-    return () => window.clearTimeout(timeoutId);
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
   }, [isReady]);
 
   /*
-   * ============================================================
-   * MOUNT CLEANUP
-   * ============================================================
+   * =========================================
+   * CLEANUP
+   * =========================================
    */
   useEffect(() => {
     mountedRef.current = true;
@@ -384,17 +335,21 @@ export default function BackendStartupLoader({
   }, []);
 
   /*
-   * ============================================================
-   * MANUAL RETRY
-   * ============================================================
+   * =========================================
+   * RETRY
+   * =========================================
    */
   const handleRetry = () => {
     checkingRef.current = false;
+
     startedAtRef.current = Date.now();
 
     setElapsedMs(0);
+
     setIsSlowStartup(false);
+
     setProgress((current) => Math.min(current, 78));
+
     setManualRetryKey((current) => current + 1);
 
     void checkBackend();
@@ -402,216 +357,634 @@ export default function BackendStartupLoader({
 
   return (
     <>
-      {children}
+      {/* APP ONLY MOUNTS AFTER BACKEND IS READY */}
+      {isReady ? children : null}
 
       {isVisible && (
-        <div
+        <Box
           role="status"
           aria-live="polite"
           aria-busy={!isReady}
-          className={[
-            "fixed inset-0 z-[99999] overflow-hidden",
-            "bg-[#080808] text-white",
-            "transition-opacity duration-700",
-            isReady ? "opacity-0" : "opacity-100",
-          ].join(" ")}
-        >
-          {/* BACKGROUND */}
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_-10%,rgba(255,85,0,0.20),transparent_38%),radial-gradient(circle_at_10%_90%,rgba(255,85,0,0.08),transparent_28%),linear-gradient(180deg,#111111_0%,#090909_48%,#050505_100%)]" />
+          sx={{
+            position: "fixed",
+            inset: 0,
+            zIndex: 99999,
 
-          {/* GRID / GAME HUD TEXTURE */}
-          <div
-            className="absolute inset-0 opacity-[0.035]"
-            style={{
+            overflow: "hidden",
+
+            color: "#FFFFFF",
+
+            background:
+              "radial-gradient(circle at 50% 0%, rgba(255,85,0,0.18) 0%, rgba(255,85,0,0.03) 32%, transparent 52%), linear-gradient(180deg, #121212 0%, #090909 48%, #050505 100%)",
+
+            opacity: isReady ? 0 : 1,
+
+            transition: "opacity 700ms ease",
+
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+
+            px: 2.5,
+
+            "&::before": {
+              content: '""',
+              position: "absolute",
+              inset: 0,
+
+              opacity: 0.035,
+
               backgroundImage:
-                "linear-gradient(rgba(255,255,255,.75) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.75) 1px, transparent 1px)",
+                "linear-gradient(rgba(255,255,255,.7) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.7) 1px, transparent 1px)",
+
               backgroundSize: "48px 48px",
+
+              pointerEvents: "none",
+            },
+          }}
+        >
+          {/* TOP HUD */}
+          <Stack
+            direction="row"
+            justifyContent="space-between"
+            sx={{
+              position: "absolute",
+              top: {
+                xs: 18,
+                sm: 28,
+              },
+              left: {
+                xs: 20,
+                sm: 32,
+              },
+              right: {
+                xs: 20,
+                sm: 32,
+              },
+
+              color: "rgba(255,255,255,0.28)",
+
+              fontSize: 10,
+              fontWeight: 900,
+
+              textTransform: "uppercase",
+              letterSpacing: "0.2em",
+            }}
+          >
+            <Box component="span">SoundClone</Box>
+
+            <Box component="span">Server startup</Box>
+          </Stack>
+
+          {/* GLOW */}
+          <Box
+            sx={{
+              position: "absolute",
+
+              width: {
+                xs: 320,
+                sm: 520,
+              },
+
+              height: {
+                xs: 320,
+                sm: 520,
+              },
+
+              borderRadius: "50%",
+
+              bgcolor: "rgba(255,85,0,0.075)",
+
+              filter: "blur(90px)",
+
+              pointerEvents: "none",
             }}
           />
 
-          {/* ORANGE AMBIENT GLOW */}
-          <div className="absolute left-1/2 top-[38%] h-[340px] w-[340px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#ff5500]/10 blur-[90px] sm:h-[520px] sm:w-[520px]" />
+          {/* CONTENT */}
+          <Box
+            sx={{
+              position: "relative",
+              zIndex: 1,
 
-          {/* TOP HUD */}
-          <div className="absolute left-0 right-0 top-0 flex items-center justify-between px-5 py-5 text-[10px] font-bold uppercase tracking-[0.2em] text-white/35 sm:px-8 sm:py-7">
-            <span>SoundClone</span>
-
-            <span>Server startup</span>
-          </div>
-
-          {/* MAIN CONTENT */}
-          <main className="relative z-10 flex min-h-dvh items-center justify-center px-5 py-20">
-            <div className="w-full max-w-[680px]">
+              width: "100%",
+              maxWidth: 680,
+            }}
+          >
+            {/* BRAND */}
+            <Stack alignItems="center" textAlign="center">
               {/* LOGO */}
-              <div className="flex flex-col items-center text-center">
-                <div className="relative mb-7">
-                  {/* OUTER PULSE */}
-                  <div className="absolute inset-[-20px] animate-ping rounded-[34px] border border-[#ff5500]/15 [animation-duration:2.4s]" />
+              <Box
+                sx={{
+                  position: "relative",
 
-                  {/* LOGO CARD */}
-                  <div className="relative flex h-[92px] w-[92px] items-center justify-center overflow-hidden rounded-[26px] border border-white/10 bg-[#111] shadow-[0_0_65px_rgba(255,85,0,0.22)] sm:h-[108px] sm:w-[108px]">
-                    <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(255,85,0,0.20),transparent_65%)]" />
+                  width: {
+                    xs: 92,
+                    sm: 108,
+                  },
 
-                    <Image
-                      src="/images/logo/Sc.png"
-                      alt="SoundClone"
-                      width={84}
-                      height={84}
-                      priority
-                      className="relative z-10 h-[72px] w-[72px] object-contain sm:h-[84px] sm:w-[84px]"
-                    />
-                  </div>
+                  height: {
+                    xs: 92,
+                    sm: 108,
+                  },
 
-                  {/* ONLINE DOT */}
-                  <span
-                    className={[
-                      "absolute -bottom-2 -right-2 h-5 w-5 rounded-full border-4 border-[#080808]",
-                      isReady ? "bg-[#22c55e]" : "animate-pulse bg-[#ff5500]",
-                    ].join(" ")}
-                  />
-                </div>
+                  mb: 3,
 
-                <p className="text-[11px] font-bold uppercase tracking-[0.36em] text-[#ff7833] sm:text-xs">
-                  SoundClone
-                </p>
+                  display: "grid",
+                  placeItems: "center",
 
-                <h1 className="mt-3 text-3xl font-black tracking-[-0.035em] text-white sm:text-5xl">
-                  {status.label}
-                  {!isReady && (
-                    <span className="ml-1 inline-flex w-8 justify-start text-[#ff5500]">
-                      <span className="animate-pulse">...</span>
-                    </span>
-                  )}
-                </h1>
+                  overflow: "hidden",
 
-                <p className="mt-4 max-w-[520px] text-sm leading-6 text-white/50 sm:text-base">
-                  {status.detail}
-                </p>
-              </div>
+                  bgcolor: "#111111",
 
-              {/* PROGRESS PANEL */}
-              <div className="mt-10 overflow-hidden rounded-2xl border border-white/[0.08] bg-white/[0.035] p-4 shadow-[0_24px_80px_rgba(0,0,0,0.28)] backdrop-blur-xl sm:p-5">
-                {/* PROGRESS LABEL */}
-                <div className="mb-3 flex items-end justify-between gap-4">
-                  <div>
-                    <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-white/35">
-                      Loading
-                    </p>
+                  border: "1px solid rgba(255,255,255,0.10)",
 
-                    <p className="mt-1 text-xs font-medium text-white/55">
-                      {isReady
-                        ? "Server connection established"
-                        : `Connection attempt ${Math.max(attempt, 1)}`}
-                    </p>
-                  </div>
+                  borderRadius: "26px",
 
-                  <div className="font-mono text-2xl font-black tabular-nums text-white sm:text-3xl">
-                    {Math.round(progress)}
-                    <span className="ml-0.5 text-sm text-[#ff5500]">%</span>
-                  </div>
-                </div>
+                  boxShadow: "0 0 70px rgba(255,85,0,0.22)",
 
-                {/* PROGRESS BAR */}
-                <div className="relative h-2.5 overflow-hidden rounded-full bg-white/[0.07]">
-                  <div
-                    className="absolute inset-y-0 left-0 rounded-full bg-[linear-gradient(90deg,#ff3d00_0%,#ff5500_52%,#ff8a4c_100%)] shadow-[0_0_22px_rgba(255,85,0,0.55)] transition-[width] duration-500 ease-out"
-                    style={{
-                      width: `${Math.min(100, Math.max(0, progress))}%`,
+                  "&::before": {
+                    content: '""',
+
+                    position: "absolute",
+
+                    inset: -20,
+
+                    borderRadius: "36px",
+
+                    border: "1px solid rgba(255,85,0,0.20)",
+
+                    animation: "soundclonePulse 2s ease-out infinite",
+                  },
+                }}
+              >
+                <Image
+                  src="/images/logo/Sc.png"
+                  alt="SoundClone"
+                  width={84}
+                  height={84}
+                  priority
+                  style={{
+                    width: "78%",
+                    height: "78%",
+                    objectFit: "contain",
+                  }}
+                />
+
+                <Box
+                  sx={{
+                    position: "absolute",
+
+                    right: -6,
+                    bottom: -6,
+
+                    width: 20,
+                    height: 20,
+
+                    borderRadius: "50%",
+
+                    border: "4px solid #080808",
+
+                    bgcolor: isReady ? "#22c55e" : "#FF5500",
+
+                    boxShadow: isReady
+                      ? "0 0 15px rgba(34,197,94,0.7)"
+                      : "0 0 15px rgba(255,85,0,0.7)",
+                  }}
+                />
+              </Box>
+
+              <Typography
+                sx={{
+                  color: "#FF7833",
+
+                  fontSize: 11,
+                  fontWeight: 900,
+
+                  textTransform: "uppercase",
+                  letterSpacing: "0.36em",
+                }}
+              >
+                SoundClone
+              </Typography>
+
+              <Typography
+                component="h1"
+                sx={{
+                  mt: 1.3,
+
+                  color: "#FFFFFF",
+
+                  fontSize: {
+                    xs: 30,
+                    sm: 46,
+                  },
+
+                  lineHeight: 1.1,
+
+                  fontWeight: 950,
+
+                  letterSpacing: "-0.035em",
+                }}
+              >
+                {status.label}
+
+                {!isReady && (
+                  <Box
+                    component="span"
+                    sx={{
+                      color: "#FF5500",
+                    }}
+                  >
+                    ...
+                  </Box>
+                )}
+              </Typography>
+
+              <Typography
+                sx={{
+                  maxWidth: 520,
+
+                  mt: 1.6,
+
+                  color: "rgba(255,255,255,0.5)",
+
+                  fontSize: {
+                    xs: 13,
+                    sm: 15,
+                  },
+
+                  lineHeight: 1.6,
+                }}
+              >
+                {status.detail}
+              </Typography>
+            </Stack>
+
+            {/* PROGRESS CARD */}
+            <Box
+              sx={{
+                mt: 4,
+
+                p: {
+                  xs: 2,
+                  sm: 2.5,
+                },
+
+                bgcolor: "rgba(255,255,255,0.035)",
+
+                border: "1px solid rgba(255,255,255,0.08)",
+
+                borderRadius: 3,
+
+                backdropFilter: "blur(18px)",
+
+                boxShadow: "0 24px 80px rgba(0,0,0,0.32)",
+              }}
+            >
+              <Stack
+                direction="row"
+                alignItems="flex-end"
+                justifyContent="space-between"
+                spacing={2}
+                sx={{
+                  mb: 1.4,
+                }}
+              >
+                <Box>
+                  <Typography
+                    sx={{
+                      color: "rgba(255,255,255,0.32)",
+
+                      fontSize: 10,
+                      fontWeight: 900,
+
+                      textTransform: "uppercase",
+                      letterSpacing: "0.22em",
+                    }}
+                  >
+                    Loading
+                  </Typography>
+
+                  <Typography
+                    sx={{
+                      mt: 0.5,
+
+                      color: "rgba(255,255,255,0.55)",
+
+                      fontSize: 12,
+                      fontWeight: 600,
+                    }}
+                  >
+                    {isReady
+                      ? "Server connection established"
+                      : `Connection attempt ${Math.max(attempt, 1)}`}
+                  </Typography>
+                </Box>
+
+                <Typography
+                  sx={{
+                    color: "#FFFFFF",
+
+                    fontSize: {
+                      xs: 26,
+                      sm: 32,
+                    },
+
+                    fontFamily: "monospace",
+
+                    fontWeight: 950,
+                    lineHeight: 1,
+                  }}
+                >
+                  {Math.round(progress)}
+
+                  <Box
+                    component="span"
+                    sx={{
+                      ml: 0.25,
+
+                      color: "#FF5500",
+
+                      fontSize: 14,
+                    }}
+                  >
+                    %
+                  </Box>
+                </Typography>
+              </Stack>
+
+              <LinearProgress
+                variant="determinate"
+                value={Math.min(100, Math.max(0, progress))}
+                sx={{
+                  height: 9,
+
+                  borderRadius: 99,
+
+                  bgcolor: "rgba(255,255,255,0.07)",
+
+                  "& .MuiLinearProgress-bar": {
+                    borderRadius: 99,
+
+                    background:
+                      "linear-gradient(90deg, #ff3d00 0%, #ff5500 52%, #ff8a4c 100%)",
+
+                    boxShadow: "0 0 22px rgba(255,85,0,0.55)",
+
+                    transition: "transform 500ms ease",
+                  },
+                }}
+              />
+
+              <Stack
+                direction="row"
+                justifyContent="space-between"
+                alignItems="center"
+                sx={{
+                  mt: 1.4,
+                }}
+              >
+                <Stack direction="row" spacing={1} alignItems="center">
+                  <Box
+                    sx={{
+                      width: 6,
+                      height: 6,
+
+                      borderRadius: "50%",
+
+                      bgcolor: isReady ? "#22c55e" : "#FF5500",
+
+                      boxShadow: isReady
+                        ? "0 0 10px #22c55e"
+                        : "0 0 10px #FF5500",
                     }}
                   />
 
-                  {!isReady && (
-                    <div className="absolute inset-y-0 left-0 w-1/3 animate-[soundcloneLoaderSweep_1.8s_ease-in-out_infinite] bg-gradient-to-r from-transparent via-white/30 to-transparent" />
-                  )}
-                </div>
+                  <Typography
+                    sx={{
+                      color: "rgba(255,255,255,0.35)",
 
-                {/* MICRO STATUS */}
-                <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-[11px] text-white/35">
-                  <span className="flex items-center gap-2">
-                    <span
-                      className={[
-                        "h-1.5 w-1.5 rounded-full",
-                        isReady ? "bg-[#22c55e]" : "animate-pulse bg-[#ff5500]",
-                      ].join(" ")}
-                    />
-
-                    {isReady ? "Backend online" : "Waiting for backend"}
-                  </span>
-
-                  <span className="font-mono tabular-nums">
-                    Elapsed {formatElapsed(elapsedMs)}
-                  </span>
-                </div>
-              </div>
-
-              {/* GAME TIP */}
-              <div className="mt-5 min-h-[74px] rounded-2xl border border-white/[0.06] bg-black/20 px-4 py-4 sm:px-5">
-                <div className="flex gap-3">
-                  <div className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-[#ff5500]/25 bg-[#ff5500]/10 text-xs font-black text-[#ff6d24]">
-                    i
-                  </div>
-
-                  <div>
-                    <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#ff7833]">
-                      Loading tip
-                    </p>
-
-                    <p
-                      key={tipIndex}
-                      className="mt-1 animate-[soundcloneTipFade_450ms_ease-out] text-xs leading-5 text-white/45 sm:text-sm"
-                    >
-                      {TIPS[tipIndex]}
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              {/* SLOW STARTUP */}
-              {isSlowStartup && !isReady && (
-                <div className="mt-5 flex flex-col items-center justify-between gap-3 rounded-2xl border border-[#f59e0b]/20 bg-[#f59e0b]/[0.07] px-4 py-4 text-center sm:flex-row sm:text-left">
-                  <div>
-                    <p className="text-sm font-bold text-[#fbbf24]">
-                      The server is taking longer than usual.
-                    </p>
-
-                    <p className="mt-1 text-xs leading-5 text-white/40">
-                      SoundClone is still checking automatically. You can also
-                      retry the connection now.
-                    </p>
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={handleRetry}
-                    className="shrink-0 rounded-xl border border-white/10 bg-white/[0.07] px-4 py-2 text-xs font-bold text-white transition hover:border-[#ff5500]/40 hover:bg-[#ff5500]/10 hover:text-[#ff7833] active:scale-[0.98]"
+                      fontSize: 11,
+                    }}
                   >
-                    Retry connection
-                  </button>
-                </div>
-              )}
+                    {isReady ? "Backend online" : "Waiting for backend"}
+                  </Typography>
+                </Stack>
 
-              {/* FOOTER MESSAGE */}
-              <p className="mt-7 text-center text-[10px] font-medium uppercase tracking-[0.18em] text-white/20 sm:text-[11px]">
-                Please keep this page open
-              </p>
-            </div>
-          </main>
+                <Typography
+                  sx={{
+                    color: "rgba(255,255,255,0.35)",
 
-          {/* LOCAL KEYFRAMES */}
+                    fontFamily: "monospace",
+
+                    fontSize: 11,
+                  }}
+                >
+                  Elapsed {formatElapsed(elapsedMs)}
+                </Typography>
+              </Stack>
+            </Box>
+
+            {/* TIP */}
+            <Box
+              sx={{
+                mt: 2,
+
+                minHeight: 74,
+
+                p: 2,
+
+                bgcolor: "rgba(0,0,0,0.20)",
+
+                border: "1px solid rgba(255,255,255,0.06)",
+
+                borderRadius: 3,
+              }}
+            >
+              <Stack direction="row" spacing={1.5} alignItems="flex-start">
+                <Box
+                  sx={{
+                    width: 28,
+                    height: 28,
+
+                    flexShrink: 0,
+
+                    display: "grid",
+                    placeItems: "center",
+
+                    color: "#FF6D24",
+
+                    bgcolor: "rgba(255,85,0,0.10)",
+
+                    border: "1px solid rgba(255,85,0,0.25)",
+
+                    borderRadius: 1.5,
+
+                    fontSize: 12,
+                    fontWeight: 900,
+                  }}
+                >
+                  i
+                </Box>
+
+                <Box>
+                  <Typography
+                    sx={{
+                      color: "#FF7833",
+
+                      fontSize: 10,
+                      fontWeight: 900,
+
+                      textTransform: "uppercase",
+                      letterSpacing: "0.2em",
+                    }}
+                  >
+                    Loading tip
+                  </Typography>
+
+                  <Typography
+                    key={tipIndex}
+                    sx={{
+                      mt: 0.5,
+
+                      color: "rgba(255,255,255,0.45)",
+
+                      fontSize: {
+                        xs: 12,
+                        sm: 13,
+                      },
+
+                      lineHeight: 1.55,
+
+                      animation: "soundcloneTipFade 450ms ease-out",
+                    }}
+                  >
+                    {TIPS[tipIndex]}
+                  </Typography>
+                </Box>
+              </Stack>
+            </Box>
+
+            {/* SLOW STARTUP */}
+            {isSlowStartup && !isReady && (
+              <Stack
+                direction={{
+                  xs: "column",
+                  sm: "row",
+                }}
+                alignItems={{
+                  xs: "stretch",
+                  sm: "center",
+                }}
+                justifyContent="space-between"
+                spacing={2}
+                sx={{
+                  mt: 2,
+
+                  p: 2,
+
+                  bgcolor: "rgba(245,158,11,0.07)",
+
+                  border: "1px solid rgba(245,158,11,0.20)",
+
+                  borderRadius: 3,
+                }}
+              >
+                <Box>
+                  <Typography
+                    sx={{
+                      color: "#FBBF24",
+
+                      fontSize: 13,
+                      fontWeight: 900,
+                    }}
+                  >
+                    The server is taking longer than usual.
+                  </Typography>
+
+                  <Typography
+                    sx={{
+                      mt: 0.5,
+
+                      color: "rgba(255,255,255,0.40)",
+
+                      fontSize: 12,
+
+                      lineHeight: 1.5,
+                    }}
+                  >
+                    SoundClone is still checking automatically. You can also
+                    retry the connection now.
+                  </Typography>
+                </Box>
+
+                <Button
+                  onClick={handleRetry}
+                  sx={{
+                    flexShrink: 0,
+
+                    minHeight: 38,
+
+                    px: 2,
+
+                    color: "#FFFFFF",
+
+                    bgcolor: "rgba(255,255,255,0.07)",
+
+                    border: "1px solid rgba(255,255,255,0.10)",
+
+                    borderRadius: 2,
+
+                    fontSize: 12,
+                    fontWeight: 850,
+
+                    textTransform: "none",
+
+                    "&:hover": {
+                      color: "#FF7833",
+
+                      bgcolor: "rgba(255,85,0,0.10)",
+
+                      borderColor: "rgba(255,85,0,0.40)",
+                    },
+                  }}
+                >
+                  Retry connection
+                </Button>
+              </Stack>
+            )}
+
+            <Typography
+              sx={{
+                mt: 3,
+
+                color: "rgba(255,255,255,0.18)",
+
+                fontSize: 10,
+                fontWeight: 700,
+
+                textAlign: "center",
+
+                textTransform: "uppercase",
+
+                letterSpacing: "0.18em",
+              }}
+            >
+              Please keep this page open
+            </Typography>
+          </Box>
+
           <style jsx global>{`
-            @keyframes soundcloneLoaderSweep {
+            @keyframes soundclonePulse {
               0% {
-                transform: translateX(-150%);
-                opacity: 0;
-              }
-
-              35% {
-                opacity: 1;
+                opacity: 0.8;
+                transform: scale(0.92);
               }
 
               100% {
-                transform: translateX(420%);
                 opacity: 0;
+                transform: scale(1.22);
               }
             }
 
@@ -626,17 +999,8 @@ export default function BackendStartupLoader({
                 transform: translateY(0);
               }
             }
-
-            @media (prefers-reduced-motion: reduce) {
-              * {
-                animation-duration: 0.01ms !important;
-                animation-iteration-count: 1 !important;
-                scroll-behavior: auto !important;
-                transition-duration: 0.01ms !important;
-              }
-            }
           `}</style>
-        </div>
+        </Box>
       )}
     </>
   );

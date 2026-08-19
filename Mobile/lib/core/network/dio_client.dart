@@ -65,7 +65,6 @@ class DioClient {
 
           try {
             final response = await instance.fetch<dynamic>(requestOptions);
-
             handler.resolve(response);
           } on DioException catch (retryError) {
             handler.next(retryError);
@@ -86,17 +85,24 @@ class DioClient {
   }
 
   static bool _skipRefresh(String path) {
-    return path.endsWith('/auth/login') ||
-        path.endsWith('/auth/refresh') ||
-        path.endsWith('/auth/logout');
+    const publicAuthPaths = <String>[
+      '/auth/login',
+      '/auth/register',
+      '/auth/verify-otp',
+      '/auth/resend-otp',
+      '/auth/forgot-password',
+      '/auth/reset-password',
+      '/auth/refresh',
+      '/auth/logout',
+      '/auth/social-media',
+    ];
+
+    return publicAuthPaths.any(path.endsWith);
   }
 
   static Future<String?> _refreshAccessToken() async {
     final runningRefresh = _refreshingFuture;
-
-    if (runningRefresh != null) {
-      return runningRefresh;
-    }
+    if (runningRefresh != null) return runningRefresh;
 
     final refreshFuture = _performRefresh();
     _refreshingFuture = refreshFuture;
@@ -132,9 +138,7 @@ class DioClient {
           ?.toString()
           .trim();
 
-      if (accessToken == null || accessToken.isEmpty) {
-        return null;
-      }
+      if (accessToken == null || accessToken.isEmpty) return null;
 
       await TokenStorage.saveAccessToken(accessToken);
 
@@ -150,14 +154,8 @@ class DioClient {
   }
 
   static Map<String, dynamic> _asMap(dynamic value) {
-    if (value is Map<String, dynamic>) {
-      return value;
-    }
-
-    if (value is Map) {
-      return Map<String, dynamic>.from(value);
-    }
-
+    if (value is Map<String, dynamic>) return value;
+    if (value is Map) return Map<String, dynamic>.from(value);
     return <String, dynamic>{};
   }
 }

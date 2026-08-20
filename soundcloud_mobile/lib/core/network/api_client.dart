@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import 'package:flutter/cupertino.dart';
 
 import '../constants/app_constants.dart';
 import '../storage/storage_service.dart';
@@ -32,12 +33,10 @@ class ApiClient {
     dio.interceptors.add(
       InterceptorsWrapper(
         onRequest: (options, handler) async {
-          final token =
-          await StorageService.instance.getAccessToken();
+          final token = await StorageService.instance.getAccessToken();
 
           if (token != null && token.isNotEmpty) {
-            options.headers['Authorization'] =
-            'Bearer $token';
+            options.headers['Authorization'] = 'Bearer $token';
           }
 
           handler.next(options);
@@ -54,16 +53,62 @@ class ApiClient {
   // ==============================
 
   Future<Response<dynamic>> get(
-      String path, {
-        Map<String, dynamic>? queryParameters,
-      }) async {
+    String path, {
+    Map<String, dynamic>? queryParameters,
+    Duration? receiveTimeout,
+    Duration? connectTimeout,
+  }) async {
+    final stopwatch = Stopwatch()..start();
+
+    debugPrint('API GET START: $path');
+    debugPrint('Query: $queryParameters');
+    debugPrint('Connect timeout: $connectTimeout');
+    debugPrint('Receive timeout: $receiveTimeout');
+
+    final oldConnectTimeout = dio.options.connectTimeout;
+
+    final oldReceiveTimeout = dio.options.receiveTimeout;
+
     try {
-      return await dio.get(
-        path,
-        queryParameters: queryParameters,
-      );
+      if (connectTimeout != null) {
+        dio.options.connectTimeout = connectTimeout;
+      }
+
+      if (receiveTimeout != null) {
+        dio.options.receiveTimeout = receiveTimeout;
+      }
+
+      final response = await dio.get(path, queryParameters: queryParameters);
+
+      stopwatch.stop();
+
+      debugPrint('API GET SUCCESS: $path');
+
+      debugPrint('Status: ${response.statusCode}');
+
+      debugPrint('Time: ${stopwatch.elapsedMilliseconds} ms');
+
+      return response;
     } on DioException catch (e) {
+      stopwatch.stop();
+
+      debugPrint('API GET ERROR: $path');
+
+      debugPrint('Time: ${stopwatch.elapsedMilliseconds} ms');
+
+      debugPrint('Dio type: ${e.type}');
+
+      debugPrint('Status: ${e.response?.statusCode}');
+
+      debugPrint('Message: ${e.message}');
+
+      debugPrint('Response: ${e.response?.data}');
+
       throw _handleError(e);
+    } finally {
+      dio.options.connectTimeout = oldConnectTimeout;
+
+      dio.options.receiveTimeout = oldReceiveTimeout;
     }
   }
 
@@ -72,16 +117,12 @@ class ApiClient {
   // ==============================
 
   Future<Response<dynamic>> post(
-      String path, {
-        dynamic data,
-        Map<String, dynamic>? queryParameters,
-      }) async {
+    String path, {
+    dynamic data,
+    Map<String, dynamic>? queryParameters,
+  }) async {
     try {
-      return await dio.post(
-        path,
-        data: data,
-        queryParameters: queryParameters,
-      );
+      return await dio.post(path, data: data, queryParameters: queryParameters);
     } on DioException catch (e) {
       throw _handleError(e);
     }
@@ -91,15 +132,9 @@ class ApiClient {
   // PUT
   // ==============================
 
-  Future<Response<dynamic>> put(
-      String path, {
-        dynamic data,
-      }) async {
+  Future<Response<dynamic>> put(String path, {dynamic data}) async {
     try {
-      return await dio.put(
-        path,
-        data: data,
-      );
+      return await dio.put(path, data: data);
     } on DioException catch (e) {
       throw _handleError(e);
     }
@@ -109,15 +144,9 @@ class ApiClient {
   // PATCH
   // ==============================
 
-  Future<Response<dynamic>> patch(
-      String path, {
-        dynamic data,
-      }) async {
+  Future<Response<dynamic>> patch(String path, {dynamic data}) async {
     try {
-      return await dio.patch(
-        path,
-        data: data,
-      );
+      return await dio.patch(path, data: data);
     } on DioException catch (e) {
       throw _handleError(e);
     }
@@ -127,15 +156,9 @@ class ApiClient {
   // DELETE
   // ==============================
 
-  Future<Response<dynamic>> delete(
-      String path, {
-        dynamic data,
-      }) async {
+  Future<Response<dynamic>> delete(String path, {dynamic data}) async {
     try {
-      return await dio.delete(
-        path,
-        data: data,
-      );
+      return await dio.delete(path, data: data);
     } on DioException catch (e) {
       throw _handleError(e);
     }
@@ -160,9 +183,6 @@ class ApiClient {
       message = error.message!;
     }
 
-    return ApiException(
-      message: message,
-      statusCode: statusCode,
-    );
+    return ApiException(message: message, statusCode: statusCode);
   }
 }

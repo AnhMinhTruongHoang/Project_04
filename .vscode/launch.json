@@ -1,0 +1,14 @@
+{
+  "configurations": [
+    {
+      "type": "java",
+      "name": "Spring Boot-BEApplication<DemoSession2_WebAPI_C2310L>",
+      "request": "launch",
+      "cwd": "${workspaceFolder}",
+      "mainClass": "com.example.demo.BEApplication",
+      "projectName": "DemoSession2_WebAPI_C2310L",
+      "args": "",
+      "envFile": "${workspaceFolder}/.env"
+    }
+  ]
+}

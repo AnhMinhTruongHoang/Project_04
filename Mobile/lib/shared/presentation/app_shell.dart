@@ -1,10 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../features/auth/models/user_model.dart';
+import 'widgets/soundclone_footer.dart';
+import 'widgets/soundclone_header.dart';
+
 class AppShell extends StatelessWidget {
-  const AppShell({super.key, required this.navigationShell});
+  const AppShell({
+    super.key,
+    required this.navigationShell,
+    required this.user,
+  });
 
   final StatefulNavigationShell navigationShell;
+  final UserModel user;
 
   void _changeTab(int index) {
     navigationShell.goBranch(
@@ -17,36 +26,31 @@ class AppShell extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFF0D0D0D),
+
+      // HEADER DÙNG CHUNG
+      appBar: SoundCloneHeader(
+        user: user,
+
+        onSearch: () {
+          _changeTab(1);
+        },
+
+        onNotification: () {
+          // Sau này làm màn Notifications thì router ở đây.
+        },
+
+        onProfile: () {
+          _changeTab(3);
+        },
+      ),
+
+      // NỘI DUNG CỦA TỪNG TAB
       body: navigationShell,
-      bottomNavigationBar: NavigationBar(
-        height: 68,
-        selectedIndex: navigationShell.currentIndex,
-        onDestinationSelected: _changeTab,
-        backgroundColor: const Color(0xFF121212),
-        indicatorColor: const Color(0xFFFF5500).withValues(alpha: 0.18),
-        labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
-        destinations: const [
-          NavigationDestination(
-            icon: Icon(Icons.home_outlined),
-            selectedIcon: Icon(Icons.home, color: Color(0xFFFF5500)),
-            label: 'Home',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.search_outlined),
-            selectedIcon: Icon(Icons.search, color: Color(0xFFFF5500)),
-            label: 'Search',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.library_music_outlined),
-            selectedIcon: Icon(Icons.library_music, color: Color(0xFFFF5500)),
-            label: 'Library',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.person_outline),
-            selectedIcon: Icon(Icons.person, color: Color(0xFFFF5500)),
-            label: 'Profile',
-          ),
-        ],
+
+      // FOOTER DÙNG CHUNG
+      bottomNavigationBar: SoundCloneFooter(
+        currentIndex: navigationShell.currentIndex,
+        onTap: _changeTab,
       ),
     );
   }

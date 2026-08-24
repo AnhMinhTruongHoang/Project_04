@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../auth/models/user_model.dart';
 import '../../home/models/home_track.dart';
 import '../data/library_service.dart';
 import '../models/listening_history_item.dart';
@@ -19,6 +20,18 @@ final playlistsProvider = FutureProvider<List<Playlist>>((ref) async {
   final service = ref.read(libraryServiceProvider);
 
   return service.getMyPlaylists();
+});
+
+final followingProvider = FutureProvider<List<UserModel>>((ref) async {
+  final service = ref.read(libraryServiceProvider);
+
+  return service.getMyFollowing();
+});
+
+final suggestedTracksProvider = FutureProvider<List<HomeTrack>>((ref) async {
+  final service = ref.read(libraryServiceProvider);
+
+  return service.getSuggestedTracks(limit: 20);
 });
 
 final albumsProvider = FutureProvider<List<Playlist>>((ref) async {

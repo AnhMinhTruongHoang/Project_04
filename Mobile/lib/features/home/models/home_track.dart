@@ -13,6 +13,7 @@ class HomeTrack {
     this.uploaderName,
     this.countPlay = 0,
     this.countLike = 0,
+    this.durationSeconds,
   });
 
   final String id;
@@ -28,6 +29,7 @@ class HomeTrack {
 
   final int countPlay;
   final int countLike;
+  final double? durationSeconds;
 
   String? get resolvedImageUrl {
     return _resolveMediaUrl(
@@ -108,6 +110,11 @@ class HomeTrack {
       countLike: _toInt(
         json['countLike'],
       ),
+      durationSeconds: _toDouble(
+        json['durationSeconds'] ??
+            json['duration'] ??
+            json['audioDuration'],
+      ),
     );
   }
 }
@@ -142,6 +149,16 @@ int _toInt(dynamic value) {
     value?.toString() ?? '',
   ) ??
       0;
+}
+
+double? _toDouble(dynamic value) {
+  if (value is num) {
+    return value.toDouble();
+  }
+
+  return double.tryParse(
+    value?.toString() ?? '',
+  );
 }
 
 String? _resolveMediaUrl(

@@ -85,6 +85,9 @@ class PlaylistsScreen extends ConsumerWidget {
                       ),
                     );
                   },
+                  onRename: () {
+                    _showRenamePlaylistSheet(context, ref, playlist);
+                  },
                   onDelete: () async {
                     await _deletePlaylist(
                       context: context,
@@ -151,6 +154,104 @@ class PlaylistsScreen extends ConsumerWidget {
         const SnackBar(content: Text('Could not delete playlist.')),
       );
     }
+  }
+
+  Future<void> _showRenamePlaylistSheet(
+    BuildContext context,
+    WidgetRef ref,
+    Playlist playlist,
+  ) async {
+    final titleController = TextEditingController(text: playlist.title);
+
+    await showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: const Color(0xFF161616),
+      isScrollControlled: true,
+      showDragHandle: true,
+      builder: (context) {
+        return Padding(
+          padding: EdgeInsets.fromLTRB(
+            18,
+            4,
+            18,
+            MediaQuery.of(context).viewInsets.bottom + 18,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Rename playlist',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 20,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: titleController,
+                autofocus: true,
+                decoration: const InputDecoration(
+                  labelText: 'Playlist title',
+                ),
+              ),
+              const SizedBox(height: 16),
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton(
+                  style: FilledButton.styleFrom(
+                    backgroundColor: _orange,
+                    foregroundColor: Colors.white,
+                  ),
+                  onPressed: () async {
+                    final title = titleController.text.trim();
+
+                    if (title.isEmpty || title == playlist.title) {
+                      return;
+                    }
+
+                    try {
+                      await ref.read(libraryServiceProvider).updatePlaylist(
+                            playlistId: playlist.id,
+                            title: title,
+                            isPublic: playlist.isPublic,
+                            trackIds: playlist.tracks
+                                .map((track) => track.id)
+                                .toList(),
+                          );
+                      ref.invalidate(playlistsProvider);
+                      ref.invalidate(playlistDetailProvider(playlist.id));
+
+                      if (!context.mounted) return;
+
+                      Navigator.of(context).pop();
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Playlist renamed'),
+                          backgroundColor: _orange,
+                        ),
+                      );
+                    } catch (_) {
+                      if (!context.mounted) return;
+
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Could not rename playlist.'),
+                        ),
+                      );
+                    }
+                  },
+                  child: const Text('Save'),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+
+    titleController.dispose();
   }
 
   Future<void> _showCreatePlaylistSheet(
@@ -267,11 +368,13 @@ class _PlaylistTile extends StatelessWidget {
   const _PlaylistTile({
     required this.playlist,
     required this.onTap,
+    required this.onRename,
     required this.onDelete,
   });
 
   final Playlist playlist;
   final VoidCallback onTap;
+  final VoidCallback onRename;
   final VoidCallback onDelete;
 
   @override
@@ -279,16 +382,28 @@ class _PlaylistTile extends StatelessWidget {
     return ListTile(
       minVerticalPadding: 10,
       contentPadding: const EdgeInsets.symmetric(horizontal: 6),
-      leading: Container(
-        width: 56,
-        height: 56,
-        decoration: BoxDecoration(
+      leading: ClipRRect(
+        borderRadius: BorderRadius.circular(8),
+        child: Container(
+          width: 56,
+          height: 56,
           color: const Color(0xFF222222),
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: const Icon(
-          Icons.queue_music_rounded,
-          color: PlaylistsScreen._orange,
+          child: playlist.tracks.isEmpty ||
+                  playlist.tracks.first.resolvedImageUrl == null
+              ? const Icon(
+                  Icons.queue_music_rounded,
+                  color: PlaylistsScreen._orange,
+                )
+              : Image.network(
+                  playlist.tracks.first.resolvedImageUrl!,
+                  fit: BoxFit.cover,
+                  errorBuilder: (_, _, _) {
+                    return const Icon(
+                      Icons.queue_music_rounded,
+                      color: PlaylistsScreen._orange,
+                    );
+                  },
+                ),
         ),
       ),
       title: Text(
@@ -309,12 +424,20 @@ class _PlaylistTile extends StatelessWidget {
         color: const Color(0xFF242424),
         icon: const Icon(Icons.more_vert_rounded, color: Colors.white),
         onSelected: (value) {
+          if (value == 'rename') {
+            onRename();
+          }
+
           if (value == 'delete') {
             onDelete();
           }
         },
         itemBuilder: (_) {
           return const [
+            PopupMenuItem(
+              value: 'rename',
+              child: Text('Rename playlist'),
+            ),
             PopupMenuItem(
               value: 'delete',
               child: Text('Delete playlist'),

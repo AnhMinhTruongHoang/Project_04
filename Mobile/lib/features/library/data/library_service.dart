@@ -1,4 +1,5 @@
 import '../../../services/api/api_service.dart';
+import '../../auth/models/user_model.dart';
 import '../../home/models/home_track.dart';
 import '../models/listening_history_item.dart';
 import '../models/playlist.dart';
@@ -20,6 +21,23 @@ class LibraryService {
     final response = await _apiService.getMyPlaylistsApi();
 
     return _playlistList(response.data);
+  }
+
+  Future<List<UserModel>> getMyFollowing() async {
+    final response = await _apiService.getMyFollowingApi();
+
+    return _userList(response.data);
+  }
+
+  Future<List<HomeTrack>> getSuggestedTracks({
+    int limit = 12,
+  }) async {
+    final response = await _apiService.getTracksApi(
+      current: 1,
+      pageSize: limit,
+    );
+
+    return _trackList(response.data);
   }
 
   Future<List<Playlist>> getMyAlbums() async {
@@ -190,6 +208,14 @@ class LibraryService {
               !playlist.isDeleted &&
               !playlist.isAlbum;
         })
+        .toList();
+  }
+
+  List<UserModel> _userList(dynamic value) {
+    return _resultList(value)
+        .whereType<Map>()
+        .map((item) => UserModel.fromJson(Map<String, dynamic>.from(item)))
+        .where((user) => user.id.isNotEmpty)
         .toList();
   }
 }

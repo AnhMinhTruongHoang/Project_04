@@ -5,6 +5,7 @@ import '../../home/models/home_track.dart';
 import '../../player/providers/player_provider.dart';
 import '../models/listening_history_item.dart';
 import '../providers/library_provider.dart';
+import 'following_screen.dart';
 import 'liked_tracks_screen.dart';
 import 'listening_history_screen.dart';
 import 'placeholder_library_screen.dart';
@@ -22,6 +23,7 @@ class LibraryScreen extends ConsumerWidget {
     final liked = ref.watch(likedTracksProvider);
     final playlists = ref.watch(playlistsProvider);
     final albums = ref.watch(albumsProvider);
+    final following = ref.watch(followingProvider);
 
     return ColoredBox(
       color: background,
@@ -142,14 +144,14 @@ class LibraryScreen extends ConsumerWidget {
               ),
               _LibraryNavItem(
                 title: 'Following',
+                subtitle: following.maybeWhen(
+                  data: (items) => '${items.length} artists',
+                  orElse: () => null,
+                ),
                 onTap: () {
                   Navigator.of(context).push(
                     MaterialPageRoute(
-                      builder: (_) => const PlaceholderLibraryScreen(
-                        title: 'Following',
-                        message:
-                            'Following can be connected to /users/me/following in the next pass.',
-                      ),
+                      builder: (_) => const FollowingScreen(),
                     ),
                   );
                 },

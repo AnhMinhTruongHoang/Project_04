@@ -1,3 +1,5 @@
+import '../../../core/config/api_config.dart';
+
 class HomeTrack {
   const HomeTrack({
     required this.id,
@@ -7,6 +9,7 @@ class HomeTrack {
     this.trackUrl,
     this.description,
     this.category,
+    this.uploaderId,
     this.uploaderName,
     this.countPlay = 0,
     this.countLike = 0,
@@ -20,10 +23,25 @@ class HomeTrack {
   final String? trackUrl;
   final String? description;
   final String? category;
+  final String? uploaderId;
   final String? uploaderName;
 
   final int countPlay;
   final int countLike;
+
+  String? get resolvedImageUrl {
+    return _resolveMediaUrl(
+      imgUrl,
+      fallbackPath: '/uploads/images/',
+    );
+  }
+
+  String? get resolvedTrackUrl {
+    return _resolveMediaUrl(
+      trackUrl,
+      fallbackPath: '/uploads/audio/',
+    );
+  }
 
   String get artistName {
     final name = uploaderName?.trim() ?? '';
@@ -75,6 +93,11 @@ class HomeTrack {
       _nullableString(json['description']),
       category:
       _nullableString(json['category']),
+      uploaderId: _nullableString(
+        json['uploaderId'] ??
+            uploader['id'] ??
+            uploader['_id'],
+      ),
       uploaderName: _nullableString(
         uploader['name'] ??
             uploader['username'],
@@ -119,4 +142,25 @@ int _toInt(dynamic value) {
     value?.toString() ?? '',
   ) ??
       0;
+}
+
+String? _resolveMediaUrl(
+  String? value, {
+  required String fallbackPath,
+}) {
+  final raw = value?.trim();
+
+  if (raw == null || raw.isEmpty) {
+    return null;
+  }
+
+  if (raw.startsWith('http://') || raw.startsWith('https://')) {
+    return raw;
+  }
+
+  if (raw.startsWith('/')) {
+    return '${ApiConfig.baseUrl}$raw';
+  }
+
+  return '${ApiConfig.baseUrl}$fallbackPath$raw';
 }

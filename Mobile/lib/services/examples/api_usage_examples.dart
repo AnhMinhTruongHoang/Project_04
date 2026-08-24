@@ -862,7 +862,7 @@ class ApiUsageExamples {
     final response = await api.createArtistMembershipPostApi({
       'visibility': visibility,
       'content': content.trim(),
-      if (requiredPlanId != null) 'requiredPlanId': requiredPlanId,
+      'requiredPlanId': ?requiredPlanId,
       'allowComments': true,
       'status': 'PUBLISHED',
     });

@@ -9,6 +9,7 @@ import '../../features/auth/presentation/reset_password_screen.dart';
 import '../../features/auth/presentation/signup_screen.dart';
 import '../../features/auth/presentation/splash_screen.dart';
 import '../../features/auth/providers/auth_provider.dart';
+import '../../features/library/presentation/library_screen.dart';
 
 import '../../shared/presentation/app_shell.dart';
 
@@ -130,10 +131,7 @@ final GoRouter appRouter = GoRouter(
             GoRoute(
               path: '/library',
               builder: (context, state) {
-                return const _PlaceholderScreen(
-                  title: 'Library',
-                  icon: Icons.library_music_rounded,
-                );
+                return const LibraryScreen();
               },
             ),
           ],

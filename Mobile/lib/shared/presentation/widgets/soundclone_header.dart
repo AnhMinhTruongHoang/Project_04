@@ -18,7 +18,6 @@ const Color _kOrange = Color(0xFFFF5500);
 const Color _kTextPrimary = Color(0xFFF5F5F5);
 const Color _kTextSecondary = Color(0xFFAAAAAA);
 
-const Color _kDivider = Color(0xFF252525);
 const Color _kDanger = Color(0xFFFF6975);
 
 // ============================================================================
@@ -918,25 +917,17 @@ class _AccountMenuItem extends StatelessWidget {
     required this.icon,
     required this.text,
     this.iconColor,
-    this.highlighted = false,
   });
 
   final IconData icon;
   final String text;
 
   final Color? iconColor;
-  final bool highlighted;
 
   @override
   Widget build(BuildContext context) {
     return Container(
       height: 41,
-
-      decoration: BoxDecoration(
-        color: highlighted
-            ? const Color(0xFF242424)
-            : Colors.transparent,
-      ),
 
       padding: const EdgeInsets.symmetric(
         horizontal: 2,

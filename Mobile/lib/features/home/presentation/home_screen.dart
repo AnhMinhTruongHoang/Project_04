@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../auth/models/user_model.dart';
+import '../../player/providers/player_provider.dart';
 import '../models/home_track.dart';
 import '../providers/home_provider.dart';
 
@@ -67,7 +68,7 @@ class HomeScreen extends ConsumerWidget {
                 ),
                 padding: const EdgeInsets.only(
                   top: 6,
-                  bottom: 110,
+                  bottom: 178,
                 ),
                 children: [
                   // ===============================================
@@ -77,6 +78,11 @@ class HomeScreen extends ConsumerWidget {
                     _TrackSection(
                       title: data.historyTitle,
                       tracks: data.historyTracks,
+                      onTrackTap: (track) {
+                        ref
+                            .read(playerProvider.notifier)
+                            .playTrack(track, queue: data.historyTracks);
+                      },
                     ),
 
                   // ===============================================
@@ -86,6 +92,11 @@ class HomeScreen extends ConsumerWidget {
                     _TrackSection(
                       title: data.becauseTitle,
                       tracks: data.becauseTracks,
+                      onTrackTap: (track) {
+                        ref
+                            .read(playerProvider.notifier)
+                            .playTrack(track, queue: data.becauseTracks);
+                      },
                     ),
 
                   // ===============================================
@@ -95,6 +106,11 @@ class HomeScreen extends ConsumerWidget {
                     _TrackSection(
                       title: 'Hidden Gems',
                       tracks: data.hiddenGems,
+                      onTrackTap: (track) {
+                        ref
+                            .read(playerProvider.notifier)
+                            .playTrack(track, queue: data.hiddenGems);
+                      },
                     ),
 
                   // ===============================================
@@ -104,6 +120,11 @@ class HomeScreen extends ConsumerWidget {
                     _TrackSection(
                       title: 'Top NCS',
                       tracks: data.ncsTracks,
+                      onTrackTap: (track) {
+                        ref
+                            .read(playerProvider.notifier)
+                            .playTrack(track, queue: data.ncsTracks);
+                      },
                     ),
 
                   // ===============================================
@@ -113,6 +134,11 @@ class HomeScreen extends ConsumerWidget {
                     _TrackSection(
                       title: 'Top KPOP',
                       tracks: data.kpopTracks,
+                      onTrackTap: (track) {
+                        ref
+                            .read(playerProvider.notifier)
+                            .playTrack(track, queue: data.kpopTracks);
+                      },
                     ),
 
                   // ===============================================
@@ -122,6 +148,11 @@ class HomeScreen extends ConsumerWidget {
                     _TrackSection(
                       title: 'Top POP',
                       tracks: data.popTracks,
+                      onTrackTap: (track) {
+                        ref
+                            .read(playerProvider.notifier)
+                            .playTrack(track, queue: data.popTracks);
+                      },
                     ),
 
                   // ===============================================
@@ -131,6 +162,11 @@ class HomeScreen extends ConsumerWidget {
                     _TrackSection(
                       title: 'Top LOFI',
                       tracks: data.lofiTracks,
+                      onTrackTap: (track) {
+                        ref
+                            .read(playerProvider.notifier)
+                            .playTrack(track, queue: data.lofiTracks);
+                      },
                     ),
 
                   // ===============================================
@@ -156,10 +192,12 @@ class _TrackSection extends StatelessWidget {
   const _TrackSection({
     required this.title,
     required this.tracks,
+    required this.onTrackTap,
   });
 
   final String title;
   final List<HomeTrack> tracks;
+  final ValueChanged<HomeTrack> onTrackTap;
 
   @override
   Widget build(BuildContext context) {
@@ -204,7 +242,7 @@ class _TrackSection extends StatelessWidget {
               physics: const BouncingScrollPhysics(),
               scrollDirection: Axis.horizontal,
               itemCount: tracks.length,
-              separatorBuilder: (_, __) {
+              separatorBuilder: (_, _) {
                 return const SizedBox(
                   width: 14,
                 );
@@ -212,6 +250,9 @@ class _TrackSection extends StatelessWidget {
               itemBuilder: (context, index) {
                 return _TrackCard(
                   track: tracks[index],
+                  onTap: () {
+                    onTrackTap(tracks[index]);
+                  },
                 );
               },
             ),
@@ -229,9 +270,11 @@ class _TrackSection extends StatelessWidget {
 class _TrackCard extends StatelessWidget {
   const _TrackCard({
     required this.track,
+    required this.onTap,
   });
 
   final HomeTrack track;
+  final VoidCallback onTap;
 
   static const double _cardWidth = 145;
 
@@ -241,10 +284,7 @@ class _TrackCard extends StatelessWidget {
       width: _cardWidth,
       child: InkWell(
         borderRadius: BorderRadius.circular(8),
-        onTap: () {
-          // TODO:
-          // Open player / track detail later.
-        },
+        onTap: onTap,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -334,7 +374,7 @@ class _TrackCover extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final url = track.imgUrl?.trim();
+    final url = track.resolvedImageUrl;
 
     return ClipRRect(
       borderRadius: BorderRadius.circular(8),

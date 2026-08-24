@@ -15,30 +15,18 @@ void main() {
   ApiClient.instance.initialize();
 
   runApp(
-      MultiProvider(
-        providers: [
-          ChangeNotifierProvider(
-            create: (_) =>
-                AuthProvider(),
-          ),
+    MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (_) => AuthProvider()),
 
-          ChangeNotifierProvider(
-            create: (_) =>
-                HomeProvider(),
-          ),
+        ChangeNotifierProvider(create: (_) => HomeProvider()),
 
-          ChangeNotifierProvider(
-            create: (_) =>
-                PlayerProvider(),
-          ),
+        ChangeNotifierProvider(create: (_) => PlayerProvider()),
 
-          ChangeNotifierProvider(
-            create: (_) =>
-                PlaylistProvider(),
-          ),
-        ],
-        child: const SoundApp(),
-      )
+        ChangeNotifierProvider(create: (_) => PlaylistProvider()),
+      ],
+      child: const SoundApp(),
+    ),
   );
 }
 

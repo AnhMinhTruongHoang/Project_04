@@ -9,6 +9,8 @@ import '../../providers/player_provider.dart';
 import '../../services/track_service.dart';
 import '../../widgets/mini_player.dart';
 import 'playlists_screen.dart';
+import 'following_screen.dart';
+import 'liked_tracks_screen.dart';
 
 class LibraryScreen extends StatefulWidget {
   const LibraryScreen({super.key});
@@ -24,21 +26,22 @@ class _LibraryScreenState extends State<LibraryScreen> {
   String? _errorMessage;
 
   List<TrackModel> _likedTracks = const [];
+  List<ListeningHistoryItem> _recentlyPlayed = const [];
 
   @override
   void initState() {
     super.initState();
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _loadLikedTracks();
+      _loadLibraryData();
     });
   }
 
   // ============================================================
-  // LOAD LIKED TRACKS
+  // LOAD LIBRARY DATA
   // ============================================================
 
-  Future<void> _loadLikedTracks() async {
+  Future<void> _loadLibraryData() async {
     if (!mounted) return;
 
     setState(() {
@@ -47,17 +50,21 @@ class _LibraryScreenState extends State<LibraryScreen> {
     });
 
     try {
-      final tracks = await _trackService.getLikedTracks();
+      final results = await Future.wait([
+        _trackService.getLikedTracks(),
+        _trackService.getHomeListeningHistory(limit: 20),
+      ]);
+
+      final likedTracks = results[0] as List<TrackModel>;
+      final history = results[1] as HomeListeningHistory;
 
       if (!mounted) return;
 
       setState(() {
-        _likedTracks = tracks;
+        _likedTracks = likedTracks;
+        _recentlyPlayed = history.recentlyPlayed;
       });
 
-      /*
-       * Đồng bộ trạng thái tim bên PlayerProvider.
-       */
       await context.read<PlayerProvider>().loadLikedTracks(force: true);
     } catch (e) {
       if (!mounted) return;
@@ -65,6 +72,8 @@ class _LibraryScreenState extends State<LibraryScreen> {
       setState(() {
         _errorMessage = e.toString();
       });
+
+      AppToast.error(context, 'Không thể tải dữ liệu Library');
     } finally {
       if (!mounted) return;
 
@@ -78,8 +87,11 @@ class _LibraryScreenState extends State<LibraryScreen> {
   // PLAY TRACK
   // ============================================================
 
-  Future<void> _playTrack(TrackModel track) async {
-    await context.read<PlayerProvider>().playTrack(track, queue: _likedTracks);
+  Future<void> _playTrack(
+    TrackModel track, {
+    required List<TrackModel> queue,
+  }) async {
+    await context.read<PlayerProvider>().playTrack(track, queue: queue);
   }
 
   // ============================================================
@@ -136,19 +148,48 @@ class _LibraryScreenState extends State<LibraryScreen> {
     ).push(MaterialPageRoute(builder: (_) => const PlaylistsScreen()));
   }
 
+  void _openFollowing() {
+    Navigator.of(
+      context,
+    ).push(MaterialPageRoute(builder: (_) => const FollowingScreen()));
+  }
+
+  Future<void> _refreshLikedTracksOnly() async {
+    try {
+      final tracks = await _trackService.getLikedTracks();
+
+      if (!mounted) return;
+
+      setState(() {
+        _likedTracks = tracks;
+      });
+    } catch (e) {
+      debugPrint('Refresh liked tracks error: $e');
+    }
+  }
+
+  Future<void> _openLikedTracks() async {
+    await Navigator.of(
+      context,
+    ).push(MaterialPageRoute(builder: (_) => const LikedTracksScreen()));
+
+    if (!mounted) return;
+
+    await _refreshLikedTracksOnly();
+  }
+
   // ============================================================
-  // PLAY ALL LIKED
+  // PLAY ALL RECENT
   // ============================================================
 
-  Future<void> _playAllLiked() async {
-    if (_likedTracks.isEmpty) {
+  Future<void> _playAllRecent() async {
+    final tracks = _recentlyPlayed.map((item) => item.track).toList();
+
+    if (tracks.isEmpty) {
       return;
     }
 
-    await context.read<PlayerProvider>().playTrack(
-      _likedTracks.first,
-      queue: _likedTracks,
-    );
+    await context.read<PlayerProvider>().playTrack(tracks.first, queue: tracks);
   }
 
   // ============================================================
@@ -192,7 +233,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
         actions: [
           IconButton(
             tooltip: 'Refresh',
-            onPressed: _isLoading ? null : _loadLikedTracks,
+            onPressed: _isLoading ? null : _loadLibraryData,
             icon: const Icon(Icons.refresh_rounded),
           ),
         ],
@@ -217,14 +258,14 @@ class _LibraryScreenState extends State<LibraryScreen> {
     /*
      * Loading lần đầu.
      */
-    if (_isLoading && _likedTracks.isEmpty) {
+    if (_isLoading && _likedTracks.isEmpty && _recentlyPlayed.isEmpty) {
       return const Center(
         child: CircularProgressIndicator(color: Color(0xFFFF5500)),
       );
     }
 
     return RefreshIndicator(
-      onRefresh: _loadLikedTracks,
+      onRefresh: _loadLibraryData,
       color: const Color(0xFFFF5500),
 
       child: CustomScrollView(
@@ -245,9 +286,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
                     subtitle:
                         '${_likedTracks.length} ${_likedTracks.length == 1 ? 'track' : 'tracks'}',
                     iconColor: const Color(0xFFFF5500),
-                    onTap: () {
-                      _showInfo('Danh sách Your likes nằm ngay bên dưới');
-                    },
+                    onTap: _openLikedTracks,
                   ),
 
                   const SizedBox(height: 4),
@@ -274,7 +313,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
                     icon: Icons.person_add_alt_1_rounded,
                     title: 'Following',
                     subtitle: 'Artists and users you follow',
-                    onTap: () => _showComingSoon('Following'),
+                    onTap: _openFollowing,
                   ),
 
                   const SizedBox(height: 4),
@@ -315,45 +354,42 @@ class _LibraryScreenState extends State<LibraryScreen> {
             SliverToBoxAdapter(
               child: _LibraryErrorBanner(
                 message: _errorMessage!,
-                onRetry: _loadLikedTracks,
+                onRetry: _loadLibraryData,
               ),
             ),
 
           // =====================================================
-          // LIKED HEADER
+          // RECENTLY PLAYED HEADER
           // =====================================================
           SliverToBoxAdapter(
-            child: _LikedHeader(
-              count: _likedTracks.length,
-              onPlayAll: _likedTracks.isEmpty ? null : _playAllLiked,
+            child: _RecentHeader(
+              count: _recentlyPlayed.length,
+              onPlayAll: _recentlyPlayed.isEmpty ? null : _playAllRecent,
             ),
           ),
 
           // =====================================================
-          // EMPTY LIKED TRACKS
+          // EMPTY HISTORY
           // =====================================================
-          if (_likedTracks.isEmpty)
-            const SliverToBoxAdapter(child: _EmptyLikedTracks())
-          // =====================================================
-          // LIKED TRACK LIST
-          // =====================================================
+          if (_recentlyPlayed.isEmpty)
+            const SliverToBoxAdapter(child: _EmptyRecentlyPlayed())
           else
             SliverList(
               delegate: SliverChildBuilderDelegate((context, index) {
-                final track = _likedTracks[index];
+                final item = _recentlyPlayed[index];
+                final track = item.track;
+                final queue = _recentlyPlayed
+                    .map((history) => history.track)
+                    .toList();
 
-                return _LikedTrackTile(
-                  track: track,
-
-                  onTap: () => _playTrack(track),
-
-                  onRemoveLike: () => _removeLike(track),
-
+                return _RecentTrackTile(
+                  item: item,
+                  onTap: () => _playTrack(track, queue: queue),
                   onAddToPlaylist: () {
                     showAddToPlaylistSheet(context, track: track);
                   },
                 );
-              }, childCount: _likedTracks.length),
+              }, childCount: _recentlyPlayed.length),
             ),
 
           const SliverToBoxAdapter(child: SizedBox(height: 30)),
@@ -451,63 +487,49 @@ class _LibraryNavigationTile extends StatelessWidget {
 }
 
 // ============================================================
-// LIKED HEADER
+// RECENTLY PLAYED HEADER
 // ============================================================
 
-class _LikedHeader extends StatelessWidget {
+class _RecentHeader extends StatelessWidget {
   final int count;
-
   final VoidCallback? onPlayAll;
 
-  const _LikedHeader({required this.count, required this.onPlayAll});
+  const _RecentHeader({required this.count, required this.onPlayAll});
 
   @override
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 28, 20, 12),
-
       child: Row(
         children: [
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
-
               children: [
                 const Text(
-                  'Your likes',
-
+                  'Recently played',
                   style: TextStyle(fontSize: 25, fontWeight: FontWeight.w800),
                 ),
-
                 const SizedBox(height: 4),
-
                 Text(
                   '$count ${count == 1 ? 'track' : 'tracks'}',
-
                   style: const TextStyle(color: Colors.white54, fontSize: 13),
                 ),
               ],
             ),
           ),
-
           if (onPlayAll != null)
             SizedBox(
               width: 48,
               height: 48,
-
               child: FilledButton(
                 onPressed: onPlayAll,
-
                 style: FilledButton.styleFrom(
                   padding: EdgeInsets.zero,
-
                   backgroundColor: const Color(0xFFFF5500),
-
                   foregroundColor: Colors.white,
-
                   shape: const CircleBorder(),
                 ),
-
                 child: const Icon(Icons.play_arrow_rounded, size: 30),
               ),
             ),
@@ -518,77 +540,63 @@ class _LikedHeader extends StatelessWidget {
 }
 
 // ============================================================
-// LIKED TRACK TILE
+// RECENTLY PLAYED TRACK TILE
 // ============================================================
 
-class _LikedTrackTile extends StatelessWidget {
-  final TrackModel track;
-
+class _RecentTrackTile extends StatelessWidget {
+  final ListeningHistoryItem item;
   final VoidCallback onTap;
-
-  final VoidCallback onRemoveLike;
-
   final VoidCallback onAddToPlaylist;
 
-  const _LikedTrackTile({
-    required this.track,
+  const _RecentTrackTile({
+    required this.item,
     required this.onTap,
-    required this.onRemoveLike,
     required this.onAddToPlaylist,
   });
 
   @override
   Widget build(BuildContext context) {
+    final track = item.track;
     final player = context.watch<PlayerProvider>();
 
     final isCurrentTrack = player.currentTrack?.id == track.id;
 
     final isPlaying = isCurrentTrack && player.isPlaying;
 
+    final progress = item.duration > 0
+        ? (item.lastPosition / item.duration).clamp(0.0, 1.0)
+        : item.progress.clamp(0.0, 1.0);
+
     return InkWell(
       onTap: onTap,
-
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 9),
-
         child: Row(
           children: [
-            // ===================================================
-            // COVER
-            // ===================================================
             Stack(
               alignment: Alignment.center,
-
               children: [
                 ClipRRect(
                   borderRadius: BorderRadius.circular(5),
-
                   child: SizedBox(
                     width: 68,
                     height: 68,
-
                     child: _Artwork(url: track.imgUrl),
                   ),
                 ),
-
                 if (isCurrentTrack)
                   Container(
                     width: 68,
                     height: 68,
-
                     decoration: BoxDecoration(
                       color: Colors.black.withValues(alpha: 0.40),
-
                       borderRadius: BorderRadius.circular(5),
                     ),
-
                     alignment: Alignment.center,
-
                     child: Icon(
                       isPlaying
                           ? Icons.equalizer_rounded
                           : Icons.play_arrow_rounded,
-
                       color: Colors.white,
                       size: 30,
                     ),
@@ -598,136 +606,84 @@ class _LikedTrackTile extends StatelessWidget {
 
             const SizedBox(width: 14),
 
-            // ===================================================
-            // TRACK INFO
-            // ===================================================
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
-
                 children: [
                   Text(
                     track.title,
-
                     maxLines: 1,
-
                     overflow: TextOverflow.ellipsis,
-
                     style: TextStyle(
                       fontSize: 16,
-
                       fontWeight: FontWeight.w700,
-
                       color: isCurrentTrack
                           ? const Color(0xFFFF5500)
                           : Colors.white,
                     ),
                   ),
-
                   const SizedBox(height: 4),
-
                   Text(
                     track.artistName,
-
                     maxLines: 1,
-
                     overflow: TextOverflow.ellipsis,
-
                     style: const TextStyle(color: Colors.white54, fontSize: 14),
                   ),
-
-                  const SizedBox(height: 6),
+                  const SizedBox(height: 8),
 
                   Row(
                     children: [
-                      const Icon(
-                        Icons.play_arrow_rounded,
-
-                        size: 16,
-
-                        color: Colors.white38,
+                      Icon(
+                        item.completed
+                            ? Icons.check_circle_outline_rounded
+                            : Icons.history_rounded,
+                        size: 15,
+                        color: item.completed
+                            ? const Color(0xFFFF5500)
+                            : Colors.white38,
                       ),
-
-                      const SizedBox(width: 2),
-
+                      const SizedBox(width: 5),
                       Text(
-                        _formatCount(track.countPlay),
-
+                        item.completed
+                            ? 'Completed'
+                            : '${_formatDuration(item.lastPosition)} / ${_formatDuration(item.duration)}',
                         style: const TextStyle(
                           color: Colors.white38,
-
-                          fontSize: 12,
-                        ),
-                      ),
-
-                      const SizedBox(width: 11),
-
-                      const Icon(
-                        Icons.favorite,
-
-                        size: 14,
-
-                        color: Color(0xFFFF5500),
-                      ),
-
-                      const SizedBox(width: 4),
-
-                      Text(
-                        _formatCount(track.countLike),
-
-                        style: const TextStyle(
-                          color: Colors.white38,
-
                           fontSize: 12,
                         ),
                       ),
                     ],
                   ),
+
+                  if (!item.completed) ...[
+                    const SizedBox(height: 7),
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(10),
+                      child: LinearProgressIndicator(
+                        value: progress,
+                        minHeight: 3,
+                        backgroundColor: Colors.white12,
+                        color: const Color(0xFFFF5500),
+                      ),
+                    ),
+                  ],
                 ],
               ),
             ),
 
-            // ===================================================
-            // UNLIKE
-            // ===================================================
-            IconButton(
-              tooltip: 'Remove from liked tracks',
-
-              onPressed: onRemoveLike,
-
-              icon: const Icon(
-                Icons.favorite,
-
-                color: Color(0xFFFF5500),
-
-                size: 23,
-              ),
-            ),
-
-            // ===================================================
-            // MENU
-            // ===================================================
             PopupMenuButton<String>(
               color: const Color(0xFF242424),
-
               icon: const Icon(Icons.more_vert, color: Colors.white70),
-
               onSelected: (value) {
                 switch (value) {
                   case 'play':
                     onTap();
                     break;
-
                   case 'playlist':
                     onAddToPlaylist();
                     break;
-
-                  case 'unlike':
-                    onRemoveLike();
-                    break;
                 }
               },
-
               itemBuilder: (context) => const [
                 PopupMenuItem(
                   value: 'play',
@@ -739,7 +695,6 @@ class _LikedTrackTile extends StatelessWidget {
                     ],
                   ),
                 ),
-
                 PopupMenuItem(
                   value: 'playlist',
                   child: Row(
@@ -747,17 +702,6 @@ class _LikedTrackTile extends StatelessWidget {
                       Icon(Icons.playlist_add_rounded),
                       SizedBox(width: 12),
                       Text('Add to playlist'),
-                    ],
-                  ),
-                ),
-
-                PopupMenuItem(
-                  value: 'unlike',
-                  child: Row(
-                    children: [
-                      Icon(Icons.heart_broken_outlined),
-                      SizedBox(width: 12),
-                      Text('Remove from liked tracks'),
                     ],
                   ),
                 ),
@@ -769,16 +713,16 @@ class _LikedTrackTile extends StatelessWidget {
     );
   }
 
-  static String _formatCount(int value) {
-    if (value >= 1000000) {
-      return '${(value / 1000000).toStringAsFixed(1)}M';
+  static String _formatDuration(double seconds) {
+    if (seconds <= 0) {
+      return '0:00';
     }
 
-    if (value >= 1000) {
-      return '${(value / 1000).toStringAsFixed(1)}K';
-    }
+    final total = seconds.round();
+    final minutes = total ~/ 60;
+    final remaining = total % 60;
 
-    return value.toString();
+    return '$minutes:${remaining.toString().padLeft(2, '0')}';
   }
 }
 
@@ -824,53 +768,28 @@ class _Artwork extends StatelessWidget {
 }
 
 // ============================================================
-// EMPTY LIKED TRACKS
+// EMPTY RECENTLY PLAYED
 // ============================================================
 
-class _EmptyLikedTracks extends StatelessWidget {
-  const _EmptyLikedTracks();
+class _EmptyRecentlyPlayed extends StatelessWidget {
+  const _EmptyRecentlyPlayed();
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(30, 35, 30, 50),
-
+    return const Padding(
+      padding: EdgeInsets.fromLTRB(30, 35, 30, 50),
       child: Column(
         children: [
-          Container(
-            width: 92,
-            height: 92,
-
-            decoration: const BoxDecoration(
-              color: Color(0xFF242424),
-
-              shape: BoxShape.circle,
-            ),
-
-            child: const Icon(
-              Icons.favorite_border_rounded,
-
-              size: 48,
-
-              color: Colors.white38,
-            ),
-          ),
-
-          const SizedBox(height: 20),
-
-          const Text(
-            'No liked tracks yet',
-
+          Icon(Icons.history_rounded, size: 70, color: Colors.white24),
+          SizedBox(height: 18),
+          Text(
+            'No listening history yet',
             style: TextStyle(fontSize: 21, fontWeight: FontWeight.w800),
           ),
-
-          const SizedBox(height: 7),
-
-          const Text(
-            'Tracks you like will appear here.',
-
+          SizedBox(height: 7),
+          Text(
+            'Tracks you play will appear here.',
             textAlign: TextAlign.center,
-
             style: TextStyle(color: Colors.white54, fontSize: 14),
           ),
         ],

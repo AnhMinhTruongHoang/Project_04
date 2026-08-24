@@ -1,3 +1,5 @@
+import 'package:flutter/cupertino.dart';
+
 import '../core/network/api_client.dart';
 import '../models/category_model.dart';
 import '../models/track_model.dart';
@@ -84,17 +86,57 @@ class TrackService {
   }
 
   Future<HomeListeningHistory> getHomeListeningHistory({int limit = 10}) async {
-    final response = await _apiClient.get(
-      '/tracks/history/home',
-      queryParameters: {'limit': limit},
-    );
+    final stopwatch = Stopwatch()..start();
 
-    final data = _data(response.data);
+    debugPrint('========== HISTORY REQUEST START ==========');
 
-    return HomeListeningHistory(
-      continueListening: _historyList(data['continueListening']),
-      recentlyPlayed: _historyList(data['recentlyPlayed']),
-    );
+    debugPrint('GET /tracks/history/home?limit=$limit');
+
+    try {
+      final response = await _apiClient.get(
+        '/tracks/history/home',
+        queryParameters: {'limit': limit},
+        connectTimeout: const Duration(seconds: 30),
+        receiveTimeout: const Duration(seconds: 30),
+      );
+
+      stopwatch.stop();
+
+      debugPrint('HISTORY RESPONSE STATUS: ${response.statusCode}');
+
+      debugPrint('HISTORY RESPONSE TIME: ${stopwatch.elapsedMilliseconds} ms');
+
+      debugPrint('HISTORY RAW DATA: ${response.data}');
+
+      final data = _data(response.data);
+
+      final continueListening = _historyList(data['continueListening']);
+
+      final recentlyPlayed = _historyList(data['recentlyPlayed']);
+
+      debugPrint('Continue listening: ${continueListening.length}');
+
+      debugPrint('Recently played: ${recentlyPlayed.length}');
+
+      debugPrint('========== HISTORY REQUEST SUCCESS ==========');
+
+      return HomeListeningHistory(
+        continueListening: continueListening,
+        recentlyPlayed: recentlyPlayed,
+      );
+    } catch (e, stackTrace) {
+      stopwatch.stop();
+
+      debugPrint('========== HISTORY REQUEST ERROR ==========');
+
+      debugPrint('TIME: ${stopwatch.elapsedMilliseconds} ms');
+
+      debugPrint('ERROR: $e');
+
+      debugPrint('STACK: $stackTrace');
+
+      rethrow;
+    }
   }
 
   Future<BecauseYouListenedResult> getBecauseYouListened({

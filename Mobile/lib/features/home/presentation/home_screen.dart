@@ -1,3 +1,5 @@
+import 'dart:ui';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -170,6 +172,20 @@ class HomeScreen extends ConsumerWidget {
                     ),
 
                   // ===============================================
+                  // DISCOVER MORE MUSIC
+                  // ===============================================
+                  if (data.discoverTracks.isNotEmpty)
+                    _TrackSection(
+                      title: 'Discover more music',
+                      tracks: data.discoverTracks,
+                      onTrackTap: (track) {
+                        ref
+                            .read(playerProvider.notifier)
+                            .playTrack(track, queue: data.discoverTracks);
+                      },
+                    ),
+
+                  // ===============================================
                   // EMPTY
                   // ===============================================
                   if (data.isEmpty)
@@ -188,7 +204,7 @@ class HomeScreen extends ConsumerWidget {
 // TRACK SECTION
 // ============================================================================
 
-class _TrackSection extends StatelessWidget {
+class _TrackSection extends StatefulWidget {
   const _TrackSection({
     required this.title,
     required this.tracks,
@@ -198,6 +214,25 @@ class _TrackSection extends StatelessWidget {
   final String title;
   final List<HomeTrack> tracks;
   final ValueChanged<HomeTrack> onTrackTap;
+
+  @override
+  State<_TrackSection> createState() => _TrackSectionState();
+}
+
+class _TrackSectionState extends State<_TrackSection> {
+  late final ScrollController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = ScrollController();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -211,21 +246,36 @@ class _TrackSection extends StatelessWidget {
           // =======================================================
           // SECTION TITLE
           // =======================================================
-          Padding(
-            padding: const EdgeInsets.symmetric(
-              horizontal: 18,
-            ),
-            child: Text(
-              title,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 21,
-                fontWeight: FontWeight.w900,
-                letterSpacing: -0.4,
+          Row(
+            children: [
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 18,
+                  ),
+                  child: Text(
+                    widget.title,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 21,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: -0.4,
+                    ),
+                  ),
+                ),
               ),
-            ),
+              _SectionScrollButton(
+                icon: Icons.chevron_left_rounded,
+                onPressed: () => _animateSection(_controller, -1),
+              ),
+              _SectionScrollButton(
+                icon: Icons.chevron_right_rounded,
+                onPressed: () => _animateSection(_controller, 1),
+              ),
+              const SizedBox(width: 10),
+            ],
           ),
 
           const SizedBox(height: 14),
@@ -234,33 +284,90 @@ class _TrackSection extends StatelessWidget {
           // HORIZONTAL TRACK LIST
           // =======================================================
           SizedBox(
-            height: 208,
-            child: ListView.separated(
-              padding: const EdgeInsets.symmetric(
-                horizontal: 18,
+            height: 214,
+            child: ScrollConfiguration(
+              behavior: const _HorizontalTrackScrollBehavior(),
+              child: ListView.separated(
+                controller: _controller,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 18,
+                ),
+                physics: const BouncingScrollPhysics(),
+                scrollDirection: Axis.horizontal,
+                itemCount: widget.tracks.length,
+                separatorBuilder: (_, _) {
+                  return const SizedBox(
+                    width: 14,
+                  );
+                },
+                itemBuilder: (context, index) {
+                  return _TrackCard(
+                    track: widget.tracks[index],
+                    onTap: () {
+                      widget.onTrackTap(widget.tracks[index]);
+                    },
+                  );
+                },
               ),
-              physics: const BouncingScrollPhysics(),
-              scrollDirection: Axis.horizontal,
-              itemCount: tracks.length,
-              separatorBuilder: (_, _) {
-                return const SizedBox(
-                  width: 14,
-                );
-              },
-              itemBuilder: (context, index) {
-                return _TrackCard(
-                  track: tracks[index],
-                  onTap: () {
-                    onTrackTap(tracks[index]);
-                  },
-                );
-              },
             ),
           ),
         ],
       ),
     );
   }
+}
+
+class _HorizontalTrackScrollBehavior extends MaterialScrollBehavior {
+  const _HorizontalTrackScrollBehavior();
+
+  @override
+  Set<PointerDeviceKind> get dragDevices {
+    return {
+      PointerDeviceKind.touch,
+      PointerDeviceKind.mouse,
+      PointerDeviceKind.stylus,
+      PointerDeviceKind.trackpad,
+    };
+  }
+}
+
+class _SectionScrollButton extends StatelessWidget {
+  const _SectionScrollButton({
+    required this.icon,
+    required this.onPressed,
+  });
+
+  final IconData icon;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return IconButton(
+      tooltip: icon == Icons.chevron_right_rounded ? 'More' : 'Back',
+      visualDensity: VisualDensity.compact,
+      color: Colors.white,
+      onPressed: onPressed,
+      icon: Icon(icon),
+    );
+  }
+}
+
+void _animateSection(ScrollController controller, int direction) {
+  if (!controller.hasClients) {
+    return;
+  }
+
+  final position = controller.position;
+  final target = (controller.offset + direction * 320).clamp(
+    position.minScrollExtent,
+    position.maxScrollExtent,
+  );
+
+  controller.animateTo(
+    target,
+    duration: const Duration(milliseconds: 260),
+    curve: Curves.easeOutCubic,
+  );
 }
 
 // ============================================================================

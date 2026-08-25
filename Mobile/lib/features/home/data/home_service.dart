@@ -17,7 +17,7 @@ class HomeService {
       _safeGet(
         '/tracks/hidden-gems',
         queryParameters: {
-          'limit': 10,
+          'limit': 20,
           'maxPlays': 1000,
         },
       ),
@@ -26,7 +26,7 @@ class HomeService {
         '/tracks/top',
         queryParameters: {
           'category': 'ncs',
-          'limit': 10,
+          'limit': 20,
         },
       ),
 
@@ -34,7 +34,7 @@ class HomeService {
         '/tracks/top',
         queryParameters: {
           'category': 'kpop',
-          'limit': 10,
+          'limit': 20,
         },
       ),
 
@@ -42,7 +42,7 @@ class HomeService {
         '/tracks/top',
         queryParameters: {
           'category': 'pop',
-          'limit': 10,
+          'limit': 20,
         },
       ),
 
@@ -50,21 +50,28 @@ class HomeService {
         '/tracks/top',
         queryParameters: {
           'category': 'lofi',
-          'limit': 10,
+          'limit': 20,
         },
       ),
 
       _safeGet(
         '/tracks/history/home',
         queryParameters: {
-          'limit': 10,
+          'limit': 20,
         },
       ),
 
       _safeGet(
         '/tracks/because-you-listened',
         queryParameters: {
-          'limit': 10,
+          'limit': 20,
+        },
+      ),
+      _safeGet(
+        '/tracks',
+        queryParameters: {
+          'current': 1,
+          'pageSize': 30,
         },
       ),
     ]);
@@ -148,6 +155,9 @@ class HomeService {
         ? 'Because You Listened to $basedOnTitle'
         : 'Because You Listened To';
 
+    final discoverData = _payload(results[7]);
+    final discoverTracks = _trackListFromPaged(discoverData);
+
     return HomeFeed(
       historyTitle: historyTitle,
       historyTracks: historyTracks,
@@ -158,6 +168,7 @@ class HomeService {
       kpopTracks: kpopTracks,
       popTracks: popTracks,
       lofiTracks: lofiTracks,
+      discoverTracks: discoverTracks,
     );
   }
 
@@ -229,6 +240,17 @@ class HomeService {
       track.id.isNotEmpty,
     )
         .toList();
+  }
+
+  List<HomeTrack> _trackListFromPaged(dynamic value) {
+    if (value is List) {
+      return _trackList(value);
+    }
+
+    final data = _map(value);
+    final result = data['result'] ?? data['items'];
+
+    return _trackList(result);
   }
 
   List<HomeTrack> _historyTrackList(

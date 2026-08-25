@@ -9,8 +9,9 @@ import '../../../services/api/api_service.dart';
 import '../../home/models/home_track.dart';
 import '../models/player_state.dart';
 
-final playerProvider =
-    NotifierProvider<PlayerController, PlayerState>(PlayerController.new);
+final playerProvider = NotifierProvider<PlayerController, PlayerState>(
+  PlayerController.new,
+);
 
 class PlayerController extends Notifier<PlayerState> {
   late final ja.AudioPlayer _audioPlayer;
@@ -19,11 +20,18 @@ class PlayerController extends Notifier<PlayerState> {
   StreamSubscription<Duration>? _positionSubscription;
   StreamSubscription<Duration?>? _durationSubscription;
   StreamSubscription<ja.PlayerState>? _playerStateSubscription;
+
   Timer? _historyTimer;
 
   int _playRequestId = 0;
+
   String? _lastCountedTrackId;
+
   bool _wantsToPlay = false;
+
+  // =========================================================
+  // BUILD
+  // =========================================================
 
   @override
   PlayerState build() {
@@ -34,19 +42,22 @@ class PlayerController extends Notifier<PlayerState> {
 
     ref.onDispose(() {
       _historyTimer?.cancel();
+
       _positionSubscription?.cancel();
       _durationSubscription?.cancel();
       _playerStateSubscription?.cancel();
+
       _audioPlayer.dispose();
     });
 
     return const PlayerState();
   }
 
-  Future<void> playTrack(
-    HomeTrack track, {
-    List<HomeTrack>? queue,
-  }) async {
+  // =========================================================
+  // PLAY TRACK
+  // =========================================================
+
+  Future<void> playTrack(HomeTrack track, {List<HomeTrack>? queue}) async {
     final audioUrl = track.resolvedTrackUrl;
 
     if (audioUrl == null || audioUrl.isEmpty) {
@@ -54,25 +65,32 @@ class PlayerController extends Notifier<PlayerState> {
         currentTrack: track,
         errorMessage: 'Track does not have an audio URL.',
         isLoading: false,
+        isPlaying: false,
       );
+
       return;
     }
 
     final requestId = ++_playRequestId;
-    final nextQueue = queue == null || queue.isEmpty ? [track] : queue;
-    final nextIndex = max(
-      0,
-      nextQueue.indexWhere((item) => item.id == track.id),
-    );
 
+    final nextQueue = queue == null || queue.isEmpty ? [track] : queue;
+
+    final foundIndex = nextQueue.indexWhere((item) => item.id == track.id);
+
+    final nextIndex = max(0, foundIndex);
+
+    // Lưu lịch sử bài cũ trước khi chuyển bài
     await _saveCurrentHistory(playing: false);
+
     _historyTimer?.cancel();
+
     _wantsToPlay = false;
 
     state = state.copyWith(
       currentTrack: track,
       queue: nextQueue,
       currentIndex: nextIndex,
+      isPlaying: false,
       isLoading: true,
       position: Duration.zero,
       duration: Duration.zero,
@@ -81,12 +99,14 @@ class PlayerController extends Notifier<PlayerState> {
     );
 
     try {
+      // Dừng bài cũ
       await _audioPlayer.stop();
 
       if (requestId != _playRequestId) {
         return;
       }
 
+      // Load URL bài mới
       await _audioPlayer.setUrl(audioUrl);
 
       if (requestId != _playRequestId) {
@@ -94,17 +114,23 @@ class PlayerController extends Notifier<PlayerState> {
       }
 
       _wantsToPlay = true;
-      await _audioPlayer.play();
 
-      state = state.copyWith(
-        isLoading: false,
-        isPlaying: true,
-      );
+      /*
+       * QUAN TRỌNG:
+       *
+       * Không await _audioPlayer.play().
+       *
+       * Trạng thái playing sẽ được cập nhật thông qua
+       * playerStateStream trong _listenToPlayer().
+       */
+      unawaited(_audioPlayer.play());
 
       _startHistoryTimer();
+
       unawaited(_increasePlayCount(track));
     } catch (error, stackTrace) {
       debugPrint('Play track error: $error');
+
       debugPrint('$stackTrace');
 
       if (requestId != _playRequestId) {
@@ -112,6 +138,7 @@ class PlayerController extends Notifier<PlayerState> {
       }
 
       _wantsToPlay = false;
+
       state = state.copyWith(
         isLoading: false,
         isPlaying: false,
@@ -120,46 +147,71 @@ class PlayerController extends Notifier<PlayerState> {
     }
   }
 
+  // =========================================================
+  // PLAY / PAUSE
+  // =========================================================
+
   Future<void> togglePlayPause() async {
-    if (!state.hasTrack || state.isLoading) {
+    if (!state.hasTrack) {
       return;
     }
 
-    final shouldPause = state.isPlaying || _audioPlayer.playing;
+    if (state.isLoading) {
+      return;
+    }
 
     try {
-      if (shouldPause) {
+      // =====================================================
+      // PAUSE
+      // =====================================================
+
+      if (_audioPlayer.playing) {
         _wantsToPlay = false;
-        state = state.copyWith(
-          isPlaying: false,
-          isLoading: false,
-        );
+
         await _audioPlayer.pause();
+
         _historyTimer?.cancel();
-        state = state.copyWith(
-          isPlaying: false,
-          isLoading: false,
-        );
+
         await _saveCurrentHistory(playing: false);
-      } else {
-        _wantsToPlay = true;
-        state = state.copyWith(
-          isPlaying: true,
-          isLoading: false,
-        );
-        await _audioPlayer.play();
-        state = state.copyWith(
-          isPlaying: true,
-          isLoading: false,
-        );
-        _startHistoryTimer();
+
+        return;
       }
-    } catch (error) {
+
+      // =====================================================
+      // PLAY / RESUME
+      // =====================================================
+
+      _wantsToPlay = true;
+
+      /*
+       * Không await play().
+       *
+       * playerStateStream sẽ báo:
+       *
+       * playing = true
+       *
+       * và cập nhật Riverpod state.
+       */
+      unawaited(_audioPlayer.play());
+
+      _startHistoryTimer();
+    } catch (error, stackTrace) {
       debugPrint('Toggle play/pause error: $error');
+
+      debugPrint('$stackTrace');
+
       _wantsToPlay = _audioPlayer.playing;
-      state = state.copyWith(errorMessage: 'Unable to control playback.');
+
+      state = state.copyWith(
+        isPlaying: _audioPlayer.playing,
+        errorMessage: 'Unable to control playback.',
+      );
     }
   }
+
+  // =========================================================
+  // SEEK
+  // =========================================================
 
   Future<void> seekByProgress(double value) async {
     final duration = state.duration;
@@ -168,103 +220,199 @@ class PlayerController extends Notifier<PlayerState> {
       return;
     }
 
+    final progress = value.clamp(0.0, 1.0);
+
     final target = Duration(
-      milliseconds: (duration.inMilliseconds * value.clamp(0, 1)).round(),
+      milliseconds: (duration.inMilliseconds * progress).round(),
     );
 
-    await _audioPlayer.seek(target);
+    try {
+      await _audioPlayer.seek(target);
+    } catch (error) {
+      debugPrint('Seek error: $error');
+    }
   }
+
+  // =========================================================
+  // NEXT
+  // =========================================================
 
   Future<void> next() async {
     if (!state.hasNext) {
       return;
     }
 
-    final nextTrack = state.queue[state.currentIndex + 1];
+    final nextIndex = state.currentIndex + 1;
+
+    final nextTrack = state.queue[nextIndex];
+
     await playTrack(nextTrack, queue: state.queue);
   }
+
+  // =========================================================
+  // PREVIOUS
+  // =========================================================
 
   Future<void> previous() async {
     if (!state.hasPrevious) {
       return;
     }
 
-    final previousTrack = state.queue[state.currentIndex - 1];
+    final previousIndex = state.currentIndex - 1;
+
+    final previousTrack = state.queue[previousIndex];
+
     await playTrack(previousTrack, queue: state.queue);
   }
 
+  // =========================================================
+  // STOP
+  // =========================================================
+
   Future<void> stop() async {
+    // Làm các request play cũ mất hiệu lực
     _playRequestId++;
+
     _historyTimer?.cancel();
+
     _wantsToPlay = false;
 
     await _saveCurrentHistory(playing: false);
-    await _audioPlayer.stop();
+
+    try {
+      await _audioPlayer.stop();
+    } catch (error) {
+      debugPrint('Stop player error: $error');
+    }
 
     state = const PlayerState();
   }
+
+  // =========================================================
+  // CLEAR ERROR
+  // =========================================================
 
   void clearError() {
     state = state.copyWith(clearError: true);
   }
 
+  // =========================================================
+  // AUDIO PLAYER LISTENERS
+  // =========================================================
+
   void _listenToPlayer() {
+    // -------------------------------------------------------
+    // Position
+    // -------------------------------------------------------
+
     _positionSubscription = _audioPlayer.positionStream.listen((position) {
       state = state.copyWith(position: position);
     });
+
+    // -------------------------------------------------------
+    // Duration
+    // -------------------------------------------------------
 
     _durationSubscription = _audioPlayer.durationStream.listen((duration) {
       state = state.copyWith(duration: duration ?? Duration.zero);
     });
 
-    _playerStateSubscription =
-        _audioPlayer.playerStateStream.listen((playerState) {
-      final completed =
-          playerState.processingState == ja.ProcessingState.completed;
+    // -------------------------------------------------------
+    // Player state
+    // -------------------------------------------------------
 
-      state = state.copyWith(
-        isPlaying: _wantsToPlay && _audioPlayer.playing && !completed,
-        isLoading:
-            _wantsToPlay &&
-            playerState.processingState == ja.ProcessingState.loading ||
-                _wantsToPlay &&
-                playerState.processingState == ja.ProcessingState.buffering,
-      );
+    _playerStateSubscription = _audioPlayer.playerStateStream.listen(
+      (playerState) {
+        final processingState = playerState.processingState;
 
-      if (completed) {
-        unawaited(_handleCompleted());
-      }
-    });
+        final completed = processingState == ja.ProcessingState.completed;
+
+        final loading =
+            processingState == ja.ProcessingState.loading ||
+            processingState == ja.ProcessingState.buffering;
+
+        /*
+         * playerState.playing là nguồn trạng thái thật
+         * của just_audio.
+         *
+         * Không lấy state.isPlaying làm nguồn quyết định.
+         */
+        final isPlaying = playerState.playing && !completed;
+
+        debugPrint(
+          'AUDIO STATE => '
+          'playing=${playerState.playing}, '
+          'isPlaying=$isPlaying, '
+          'processing=$processingState',
+        );
+
+        state = state.copyWith(isPlaying: isPlaying, isLoading: loading);
+
+        if (completed) {
+          unawaited(_handleCompleted());
+        }
+      },
+      onError: (Object error, StackTrace stackTrace) {
+        debugPrint('Player state stream error: $error');
+
+        debugPrint('$stackTrace');
+
+        _wantsToPlay = false;
+
+        state = state.copyWith(
+          isPlaying: false,
+          isLoading: false,
+          errorMessage: 'Playback encountered an error.',
+        );
+      },
+    );
   }
 
-  Future<void> _handleCompleted() async {
-    await _saveCurrentHistory(
-      completed: true,
-      playing: false,
-    );
+  // =========================================================
+  // TRACK COMPLETED
+  // =========================================================
 
+  Future<void> _handleCompleted() async {
+    _historyTimer?.cancel();
+
+    _wantsToPlay = false;
+
+    await _saveCurrentHistory(completed: true, playing: false);
+
+    /*
+     * Nếu còn bài tiếp theo thì tự động phát.
+     */
     if (state.hasNext) {
       await next();
       return;
     }
 
-    _historyTimer?.cancel();
-    _wantsToPlay = false;
-    state = state.copyWith(isPlaying: false);
+    /*
+     * Nếu queue đã hết:
+     *
+     * giữ currentTrack để MiniPlayer vẫn hiển thị,
+     * nhưng chuyển icon về Play.
+     */
+    state = state.copyWith(isPlaying: false, isLoading: false);
   }
+
+  // =========================================================
+  // HISTORY TIMER
+  // =========================================================
 
   void _startHistoryTimer() {
     _historyTimer?.cancel();
 
-    _historyTimer = Timer.periodic(
-      const Duration(seconds: 15),
-      (_) {
-        unawaited(
-          _saveCurrentHistory(playing: _wantsToPlay && _audioPlayer.playing),
-        );
-      },
-    );
+    _historyTimer = Timer.periodic(const Duration(seconds: 15), (_) {
+      unawaited(
+        _saveCurrentHistory(playing: _wantsToPlay && _audioPlayer.playing),
+      );
+    });
   }
+
+  // =========================================================
+  // PLAY COUNT
+  // =========================================================
 
   Future<void> _increasePlayCount(HomeTrack track) async {
     if (_lastCountedTrackId == track.id) {
@@ -280,19 +428,32 @@ class PlayerController extends Notifier<PlayerState> {
     }
   }
 
+  // =========================================================
+  // LISTENING HISTORY
+  // =========================================================
+
   Future<void> _saveCurrentHistory({
     bool completed = false,
     required bool playing,
   }) async {
     final track = state.currentTrack;
 
-    if (track == null || track.id.isEmpty) {
+    if (track == null) {
+      return;
+    }
+
+    if (track.id.isEmpty) {
       return;
     }
 
     final duration = state.duration.inMilliseconds / 1000;
+
     final position = state.position.inMilliseconds / 1000;
 
+    /*
+     * Nếu vừa load bài và chưa có duration/position
+     * thì chưa cần lưu.
+     */
     if (duration <= 0 && position <= 0) {
       return;
     }

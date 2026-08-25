@@ -10,7 +10,13 @@ import '../../features/auth/presentation/signup_screen.dart';
 import '../../features/auth/presentation/splash_screen.dart';
 import '../../features/auth/providers/auth_provider.dart';
 
+import '../../features/profile/presentation/profile_screen.dart';
+
 import '../../shared/presentation/app_shell.dart';
+
+// ================================================================
+// APP ROUTER
+// ================================================================
 
 final GoRouter appRouter = GoRouter(
   initialLocation: '/home',
@@ -56,7 +62,7 @@ final GoRouter appRouter = GoRouter(
     // ------------------------------------------------------------
     // RESET PASSWORD
     //
-    // URL:
+    // Example:
     // /auth/reset-password?email=user@gmail.com
     // ------------------------------------------------------------
 
@@ -148,10 +154,7 @@ final GoRouter appRouter = GoRouter(
             GoRoute(
               path: '/profile',
               builder: (context, state) {
-                return const _PlaceholderScreen(
-                  title: 'Profile',
-                  icon: Icons.person_rounded,
-                );
+                return const ProfileScreen();
               },
             ),
           ],
@@ -177,8 +180,7 @@ class _AuthenticatedShell extends ConsumerWidget {
       BuildContext context,
       WidgetRef ref,
       ) {
-    final authState =
-    ref.watch(authProvider);
+    final authState = ref.watch(authProvider);
 
     return authState.when(
       // ----------------------------------------------------------
@@ -201,7 +203,7 @@ class _AuthenticatedShell extends ConsumerWidget {
       },
 
       // ----------------------------------------------------------
-      // DATA
+      // AUTH STATE
       // ----------------------------------------------------------
 
       data: (user) {
@@ -210,8 +212,7 @@ class _AuthenticatedShell extends ConsumerWidget {
         }
 
         return AppShell(
-          navigationShell:
-          navigationShell,
+          navigationShell: navigationShell,
           user: user,
         );
       },
@@ -220,14 +221,16 @@ class _AuthenticatedShell extends ConsumerWidget {
 }
 
 // ================================================================
-// TEMPORARY SCREEN
+// TEMPORARY PLACEHOLDER
 //
-// Sau này làm Search / Library / Profile thật
-// thì có thể xóa class này.
+// Chỉ còn sử dụng cho:
+// - Search
+// - Library
+//
+// Profile đã có ProfileScreen riêng.
 // ================================================================
 
-class _PlaceholderScreen
-    extends StatelessWidget {
+class _PlaceholderScreen extends StatelessWidget {
   const _PlaceholderScreen({
     required this.title,
     required this.icon,
@@ -246,8 +249,7 @@ class _PlaceholderScreen
       ),
       child: Center(
         child: Column(
-          mainAxisSize:
-          MainAxisSize.min,
+          mainAxisSize: MainAxisSize.min,
           children: [
             Icon(
               icon,
@@ -266,8 +268,7 @@ class _PlaceholderScreen
               style: const TextStyle(
                 color: Colors.white,
                 fontSize: 24,
-                fontWeight:
-                FontWeight.w800,
+                fontWeight: FontWeight.w800,
               ),
             ),
           ],

@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:dio/dio.dart';
 import 'package:soundclone_mobile/core/config/api_config.dart';
@@ -977,6 +978,26 @@ class ApiService {
             ? 'image'
             : file.uri.pathSegments.last,
       ),
+    });
+
+    return _request(
+      method: 'POST',
+      path: '/uploads/image',
+      data: formData,
+      options: Options(method: 'POST', contentType: 'multipart/form-data'),
+    );
+  }
+
+  Future<ApiResponse<dynamic>> uploadImagePathApi(String path) {
+    return uploadImageApi(File(path));
+  }
+
+  Future<ApiResponse<dynamic>> uploadImageBytesApi({
+    required Uint8List bytes,
+    required String filename,
+  }) async {
+    final formData = FormData.fromMap({
+      'file': MultipartFile.fromBytes(bytes, filename: filename),
     });
 
     return _request(

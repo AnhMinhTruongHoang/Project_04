@@ -33,9 +33,11 @@ class DioClient {
   static BaseOptions _createOptions() {
     return BaseOptions(
       baseUrl: ApiConfig.apiV1,
-      connectTimeout: const Duration(seconds: 30),
-      receiveTimeout: const Duration(seconds: 30),
-      sendTimeout: const Duration(seconds: 30),
+      // Backend local/Render có thể cold-start và endpoint find-all hiện mất
+      // hơn 40 giây. 30 giây khiến Dio hủy request trước khi BE trả 200.
+      connectTimeout: const Duration(seconds: 90),
+      receiveTimeout: const Duration(seconds: 90),
+      sendTimeout: const Duration(seconds: 90),
       headers: const {
         'Content-Type': 'application/json',
         'Accept': 'application/json',

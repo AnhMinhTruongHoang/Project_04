@@ -33,6 +33,9 @@ dependencies:
   # Lưu access token và refresh token an toàn trên thiết bị.
   flutter_secure_storage: ^10.3.1
 
+  # Chọn avatar và ảnh bìa từ thư viện ảnh/camera của thiết bị.
+  image_picker: ^1.2.1
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

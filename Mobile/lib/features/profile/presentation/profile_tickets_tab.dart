@@ -74,103 +74,247 @@ class _TicketCard extends StatelessWidget {
         : _firstText(event, ['eventName', 'name', 'title']);
     final code = _firstText(ticket, ['ticketCode', 'code']);
     final status = _firstText(ticket, ['status']).toUpperCase();
+    final collectionStatus = _firstText(ticket, [
+      'collectionStatus',
+    ]).toUpperCase();
     final eventDate = _readableDate(
       _firstText(ticket, ['eventStartAt']).isNotEmpty
           ? _firstText(ticket, ['eventStartAt'])
           : _firstText(event, ['eventStartAt', 'startAt']),
     );
+    final venueName = _firstText(ticket, ['venueName']).isNotEmpty
+        ? _firstText(ticket, ['venueName'])
+        : _firstText(event, ['venueName', 'venue']);
+    final venueAddress = _firstText(ticket, ['venueAddress']).isNotEmpty
+        ? _firstText(ticket, ['venueAddress'])
+        : _firstText(event, ['venueAddress', 'address']);
+    final imageUrl = _resolveMediaUrl(
+      _firstText(ticket, ['ticketImageUrl', 'ticketImage']).isNotEmpty
+          ? _firstText(ticket, ['ticketImageUrl', 'ticketImage'])
+          : _firstText(event, ['ticketImageUrl', 'ticketImage', 'imageUrl']),
+    );
+    final purchasePrice = ticket['purchasePrice'] ?? ticket['ticketPrice'];
     final used = status == 'USED' || ticket['checkedIn'] == true;
-    final color = used
-        ? const Color(0xFFFFB454)
-        : status == 'VALID'
+    final displayStatus = collectionStatus.isNotEmpty
+        ? collectionStatus
+        : status.isEmpty
+        ? 'TICKET'
+        : status;
+    final statusColor = used
+        ? const Color(0xFF7164FF)
+        : displayStatus == 'VALID' || displayStatus == 'UPCOMING'
         ? const Color(0xFF55D68B)
+        : displayStatus == 'CANCELLED'
+        ? const Color(0xFFFF6B6B)
         : const Color(0xFFAAAAAA);
 
-    return InkWell(
-      onTap: id.isEmpty ? null : () => _showTicketQr(context, ticket),
-      borderRadius: BorderRadius.circular(14),
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 12),
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          color: const Color(0xFF141414),
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: const Color(0xFF2A2A2A)),
-        ),
-        child: Row(
-          children: [
-            Container(
-              width: 58,
-              height: 58,
-              decoration: BoxDecoration(
-                color: const Color(0xFF242424),
-                borderRadius: BorderRadius.circular(10),
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      clipBehavior: Clip.antiAlias,
+      decoration: BoxDecoration(
+        color: const Color(0xFF111111),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFF343434)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Stack(
+            children: [
+              SizedBox(
+                width: double.infinity,
+                height: 172,
+                child: imageUrl == null
+                    ? ColoredBox(
+                        color: const Color(0xFF242424),
+                        child: Center(
+                          child: Image.asset(
+                            'assets/images/sc_logo.png',
+                            width: 92,
+                            height: 92,
+                            fit: BoxFit.contain,
+                          ),
+                        ),
+                      )
+                    : Image.network(
+                        imageUrl,
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, _, _) => const ColoredBox(
+                          color: Color(0xFF242424),
+                          child: Icon(
+                            Icons.local_activity_rounded,
+                            color: Color(0xFFFF5500),
+                            size: 54,
+                          ),
+                        ),
+                      ),
               ),
-              child: const Icon(
-                Icons.qr_code_2_rounded,
-                color: Color(0xFFFF5500),
-                size: 34,
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    eventName.isEmpty ? 'SoundClone ticket' : eventName,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 14,
+              Positioned(
+                top: 10,
+                left: 10,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 5,
+                  ),
+                  decoration: BoxDecoration(
+                    color: statusColor.withValues(alpha: 0.20),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(
+                      color: statusColor.withValues(alpha: 0.45),
+                    ),
+                  ),
+                  child: Text(
+                    _ticketStatusLabel(displayStatus),
+                    style: TextStyle(
+                      color: statusColor,
+                      fontSize: 11,
                       fontWeight: FontWeight.w900,
                     ),
                   ),
-                  if (code.isNotEmpty) ...[
-                    const SizedBox(height: 5),
-                    Text(
-                      code,
-                      style: const TextStyle(
-                        color: Color(0xFF888888),
-                        fontSize: 11,
-                        fontFamily: 'monospace',
-                      ),
-                    ),
-                  ],
-                  if (eventDate.isNotEmpty) ...[
-                    const SizedBox(height: 4),
-                    Text(
-                      eventDate,
-                      style: const TextStyle(
-                        color: Color(0xFFAAAAAA),
-                        fontSize: 12,
-                      ),
-                    ),
-                  ],
-                ],
+                ),
               ),
-            ),
-            const SizedBox(width: 8),
-            Column(
+            ],
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(13, 13, 13, 14),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  status.isEmpty ? 'TICKET' : status,
-                  style: TextStyle(
-                    color: color,
-                    fontSize: 11,
+                  eventName.isEmpty ? 'SoundClone ticket' : eventName,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 16,
                     fontWeight: FontWeight.w900,
                   ),
                 ),
-                const SizedBox(height: 7),
-                const Icon(Icons.chevron_right, color: Color(0xFF777777)),
+                if (code.isNotEmpty) ...[
+                  const SizedBox(height: 5),
+                  Text(
+                    code,
+                    style: const TextStyle(
+                      color: Color(0xFF888888),
+                      fontSize: 10,
+                      fontFamily: 'monospace',
+                    ),
+                  ),
+                ],
+                if (eventDate.isNotEmpty) ...[
+                  const SizedBox(height: 13),
+                  _TicketDetailLine(
+                    icon: Icons.calendar_month_rounded,
+                    text: eventDate,
+                  ),
+                ],
+                if (venueName.isNotEmpty || venueAddress.isNotEmpty) ...[
+                  const SizedBox(height: 8),
+                  _TicketDetailLine(
+                    icon: Icons.location_on_rounded,
+                    text: venueName,
+                    secondary: venueAddress,
+                  ),
+                ],
+                const SizedBox(height: 13),
+                const Text(
+                  'Purchase price',
+                  style: TextStyle(color: Color(0xFF777777), fontSize: 10),
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  _formatMoney(purchasePrice),
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                SizedBox(
+                  width: double.infinity,
+                  child: FilledButton.icon(
+                    onPressed: id.isEmpty
+                        ? null
+                        : () => _showTicketQr(context, ticket),
+                    style: FilledButton.styleFrom(
+                      backgroundColor: const Color(0xFFFF5500),
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 13),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                    icon: const Icon(Icons.qr_code_2_rounded, size: 18),
+                    label: const Text(
+                      'View ticket',
+                      style: TextStyle(fontWeight: FontWeight.w900),
+                    ),
+                  ),
+                ),
               ],
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
+}
+
+class _TicketDetailLine extends StatelessWidget {
+  const _TicketDetailLine({
+    required this.icon,
+    required this.text,
+    this.secondary = '',
+  });
+
+  final IconData icon;
+  final String text;
+  final String secondary;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Icon(icon, color: const Color(0xFF999999), size: 16),
+        const SizedBox(width: 7),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if (text.isNotEmpty)
+                Text(
+                  text,
+                  style: const TextStyle(
+                    color: Color(0xFFDDDDDD),
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              if (secondary.isNotEmpty) ...[
+                const SizedBox(height: 3),
+                Text(
+                  secondary,
+                  style: const TextStyle(
+                    color: Color(0xFF888888),
+                    fontSize: 10,
+                    height: 1.4,
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+String _ticketStatusLabel(String status) {
+  if (status.isEmpty) return 'Ticket';
+  return '${status[0]}${status.substring(1).toLowerCase()}';
 }
 
 Future<void> _showTicketQr(

@@ -180,34 +180,108 @@ class _TourEventCard extends StatelessWidget {
                   ],
                 ),
                 const SizedBox(height: 12),
-                SizedBox(
-                  width: double.infinity,
-                  child: isOwner
-                      ? OutlinedButton.icon(
+                if (isOwner)
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          onPressed: id.isEmpty
+                              ? null
+                              : () => _showMyEventTicketQr(
+                                  context,
+                                  ref,
+                                  eventId: id,
+                                  eventName: title,
+                                ),
+                          icon: const Icon(Icons.qr_code_2_rounded),
+                          label: const Text('View QR'),
+                        ),
+                      ),
+                      const SizedBox(width: 9),
+                      Expanded(
+                        child: OutlinedButton.icon(
                           onPressed: () => showTicketScannerSheet(context, ref),
                           icon: const Icon(Icons.qr_code_scanner_rounded),
-                          label: const Text('Check in ticket'),
-                        )
-                      : FilledButton.icon(
-                          onPressed: canPurchase && id.isNotEmpty
-                              ? () => _showBuyTicketSheet(context, event)
-                              : null,
-                          style: FilledButton.styleFrom(
-                            backgroundColor: const Color(0xFFFF5500),
-                            foregroundColor: Colors.white,
-                          ),
-                          icon: const Icon(Icons.local_activity_outlined),
-                          label: Text(
-                            remaining <= 0 ? 'Sold out' : 'Buy ticket',
-                          ),
+                          label: const Text('Check in'),
                         ),
-                ),
+                      ),
+                    ],
+                  )
+                else
+                  SizedBox(
+                    width: double.infinity,
+                    child: FilledButton.icon(
+                      onPressed: canPurchase && id.isNotEmpty
+                          ? () => _showBuyTicketSheet(context, event)
+                          : null,
+                      style: FilledButton.styleFrom(
+                        backgroundColor: const Color(0xFFFF5500),
+                        foregroundColor: Colors.white,
+                      ),
+                      icon: const Icon(Icons.local_activity_outlined),
+                      label: Text(remaining <= 0 ? 'Sold out' : 'Buy ticket'),
+                    ),
+                  ),
               ],
             ),
           ),
         ],
       ),
     );
+  }
+}
+
+Future<void> _showMyEventTicketQr(
+  BuildContext context,
+  WidgetRef ref, {
+  required String eventId,
+  required String eventName,
+}) async {
+  final ticketsFuture = ref.read(_profileTicketsProvider.future);
+
+  try {
+    final tickets = await ticketsFuture;
+    if (!context.mounted) return;
+
+    Map<String, dynamic>? matchingTicket;
+    final normalizedEventName = eventName.trim().toLowerCase();
+    for (final ticket in tickets) {
+      final ticketEventId = _firstText(ticket, ['eventId']);
+      final ticketEventName = _firstText(ticket, [
+        'eventName',
+      ]).trim().toLowerCase();
+      final status = _firstText(ticket, ['status']).toUpperCase();
+      final sameEvent =
+          ticketEventId == eventId ||
+          (normalizedEventName.isNotEmpty &&
+              ticketEventName == normalizedEventName);
+      if (sameEvent && status != 'CANCELLED') {
+        matchingTicket = ticket;
+        break;
+      }
+    }
+
+    if (matchingTicket == null) {
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(
+          const SnackBar(
+            content: Text('You do not have a ticket for this concert yet.'),
+          ),
+        );
+      return;
+    }
+
+    await _showTicketQr(context, matchingTicket);
+  } catch (error) {
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          content: Text(error.toString().replaceFirst('Bad state: ', '')),
+        ),
+      );
   }
 }
 

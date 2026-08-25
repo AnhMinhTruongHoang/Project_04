@@ -251,6 +251,25 @@ Future<void> _showTicketQr(
                   ),
           ),
           actions: [
+            if (qrValue.isNotEmpty)
+              TextButton.icon(
+                onPressed: () async {
+                  await Clipboard.setData(ClipboardData(text: qrValue));
+                  if (dialogContext.mounted) {
+                    ScaffoldMessenger.of(dialogContext)
+                      ..hideCurrentSnackBar()
+                      ..showSnackBar(
+                        const SnackBar(
+                          content: Text(
+                            'QR token copied for check-in testing.',
+                          ),
+                        ),
+                      );
+                  }
+                },
+                icon: const Icon(Icons.copy_rounded),
+                label: const Text('Copy token'),
+              ),
             TextButton(
               onPressed: () => Navigator.pop(dialogContext),
               child: const Text('Close'),

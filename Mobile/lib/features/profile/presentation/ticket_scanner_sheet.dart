@@ -1,6 +1,6 @@
 part of 'profile_screen.dart';
 
-Future<void> showTicketScannerSheet(BuildContext context) async {
+Future<void> showTicketScannerSheet(BuildContext context, WidgetRef ref) async {
   final tokenController = TextEditingController();
   final scannerController = MobileScannerController(
     detectionSpeed: DetectionSpeed.noDuplicates,
@@ -23,7 +23,9 @@ Future<void> showTicketScannerSheet(BuildContext context) async {
     builder: (sheetContext) => StatefulBuilder(
       builder: (context, setState) {
         Future<void> checkIn([String? scannedValue]) async {
-          final token = (scannedValue ?? tokenController.text).trim();
+          final token = _extractTicketQrToken(
+            scannedValue ?? tokenController.text,
+          );
           if (token.isEmpty || checking) return;
 
           tokenController.text = token;
@@ -41,6 +43,8 @@ Future<void> showTicketScannerSheet(BuildContext context) async {
 
           if (!sheetContext.mounted) return;
           if (response.isSuccess && response.data != null) {
+            ref.invalidate(_profileTicketsProvider);
+            ref.invalidate(_profileEventsProvider);
             final data = response.data is Map
                 ? Map<String, dynamic>.from(response.data as Map)
                 : const <String, dynamic>{};
@@ -181,13 +185,35 @@ Future<void> showTicketScannerSheet(BuildContext context) async {
                   enabled: !checking,
                   style: const TextStyle(color: Colors.white),
                   decoration: InputDecoration(
-                    hintText: 'Paste ticket QR token',
+                    hintText: 'Scan or paste SCT-... token',
                     hintStyle: const TextStyle(color: Color(0xFF777777)),
                     filled: true,
                     fillColor: const Color(0xFF202020),
-                    suffixIcon: IconButton(
-                      onPressed: checking ? null : () => checkIn(),
-                      icon: const Icon(Icons.login_rounded),
+                    suffixIcon: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        IconButton(
+                          tooltip: 'Paste token',
+                          onPressed: checking
+                              ? null
+                              : () async {
+                                  final clipboard = await Clipboard.getData(
+                                    Clipboard.kTextPlain,
+                                  );
+                                  if (!sheetContext.mounted) return;
+                                  final value = clipboard?.text?.trim() ?? '';
+                                  if (value.isNotEmpty) {
+                                    tokenController.text = value;
+                                  }
+                                },
+                          icon: const Icon(Icons.content_paste_rounded),
+                        ),
+                        IconButton(
+                          tooltip: 'Check in token',
+                          onPressed: checking ? null : () => checkIn(),
+                          icon: const Icon(Icons.login_rounded),
+                        ),
+                      ],
                     ),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
@@ -227,4 +253,22 @@ Future<void> showTicketScannerSheet(BuildContext context) async {
 
   await scannerController.dispose();
   tokenController.dispose();
+}
+
+String _extractTicketQrToken(String rawValue) {
+  final value = rawValue.trim();
+  if (value.isEmpty) return '';
+
+  final uri = Uri.tryParse(value);
+  if (uri != null) {
+    final wrappedToken =
+        uri.queryParameters['qrToken'] ??
+        uri.queryParameters['token'] ??
+        uri.queryParameters['qrValue'];
+    if (wrappedToken != null && wrappedToken.trim().isNotEmpty) {
+      return wrappedToken.trim();
+    }
+  }
+
+  return value;
 }

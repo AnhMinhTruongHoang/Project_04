@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../services/api/api_service.dart';
 import '../../home/models/home_track.dart';
+import '../../home/providers/home_provider.dart';
+import '../../profile/presentation/profile_screen.dart';
 import '../providers/liked_tracks_provider.dart';
 
 class LikeScreen extends ConsumerWidget {
@@ -78,8 +80,14 @@ class LikeScreen extends ConsumerWidget {
     HomeTrack track,
   ) async {
     final result = await ApiService.instance.dislikeTrackApi(track.id);
+    if (!context.mounted) return;
     if (result.isSuccess) {
-      ref.invalidate(likedTracksProvider);
+      ref.invalidate(homeFeedProvider);
+      ref.invalidate(profileTracksProvider);
+      final likedRefresh = ref.refresh(likedTracksProvider.future);
+      try {
+        await likedRefresh;
+      } catch (_) {}
       return;
     }
 

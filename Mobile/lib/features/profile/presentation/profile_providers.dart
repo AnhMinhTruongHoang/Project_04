@@ -11,7 +11,7 @@ final _fullProfileProvider = FutureProvider.family<UserModel, String>((
   return UserModel.fromJson(Map<String, dynamic>.from(response.data as Map));
 });
 
-final _profileTracksProvider = FutureProvider.family<List<HomeTrack>, String>((
+final profileTracksProvider = FutureProvider.family<List<HomeTrack>, String>((
   ref,
   userId,
 ) async {
@@ -33,7 +33,7 @@ final _profileTracksProvider = FutureProvider.family<List<HomeTrack>, String>((
       .toList();
 });
 
-final _profilePlaylistsProvider =
+final profilePlaylistsProvider =
     FutureProvider.family<List<Map<String, dynamic>>, String>((
       ref,
       userId,

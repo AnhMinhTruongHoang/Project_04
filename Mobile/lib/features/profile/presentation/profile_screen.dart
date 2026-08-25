@@ -90,24 +90,27 @@ class _ProfileContent extends ConsumerWidget {
         color: _orange,
         backgroundColor: const Color(0xFF202020),
         onRefresh: () async {
-          await ref.read(authProvider.notifier).reloadAccount();
-
           ref.invalidate(_fullProfileProvider(user.id));
           ref.invalidate(homeFeedProvider);
-          ref.invalidate(_profileTracksProvider(user.id));
-          ref.invalidate(_profilePlaylistsProvider(user.id));
+          ref.invalidate(profileTracksProvider(user.id));
+          ref.invalidate(profilePlaylistsProvider(user.id));
           ref.invalidate(_profileEventsProvider(user.id));
           ref.invalidate(_profileMembershipProvider(user.id));
           ref.invalidate(_profileTicketsProvider);
           ref.invalidate(_profileBadgesProvider(user.id));
 
+          final authNotifier = ref.read(authProvider.notifier);
+
           try {
             await Future.wait([
               ref.read(homeFeedProvider.future),
-              ref.read(_profileTracksProvider(user.id).future),
-              ref.read(_profilePlaylistsProvider(user.id).future),
+              ref.read(profileTracksProvider(user.id).future),
+              ref.read(profilePlaylistsProvider(user.id).future),
             ]);
           } catch (_) {}
+
+          // Keep this last: reloadAccount can rebuild/unmount ProfileScreen.
+          await authNotifier.reloadAccount();
         },
         child: CustomScrollView(
           physics: const AlwaysScrollableScrollPhysics(
@@ -153,7 +156,8 @@ class _ProfileContent extends ConsumerWidget {
                 collapseMode: CollapseMode.parallax,
                 background: ProfileMobileHero(
                   user: profileUser,
-                  onUploadCover: () => _pickAndUpdateCover(context, ref),
+                  onUploadCover: () =>
+                      _pickAndUpdateCover(context, ref, profileUser),
                 ),
               ),
             ),
@@ -786,7 +790,7 @@ class _PopularTracksTab extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     return ref
-        .watch(_profileTracksProvider(userId))
+        .watch(profileTracksProvider(userId))
         .when(
           loading: () => const _RecentLoading(),
           error: (_, __) => const _ProfileEmptyTab(
@@ -843,7 +847,7 @@ class _ProfilePlaylistsTab extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     return ref
-        .watch(_profilePlaylistsProvider(userId))
+        .watch(profilePlaylistsProvider(userId))
         .when(
           loading: () => const _RecentLoading(),
           error: (_, __) => const _ProfileEmptyTab(

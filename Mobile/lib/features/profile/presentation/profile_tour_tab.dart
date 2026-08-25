@@ -31,7 +31,7 @@ class ProfileTourTab extends ConsumerWidget {
             ),
             if (isOwner)
               FilledButton.icon(
-                onPressed: () => showTicketScannerSheet(context),
+                onPressed: () => showTicketScannerSheet(context, ref),
                 style: FilledButton.styleFrom(
                   backgroundColor: const Color(0xFFFF5500),
                   foregroundColor: Colors.white,
@@ -66,7 +66,11 @@ class ProfileTourTab extends ConsumerWidget {
             return Column(
               children: items
                   .map(
-                    (event) => _TourEventCard(event: event, isOwner: isOwner),
+                    (event) => _TourEventCard(
+                      event: event,
+                      isOwner: isOwner,
+                      ref: ref,
+                    ),
                   )
                   .toList(),
             );
@@ -78,10 +82,15 @@ class ProfileTourTab extends ConsumerWidget {
 }
 
 class _TourEventCard extends StatelessWidget {
-  const _TourEventCard({required this.event, required this.isOwner});
+  const _TourEventCard({
+    required this.event,
+    required this.isOwner,
+    required this.ref,
+  });
 
   final Map<String, dynamic> event;
   final bool isOwner;
+  final WidgetRef ref;
 
   @override
   Widget build(BuildContext context) {
@@ -175,7 +184,7 @@ class _TourEventCard extends StatelessWidget {
                   width: double.infinity,
                   child: isOwner
                       ? OutlinedButton.icon(
-                          onPressed: () => showTicketScannerSheet(context),
+                          onPressed: () => showTicketScannerSheet(context, ref),
                           icon: const Icon(Icons.qr_code_scanner_rounded),
                           label: const Text('Check in ticket'),
                         )

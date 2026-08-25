@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../services/api/api_service.dart';
+import '../../profile/presentation/profile_screen.dart';
 import '../providers/playlist_provider.dart';
 import 'playlist_card.dart';
 
@@ -123,7 +124,9 @@ class PlaylistScreen extends ConsumerWidget {
       ),
     );
     controller.dispose();
-    if (created == true) ref.invalidate(playlistPageProvider);
+    if (created == true && context.mounted) {
+      await _refreshPlaylistViews(ref);
+    }
   }
 
   Future<void> _showAddTrack(
@@ -276,6 +279,7 @@ class PlaylistScreen extends ConsumerWidget {
                                   },
                                 );
 
+                            if (!sheetContext.mounted) return;
                             if (!response.isSuccess) {
                               setState(() {
                                 saving = false;
@@ -317,16 +321,8 @@ class PlaylistScreen extends ConsumerWidget {
         },
       ),
     );
-    if (saved == true) {
-      try {
-        final refreshedData = await ref.refresh(playlistPageProvider.future);
-        if (refreshedData.playlists.isEmpty && data.playlists.isNotEmpty) {
-          ref.invalidate(playlistPageProvider);
-        }
-      } catch (_) {
-        // The update itself succeeded. Keep the screen usable and let pull to
-        // refresh retry if the follow-up fetch temporarily fails.
-      }
+    if (saved == true && context.mounted) {
+      await _refreshPlaylistViews(ref);
       if (context.mounted) {
         ScaffoldMessenger.of(context)
           ..hideCurrentSnackBar()
@@ -375,8 +371,18 @@ class PlaylistScreen extends ConsumerWidget {
     final response = await ApiService.instance.deletePlaylistApi(
       playlistId(playlist),
     );
-    if (response.isSuccess) ref.invalidate(playlistPageProvider);
+    if (response.isSuccess && context.mounted) {
+      await _refreshPlaylistViews(ref);
+    }
   }
+}
+
+Future<void> _refreshPlaylistViews(WidgetRef ref) async {
+  ref.invalidate(profilePlaylistsProvider);
+  final playlistRefresh = ref.refresh(playlistPageProvider.future);
+  try {
+    await playlistRefresh;
+  } catch (_) {}
 }
 
 class _PlaylistHeader extends StatelessWidget {

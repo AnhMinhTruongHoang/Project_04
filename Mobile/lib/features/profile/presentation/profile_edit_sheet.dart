@@ -1,6 +1,10 @@
 part of 'profile_screen.dart';
 
-Future<void> _pickAndUpdateCover(BuildContext context, WidgetRef ref) async {
+Future<void> _pickAndUpdateCover(
+  BuildContext context,
+  WidgetRef ref,
+  UserModel user,
+) async {
   final picked = await ImagePicker().pickImage(
     source: ImageSource.gallery,
     imageQuality: 90,
@@ -46,8 +50,8 @@ Future<void> _pickAndUpdateCover(BuildContext context, WidgetRef ref) async {
     return;
   }
 
-  await ref.read(authProvider.notifier).reloadAccount();
-  ref.invalidate(_fullProfileProvider);
+  if (!context.mounted) return;
+  await _refreshUpdatedProfile(ref, user.id);
   if (context.mounted) {
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
@@ -135,8 +139,8 @@ Future<void> _showEditProfile(
                 throw StateError(response.message);
               }
 
-              await ref.read(authProvider.notifier).reloadAccount();
-              ref.invalidate(_fullProfileProvider(user.id));
+              if (!sheetContext.mounted) return;
+              await _refreshUpdatedProfile(ref, user.id);
               if (sheetContext.mounted) {
                 Navigator.pop(sheetContext);
               }
@@ -239,6 +243,16 @@ Future<void> _showEditProfile(
   name.dispose();
   bio.dispose();
   website.dispose();
+}
+
+Future<void> _refreshUpdatedProfile(WidgetRef ref, String userId) async {
+  ref.invalidate(_profileBadgesProvider(userId));
+  final profileRefresh = ref.refresh(_fullProfileProvider(userId).future);
+  final authNotifier = ref.read(authProvider.notifier);
+  await profileRefresh;
+  // reloadAccount may temporarily replace the authenticated shell with the
+  // splash screen, so it must be the final operation that uses captured state.
+  await authNotifier.reloadAccount();
 }
 
 String? _uploadedImageUrl(ApiResponse<dynamic> response) {

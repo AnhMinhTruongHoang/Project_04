@@ -53,3 +53,6 @@ dev_dependencies:
 flutter:
   # Cho phép sử dụng Material Icons.
   uses-material-design: true
+
+  assets:
+    - assets/images/sc_logo.png

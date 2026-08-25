@@ -157,10 +157,7 @@ class DioClient {
       LogInterceptor(
         request: true,
         requestBody: true,
-
-        // Không log Authorization token ra console.
         requestHeader: false,
-
         responseBody: true,
         responseHeader: false,
         error: true,

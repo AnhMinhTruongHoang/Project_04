@@ -4,15 +4,12 @@ import '../../../core/storage/token_storage.dart';
 import '../data/auth_service.dart';
 import '../models/user_model.dart';
 
-final authProvider =
-AsyncNotifierProvider<AuthNotifier, UserModel?>(
+final authProvider = AsyncNotifierProvider<AuthNotifier, UserModel?>(
   AuthNotifier.new,
 );
 
-class AuthNotifier
-    extends AsyncNotifier<UserModel?> {
-  final AuthService _authService =
-  AuthService();
+class AuthNotifier extends AsyncNotifier<UserModel?> {
+  final AuthService _authService = AuthService();
 
   // ============================================================
   // INITIAL AUTH STATE
@@ -20,22 +17,15 @@ class AuthNotifier
 
   @override
   Future<UserModel?> build() async {
-    final accessToken =
-    await TokenStorage.getAccessToken();
+    final accessToken = await TokenStorage.getAccessToken();
+    final refreshToken = await TokenStorage.getRefreshToken();
 
-    final refreshToken =
-    await TokenStorage.getRefreshToken();
-
-    final hasAccessToken =
-        accessToken != null &&
-            accessToken.trim().isNotEmpty;
+    final hasAccessToken = accessToken != null && accessToken.trim().isNotEmpty;
 
     final hasRefreshToken =
-        refreshToken != null &&
-            refreshToken.trim().isNotEmpty;
+        refreshToken != null && refreshToken.trim().isNotEmpty;
 
-    if (!hasAccessToken &&
-        !hasRefreshToken) {
+    if (!hasAccessToken && !hasRefreshToken) {
       return null;
     }
 
@@ -52,27 +42,18 @@ class AuthNotifier
   // LOGIN
   // ============================================================
 
-  Future<void> login({
-    required String email,
-    required String password,
-  }) async {
+  Future<void> login({required String email, required String password}) async {
     state = const AsyncLoading();
 
     try {
-      final authResponse =
-      await _authService.login(
+      final authResponse = await _authService.login(
         email: email.trim().toLowerCase(),
         password: password,
       );
 
-      state = AsyncData(
-        authResponse.user,
-      );
+      state = AsyncData(authResponse.user);
     } catch (error, stackTrace) {
-      state = AsyncError(
-        error,
-        stackTrace,
-      );
+      state = AsyncError(error, stackTrace);
 
       rethrow;
     }
@@ -90,8 +71,7 @@ class AuthNotifier
     state = const AsyncLoading();
 
     try {
-      final result =
-      await _authService.register(
+      final result = await _authService.register(
         name: name.trim(),
         email: email.trim().toLowerCase(),
         password: password,
@@ -103,10 +83,7 @@ class AuthNotifier
 
       return result;
     } catch (error, stackTrace) {
-      state = AsyncError(
-        error,
-        stackTrace,
-      );
+      state = AsyncError(error, stackTrace);
 
       rethrow;
     }
@@ -120,17 +97,11 @@ class AuthNotifier
     state = const AsyncLoading();
 
     try {
-      final user =
-      await _authService.getAccount();
+      final user = await _authService.getAccount();
 
-      state = AsyncData(
-        user,
-      );
+      state = AsyncData(user);
     } catch (error, stackTrace) {
-      state = AsyncError(
-        error,
-        stackTrace,
-      );
+      state = AsyncError(error, stackTrace);
 
       rethrow;
     }

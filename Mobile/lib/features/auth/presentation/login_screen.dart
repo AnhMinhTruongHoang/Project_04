@@ -40,10 +40,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     }
 
     try {
-      await ref.read(authProvider.notifier).login(
-        email: _emailController.text.trim().toLowerCase(),
-        password: _passwordController.text,
-      );
+      await ref
+          .read(authProvider.notifier)
+          .login(
+            email: _emailController.text.trim().toLowerCase(),
+            password: _passwordController.text,
+          );
 
       if (!mounted) return;
 
@@ -51,17 +53,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     } catch (error) {
       if (!mounted) return;
 
-      _showMessage(
-        error.toString(),
-        success: false,
-      );
+      _showMessage(error.toString(), success: false);
     }
   }
 
-  void _showMessage(
-      String message, {
-        required bool success,
-      }) {
+  void _showMessage(String message, {required bool success}) {
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
       ..showSnackBar(
@@ -106,9 +102,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       backgroundColor: const Color(0xFF050607),
       body: Stack(
         children: [
-          const Positioned.fill(
-            child: _LoginBackground(),
-          ),
+          const Positioned.fill(child: _LoginBackground()),
 
           SafeArea(
             child: Center(
@@ -118,40 +112,29 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   vertical: 32,
                 ),
                 child: ConstrainedBox(
-                  constraints: const BoxConstraints(
-                    maxWidth: 450,
-                  ),
+                  constraints: const BoxConstraints(maxWidth: 450),
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(22),
                     child: BackdropFilter(
-                      filter: ImageFilter.blur(
-                        sigmaX: 14,
-                        sigmaY: 14,
-                      ),
+                      filter: ImageFilter.blur(sigmaX: 14, sigmaY: 14),
                       child: Container(
                         padding: const EdgeInsets.all(24),
                         decoration: BoxDecoration(
                           borderRadius: BorderRadius.circular(22),
                           border: Border.all(
-                            color: Colors.white.withValues(
-                              alpha: 0.10,
-                            ),
+                            color: Colors.white.withValues(alpha: 0.10),
                           ),
                           gradient: LinearGradient(
                             begin: Alignment.topCenter,
                             end: Alignment.bottomCenter,
                             colors: [
-                              const Color(0xFF121416)
-                                  .withValues(alpha: 0.96),
-                              const Color(0xFF0A0C0E)
-                                  .withValues(alpha: 0.97),
+                              const Color(0xFF121416).withValues(alpha: 0.96),
+                              const Color(0xFF0A0C0E).withValues(alpha: 0.97),
                             ],
                           ),
                           boxShadow: [
                             BoxShadow(
-                              color: Colors.black.withValues(
-                                alpha: 0.45,
-                              ),
+                              color: Colors.black.withValues(alpha: 0.45),
                               blurRadius: 50,
                               offset: const Offset(0, 24),
                             ),
@@ -160,8 +143,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         child: Form(
                           key: _formKey,
                           child: Column(
-                            crossAxisAlignment:
-                            CrossAxisAlignment.stretch,
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: [
                               _buildHeader(),
 
@@ -241,20 +223,21 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             shape: BoxShape.circle,
             color: _orange.withValues(alpha: 0.14),
             border: Border.all(
-              color: const Color(0xFFFF7A00)
-                  .withValues(alpha: 0.40),
+              color: const Color(0xFFFF7A00).withValues(alpha: 0.40),
             ),
             boxShadow: [
-              BoxShadow(
-                color: _orange.withValues(alpha: 0.25),
-                blurRadius: 28,
-              ),
+              BoxShadow(color: _orange.withValues(alpha: 0.25), blurRadius: 28),
             ],
           ),
-          child: const Icon(
-            Icons.cloud_rounded,
-            color: _orange,
-            size: 38,
+          child: Padding(
+            padding: const EdgeInsets.all(5),
+            child: ClipOval(
+              child: Image.asset(
+                'assets/images/sc_logo.png',
+                fit: BoxFit.cover,
+                filterQuality: FilterQuality.high,
+              ),
+            ),
           ),
         ),
         const SizedBox(height: 16),
@@ -272,10 +255,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         const Text(
           'Welcome back to SoundClone',
           textAlign: TextAlign.center,
-          style: TextStyle(
-            color: Color(0xFF8B949E),
-            fontSize: 14,
-          ),
+          style: TextStyle(color: Color(0xFF8B949E), fontSize: 14),
         ),
       ],
     );
@@ -289,15 +269,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         enabled: !loading,
         keyboardType: TextInputType.emailAddress,
         textInputAction: TextInputAction.next,
-        autofillHints: const [
-          AutofillHints.email,
-        ],
-        style: const TextStyle(
-          color: Colors.white,
-        ),
-        decoration: _inputDecoration(
-          hint: 'Enter your email',
-        ),
+        autofillHints: const [AutofillHints.email],
+        style: const TextStyle(color: Colors.white),
+        decoration: _inputDecoration(hint: 'Enter your email'),
         validator: (value) {
           final email = value?.trim() ?? '';
 
@@ -305,9 +279,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             return 'Email is required.';
           }
 
-          final regex = RegExp(
-            r'^[^\s@]+@[^\s@]+\.[^\s@]+$',
-          );
+          final regex = RegExp(r'^[^\s@]+@[^\s@]+\.[^\s@]+$');
 
           if (!regex.hasMatch(email)) {
             return 'Please enter a valid email.';
@@ -327,29 +299,22 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         enabled: !loading,
         obscureText: _obscurePassword,
         textInputAction: TextInputAction.done,
-        autofillHints: const [
-          AutofillHints.password,
-        ],
+        autofillHints: const [AutofillHints.password],
         onFieldSubmitted: (_) {
           if (!loading) {
             _submit();
           }
         },
-        style: const TextStyle(
-          color: Colors.white,
-        ),
-        decoration: _inputDecoration(
-          hint: '••••••••',
-        ).copyWith(
+        style: const TextStyle(color: Colors.white),
+        decoration: _inputDecoration(hint: '••••••••').copyWith(
           suffixIcon: IconButton(
             onPressed: loading
                 ? null
                 : () {
-              setState(() {
-                _obscurePassword =
-                !_obscurePassword;
-              });
-            },
+                    setState(() {
+                      _obscurePassword = !_obscurePassword;
+                    });
+                  },
             icon: Icon(
               _obscurePassword
                   ? Icons.visibility_off_outlined
@@ -369,61 +334,39 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     );
   }
 
-  Widget _buildRememberMe(
-      bool loading,
-      ) {
+  Widget _buildRememberMe(bool loading) {
     return Row(
       children: [
         Expanded(
           child: InkWell(
-            borderRadius:
-            BorderRadius.circular(8),
+            borderRadius: BorderRadius.circular(8),
             onTap: loading
                 ? null
                 : () {
-              setState(() {
-                _rememberMe =
-                !_rememberMe;
-              });
-            },
+                    setState(() {
+                      _rememberMe = !_rememberMe;
+                    });
+                  },
             child: Row(
-              mainAxisSize:
-              MainAxisSize.min,
+              mainAxisSize: MainAxisSize.min,
               children: [
                 Checkbox(
                   value: _rememberMe,
                   onChanged: loading
                       ? null
                       : (value) {
-                    setState(() {
-                      _rememberMe =
-                          value ??
-                              false;
-                    });
-                  },
+                          setState(() {
+                            _rememberMe = value ?? false;
+                          });
+                        },
                   activeColor: _cyan,
-                  checkColor:
-                  const Color(
-                    0xFF07110F,
-                  ),
-                  side:
-                  const BorderSide(
-                    color:
-                    Color(
-                      0xFF8B949E,
-                    ),
-                  ),
+                  checkColor: const Color(0xFF07110F),
+                  side: const BorderSide(color: Color(0xFF8B949E)),
                 ),
                 const Flexible(
                   child: Text(
                     'Remember me',
-                    style: TextStyle(
-                      color:
-                      Color(
-                        0xFFB8B8B8,
-                      ),
-                      fontSize: 14,
-                    ),
+                    style: TextStyle(color: Color(0xFFB8B8B8), fontSize: 14),
                   ),
                 ),
               ],
@@ -435,23 +378,21 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           onPressed: loading
               ? null
               : () {
-            context.go(
-              '/auth/forgot-password',
-            );
-          },
+                  context.go('/auth/forgot-password');
+                },
           child: const Text(
             'Forgot password?',
             style: TextStyle(
               color: _cyan,
               fontSize: 13,
-              fontWeight:
-              FontWeight.w800,
+              fontWeight: FontWeight.w800,
             ),
           ),
         ),
       ],
     );
   }
+
   Widget _buildLoginButton(bool loading) {
     return SizedBox(
       height: 52,
@@ -461,23 +402,18 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           gradient: loading
               ? null
               : const LinearGradient(
-            colors: [
-              Color(0xFFFF4D00),
-              Color(0xFFFF7A00),
-            ],
-          ),
-          color: loading
-              ? Colors.white.withValues(alpha: 0.12)
-              : null,
+                  colors: [Color(0xFFFF4D00), Color(0xFFFF7A00)],
+                ),
+          color: loading ? Colors.white.withValues(alpha: 0.12) : null,
           boxShadow: loading
               ? null
               : [
-            BoxShadow(
-              color: _orange.withValues(alpha: 0.28),
-              blurRadius: 28,
-              offset: const Offset(0, 12),
-            ),
-          ],
+                  BoxShadow(
+                    color: _orange.withValues(alpha: 0.28),
+                    blurRadius: 28,
+                    offset: const Offset(0, 12),
+                  ),
+                ],
         ),
         child: FilledButton(
           onPressed: loading ? null : _submit,
@@ -492,33 +428,30 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           ),
           child: loading
               ? const Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              SizedBox(
-                width: 20,
-                height: 20,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2.2,
-                  color: Colors.white,
-                ),
-              ),
-              SizedBox(width: 12),
-              Text(
-                'Signing in...',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
-            ],
-          )
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2.2,
+                        color: Colors.white,
+                      ),
+                    ),
+                    SizedBox(width: 12),
+                    Text(
+                      'Signing in...',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ],
+                )
               : const Text(
-            'Sign in',
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w900,
-            ),
-          ),
+                  'Sign in',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900),
+                ),
         ),
       ),
     );
@@ -527,27 +460,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   Widget _buildDivider() {
     return const Row(
       children: [
-        Expanded(
-          child: Divider(
-            color: Color(0xFF303438),
-          ),
-        ),
+        Expanded(child: Divider(color: Color(0xFF303438))),
         Padding(
-          padding: EdgeInsets.symmetric(
-            horizontal: 16,
-          ),
-          child: Text(
-            'or',
-            style: TextStyle(
-              color: Color(0xFF8B949E),
-            ),
-          ),
+          padding: EdgeInsets.symmetric(horizontal: 16),
+          child: Text('or', style: TextStyle(color: Color(0xFF8B949E))),
         ),
-        Expanded(
-          child: Divider(
-            color: Color(0xFF303438),
-          ),
-        ),
+        Expanded(child: Divider(color: Color(0xFF303438))),
       ],
     );
   }
@@ -562,10 +480,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       height: 50,
       child: OutlinedButton.icon(
         onPressed: enabled ? onPressed : null,
-        icon: Icon(
-          icon,
-          color: const Color(0xFFE5E7EB),
-        ),
+        icon: Icon(icon, color: const Color(0xFFE5E7EB)),
         label: Text(
           text,
           style: const TextStyle(
@@ -574,11 +489,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           ),
         ),
         style: OutlinedButton.styleFrom(
-          backgroundColor:
-          Colors.white.withValues(alpha: 0.03),
-          side: BorderSide(
-            color: Colors.white.withValues(alpha: 0.14),
-          ),
+          backgroundColor: Colors.white.withValues(alpha: 0.03),
+          side: BorderSide(color: Colors.white.withValues(alpha: 0.14)),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(10),
           ),
@@ -593,10 +505,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       children: [
         const Text(
           "Don't have an account? ",
-          style: TextStyle(
-            color: Color(0xFFB8B8B8),
-            fontSize: 14,
-          ),
+          style: TextStyle(color: Color(0xFFB8B8B8), fontSize: 14),
         ),
         GestureDetector(
           onTap: () {
@@ -615,63 +524,32 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     );
   }
 
-  InputDecoration _inputDecoration({
-    required String hint,
-  }) {
+  InputDecoration _inputDecoration({required String hint}) {
     return InputDecoration(
       hintText: hint,
-      hintStyle: const TextStyle(
-        color: Color(0xFF8B949E),
-      ),
+      hintStyle: const TextStyle(color: Color(0xFF8B949E)),
       filled: true,
-      fillColor:
-      Colors.white.withValues(alpha: 0.04),
-      contentPadding: const EdgeInsets.symmetric(
-        horizontal: 16,
-        vertical: 16,
-      ),
-      border: _border(
-        Colors.white.withValues(alpha: 0.16),
-      ),
-      enabledBorder: _border(
-        Colors.white.withValues(alpha: 0.16),
-      ),
-      focusedBorder: _border(
-        _cyan,
-        width: 1.5,
-      ),
-      errorBorder: _border(
-        const Color(0xFFFF4D4F),
-      ),
-      focusedErrorBorder: _border(
-        const Color(0xFFFF4D4F),
-        width: 1.5,
-      ),
-      errorStyle: const TextStyle(
-        color: Color(0xFFFF6B6B),
-      ),
+      fillColor: Colors.white.withValues(alpha: 0.04),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+      border: _border(Colors.white.withValues(alpha: 0.16)),
+      enabledBorder: _border(Colors.white.withValues(alpha: 0.16)),
+      focusedBorder: _border(_cyan, width: 1.5),
+      errorBorder: _border(const Color(0xFFFF4D4F)),
+      focusedErrorBorder: _border(const Color(0xFFFF4D4F), width: 1.5),
+      errorStyle: const TextStyle(color: Color(0xFFFF6B6B)),
     );
   }
 
-  OutlineInputBorder _border(
-      Color color, {
-        double width = 1,
-      }) {
+  OutlineInputBorder _border(Color color, {double width = 1}) {
     return OutlineInputBorder(
       borderRadius: BorderRadius.circular(10),
-      borderSide: BorderSide(
-        color: color,
-        width: width,
-      ),
+      borderSide: BorderSide(color: color, width: width),
     );
   }
 }
 
 class _FieldGroup extends StatelessWidget {
-  const _FieldGroup({
-    required this.label,
-    required this.child,
-  });
+  const _FieldGroup({required this.label, required this.child});
 
   final String label;
   final Widget child;
@@ -715,104 +593,68 @@ class _LoginBackgroundPainter extends CustomPainter {
       ..shader = const LinearGradient(
         begin: Alignment.topLeft,
         end: Alignment.bottomRight,
-        colors: [
-          Color(0xFF050607),
-          Color(0xFF101214),
-          Color(0xFF1E2021),
-        ],
-      ).createShader(
-        Offset.zero & size,
-      );
+        colors: [Color(0xFF050607), Color(0xFF101214), Color(0xFF1E2021)],
+      ).createShader(Offset.zero & size);
 
-    canvas.drawRect(
-      Offset.zero & size,
-      background,
-    );
+    canvas.drawRect(Offset.zero & size, background);
 
     final orange = Paint()
-      ..shader = RadialGradient(
-        colors: [
-          const Color(0xFFFF5500)
-              .withValues(alpha: 0.22),
-          Colors.transparent,
-        ],
-      ).createShader(
-        Rect.fromCircle(
-          center: Offset(
-            size.width * 0.5,
-            size.height * 0.18,
-          ),
-          radius: size.width * 0.75,
-        ),
-      );
+      ..shader =
+          RadialGradient(
+            colors: [
+              const Color(0xFFFF5500).withValues(alpha: 0.22),
+              Colors.transparent,
+            ],
+          ).createShader(
+            Rect.fromCircle(
+              center: Offset(size.width * 0.5, size.height * 0.18),
+              radius: size.width * 0.75,
+            ),
+          );
 
     canvas.drawCircle(
-      Offset(
-        size.width * 0.5,
-        size.height * 0.18,
-      ),
+      Offset(size.width * 0.5, size.height * 0.18),
       size.width * 0.75,
       orange,
     );
 
     final cyan = Paint()
-      ..shader = RadialGradient(
-        colors: [
-          const Color(0xFF00FFE0)
-              .withValues(alpha: 0.11),
-          Colors.transparent,
-        ],
-      ).createShader(
-        Rect.fromCircle(
-          center: Offset(
-            size.width * 0.9,
-            size.height * 0.72,
-          ),
-          radius: size.width * 0.7,
-        ),
-      );
+      ..shader =
+          RadialGradient(
+            colors: [
+              const Color(0xFF00FFE0).withValues(alpha: 0.11),
+              Colors.transparent,
+            ],
+          ).createShader(
+            Rect.fromCircle(
+              center: Offset(size.width * 0.9, size.height * 0.72),
+              radius: size.width * 0.7,
+            ),
+          );
 
     canvas.drawCircle(
-      Offset(
-        size.width * 0.9,
-        size.height * 0.72,
-      ),
+      Offset(size.width * 0.9, size.height * 0.72),
       size.width * 0.7,
       cyan,
     );
 
     final grid = Paint()
-      ..color =
-      Colors.white.withValues(alpha: 0.025)
+      ..color = Colors.white.withValues(alpha: 0.025)
       ..strokeWidth = 1;
 
     const spacing = 42.0;
 
-    for (double x = 0;
-    x < size.width;
-    x += spacing) {
-      canvas.drawLine(
-        Offset(x, 0),
-        Offset(x, size.height),
-        grid,
-      );
+    for (double x = 0; x < size.width; x += spacing) {
+      canvas.drawLine(Offset(x, 0), Offset(x, size.height), grid);
     }
 
-    for (double y = 0;
-    y < size.height;
-    y += spacing) {
-      canvas.drawLine(
-        Offset(0, y),
-        Offset(size.width, y),
-        grid,
-      );
+    for (double y = 0; y < size.height; y += spacing) {
+      canvas.drawLine(Offset(0, y), Offset(size.width, y), grid);
     }
   }
 
   @override
-  bool shouldRepaint(
-      covariant CustomPainter oldDelegate,
-      ) {
+  bool shouldRepaint(covariant CustomPainter oldDelegate) {
     return false;
   }
 }

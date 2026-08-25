@@ -6,9 +6,7 @@ import '../models/home_feed.dart';
 import '../models/home_track.dart';
 
 class HomeService {
-  HomeService({
-    Dio? dio,
-  }) : _dio = dio ?? DioClient.instance;
+  HomeService({Dio? dio}) : _dio = dio ?? DioClient.instance;
 
   final Dio _dio;
 
@@ -16,108 +14,62 @@ class HomeService {
     final results = await Future.wait([
       _safeGet(
         '/tracks/hidden-gems',
-        queryParameters: {
-          'limit': 10,
-          'maxPlays': 1000,
-        },
+        queryParameters: {'limit': 10, 'maxPlays': 1000},
       ),
 
       _safeGet(
         '/tracks/top',
-        queryParameters: {
-          'category': 'ncs',
-          'limit': 10,
-        },
+        queryParameters: {'category': 'ncs', 'limit': 10},
       ),
 
       _safeGet(
         '/tracks/top',
-        queryParameters: {
-          'category': 'kpop',
-          'limit': 10,
-        },
+        queryParameters: {'category': 'kpop', 'limit': 10},
       ),
 
       _safeGet(
         '/tracks/top',
-        queryParameters: {
-          'category': 'pop',
-          'limit': 10,
-        },
+        queryParameters: {'category': 'pop', 'limit': 10},
       ),
 
       _safeGet(
         '/tracks/top',
-        queryParameters: {
-          'category': 'lofi',
-          'limit': 10,
-        },
+        queryParameters: {'category': 'lofi', 'limit': 10},
       ),
 
-      _safeGet(
-        '/tracks/history/home',
-        queryParameters: {
-          'limit': 10,
-        },
-      ),
+      _safeGet('/tracks/history/home', queryParameters: {'limit': 10}),
 
-      _safeGet(
-        '/tracks/because-you-listened',
-        queryParameters: {
-          'limit': 10,
-        },
-      ),
+      _safeGet('/tracks/because-you-listened', queryParameters: {'limit': 10}),
     ]);
 
     // =================================
     // PUBLIC DATA
     // =================================
 
-    final hiddenGems = _trackList(
-      _payload(results[0]),
-    );
+    final hiddenGems = _trackList(_payload(results[0]));
 
-    final ncsTracks = _trackList(
-      _payload(results[1]),
-    );
-
-    final kpopTracks = _trackList(
-      _payload(results[2]),
-    );
-
-    final popTracks = _trackList(
-      _payload(results[3]),
-    );
-
-    final lofiTracks = _trackList(
-      _payload(results[4]),
-    );
+    final ncsTracks = _trackList(_payload(results[1]));
+    final kpopTracks = _trackList(_payload(results[2]));
+    final popTracks = _trackList(_payload(results[3]));
+    final lofiTracks = _trackList(_payload(results[4]));
 
     // =================================
     // LISTENING HISTORY
     // =================================
 
-    final historyData = _map(
-      _payload(results[5]),
-    );
+    final historyData = _map(_payload(results[5]));
 
-    final continueListening =
-    _historyTrackList(
+    final continueListening = _historyTrackList(
       historyData['continueListening'],
     );
 
-    final recentlyPlayed =
-    _historyTrackList(
-      historyData['recentlyPlayed'],
-    );
+    final recentlyPlayed = _historyTrackList(historyData['recentlyPlayed']);
 
-    final historyTracks =
-    continueListening.isNotEmpty
+    final historyTracks = continueListening.isNotEmpty
         ? continueListening
         : recentlyPlayed;
 
-    final historyTitle =
-    continueListening.isNotEmpty
+    final historyTitle = continueListening.isNotEmpty
         ? 'Continue Listening'
         : 'Recently Played';
 
@@ -125,26 +77,15 @@ class HomeService {
     // BECAUSE YOU LISTENED
     // =================================
 
-    final becauseData = _map(
-      _payload(results[6]),
-    );
+    final becauseData = _map(_payload(results[6]));
 
-    final becauseTracks = _trackList(
-      becauseData['result'],
-    );
+    final becauseTracks = _trackList(becauseData['result']);
 
-    final basedOn = _map(
-      becauseData['basedOn'],
-    );
+    final basedOn = _map(becauseData['basedOn']);
 
-    final basedOnTitle =
-        basedOn['title']
-            ?.toString()
-            .trim() ??
-            '';
+    final basedOnTitle = basedOn['title']?.toString().trim() ?? '';
 
-    final becauseTitle =
-    basedOnTitle.isNotEmpty
+    final becauseTitle = basedOnTitle.isNotEmpty
         ? 'Because You Listened to $basedOnTitle'
         : 'Because You Listened To';
 
@@ -162,27 +103,22 @@ class HomeService {
   }
 
   Future<dynamic> _safeGet(
-      String path, {
-        Map<String, dynamic>? queryParameters,
-      }) async {
+    String path, {
+    Map<String, dynamic>? queryParameters,
+  }) async {
     try {
-      final response = await _dio.get(
-        path,
-        queryParameters: queryParameters,
-      );
+      final response = await _dio.get(path, queryParameters: queryParameters);
 
       return response.data;
     } on DioException catch (error) {
       debugPrint(
         'HOME API ERROR: $path '
-            '${error.response?.statusCode}',
+        '${error.response?.statusCode}',
       );
 
       return null;
     } catch (error) {
-      debugPrint(
-        'HOME API ERROR: $path $error',
-      );
+      debugPrint('HOME API ERROR: $path $error');
 
       return null;
     }
@@ -190,10 +126,7 @@ class HomeService {
 
   dynamic _payload(dynamic response) {
     if (response is Map) {
-      final map =
-      Map<String, dynamic>.from(
-        response,
-      );
+      final map = Map<String, dynamic>.from(response);
 
       if (map.containsKey('data')) {
         return map['data'];
@@ -203,37 +136,26 @@ class HomeService {
     return response;
   }
 
-  Map<String, dynamic> _map(
-      dynamic value,
-      ) {
+  Map<String, dynamic> _map(dynamic value) {
     if (value is Map) {
-      return Map<String, dynamic>.from(
-        value,
-      );
+      return Map<String, dynamic>.from(value);
     }
 
     return {};
   }
 
-  List<HomeTrack> _trackList(
-      dynamic value,
-      ) {
+  List<HomeTrack> _trackList(dynamic value) {
     if (value is! List) {
       return [];
     }
 
     return value
         .map(HomeTrack.fromJson)
-        .where(
-          (track) =>
-      track.id.isNotEmpty,
-    )
+        .where((track) => track.id.isNotEmpty)
         .toList();
   }
 
-  List<HomeTrack> _historyTrackList(
-      dynamic value,
-      ) {
+  List<HomeTrack> _historyTrackList(dynamic value) {
     if (value is! List) {
       return [];
     }
@@ -249,10 +171,7 @@ class HomeService {
         continue;
       }
 
-      final track =
-      HomeTrack.fromJson(
-        trackJson,
-      );
+      final track = HomeTrack.fromJson(trackJson);
 
       if (track.id.isNotEmpty) {
         tracks.add(track);

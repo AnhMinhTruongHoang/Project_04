@@ -6,10 +6,7 @@ import '../models/home_track.dart';
 import '../providers/home_provider.dart';
 
 class HomeScreen extends ConsumerWidget {
-  const HomeScreen({
-    super.key,
-    required this.user,
-  });
+  const HomeScreen({super.key, required this.user});
 
   final UserModel user;
 
@@ -17,10 +14,7 @@ class HomeScreen extends ConsumerWidget {
   static const Color _orange = Color(0xFFFF5500);
 
   @override
-  Widget build(
-      BuildContext context,
-      WidgetRef ref,
-      ) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final home = ref.watch(homeFeedProvider);
 
     return ColoredBox(
@@ -57,18 +51,13 @@ class HomeScreen extends ConsumerWidget {
               onRefresh: () async {
                 ref.invalidate(homeFeedProvider);
 
-                await ref.read(
-                  homeFeedProvider.future,
-                );
+                await ref.read(homeFeedProvider.future);
               },
               child: ListView(
                 physics: const AlwaysScrollableScrollPhysics(
                   parent: BouncingScrollPhysics(),
                 ),
-                padding: const EdgeInsets.only(
-                  top: 6,
-                  bottom: 110,
-                ),
+                padding: const EdgeInsets.only(top: 6, bottom: 110),
                 children: [
                   // ===============================================
                   // HISTORY
@@ -101,43 +90,30 @@ class HomeScreen extends ConsumerWidget {
                   // TOP NCS
                   // ===============================================
                   if (data.ncsTracks.isNotEmpty)
-                    _TrackSection(
-                      title: 'Top NCS',
-                      tracks: data.ncsTracks,
-                    ),
+                    _TrackSection(title: 'Top NCS', tracks: data.ncsTracks),
 
                   // ===============================================
                   // TOP KPOP
                   // ===============================================
                   if (data.kpopTracks.isNotEmpty)
-                    _TrackSection(
-                      title: 'Top KPOP',
-                      tracks: data.kpopTracks,
-                    ),
+                    _TrackSection(title: 'Top KPOP', tracks: data.kpopTracks),
 
                   // ===============================================
                   // TOP POP
                   // ===============================================
                   if (data.popTracks.isNotEmpty)
-                    _TrackSection(
-                      title: 'Top POP',
-                      tracks: data.popTracks,
-                    ),
+                    _TrackSection(title: 'Top POP', tracks: data.popTracks),
 
                   // ===============================================
                   // TOP LOFI
                   // ===============================================
                   if (data.lofiTracks.isNotEmpty)
-                    _TrackSection(
-                      title: 'Top LOFI',
-                      tracks: data.lofiTracks,
-                    ),
+                    _TrackSection(title: 'Top LOFI', tracks: data.lofiTracks),
 
                   // ===============================================
                   // EMPTY
                   // ===============================================
-                  if (data.isEmpty)
-                    const _EmptyHome(),
+                  if (data.isEmpty) const _EmptyHome(),
                 ],
               ),
             );
@@ -153,10 +129,7 @@ class HomeScreen extends ConsumerWidget {
 // ============================================================================
 
 class _TrackSection extends StatelessWidget {
-  const _TrackSection({
-    required this.title,
-    required this.tracks,
-  });
+  const _TrackSection({required this.title, required this.tracks});
 
   final String title;
   final List<HomeTrack> tracks;
@@ -164,9 +137,7 @@ class _TrackSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.only(
-        top: 16,
-      ),
+      padding: const EdgeInsets.only(top: 16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -174,9 +145,7 @@ class _TrackSection extends StatelessWidget {
           // SECTION TITLE
           // =======================================================
           Padding(
-            padding: const EdgeInsets.symmetric(
-              horizontal: 18,
-            ),
+            padding: const EdgeInsets.symmetric(horizontal: 18),
             child: Text(
               title,
               maxLines: 2,
@@ -198,21 +167,15 @@ class _TrackSection extends StatelessWidget {
           SizedBox(
             height: 208,
             child: ListView.separated(
-              padding: const EdgeInsets.symmetric(
-                horizontal: 18,
-              ),
+              padding: const EdgeInsets.symmetric(horizontal: 18),
               physics: const BouncingScrollPhysics(),
               scrollDirection: Axis.horizontal,
               itemCount: tracks.length,
               separatorBuilder: (_, __) {
-                return const SizedBox(
-                  width: 14,
-                );
+                return const SizedBox(width: 14);
               },
               itemBuilder: (context, index) {
-                return _TrackCard(
-                  track: tracks[index],
-                );
+                return _TrackCard(track: tracks[index]);
               },
             ),
           ),
@@ -227,9 +190,7 @@ class _TrackSection extends StatelessWidget {
 // ============================================================================
 
 class _TrackCard extends StatelessWidget {
-  const _TrackCard({
-    required this.track,
-  });
+  const _TrackCard({required this.track});
 
   final HomeTrack track;
 
@@ -253,10 +214,7 @@ class _TrackCard extends StatelessWidget {
             // =====================================================
             Stack(
               children: [
-                _TrackCover(
-                  track: track,
-                  size: _cardWidth,
-                ),
+                _TrackCover(track: track, size: _cardWidth),
 
                 // =================================================
                 // PLAY BUTTON
@@ -324,10 +282,7 @@ class _TrackCard extends StatelessWidget {
 // ============================================================================
 
 class _TrackCover extends StatelessWidget {
-  const _TrackCover({
-    required this.track,
-    required this.size,
-  });
+  const _TrackCover({required this.track, required this.size});
 
   final HomeTrack track;
   final double size;
@@ -345,46 +300,38 @@ class _TrackCover extends StatelessWidget {
         child: url == null || url.isEmpty
             ? const _CoverFallback()
             : Image.network(
-          url,
-          width: size,
-          height: size,
-          fit: BoxFit.cover,
+                url,
+                width: size,
+                height: size,
+                fit: BoxFit.cover,
 
-          // Nếu ảnh bị lỗi thì dùng ảnh fallback.
-          errorBuilder: (
-              context,
-              error,
-              stackTrace,
-              ) {
-            return const _CoverFallback();
-          },
+                // Nếu ảnh bị lỗi thì dùng ảnh fallback.
+                errorBuilder: (context, error, stackTrace) {
+                  return const _CoverFallback();
+                },
 
-          // Hiển thị nền tối trong lúc ảnh đang load.
-          loadingBuilder: (
-              context,
-              child,
-              loadingProgress,
-              ) {
-            if (loadingProgress == null) {
-              return child;
-            }
+                // Hiển thị nền tối trong lúc ảnh đang load.
+                loadingBuilder: (context, child, loadingProgress) {
+                  if (loadingProgress == null) {
+                    return child;
+                  }
 
-            return Container(
-              width: size,
-              height: size,
-              color: const Color(0xFF202020),
-              alignment: Alignment.center,
-              child: const SizedBox(
-                width: 22,
-                height: 22,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2,
-                  color: Color(0xFFFF5500),
-                ),
+                  return Container(
+                    width: size,
+                    height: size,
+                    color: const Color(0xFF202020),
+                    alignment: Alignment.center,
+                    child: const SizedBox(
+                      width: 22,
+                      height: 22,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Color(0xFFFF5500),
+                      ),
+                    ),
+                  );
+                },
               ),
-            );
-          },
-        ),
       ),
     );
   }
@@ -400,11 +347,7 @@ class _CoverFallback extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return const Center(
-      child: Icon(
-        Icons.music_note_rounded,
-        color: Color(0xFF555555),
-        size: 46,
-      ),
+      child: Icon(Icons.music_note_rounded, color: Color(0xFF555555), size: 46),
     );
   }
 }
@@ -419,9 +362,7 @@ class _HomeLoading extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return const Center(
-      child: CircularProgressIndicator(
-        color: Color(0xFFFF5500),
-      ),
+      child: CircularProgressIndicator(color: Color(0xFFFF5500)),
     );
   }
 }
@@ -431,9 +372,7 @@ class _HomeLoading extends StatelessWidget {
 // ============================================================================
 
 class _HomeError extends StatelessWidget {
-  const _HomeError({
-    required this.onRetry,
-  });
+  const _HomeError({required this.onRetry});
 
   final VoidCallback onRetry;
 
@@ -441,9 +380,7 @@ class _HomeError extends StatelessWidget {
   Widget build(BuildContext context) {
     return Center(
       child: Padding(
-        padding: const EdgeInsets.symmetric(
-          horizontal: 30,
-        ),
+        padding: const EdgeInsets.symmetric(horizontal: 30),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -476,10 +413,7 @@ class _HomeError extends StatelessWidget {
             const Text(
               'Check your connection and try again.',
               textAlign: TextAlign.center,
-              style: TextStyle(
-                color: Color(0xFF999999),
-                fontSize: 13,
-              ),
+              style: TextStyle(color: Color(0xFF999999), fontSize: 13),
             ),
 
             const SizedBox(height: 20),
@@ -489,26 +423,20 @@ class _HomeError extends StatelessWidget {
             // =====================================================
             FilledButton(
               style: FilledButton.styleFrom(
-                backgroundColor: const Color(
-                  0xFFFF5500,
-                ),
+                backgroundColor: const Color(0xFFFF5500),
                 foregroundColor: Colors.white,
                 padding: const EdgeInsets.symmetric(
                   horizontal: 22,
                   vertical: 12,
                 ),
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(
-                    24,
-                  ),
+                  borderRadius: BorderRadius.circular(24),
                 ),
               ),
               onPressed: onRetry,
               child: const Text(
                 'Try Again',
-                style: TextStyle(
-                  fontWeight: FontWeight.w700,
-                ),
+                style: TextStyle(fontWeight: FontWeight.w700),
               ),
             ),
           ],
@@ -528,20 +456,13 @@ class _EmptyHome extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return const Padding(
-      padding: EdgeInsets.symmetric(
-        vertical: 80,
-        horizontal: 30,
-      ),
+      padding: EdgeInsets.symmetric(vertical: 80, horizontal: 30),
       child: Column(
         children: [
           // =======================================================
           // EMPTY ICON
           // =======================================================
-          Icon(
-            Icons.library_music_rounded,
-            color: Color(0xFF555555),
-            size: 55,
-          ),
+          Icon(Icons.library_music_rounded, color: Color(0xFF555555), size: 55),
 
           SizedBox(height: 16),
 
@@ -563,10 +484,7 @@ class _EmptyHome extends StatelessWidget {
           Text(
             'Come back later for more music.',
             textAlign: TextAlign.center,
-            style: TextStyle(
-              color: Color(0xFF888888),
-              fontSize: 13,
-            ),
+            style: TextStyle(color: Color(0xFF888888), fontSize: 13),
           ),
         ],
       ),

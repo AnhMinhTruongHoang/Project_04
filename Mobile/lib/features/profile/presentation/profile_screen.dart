@@ -15,6 +15,7 @@ import '../../auth/models/user_model.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../home/models/home_track.dart';
 import '../../home/providers/home_provider.dart';
+import '../../playlists/presentation/playlist_card.dart';
 import '../../../services/api/api_service.dart';
 
 part 'profile_providers.dart';
@@ -861,88 +862,9 @@ class _ProfilePlaylistsTab extends ConsumerWidget {
 
             return Column(
               children: playlists.map((playlist) {
-                final title = (playlist['title'] ?? 'Untitled playlist')
-                    .toString();
-                final tracks = playlist['tracks'] is List
-                    ? playlist['tracks'] as List
-                    : const <dynamic>[];
-                final isPublic = playlist['isPublic'] != false;
-                final cover = tracks.isNotEmpty && tracks.first is Map
-                    ? _resolveMediaUrl(
-                        (tracks.first as Map)['imgUrl']?.toString(),
-                      )
-                    : null;
-
-                return Container(
-                  margin: const EdgeInsets.only(bottom: 12),
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF141414),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: const Color(0xFF292929)),
-                  ),
-                  child: Row(
-                    children: [
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(7),
-                        child: Container(
-                          width: 68,
-                          height: 68,
-                          color: const Color(0xFF252525),
-                          child: cover == null
-                              ? const Icon(
-                                  Icons.queue_music_rounded,
-                                  color: Color(0xFFFF5500),
-                                )
-                              : Image.network(
-                                  cover,
-                                  fit: BoxFit.cover,
-                                  errorBuilder: (_, __, ___) => const Icon(
-                                    Icons.queue_music_rounded,
-                                    color: Color(0xFFFF5500),
-                                  ),
-                                ),
-                        ),
-                      ),
-                      const SizedBox(width: 14),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              title,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 15,
-                                fontWeight: FontWeight.w900,
-                              ),
-                            ),
-                            const SizedBox(height: 7),
-                            Row(
-                              children: [
-                                Icon(
-                                  isPublic ? Icons.public : Icons.lock_outline,
-                                  size: 14,
-                                  color: const Color(0xFF999999),
-                                ),
-                                const SizedBox(width: 5),
-                                Text(
-                                  '${tracks.length} tracks',
-                                  style: const TextStyle(
-                                    color: Color(0xFF999999),
-                                    fontSize: 12,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ],
-                        ),
-                      ),
-                      const Icon(Icons.chevron_right, color: Color(0xFF888888)),
-                    ],
-                  ),
+                return ProfilePlaylistCard(
+                  playlist: playlist,
+                  onManage: () => context.push('/playlist'),
                 );
               }).toList(),
             );

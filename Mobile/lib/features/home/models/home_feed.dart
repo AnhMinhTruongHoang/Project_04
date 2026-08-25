@@ -4,8 +4,7 @@ class HomeFeed {
   const HomeFeed({
     this.historyTitle = 'Recently Played',
     this.historyTracks = const [],
-    this.becauseTitle =
-    'Because You Listened To',
+    this.becauseTitle = 'Because You Listened To',
     this.becauseTracks = const [],
     this.hiddenGems = const [],
     this.ncsTracks = const [],

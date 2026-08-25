@@ -3,8 +3,6 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:soundclone_mobile/services/api/api_service.dart';
 
-
-
 /*
  * ============================================================
  * SOUNDCLONE MOBILE - API USAGE EXAMPLES

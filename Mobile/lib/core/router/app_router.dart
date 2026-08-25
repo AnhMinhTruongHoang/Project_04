@@ -9,6 +9,8 @@ import '../../features/auth/presentation/reset_password_screen.dart';
 import '../../features/auth/presentation/signup_screen.dart';
 import '../../features/auth/presentation/splash_screen.dart';
 import '../../features/auth/providers/auth_provider.dart';
+import '../../features/likes/presentation/like_screen.dart';
+import '../../features/playlists/presentation/playlist_screen.dart';
 
 import '../../features/profile/presentation/profile_screen.dart';
 
@@ -29,7 +31,6 @@ final GoRouter appRouter = GoRouter(
     // ------------------------------------------------------------
     // LOGIN
     // ------------------------------------------------------------
-
     GoRoute(
       path: '/login',
       builder: (context, state) {
@@ -40,7 +41,6 @@ final GoRouter appRouter = GoRouter(
     // ------------------------------------------------------------
     // SIGN UP
     // ------------------------------------------------------------
-
     GoRoute(
       path: '/auth/signup',
       builder: (context, state) {
@@ -51,7 +51,6 @@ final GoRouter appRouter = GoRouter(
     // ------------------------------------------------------------
     // FORGOT PASSWORD
     // ------------------------------------------------------------
-
     GoRoute(
       path: '/auth/forgot-password',
       builder: (context, state) {
@@ -65,39 +64,27 @@ final GoRouter appRouter = GoRouter(
     // Example:
     // /auth/reset-password?email=user@gmail.com
     // ------------------------------------------------------------
-
     GoRoute(
       path: '/auth/reset-password',
       builder: (context, state) {
-        final email =
-            state.uri.queryParameters['email'] ?? '';
+        final email = state.uri.queryParameters['email'] ?? '';
 
-        return ResetPasswordScreen(
-          initialEmail: email,
-        );
+        return ResetPasswordScreen(initialEmail: email);
       },
     ),
 
     // ============================================================
     // AUTHENTICATED MOBILE SHELL
     // ============================================================
-
     StatefulShellRoute.indexedStack(
-      builder: (
-          context,
-          state,
-          navigationShell,
-          ) {
-        return _AuthenticatedShell(
-          navigationShell: navigationShell,
-        );
+      builder: (context, state, navigationShell) {
+        return _AuthenticatedShell(navigationShell: navigationShell);
       },
 
       branches: [
         // ========================================================
         // HOME
         // ========================================================
-
         StatefulShellBranch(
           routes: [
             GoRoute(
@@ -106,13 +93,24 @@ final GoRouter appRouter = GoRouter(
                 return const AuthGate();
               },
             ),
+            GoRoute(
+              path: '/like',
+              builder: (context, state) {
+                return const LikeScreen();
+              },
+            ),
+            GoRoute(
+              path: '/playlist',
+              builder: (context, state) {
+                return const PlaylistScreen();
+              },
+            ),
           ],
         ),
 
         // ========================================================
         // SEARCH
         // ========================================================
-
         StatefulShellBranch(
           routes: [
             GoRoute(
@@ -130,7 +128,6 @@ final GoRouter appRouter = GoRouter(
         // ========================================================
         // LIBRARY
         // ========================================================
-
         StatefulShellBranch(
           routes: [
             GoRoute(
@@ -148,7 +145,6 @@ final GoRouter appRouter = GoRouter(
         // ========================================================
         // PROFILE
         // ========================================================
-
         StatefulShellBranch(
           routes: [
             GoRoute(
@@ -169,24 +165,18 @@ final GoRouter appRouter = GoRouter(
 // ================================================================
 
 class _AuthenticatedShell extends ConsumerWidget {
-  const _AuthenticatedShell({
-    required this.navigationShell,
-  });
+  const _AuthenticatedShell({required this.navigationShell});
 
   final StatefulNavigationShell navigationShell;
 
   @override
-  Widget build(
-      BuildContext context,
-      WidgetRef ref,
-      ) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final authState = ref.watch(authProvider);
 
     return authState.when(
       // ----------------------------------------------------------
       // LOADING
       // ----------------------------------------------------------
-
       loading: () {
         return const SplashScreen();
       },
@@ -194,27 +184,19 @@ class _AuthenticatedShell extends ConsumerWidget {
       // ----------------------------------------------------------
       // ERROR
       // ----------------------------------------------------------
-
-      error: (
-          error,
-          stackTrace,
-          ) {
+      error: (error, stackTrace) {
         return const LoginScreen();
       },
 
       // ----------------------------------------------------------
       // AUTH STATE
       // ----------------------------------------------------------
-
       data: (user) {
         if (user == null) {
           return const LoginScreen();
         }
 
-        return AppShell(
-          navigationShell: navigationShell,
-          user: user,
-        );
+        return AppShell(navigationShell: navigationShell, user: user);
       },
     );
   }
@@ -231,37 +213,22 @@ class _AuthenticatedShell extends ConsumerWidget {
 // ================================================================
 
 class _PlaceholderScreen extends StatelessWidget {
-  const _PlaceholderScreen({
-    required this.title,
-    required this.icon,
-  });
+  const _PlaceholderScreen({required this.title, required this.icon});
 
   final String title;
   final IconData icon;
 
   @override
-  Widget build(
-      BuildContext context,
-      ) {
+  Widget build(BuildContext context) {
     return ColoredBox(
-      color: const Color(
-        0xFF0D0D0D,
-      ),
+      color: const Color(0xFF0D0D0D),
       child: Center(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(
-              icon,
-              size: 42,
-              color: const Color(
-                0xFFFF5500,
-              ),
-            ),
+            Icon(icon, size: 42, color: const Color(0xFFFF5500)),
 
-            const SizedBox(
-              height: 12,
-            ),
+            const SizedBox(height: 12),
 
             Text(
               title,

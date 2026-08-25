@@ -23,9 +23,7 @@ class AuthPageShell extends StatelessWidget {
       backgroundColor: const Color(0xFF050607),
       body: Stack(
         children: [
-          const Positioned.fill(
-            child: _AuthBackground(),
-          ),
+          const Positioned.fill(child: _AuthBackground()),
 
           SafeArea(
             child: Stack(
@@ -43,13 +41,9 @@ class AuthPageShell extends StatelessWidget {
                         height: 44,
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
-                          color: Colors.white.withValues(
-                            alpha: 0.08,
-                          ),
+                          color: Colors.white.withValues(alpha: 0.08),
                           border: Border.all(
-                            color: Colors.white.withValues(
-                              alpha: 0.12,
-                            ),
+                            color: Colors.white.withValues(alpha: 0.12),
                           ),
                         ),
                         child: const Icon(
@@ -63,48 +57,36 @@ class AuthPageShell extends StatelessWidget {
 
                 Center(
                   child: SingleChildScrollView(
-                    padding: const EdgeInsets.fromLTRB(
-                      20,
-                      72,
-                      20,
-                      32,
-                    ),
+                    padding: const EdgeInsets.fromLTRB(20, 72, 20, 32),
                     child: ConstrainedBox(
-                      constraints: BoxConstraints(
-                        maxWidth: maxWidth,
-                      ),
+                      constraints: BoxConstraints(maxWidth: maxWidth),
                       child: ClipRRect(
                         borderRadius: BorderRadius.circular(22),
                         child: BackdropFilter(
-                          filter: ImageFilter.blur(
-                            sigmaX: 14,
-                            sigmaY: 14,
-                          ),
+                          filter: ImageFilter.blur(sigmaX: 14, sigmaY: 14),
                           child: Container(
                             width: double.infinity,
                             padding: const EdgeInsets.all(24),
                             decoration: BoxDecoration(
                               borderRadius: BorderRadius.circular(22),
                               border: Border.all(
-                                color: Colors.white.withValues(
-                                  alpha: 0.10,
-                                ),
+                                color: Colors.white.withValues(alpha: 0.10),
                               ),
                               gradient: LinearGradient(
                                 begin: Alignment.topCenter,
                                 end: Alignment.bottomCenter,
                                 colors: [
-                                  const Color(0xFF121416)
-                                      .withValues(alpha: 0.96),
-                                  const Color(0xFF0A0C0E)
-                                      .withValues(alpha: 0.97),
+                                  const Color(
+                                    0xFF121416,
+                                  ).withValues(alpha: 0.96),
+                                  const Color(
+                                    0xFF0A0C0E,
+                                  ).withValues(alpha: 0.97),
                                 ],
                               ),
                               boxShadow: [
                                 BoxShadow(
-                                  color: Colors.black.withValues(
-                                    alpha: 0.45,
-                                  ),
+                                  color: Colors.black.withValues(alpha: 0.45),
                                   blurRadius: 50,
                                   offset: const Offset(0, 24),
                                 ),
@@ -127,11 +109,7 @@ class AuthPageShell extends StatelessWidget {
 }
 
 class AuthFieldGroup extends StatelessWidget {
-  const AuthFieldGroup({
-    super.key,
-    required this.label,
-    required this.child,
-  });
+  const AuthFieldGroup({super.key, required this.label, required this.child});
 
   final String label;
   final Widget child;
@@ -172,9 +150,7 @@ class AuthStatusMessage extends StatelessWidget {
       return const SizedBox.shrink();
     }
 
-    final color = success
-        ? const Color(0xFF1B8A4B)
-        : const Color(0xFFD83A3A);
+    final color = success ? const Color(0xFF1B8A4B) : const Color(0xFFD83A3A);
 
     return Container(
       width: double.infinity,
@@ -182,9 +158,7 @@ class AuthStatusMessage extends StatelessWidget {
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.14),
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(
-          color: color.withValues(alpha: 0.45),
-        ),
+        border: Border.all(color: color.withValues(alpha: 0.45)),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -193,9 +167,7 @@ class AuthStatusMessage extends StatelessWidget {
             success
                 ? Icons.check_circle_outline_rounded
                 : Icons.error_outline_rounded,
-            color: success
-                ? const Color(0xFF5DDA8B)
-                : const Color(0xFFFF6B6B),
+            color: success ? const Color(0xFF5DDA8B) : const Color(0xFFFF6B6B),
             size: 21,
           ),
           const SizedBox(width: 10),
@@ -239,23 +211,18 @@ class AuthPrimaryButton extends StatelessWidget {
           gradient: loading
               ? null
               : const LinearGradient(
-            colors: [
-              Color(0xFFFF4D00),
-              Color(0xFFFF7A00),
-            ],
-          ),
-          color: loading
-              ? Colors.white.withValues(alpha: 0.12)
-              : null,
+                  colors: [Color(0xFFFF4D00), Color(0xFFFF7A00)],
+                ),
+          color: loading ? Colors.white.withValues(alpha: 0.12) : null,
           boxShadow: loading
               ? null
               : [
-            BoxShadow(
-              color: authOrange.withValues(alpha: 0.28),
-              blurRadius: 28,
-              offset: const Offset(0, 12),
-            ),
-          ],
+                  BoxShadow(
+                    color: authOrange.withValues(alpha: 0.28),
+                    blurRadius: 28,
+                    offset: const Offset(0, 12),
+                  ),
+                ],
         ),
         child: FilledButton(
           onPressed: loading ? null : onPressed,
@@ -270,86 +237,59 @@ class AuthPrimaryButton extends StatelessWidget {
           ),
           child: loading
               ? Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const SizedBox(
-                width: 19,
-                height: 19,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2.2,
-                  color: Colors.white,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Text(
-                loadingText,
-                style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
-            ],
-          )
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const SizedBox(
+                      width: 19,
+                      height: 19,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2.2,
+                        color: Colors.white,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Text(
+                      loadingText,
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ],
+                )
               : Text(
-            text,
-            style: const TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w900,
-            ),
-          ),
+                  text,
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
         ),
       ),
     );
   }
 }
 
-InputDecoration authInputDecoration({
-  required String hint,
-}) {
-  OutlineInputBorder border(
-      Color color, {
-        double width = 1,
-      }) {
+InputDecoration authInputDecoration({required String hint}) {
+  OutlineInputBorder border(Color color, {double width = 1}) {
     return OutlineInputBorder(
       borderRadius: BorderRadius.circular(10),
-      borderSide: BorderSide(
-        color: color,
-        width: width,
-      ),
+      borderSide: BorderSide(color: color, width: width),
     );
   }
 
   return InputDecoration(
     hintText: hint,
-    hintStyle: const TextStyle(
-      color: Color(0xFF8B949E),
-    ),
+    hintStyle: const TextStyle(color: Color(0xFF8B949E)),
     filled: true,
     fillColor: Colors.white.withValues(alpha: 0.04),
-    contentPadding: const EdgeInsets.symmetric(
-      horizontal: 16,
-      vertical: 16,
-    ),
-    border: border(
-      Colors.white.withValues(alpha: 0.16),
-    ),
-    enabledBorder: border(
-      Colors.white.withValues(alpha: 0.16),
-    ),
-    focusedBorder: border(
-      authCyan,
-      width: 1.5,
-    ),
-    errorBorder: border(
-      const Color(0xFFFF4D4F),
-    ),
-    focusedErrorBorder: border(
-      const Color(0xFFFF4D4F),
-      width: 1.5,
-    ),
-    errorStyle: const TextStyle(
-      color: Color(0xFFFF6B6B),
-    ),
+    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+    border: border(Colors.white.withValues(alpha: 0.16)),
+    enabledBorder: border(Colors.white.withValues(alpha: 0.16)),
+    focusedBorder: border(authCyan, width: 1.5),
+    errorBorder: border(const Color(0xFFFF4D4F)),
+    focusedErrorBorder: border(const Color(0xFFFF4D4F), width: 1.5),
+    errorStyle: const TextStyle(color: Color(0xFFFF6B6B)),
   );
 }
 
@@ -372,66 +312,41 @@ class _AuthBackgroundPainter extends CustomPainter {
       ..shader = const LinearGradient(
         begin: Alignment.topLeft,
         end: Alignment.bottomRight,
-        colors: [
-          Color(0xFF050607),
-          Color(0xFF101214),
-          Color(0xFF1E2021),
-        ],
-      ).createShader(
-        Offset.zero & size,
-      );
+        colors: [Color(0xFF050607), Color(0xFF101214), Color(0xFF1E2021)],
+      ).createShader(Offset.zero & size);
 
-    canvas.drawRect(
-      Offset.zero & size,
-      background,
-    );
+    canvas.drawRect(Offset.zero & size, background);
 
     final orange = Paint()
-      ..shader = RadialGradient(
-        colors: [
-          authOrange.withValues(alpha: 0.22),
-          Colors.transparent,
-        ],
-      ).createShader(
-        Rect.fromCircle(
-          center: Offset(
-            size.width * 0.5,
-            size.height * 0.18,
-          ),
-          radius: size.width * 0.75,
-        ),
-      );
+      ..shader =
+          RadialGradient(
+            colors: [authOrange.withValues(alpha: 0.22), Colors.transparent],
+          ).createShader(
+            Rect.fromCircle(
+              center: Offset(size.width * 0.5, size.height * 0.18),
+              radius: size.width * 0.75,
+            ),
+          );
 
     canvas.drawCircle(
-      Offset(
-        size.width * 0.5,
-        size.height * 0.18,
-      ),
+      Offset(size.width * 0.5, size.height * 0.18),
       size.width * 0.75,
       orange,
     );
 
     final cyan = Paint()
-      ..shader = RadialGradient(
-        colors: [
-          authCyan.withValues(alpha: 0.11),
-          Colors.transparent,
-        ],
-      ).createShader(
-        Rect.fromCircle(
-          center: Offset(
-            size.width * 0.9,
-            size.height * 0.72,
-          ),
-          radius: size.width * 0.7,
-        ),
-      );
+      ..shader =
+          RadialGradient(
+            colors: [authCyan.withValues(alpha: 0.11), Colors.transparent],
+          ).createShader(
+            Rect.fromCircle(
+              center: Offset(size.width * 0.9, size.height * 0.72),
+              radius: size.width * 0.7,
+            ),
+          );
 
     canvas.drawCircle(
-      Offset(
-        size.width * 0.9,
-        size.height * 0.72,
-      ),
+      Offset(size.width * 0.9, size.height * 0.72),
       size.width * 0.7,
       cyan,
     );
@@ -443,26 +358,16 @@ class _AuthBackgroundPainter extends CustomPainter {
     const spacing = 42.0;
 
     for (double x = 0; x < size.width; x += spacing) {
-      canvas.drawLine(
-        Offset(x, 0),
-        Offset(x, size.height),
-        grid,
-      );
+      canvas.drawLine(Offset(x, 0), Offset(x, size.height), grid);
     }
 
     for (double y = 0; y < size.height; y += spacing) {
-      canvas.drawLine(
-        Offset(0, y),
-        Offset(size.width, y),
-        grid,
-      );
+      canvas.drawLine(Offset(0, y), Offset(size.width, y), grid);
     }
   }
 
   @override
-  bool shouldRepaint(
-      covariant CustomPainter oldDelegate,
-      ) {
+  bool shouldRepaint(covariant CustomPainter oldDelegate) {
     return false;
   }
 }

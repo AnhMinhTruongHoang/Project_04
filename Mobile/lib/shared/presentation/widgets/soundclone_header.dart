@@ -25,8 +25,7 @@ const Color _kDanger = Color(0xFFFF6975);
 // HEADER
 // ============================================================================
 
-class SoundCloneHeader extends ConsumerWidget
-    implements PreferredSizeWidget {
+class SoundCloneHeader extends ConsumerWidget implements PreferredSizeWidget {
   const SoundCloneHeader({
     super.key,
     required this.user,
@@ -86,10 +85,7 @@ class SoundCloneHeader extends ConsumerWidget
   // LOGOUT
   // ==========================================================================
 
-  Future<void> _logout(
-      BuildContext context,
-      WidgetRef ref,
-      ) async {
+  Future<void> _logout(BuildContext context, WidgetRef ref) async {
     await ref.read(authProvider.notifier).logout();
 
     if (!context.mounted) {
@@ -104,10 +100,10 @@ class SoundCloneHeader extends ConsumerWidget
   // ==========================================================================
 
   Future<void> _handleNavigationAction(
-      BuildContext context,
-      WidgetRef ref,
-      String value,
-      ) async {
+    BuildContext context,
+    WidgetRef ref,
+    String value,
+  ) async {
     switch (value) {
       case 'home':
         context.go('/home');
@@ -138,10 +134,7 @@ class SoundCloneHeader extends ConsumerWidget
         break;
 
       case 'logout':
-        await _logout(
-          context,
-          ref,
-        );
+        await _logout(context, ref);
         break;
     }
   }
@@ -151,10 +144,10 @@ class SoundCloneHeader extends ConsumerWidget
   // ==========================================================================
 
   Future<void> _handleUserAction(
-      BuildContext context,
-      WidgetRef ref,
-      String value,
-      ) async {
+    BuildContext context,
+    WidgetRef ref,
+    String value,
+  ) async {
     switch (value) {
       case 'profile':
         if (onProfile != null) {
@@ -197,10 +190,7 @@ class SoundCloneHeader extends ConsumerWidget
         break;
 
       case 'logout':
-        await _logout(
-          context,
-          ref,
-        );
+        await _logout(context, ref);
         break;
     }
   }
@@ -210,14 +200,10 @@ class SoundCloneHeader extends ConsumerWidget
   // ==========================================================================
 
   @override
-  Widget build(
-      BuildContext context,
-      WidgetRef ref,
-      ) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final avatarUrl = user.avatarUrl?.trim();
 
-    final bool hasAvatar =
-        avatarUrl != null && avatarUrl.isNotEmpty;
+    final bool hasAvatar = avatarUrl != null && avatarUrl.isNotEmpty;
 
     final bool isAdmin = _isAdmin();
 
@@ -236,9 +222,8 @@ class SoundCloneHeader extends ConsumerWidget
       title: Row(
         children: [
           // ===================================================================
-          // CLOUD LOGO
+          // SOUNDCLONE LOGO
           // ===================================================================
-
           Material(
             color: Colors.transparent,
             child: InkWell(
@@ -246,14 +231,16 @@ class SoundCloneHeader extends ConsumerWidget
               onTap: () {
                 context.go('/home');
               },
-              child: const SizedBox(
-                width: 34,
+              child: SizedBox(
+                width: 40,
                 height: 40,
                 child: Center(
-                  child: Icon(
-                    Icons.cloud_rounded,
-                    color: Colors.white,
-                    size: 28,
+                  child: Image.asset(
+                    'assets/images/sc_logo.png',
+                    width: 38,
+                    height: 38,
+                    fit: BoxFit.contain,
+                    filterQuality: FilterQuality.high,
                   ),
                 ),
               ),
@@ -265,7 +252,6 @@ class SoundCloneHeader extends ConsumerWidget
           // ===================================================================
           // SEARCH
           // ===================================================================
-
           Expanded(
             child: Material(
               color: const Color(0xFF202124),
@@ -273,23 +259,20 @@ class SoundCloneHeader extends ConsumerWidget
               child: InkWell(
                 borderRadius: BorderRadius.circular(5),
 
-                onTap: onSearch ??
-                        () {
+                onTap:
+                    onSearch ??
+                    () {
                       context.go('/search');
                     },
 
                 child: Container(
                   height: 32,
 
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                  ),
+                  padding: const EdgeInsets.symmetric(horizontal: 10),
 
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(5),
-                    border: Border.all(
-                      color: const Color(0xFF3A3A3A),
-                    ),
+                    border: Border.all(color: const Color(0xFF3A3A3A)),
                   ),
 
                   child: const Row(
@@ -324,7 +307,6 @@ class SoundCloneHeader extends ConsumerWidget
           // ===================================================================
           // 3-LINE / HAMBURGER MENU
           // ===================================================================
-
           PopupMenuButton<String>(
             tooltip: 'Navigation',
 
@@ -333,29 +315,17 @@ class SoundCloneHeader extends ConsumerWidget
 
             elevation: 18,
 
-            offset: const Offset(
-              -185,
-              43,
-            ),
+            offset: const Offset(-185, 43),
 
-            constraints: const BoxConstraints(
-              minWidth: 235,
-              maxWidth: 235,
-            ),
+            constraints: const BoxConstraints(minWidth: 235, maxWidth: 235),
 
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(14),
-              side: const BorderSide(
-                color: _kPopupBorder,
-              ),
+              side: const BorderSide(color: _kPopupBorder),
             ),
 
             onSelected: (value) async {
-              await _handleNavigationAction(
-                context,
-                ref,
-                value,
-              );
+              await _handleNavigationAction(context, ref, value);
             },
 
             itemBuilder: (context) {
@@ -363,64 +333,46 @@ class SoundCloneHeader extends ConsumerWidget
                 // -------------------------------------------------------------
                 // NAVIGATION
                 // -------------------------------------------------------------
-
                 const PopupMenuItem<String>(
                   enabled: false,
                   height: 32,
-                  child: _PopupSectionTitle(
-                    text: 'NAVIGATION',
-                  ),
+                  child: _PopupSectionTitle(text: 'NAVIGATION'),
                 ),
 
                 const PopupMenuItem<String>(
                   value: 'home',
-                  child: _NavigationMenuItem(
-                    text: 'Home',
-                  ),
+                  child: _NavigationMenuItem(text: 'Home'),
                 ),
 
                 const PopupMenuItem<String>(
                   value: 'news',
-                  child: _NavigationMenuItem(
-                    text: 'News',
-                  ),
+                  child: _NavigationMenuItem(text: 'News'),
                 ),
 
                 const PopupMenuItem<String>(
                   value: 'library',
-                  child: _NavigationMenuItem(
-                    text: 'Library',
-                  ),
+                  child: _NavigationMenuItem(text: 'Library'),
                 ),
 
-                const PopupMenuDivider(
-                  height: 16,
-                ),
+                const PopupMenuDivider(height: 16),
 
                 // -------------------------------------------------------------
                 // CREATOR
                 // -------------------------------------------------------------
-
                 const PopupMenuItem<String>(
                   enabled: false,
                   height: 32,
-                  child: _PopupSectionTitle(
-                    text: 'CREATOR',
-                  ),
+                  child: _PopupSectionTitle(text: 'CREATOR'),
                 ),
 
                 const PopupMenuItem<String>(
                   value: 'artist-studio',
-                  child: _NavigationMenuItem(
-                    text: 'Artist Studio',
-                  ),
+                  child: _NavigationMenuItem(text: 'Artist Studio'),
                 ),
 
                 const PopupMenuItem<String>(
                   value: 'upload',
-                  child: _NavigationMenuItem(
-                    text: 'Upload',
-                  ),
+                  child: _NavigationMenuItem(text: 'Upload'),
                 ),
 
                 if (isAdmin)
@@ -432,28 +384,22 @@ class SoundCloneHeader extends ConsumerWidget
                     ),
                   ),
 
-                const PopupMenuDivider(
-                  height: 16,
-                ),
+                const PopupMenuDivider(height: 16),
 
                 // -------------------------------------------------------------
                 // UPGRADE
                 // -------------------------------------------------------------
-
                 const PopupMenuItem<String>(
                   value: 'upgrade',
                   height: 72,
                   child: _UpgradeMenuItem(),
                 ),
 
-                const PopupMenuDivider(
-                  height: 16,
-                ),
+                const PopupMenuDivider(height: 16),
 
                 // -------------------------------------------------------------
                 // LOGOUT
                 // -------------------------------------------------------------
-
                 const PopupMenuItem<String>(
                   value: 'logout',
                   child: _LogoutMenuItem(),
@@ -477,7 +423,6 @@ class SoundCloneHeader extends ConsumerWidget
           // ===================================================================
           // NOTIFICATION
           // ===================================================================
-
           SizedBox(
             width: 35,
             height: 40,
@@ -486,8 +431,9 @@ class SoundCloneHeader extends ConsumerWidget
 
               padding: EdgeInsets.zero,
 
-              onPressed: onNotification ??
-                      () {
+              onPressed:
+                  onNotification ??
+                  () {
                     // Sau này:
                     // context.push('/notifications');
                   },
@@ -505,7 +451,6 @@ class SoundCloneHeader extends ConsumerWidget
           // ===================================================================
           // USER AVATAR MENU
           // ===================================================================
-
           PopupMenuButton<String>(
             tooltip: 'Account',
 
@@ -514,29 +459,17 @@ class SoundCloneHeader extends ConsumerWidget
 
             elevation: 18,
 
-            offset: const Offset(
-              -205,
-              43,
-            ),
+            offset: const Offset(-205, 43),
 
-            constraints: const BoxConstraints(
-              minWidth: 220,
-              maxWidth: 220,
-            ),
+            constraints: const BoxConstraints(minWidth: 220, maxWidth: 220),
 
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(2),
-              side: const BorderSide(
-                color: _kPopupBorder,
-              ),
+              side: const BorderSide(color: _kPopupBorder),
             ),
 
             onSelected: (value) async {
-              await _handleUserAction(
-                context,
-                ref,
-                value,
-              );
+              await _handleUserAction(context, ref, value);
             },
 
             itemBuilder: (context) {
@@ -544,7 +477,6 @@ class SoundCloneHeader extends ConsumerWidget
                 // -------------------------------------------------------------
                 // PROFILE
                 // -------------------------------------------------------------
-
                 const PopupMenuItem<String>(
                   value: 'profile',
                   child: _AccountMenuItem(
@@ -556,7 +488,6 @@ class SoundCloneHeader extends ConsumerWidget
                 // -------------------------------------------------------------
                 // LIKES
                 // -------------------------------------------------------------
-
                 const PopupMenuItem<String>(
                   value: 'likes',
                   child: _AccountMenuItem(
@@ -568,7 +499,6 @@ class SoundCloneHeader extends ConsumerWidget
                 // -------------------------------------------------------------
                 // PLAYLISTS
                 // -------------------------------------------------------------
-
                 const PopupMenuItem<String>(
                   value: 'playlists',
                   child: _AccountMenuItem(
@@ -580,7 +510,6 @@ class SoundCloneHeader extends ConsumerWidget
                 // -------------------------------------------------------------
                 // WHO TO FOLLOW
                 // -------------------------------------------------------------
-
                 const PopupMenuItem<String>(
                   value: 'people',
                   child: _AccountMenuItem(
@@ -589,14 +518,11 @@ class SoundCloneHeader extends ConsumerWidget
                   ),
                 ),
 
-                const PopupMenuDivider(
-                  height: 1,
-                ),
+                const PopupMenuDivider(height: 1),
 
                 // -------------------------------------------------------------
                 // ARTIST PRO
                 // -------------------------------------------------------------
-
                 const PopupMenuItem<String>(
                   value: 'artist-pro',
                   child: _AccountMenuItem(
@@ -609,7 +535,6 @@ class SoundCloneHeader extends ConsumerWidget
                 // -------------------------------------------------------------
                 // TRACKS
                 // -------------------------------------------------------------
-
                 const PopupMenuItem<String>(
                   value: 'tracks',
                   child: _AccountMenuItem(
@@ -621,7 +546,6 @@ class SoundCloneHeader extends ConsumerWidget
                 // -------------------------------------------------------------
                 // ADMIN ONLY
                 // -------------------------------------------------------------
-
                 if (isAdmin)
                   const PopupMenuItem<String>(
                     value: 'insights',
@@ -643,7 +567,6 @@ class SoundCloneHeader extends ConsumerWidget
                 // -------------------------------------------------------------
                 // DISTRIBUTE
                 // -------------------------------------------------------------
-
                 const PopupMenuItem<String>(
                   value: 'distribute',
                   child: _AccountMenuItem(
@@ -652,14 +575,11 @@ class SoundCloneHeader extends ConsumerWidget
                   ),
                 ),
 
-                const PopupMenuDivider(
-                  height: 1,
-                ),
+                const PopupMenuDivider(height: 1),
 
                 // -------------------------------------------------------------
                 // LOGOUT
                 // -------------------------------------------------------------
-
                 const PopupMenuItem<String>(
                   value: 'logout',
                   child: _AccountMenuItem(
@@ -675,21 +595,17 @@ class SoundCloneHeader extends ConsumerWidget
 
               backgroundColor: _kOrange,
 
-              foregroundImage: hasAvatar
-                  ? NetworkImage(
-                avatarUrl,
-              )
-                  : null,
+              foregroundImage: hasAvatar ? NetworkImage(avatarUrl) : null,
 
               child: !hasAvatar
                   ? Text(
-                _getInitials(),
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 10,
-                  fontWeight: FontWeight.w900,
-                ),
-              )
+                      _getInitials(),
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 10,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    )
                   : null,
             ),
           ),
@@ -701,14 +617,9 @@ class SoundCloneHeader extends ConsumerWidget
       // =======================================================================
       // BORDER
       // =======================================================================
-
       bottom: const PreferredSize(
         preferredSize: Size.fromHeight(1),
-        child: Divider(
-          height: 1,
-          thickness: 1,
-          color: Color(0xFF222222),
-        ),
+        child: Divider(height: 1, thickness: 1, color: Color(0xFF222222)),
       ),
     );
   }
@@ -719,9 +630,7 @@ class SoundCloneHeader extends ConsumerWidget
 // ============================================================================
 
 class _PopupSectionTitle extends StatelessWidget {
-  const _PopupSectionTitle({
-    required this.text,
-  });
+  const _PopupSectionTitle({required this.text});
 
   final String text;
 
@@ -747,10 +656,7 @@ class _PopupSectionTitle extends StatelessWidget {
 // ============================================================================
 
 class _NavigationMenuItem extends StatelessWidget {
-  const _NavigationMenuItem({
-    required this.text,
-    this.selected = false,
-  });
+  const _NavigationMenuItem({required this.text, this.selected = false});
 
   final String text;
   final bool selected;
@@ -761,15 +667,11 @@ class _NavigationMenuItem extends StatelessWidget {
       height: 38,
 
       decoration: BoxDecoration(
-        color: selected
-            ? const Color(0xFF242424)
-            : Colors.transparent,
+        color: selected ? const Color(0xFF242424) : Colors.transparent,
         borderRadius: BorderRadius.circular(8),
       ),
 
-      padding: const EdgeInsets.symmetric(
-        horizontal: 8,
-      ),
+      padding: const EdgeInsets.symmetric(horizontal: 8),
 
       alignment: Alignment.centerLeft,
 
@@ -805,26 +707,19 @@ class _UpgradeMenuItem extends StatelessWidget {
           BoxShadow(
             color: Color(0x44FF5500),
             blurRadius: 18,
-            offset: Offset(
-              0,
-              5,
-            ),
+            offset: Offset(0, 5),
           ),
         ],
       ),
 
-      padding: const EdgeInsets.symmetric(
-        horizontal: 12,
-      ),
+      padding: const EdgeInsets.symmetric(horizontal: 12),
 
       child: Row(
         children: [
           const Expanded(
             child: Column(
-              mainAxisAlignment:
-              MainAxisAlignment.center,
-              crossAxisAlignment:
-              CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   'Upgrade plan',
@@ -860,12 +755,7 @@ class _UpgradeMenuItem extends StatelessWidget {
             decoration: const BoxDecoration(
               color: Colors.white,
               shape: BoxShape.circle,
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.white,
-                  blurRadius: 8,
-                ),
-              ],
+              boxShadow: [BoxShadow(color: Colors.white, blurRadius: 8)],
             ),
           ),
         ],
@@ -887,11 +777,7 @@ class _LogoutMenuItem extends StatelessWidget {
       height: 38,
       child: Row(
         children: [
-          Icon(
-            Icons.logout_rounded,
-            color: _kDanger,
-            size: 19,
-          ),
+          Icon(Icons.logout_rounded, color: _kDanger, size: 19),
 
           SizedBox(width: 12),
 
@@ -933,24 +819,16 @@ class _AccountMenuItem extends StatelessWidget {
       height: 41,
 
       decoration: BoxDecoration(
-        color: highlighted
-            ? const Color(0xFF242424)
-            : Colors.transparent,
+        color: highlighted ? const Color(0xFF242424) : Colors.transparent,
       ),
 
-      padding: const EdgeInsets.symmetric(
-        horizontal: 2,
-      ),
+      padding: const EdgeInsets.symmetric(horizontal: 2),
 
       child: Row(
         children: [
           SizedBox(
             width: 26,
-            child: Icon(
-              icon,
-              size: 18,
-              color: iconColor ?? Colors.white,
-            ),
+            child: Icon(icon, size: 18, color: iconColor ?? Colors.white),
           ),
 
           const SizedBox(width: 7),

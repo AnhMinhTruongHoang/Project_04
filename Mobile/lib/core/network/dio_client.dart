@@ -10,17 +10,13 @@ class DioClient {
   // DIO INSTANCES
   // ============================================================
 
-  static final Dio instance = Dio(
-    _createOptions(),
-  );
+  static final Dio instance = Dio(_createOptions());
 
   /// Dio riêng dùng để refresh token.
   ///
   /// Không sử dụng interceptor của [instance] để tránh vòng lặp:
   /// request -> 401 -> refresh -> 401 -> refresh...
-  static final Dio _refreshDio = Dio(
-    _createOptions(),
-  );
+  static final Dio _refreshDio = Dio(_createOptions());
 
   /// Nếu nhiều request đồng thời bị 401,
   /// chỉ thực hiện refresh token một lần.
@@ -59,12 +55,9 @@ class DioClient {
         // ======================================================
         // REQUEST
         // ======================================================
-
-        onRequest: (
-            RequestOptions options,
-            RequestInterceptorHandler handler,
-            ) async {
-          /*
+        onRequest:
+            (RequestOptions options, RequestInterceptorHandler handler) async {
+              /*
            * Các API public của Auth không cần Bearer token.
            *
            * Ví dụ:
@@ -74,41 +67,31 @@ class DioClient {
            * forgot password
            * reset password
            */
-          if (!_isPublicAuthPath(options.path)) {
-            final accessToken =
-            await TokenStorage.getAccessToken();
+              if (!_isPublicAuthPath(options.path)) {
+                final accessToken = await TokenStorage.getAccessToken();
 
-            if (accessToken != null &&
-                accessToken.trim().isNotEmpty) {
-              options.headers['Authorization'] =
-              'Bearer ${accessToken.trim()}';
-            }
-          } else {
-            // Đảm bảo guest endpoint không vô tình gửi token cũ.
-            options.headers.remove('Authorization');
-          }
+                if (accessToken != null && accessToken.trim().isNotEmpty) {
+                  options.headers['Authorization'] =
+                      'Bearer ${accessToken.trim()}';
+                }
+              } else {
+                // Đảm bảo guest endpoint không vô tình gửi token cũ.
+                options.headers.remove('Authorization');
+              }
 
-          handler.next(options);
-        },
+              handler.next(options);
+            },
 
         // ======================================================
         // ERROR
         // ======================================================
+        onError: (DioException error, ErrorInterceptorHandler handler) async {
+          final requestOptions = error.requestOptions;
 
-        onError: (
-            DioException error,
-            ErrorInterceptorHandler handler,
-            ) async {
-          final requestOptions =
-              error.requestOptions;
-
-          final statusCode =
-              error.response?.statusCode;
+          final statusCode = error.response?.statusCode;
 
           final alreadyRetried =
-              requestOptions.extra[
-              'auth_already_retried'] ==
-                  true;
+              requestOptions.extra['auth_already_retried'] == true;
 
           // Chỉ xử lý refresh khi backend trả 401.
           if (statusCode != 401) {
@@ -129,9 +112,7 @@ class DioClient {
            * lỗi auth. Ta phải trả lỗi đó cho UI, không được
            * chuyển sang refresh token.
            */
-          if (_skipRefresh(
-            requestOptions.path,
-          )) {
+          if (_skipRefresh(requestOptions.path)) {
             handler.next(error);
             return;
           }
@@ -140,11 +121,9 @@ class DioClient {
           // REFRESH TOKEN
           // ====================================================
 
-          final newAccessToken =
-          await _refreshAccessToken();
+          final newAccessToken = await _refreshAccessToken();
 
-          if (newAccessToken == null ||
-              newAccessToken.isEmpty) {
+          if (newAccessToken == null || newAccessToken.isEmpty) {
             await TokenStorage.clearTokens();
 
             handler.next(error);
@@ -152,27 +131,19 @@ class DioClient {
           }
 
           // Đánh dấu request đã retry.
-          requestOptions.extra[
-          'auth_already_retried'] = true;
+          requestOptions.extra['auth_already_retried'] = true;
 
           // Gắn access token mới.
-          requestOptions.headers[
-          'Authorization'] =
-          'Bearer $newAccessToken';
+          requestOptions.headers['Authorization'] = 'Bearer $newAccessToken';
 
           try {
-            final response =
-            await instance.fetch<dynamic>(
-              requestOptions,
-            );
+            final response = await instance.fetch<dynamic>(requestOptions);
 
             handler.resolve(response);
-          } on DioException catch (
-          retryError
-          ) {
-          handler.next(retryError);
+          } on DioException catch (retryError) {
+            handler.next(retryError);
           } catch (_) {
-          handler.next(error);
+            handler.next(error);
           }
         },
       ),
@@ -201,75 +172,47 @@ class DioClient {
   // PUBLIC AUTH ENDPOINTS
   // ============================================================
 
-  static bool _isPublicAuthPath(
-      String path,
-      ) {
-    final normalizedPath =
-    _normalizePath(path);
+  static bool _isPublicAuthPath(String path) {
+    final normalizedPath = _normalizePath(path);
 
-    return normalizedPath.endsWith(
-      '/auth/login',
-    ) ||
-        normalizedPath.endsWith(
-          '/auth/register',
-        ) ||
-        normalizedPath.endsWith(
-          '/auth/verify-otp',
-        ) ||
-        normalizedPath.endsWith(
-          '/auth/resend-otp',
-        ) ||
-        normalizedPath.endsWith(
-          '/auth/forgot-password',
-        ) ||
-        normalizedPath.endsWith(
-          '/auth/reset-password',
-        );
+    return normalizedPath.endsWith('/auth/login') ||
+        normalizedPath.endsWith('/auth/register') ||
+        normalizedPath.endsWith('/auth/verify-otp') ||
+        normalizedPath.endsWith('/auth/resend-otp') ||
+        normalizedPath.endsWith('/auth/forgot-password') ||
+        normalizedPath.endsWith('/auth/reset-password');
   }
 
   // ============================================================
   // SKIP REFRESH
   // ============================================================
 
-  static bool _skipRefresh(
-      String path,
-      ) {
-    final normalizedPath =
-    _normalizePath(path);
+  static bool _skipRefresh(String path) {
+    final normalizedPath = _normalizePath(path);
 
-    return _isPublicAuthPath(
-      normalizedPath,
-    ) ||
-        normalizedPath.endsWith(
-          '/auth/refresh',
-        ) ||
-        normalizedPath.endsWith(
-          '/auth/logout',
-        );
+    return _isPublicAuthPath(normalizedPath) ||
+        normalizedPath.endsWith('/auth/refresh') ||
+        normalizedPath.endsWith('/auth/logout');
   }
 
   // ============================================================
   // REFRESH ACCESS TOKEN
   // ============================================================
 
-  static Future<String?>
-  _refreshAccessToken() async {
+  static Future<String?> _refreshAccessToken() async {
     /*
      * Nếu đã có request khác đang refresh,
      * các request còn lại chờ chung Future đó.
      */
-    final runningRefresh =
-        _refreshingFuture;
+    final runningRefresh = _refreshingFuture;
 
     if (runningRefresh != null) {
       return runningRefresh;
     }
 
-    final refreshFuture =
-    _performRefresh();
+    final refreshFuture = _performRefresh();
 
-    _refreshingFuture =
-        refreshFuture;
+    _refreshingFuture = refreshFuture;
 
     try {
       return await refreshFuture;
@@ -282,28 +225,20 @@ class DioClient {
   // PERFORM REFRESH
   // ============================================================
 
-  static Future<String?>
-  _performRefresh() async {
-    final refreshToken =
-    await TokenStorage.getRefreshToken();
+  static Future<String?> _performRefresh() async {
+    final refreshToken = await TokenStorage.getRefreshToken();
 
-    if (refreshToken == null ||
-        refreshToken.trim().isEmpty) {
+    if (refreshToken == null || refreshToken.trim().isEmpty) {
       return null;
     }
 
     try {
-      final response =
-      await _refreshDio.post<dynamic>(
+      final response = await _refreshDio.post<dynamic>(
         '/auth/refresh',
-        data: {
-          'refresh_token':
-          refreshToken.trim(),
-        },
+        data: {'refresh_token': refreshToken.trim()},
       );
 
-      final root =
-      _asMap(response.data);
+      final root = _asMap(response.data);
 
       /*
        * Hỗ trợ response:
@@ -322,49 +257,34 @@ class DioClient {
        *   "refresh_token": "..."
        * }
        */
-      final nestedData =
-      _asMap(root['data']);
+      final nestedData = _asMap(root['data']);
 
-      final tokenData =
-      nestedData.isNotEmpty
-          ? nestedData
-          : root;
+      final tokenData = nestedData.isNotEmpty ? nestedData : root;
 
-      final accessToken =
-      _readString(
-        tokenData['access_token'] ??
-            tokenData['accessToken'],
+      final accessToken = _readString(
+        tokenData['access_token'] ?? tokenData['accessToken'],
       );
 
-      final newRefreshToken =
-      _readString(
-        tokenData['refresh_token'] ??
-            tokenData['refreshToken'],
+      final newRefreshToken = _readString(
+        tokenData['refresh_token'] ?? tokenData['refreshToken'],
       );
 
       // Backend không trả access token hợp lệ.
-      if (accessToken == null ||
-          accessToken.isEmpty) {
+      if (accessToken == null || accessToken.isEmpty) {
         await TokenStorage.clearTokens();
 
         return null;
       }
 
       // Lưu access token mới.
-      await TokenStorage.saveAccessToken(
-        accessToken,
-      );
+      await TokenStorage.saveAccessToken(accessToken);
 
       /*
        * Một số backend rotate refresh token.
        * Nếu có refresh token mới thì lưu lại.
        */
-      if (newRefreshToken != null &&
-          newRefreshToken.isNotEmpty) {
-        await TokenStorage
-            .saveRefreshToken(
-          newRefreshToken,
-        );
+      if (newRefreshToken != null && newRefreshToken.isNotEmpty) {
+        await TokenStorage.saveRefreshToken(newRefreshToken);
       }
 
       return accessToken;
@@ -383,32 +303,21 @@ class DioClient {
   // NORMALIZE PATH
   // ============================================================
 
-  static String _normalizePath(
-      String path,
-      ) {
-    return path
-        .split('?')
-        .first
-        .trim()
-        .toLowerCase();
+  static String _normalizePath(String path) {
+    return path.split('?').first.trim().toLowerCase();
   }
 
   // ============================================================
   // MAP HELPER
   // ============================================================
 
-  static Map<String, dynamic> _asMap(
-      dynamic value,
-      ) {
-    if (value
-    is Map<String, dynamic>) {
+  static Map<String, dynamic> _asMap(dynamic value) {
+    if (value is Map<String, dynamic>) {
       return value;
     }
 
     if (value is Map) {
-      return Map<String, dynamic>.from(
-        value,
-      );
+      return Map<String, dynamic>.from(value);
     }
 
     return <String, dynamic>{};
@@ -418,19 +327,14 @@ class DioClient {
   // STRING HELPER
   // ============================================================
 
-  static String? _readString(
-      dynamic value,
-      ) {
+  static String? _readString(dynamic value) {
     if (value == null) {
       return null;
     }
 
-    final result =
-    value.toString().trim();
+    final result = value.toString().trim();
 
-    if (result.isEmpty ||
-        result.toLowerCase() ==
-            'null') {
+    if (result.isEmpty || result.toLowerCase() == 'null') {
       return null;
     }
 

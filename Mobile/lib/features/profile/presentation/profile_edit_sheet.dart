@@ -1,5 +1,65 @@
 part of 'profile_screen.dart';
 
+Future<void> _pickAndUpdateCover(BuildContext context, WidgetRef ref) async {
+  final picked = await ImagePicker().pickImage(
+    source: ImageSource.gallery,
+    imageQuality: 90,
+    maxWidth: 2400,
+  );
+  if (picked == null) return;
+
+  if (context.mounted) {
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        const SnackBar(
+          behavior: SnackBarBehavior.floating,
+          content: Text('Uploading header image...'),
+        ),
+      );
+  }
+
+  final upload = await _uploadPickedImage(picked);
+  final coverUrl = _uploadedImageUrl(upload);
+  if (coverUrl == null) {
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            upload.message.isEmpty ? 'Upload failed.' : upload.message,
+          ),
+        ),
+      );
+    }
+    return;
+  }
+
+  final update = await ApiService.instance.updateMyProfileApi(
+    coverUrl: coverUrl,
+  );
+  if (!update.isSuccess) {
+    if (context.mounted) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(update.message)));
+    }
+    return;
+  }
+
+  await ref.read(authProvider.notifier).reloadAccount();
+  ref.invalidate(_fullProfileProvider);
+  if (context.mounted) {
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        const SnackBar(
+          behavior: SnackBarBehavior.floating,
+          content: Text('Header image updated.'),
+        ),
+      );
+  }
+}
+
 Future<void> _showEditProfile(
   BuildContext context,
   WidgetRef ref,
@@ -8,8 +68,6 @@ Future<void> _showEditProfile(
   final name = TextEditingController(text: user.name);
   final bio = TextEditingController(text: user.bio ?? '');
   final website = TextEditingController(text: user.website ?? '');
-  final city = TextEditingController(text: user.city ?? '');
-  final country = TextEditingController(text: user.country ?? '');
   XFile? avatarFile;
   XFile? coverFile;
   var saving = false;
@@ -45,9 +103,11 @@ Future<void> _showEditProfile(
                 final upload = await _uploadPickedImage(avatarFile!);
                 avatarUrl = _uploadedImageUrl(upload);
                 if (avatarUrl == null) {
-                  throw StateError(upload.message.isEmpty
-                      ? 'Upload avatar failed.'
-                      : upload.message);
+                  throw StateError(
+                    upload.message.isEmpty
+                        ? 'Upload avatar failed.'
+                        : upload.message,
+                  );
                 }
               }
 
@@ -55,9 +115,11 @@ Future<void> _showEditProfile(
                 final upload = await _uploadPickedImage(coverFile!);
                 coverUrl = _uploadedImageUrl(upload);
                 if (coverUrl == null) {
-                  throw StateError(upload.message.isEmpty
-                      ? 'Upload background failed.'
-                      : upload.message);
+                  throw StateError(
+                    upload.message.isEmpty
+                        ? 'Upload background failed.'
+                        : upload.message,
+                  );
                 }
               }
 
@@ -65,8 +127,6 @@ Future<void> _showEditProfile(
                 name: name.text,
                 bio: bio.text,
                 website: website.text,
-                city: city.text,
-                country: country.text,
                 avatarUrl: avatarUrl,
                 coverUrl: coverUrl,
               );
@@ -76,6 +136,7 @@ Future<void> _showEditProfile(
               }
 
               await ref.read(authProvider.notifier).reloadAccount();
+              ref.invalidate(_fullProfileProvider(user.id));
               if (sheetContext.mounted) {
                 Navigator.pop(sheetContext);
               }
@@ -132,26 +193,8 @@ Future<void> _showEditProfile(
                   ),
                   const SizedBox(height: 48),
                   _ProfileTextField(controller: name, label: 'Display name'),
-                  _ProfileTextField(
-                    controller: bio,
-                    label: 'Bio',
-                    maxLines: 3,
-                  ),
+                  _ProfileTextField(controller: bio, label: 'Bio', maxLines: 3),
                   _ProfileTextField(controller: website, label: 'Website'),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: _ProfileTextField(controller: city, label: 'City'),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: _ProfileTextField(
-                          controller: country,
-                          label: 'Country',
-                        ),
-                      ),
-                    ],
-                  ),
                   if (errorMessage != null) ...[
                     const SizedBox(height: 4),
                     Text(
@@ -196,8 +239,6 @@ Future<void> _showEditProfile(
   name.dispose();
   bio.dispose();
   website.dispose();
-  city.dispose();
-  country.dispose();
 }
 
 String? _uploadedImageUrl(ApiResponse<dynamic> response) {
@@ -296,7 +337,11 @@ class _ProfileImageEditors extends StatelessWidget {
               onTap: onPickAvatar,
               child: const Padding(
                 padding: EdgeInsets.all(7),
-                child: Icon(Icons.camera_alt_rounded, color: Colors.white, size: 15),
+                child: Icon(
+                  Icons.camera_alt_rounded,
+                  color: Colors.white,
+                  size: 15,
+                ),
               ),
             ),
           ),
@@ -335,8 +380,8 @@ class _SelectedImage extends StatelessWidget {
   }
 
   Widget _fallback() => Center(
-        child: Icon(fallbackIcon, color: const Color(0xFF888888), size: 38),
-      );
+    child: Icon(fallbackIcon, color: const Color(0xFF888888), size: 38),
+  );
 }
 
 class _ImageEditBadge extends StatelessWidget {
@@ -356,7 +401,11 @@ class _ImageEditBadge extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
           child: Row(
             children: [
-              const Icon(Icons.camera_alt_outlined, color: Colors.white, size: 15),
+              const Icon(
+                Icons.camera_alt_outlined,
+                color: Colors.white,
+                size: 15,
+              ),
               const SizedBox(width: 5),
               Text(
                 label,

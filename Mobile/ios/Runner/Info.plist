@@ -28,6 +28,8 @@
 	<true/>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>SoundClone needs photo library access to update your avatar and profile background.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>SoundClone needs camera access so artists can scan ticket QR codes at check-in.</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>

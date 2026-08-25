@@ -6,6 +6,9 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:mobile_scanner/mobile_scanner.dart';
+import 'package:qr_flutter/qr_flutter.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/config/api_config.dart';
 import '../../auth/models/user_model.dart';
@@ -16,31 +19,26 @@ import '../../../services/api/api_service.dart';
 
 part 'profile_providers.dart';
 part 'profile_edit_sheet.dart';
+part 'profile_hero.dart';
+part 'profile_tour_tab.dart';
+part 'profile_tickets_tab.dart';
+part 'ticket_scanner_sheet.dart';
 
 class ProfileScreen extends ConsumerWidget {
-  const ProfileScreen({
-    super.key,
-  });
+  const ProfileScreen({super.key});
 
   static const _background = Color(0xFF0D0D0D);
   static const _orange = Color(0xFFFF5500);
 
   @override
-  Widget build(
-      BuildContext context,
-      WidgetRef ref,
-      ) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final authState = ref.watch(authProvider);
 
     return ColoredBox(
       color: _background,
       child: authState.when(
         loading: () {
-          return const Center(
-            child: CircularProgressIndicator(
-              color: _orange,
-            ),
-          );
+          return const Center(child: CircularProgressIndicator(color: _orange));
         },
         error: (error, stackTrace) {
           return _ProfileError(
@@ -60,9 +58,7 @@ class ProfileScreen extends ConsumerWidget {
             return const SizedBox.shrink();
           }
 
-          return _ProfileContent(
-            user: user,
-          );
+          return _ProfileContent(user: user);
         },
       ),
     );
@@ -74,9 +70,7 @@ class ProfileScreen extends ConsumerWidget {
 // ============================================================
 
 class _ProfileContent extends ConsumerWidget {
-  const _ProfileContent({
-    required this.user,
-  });
+  const _ProfileContent({required this.user});
 
   final UserModel user;
 
@@ -84,10 +78,10 @@ class _ProfileContent extends ConsumerWidget {
   static const _orange = Color(0xFFFF5500);
 
   @override
-  Widget build(
-      BuildContext context,
-      WidgetRef ref,
-      ) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final fullProfile = ref.watch(_fullProfileProvider(user.id));
+    final profileUser = fullProfile.value ?? user;
+
     return SafeArea(
       top: false,
       bottom: false,
@@ -95,16 +89,16 @@ class _ProfileContent extends ConsumerWidget {
         color: _orange,
         backgroundColor: const Color(0xFF202020),
         onRefresh: () async {
-          await ref
-              .read(authProvider.notifier)
-              .reloadAccount();
+          await ref.read(authProvider.notifier).reloadAccount();
 
+          ref.invalidate(_fullProfileProvider(user.id));
           ref.invalidate(homeFeedProvider);
           ref.invalidate(_profileTracksProvider(user.id));
           ref.invalidate(_profilePlaylistsProvider(user.id));
           ref.invalidate(_profileEventsProvider(user.id));
           ref.invalidate(_profileMembershipProvider(user.id));
           ref.invalidate(_profileTicketsProvider);
+          ref.invalidate(_profileBadgesProvider(user.id));
 
           try {
             await Future.wait([
@@ -122,13 +116,12 @@ class _ProfileContent extends ConsumerWidget {
             // ==================================================
             // COVER + APP BAR
             // ==================================================
-
             SliverAppBar(
               pinned: true,
               stretch: true,
               elevation: 0,
               scrolledUnderElevation: 0,
-              expandedHeight: 230,
+              expandedHeight: 320,
               backgroundColor: _background,
               surfaceTintColor: Colors.transparent,
               leading: const SizedBox.shrink(),
@@ -146,10 +139,7 @@ class _ProfileContent extends ConsumerWidget {
                 IconButton(
                   tooltip: 'More',
                   onPressed: () {
-                    _showProfileMenu(
-                      context,
-                      ref,
-                    );
+                    _showProfileMenu(context, ref);
                   },
                   icon: const Icon(
                     Icons.more_vert_rounded,
@@ -159,10 +149,10 @@ class _ProfileContent extends ConsumerWidget {
                 const SizedBox(width: 6),
               ],
               flexibleSpace: FlexibleSpaceBar(
-                collapseMode:
-                CollapseMode.parallax,
-                background: _ProfileCover(
-                  user: user,
+                collapseMode: CollapseMode.parallax,
+                background: ProfileMobileHero(
+                  user: profileUser,
+                  onUploadCover: () => _pickAndUpdateCover(context, ref),
                 ),
               ),
             ),
@@ -170,57 +160,27 @@ class _ProfileContent extends ConsumerWidget {
             // ==================================================
             // PROFILE INFO
             // ==================================================
-
             SliverToBoxAdapter(
-              child: Transform.translate(
-                offset: const Offset(
-                  0,
-                  -36,
-                ),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 18,
-                  ),
-                  child: _ProfileInformation(
-                    user: user,
-                    onEdit: () => _showEditProfile(context, ref, user),
-                  ),
-                ),
+              child: ProfileMobileDetails(
+                user: profileUser,
+                onEdit: () => _showEditProfile(context, ref, profileUser),
+                onShare: () => _shareProfile(context, profileUser),
               ),
             ),
 
             SliverToBoxAdapter(
-              child: Transform.translate(
-                offset: const Offset(
-                  0,
-                  -20,
-                ),
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(
-                    18,
-                    0,
-                    18,
-                    18,
-                  ),
-                  child: _ProfileTabs(
-                    user: user,
-                  ),
-                ),
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(18, 0, 18, 18),
+                child: _ProfileTabs(user: profileUser),
               ),
             ),
 
             // ==================================================
             // LOG OUT
             // ==================================================
-
             SliverToBoxAdapter(
               child: Padding(
-                padding: const EdgeInsets.fromLTRB(
-                  18,
-                  0,
-                  18,
-                  115,
-                ),
+                padding: const EdgeInsets.fromLTRB(18, 0, 18, 115),
                 child: _LogoutButton(),
               ),
             ),
@@ -230,27 +190,17 @@ class _ProfileContent extends ConsumerWidget {
     );
   }
 
-  Future<void> _showProfileMenu(
-      BuildContext context,
-      WidgetRef ref,
-      ) async {
-    final value =
-    await showModalBottomSheet<String>(
+  Future<void> _showProfileMenu(BuildContext context, WidgetRef ref) async {
+    final value = await showModalBottomSheet<String>(
       context: context,
-      backgroundColor:
-      const Color(0xFF181818),
+      backgroundColor: const Color(0xFF181818),
       useSafeArea: true,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(
-          top: Radius.circular(22),
-        ),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
       ),
       builder: (context) {
         return Padding(
-          padding: const EdgeInsets.only(
-            top: 10,
-            bottom: 20,
-          ),
+          padding: const EdgeInsets.only(top: 10, bottom: 20),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -259,18 +209,14 @@ class _ProfileContent extends ConsumerWidget {
                 height: 4,
                 decoration: BoxDecoration(
                   color: const Color(0xFF555555),
-                  borderRadius:
-                  BorderRadius.circular(10),
+                  borderRadius: BorderRadius.circular(10),
                 ),
               ),
 
               const SizedBox(height: 14),
 
               ListTile(
-                leading: const Icon(
-                  Icons.edit_outlined,
-                  color: Colors.white,
-                ),
+                leading: const Icon(Icons.edit_outlined, color: Colors.white),
                 title: const Text(
                   'Edit Profile',
                   style: TextStyle(
@@ -279,10 +225,7 @@ class _ProfileContent extends ConsumerWidget {
                   ),
                 ),
                 onTap: () {
-                  Navigator.pop(
-                    context,
-                    'edit',
-                  );
+                  Navigator.pop(context, 'edit');
                 },
               ),
 
@@ -299,17 +242,11 @@ class _ProfileContent extends ConsumerWidget {
                   ),
                 ),
                 onTap: () {
-                  Navigator.pop(
-                    context,
-                    'settings',
-                  );
+                  Navigator.pop(context, 'settings');
                 },
               ),
 
-              const Divider(
-                color: Color(0xFF303030),
-                height: 1,
-              ),
+              const Divider(color: Color(0xFF303030), height: 1),
 
               ListTile(
                 leading: const Icon(
@@ -324,10 +261,7 @@ class _ProfileContent extends ConsumerWidget {
                   ),
                 ),
                 onTap: () {
-                  Navigator.pop(
-                    context,
-                    'logout',
-                  );
+                  Navigator.pop(context, 'logout');
                 },
               ),
             ],
@@ -346,16 +280,11 @@ class _ProfileContent extends ConsumerWidget {
         break;
 
       case 'settings':
-        _showComingSoon(
-          context,
-          'Settings',
-        );
+        _showComingSoon(context, 'Settings');
         break;
 
       case 'logout':
-        await ref
-            .read(authProvider.notifier)
-            .logout();
+        await ref.read(authProvider.notifier).logout();
 
         if (context.mounted) {
           context.go('/login');
@@ -369,18 +298,16 @@ class _ProfileContent extends ConsumerWidget {
 // COVER
 // ============================================================
 
+// Legacy widget kept temporarily while the new FE-style hero is stabilized.
+// ignore: unused_element
 class _ProfileCover extends StatelessWidget {
-  const _ProfileCover({
-    required this.user,
-  });
+  const _ProfileCover({required this.user});
 
   final UserModel user;
 
   @override
   Widget build(BuildContext context) {
-    final coverUrl = _resolveMediaUrl(
-      user.coverUrl,
-    );
+    final coverUrl = _resolveMediaUrl(user.coverUrl);
 
     return Stack(
       fit: StackFit.expand,
@@ -388,7 +315,6 @@ class _ProfileCover extends StatelessWidget {
         // ========================================================
         // REAL USER COVER
         // ========================================================
-
         if (coverUrl != null)
           Image.network(
             coverUrl,
@@ -396,28 +322,16 @@ class _ProfileCover extends StatelessWidget {
             alignment: Alignment.center,
             gaplessPlayback: true,
 
-            loadingBuilder: (
-                context,
-                child,
-                loadingProgress,
-                ) {
+            loadingBuilder: (context, child, loadingProgress) {
               if (loadingProgress == null) {
                 return child;
               }
 
-              return const ColoredBox(
-                color: Color(0xFF181A1B),
-              );
+              return const ColoredBox(color: Color(0xFF181A1B));
             },
 
-            errorBuilder: (
-                context,
-                error,
-                stackTrace,
-                ) {
-              debugPrint(
-                'Profile cover load failed: $coverUrl',
-              );
+            errorBuilder: (context, error, stackTrace) {
+              debugPrint('Profile cover load failed: $coverUrl');
 
               return _fallbackCover();
             },
@@ -430,16 +344,12 @@ class _ProfileCover extends StatelessWidget {
         // FE:
         // linear-gradient(rgba(0,0,0,.18), rgba(0,0,0,.35))
         // ========================================================
-
         const DecoratedBox(
           decoration: BoxDecoration(
             gradient: LinearGradient(
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,
-              colors: [
-                Color(0x2E000000),
-                Color(0x59000000),
-              ],
+              colors: [Color(0x2E000000), Color(0x59000000)],
             ),
           ),
         ),
@@ -464,56 +374,37 @@ class _ProfileCover extends StatelessWidget {
 // PROFILE INFORMATION
 // ============================================================
 
-class _ProfileInformation
-    extends StatelessWidget {
-  const _ProfileInformation({
-    required this.user,
-    required this.onEdit,
-  });
+// Legacy widget kept temporarily while the new FE-style hero is stabilized.
+// ignore: unused_element
+class _ProfileInformation extends StatelessWidget {
+  const _ProfileInformation({required this.user, required this.onEdit});
 
   final UserModel user;
   final VoidCallback onEdit;
 
   @override
   Widget build(BuildContext context) {
-    final displayName =
-    user.name.trim().isNotEmpty
+    final displayName = user.name.trim().isNotEmpty
         ? user.name.trim()
         : user.email;
 
-    final avatarUrl = _resolveMediaUrl(
-      user.avatarUrl,
-    );
+    final avatarUrl = _resolveMediaUrl(user.avatarUrl);
 
-    final username =
-    user.username?.trim();
+    final username = user.username?.trim();
 
     final bio = user.bio?.trim();
 
-    final location = [
-      user.city?.trim(),
-      user.country?.trim(),
-    ].where(
-          (item) =>
-      item != null &&
-          item.isNotEmpty,
-    ).join(', ');
-
     return Column(
-      crossAxisAlignment:
-      CrossAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(
-          crossAxisAlignment:
-          CrossAxisAlignment.end,
+          crossAxisAlignment: CrossAxisAlignment.end,
           children: [
             Container(
               width: 104,
               height: 104,
-              padding:
-              const EdgeInsets.all(3),
-              decoration:
-              const BoxDecoration(
+              padding: const EdgeInsets.all(3),
+              decoration: const BoxDecoration(
                 color: Color(0xFF0D0D0D),
                 shape: BoxShape.circle,
               ),
@@ -526,9 +417,8 @@ class _ProfileInformation
                           fit: BoxFit.cover,
                           width: double.infinity,
                           height: double.infinity,
-                          errorBuilder: (_, __, ___) => _avatarFallback(
-                            displayName,
-                          ),
+                          errorBuilder: (_, __, ___) =>
+                              _avatarFallback(displayName),
                         )
                       : _avatarFallback(displayName),
                 ),
@@ -581,25 +471,21 @@ class _ProfileInformation
               child: Text(
                 displayName,
                 maxLines: 1,
-                overflow:
-                TextOverflow.ellipsis,
+                overflow: TextOverflow.ellipsis,
                 style: const TextStyle(
                   color: Colors.white,
                   fontSize: 25,
-                  fontWeight:
-                  FontWeight.w900,
+                  fontWeight: FontWeight.w900,
                   letterSpacing: -0.7,
                 ),
               ),
             ),
 
-            if (user.verified ||
-                user.isVerify) ...[
+            if (user.verified || user.isVerify) ...[
               const SizedBox(width: 6),
               const Icon(
                 Icons.verified_rounded,
-                color:
-                Color(0xFFFF5500),
+                color: Color(0xFFFF5500),
                 size: 20,
               ),
             ],
@@ -609,13 +495,9 @@ class _ProfileInformation
         const SizedBox(height: 4),
 
         Text(
-          username != null &&
-              username.isNotEmpty
-              ? '@$username'
-              : user.email,
+          username != null && username.isNotEmpty ? '@$username' : user.email,
           maxLines: 1,
-          overflow:
-          TextOverflow.ellipsis,
+          overflow: TextOverflow.ellipsis,
           style: const TextStyle(
             color: Color(0xFF9B9B9B),
             fontSize: 13,
@@ -623,8 +505,7 @@ class _ProfileInformation
           ),
         ),
 
-        if (bio != null &&
-            bio.isNotEmpty) ...[
+        if (bio != null && bio.isNotEmpty) ...[
           const SizedBox(height: 13),
 
           Text(
@@ -637,32 +518,17 @@ class _ProfileInformation
           ),
         ],
 
-        if (location.isNotEmpty ||
-            (user.website
-                ?.trim()
-                .isNotEmpty ??
-                false)) ...[
+        if (user.website?.trim().isNotEmpty ?? false) ...[
           const SizedBox(height: 12),
 
           Wrap(
             spacing: 15,
             runSpacing: 8,
             children: [
-              if (location.isNotEmpty)
-                _ProfileMeta(
-                  icon:
-                  Icons.location_on_outlined,
-                  text: location,
-                ),
-
-              if (user.website
-                  ?.trim()
-                  .isNotEmpty ??
-                  false)
+              if (user.website?.trim().isNotEmpty ?? false)
                 _ProfileMeta(
                   icon: Icons.link_rounded,
-                  text:
-                  user.website!.trim(),
+                  text: user.website!.trim(),
                   orange: true,
                 ),
             ],
@@ -673,34 +539,22 @@ class _ProfileInformation
 
         Row(
           children: [
-            _FollowStat(
-              value: user.followers,
-              label: 'Followers',
-            ),
+            _FollowStat(value: user.followers, label: 'Followers'),
 
             const SizedBox(width: 24),
 
-            _FollowStat(
-              value: user.following,
-              label: 'Following',
-            ),
+            _FollowStat(value: user.following, label: 'Following'),
           ],
         ),
 
         const SizedBox(height: 24),
 
-        Container(
-          height: 1,
-          color:
-          const Color(0xFF242424),
-        ),
+        Container(height: 1, color: const Color(0xFF242424)),
       ],
     );
   }
 
-  String _initials(
-      String value,
-      ) {
+  String _initials(String value) {
     final trimmed = value.trim();
 
     if (trimmed.isEmpty) {
@@ -708,23 +562,16 @@ class _ProfileInformation
     }
 
     final parts = trimmed
-        .split(
-      RegExp(r'\s+'),
-    )
-        .where(
-          (item) => item.isNotEmpty,
-    )
+        .split(RegExp(r'\s+'))
+        .where((item) => item.isNotEmpty)
         .toList();
 
     if (parts.length >= 2) {
-      return '${parts[0][0]}${parts[1][0]}'
-          .toUpperCase();
+      return '${parts[0][0]}${parts[1][0]}'.toUpperCase();
     }
 
     if (trimmed.length >= 2) {
-      return trimmed
-          .substring(0, 2)
-          .toUpperCase();
+      return trimmed.substring(0, 2).toUpperCase();
     }
 
     return trimmed.toUpperCase();
@@ -749,10 +596,7 @@ class _ProfileInformation
 // ============================================================
 
 class _FollowStat extends StatelessWidget {
-  const _FollowStat({
-    required this.value,
-    required this.label,
-  });
+  const _FollowStat({required this.value, required this.label});
 
   final int value;
   final String label;
@@ -773,10 +617,7 @@ class _FollowStat extends StatelessWidget {
         const SizedBox(width: 5),
         Text(
           label,
-          style: const TextStyle(
-            color: Color(0xFF999999),
-            fontSize: 13,
-          ),
+          style: const TextStyle(color: Color(0xFF999999), fontSize: 13),
         ),
       ],
     );
@@ -806,37 +647,19 @@ class _ProfileMeta extends StatelessWidget {
         Icon(
           icon,
           size: 16,
-          color: orange
-              ? const Color(
-            0xFFFF5500,
-          )
-              : const Color(
-            0xFF999999,
-          ),
+          color: orange ? const Color(0xFFFF5500) : const Color(0xFF999999),
         ),
         const SizedBox(width: 5),
         ConstrainedBox(
-          constraints:
-          const BoxConstraints(
-            maxWidth: 240,
-          ),
+          constraints: const BoxConstraints(maxWidth: 240),
           child: Text(
             text,
             maxLines: 1,
-            overflow:
-            TextOverflow.ellipsis,
+            overflow: TextOverflow.ellipsis,
             style: TextStyle(
-              color: orange
-                  ? const Color(
-                0xFFFF782F,
-              )
-                  : const Color(
-                0xFFAAAAAA,
-              ),
+              color: orange ? const Color(0xFFFF782F) : const Color(0xFFAAAAAA),
               fontSize: 13,
-              fontWeight: orange
-                  ? FontWeight.w700
-                  : FontWeight.w500,
+              fontWeight: orange ? FontWeight.w700 : FontWeight.w500,
             ),
           ),
         ),
@@ -943,16 +766,15 @@ class _ProfileTabsState extends ConsumerState<_ProfileTabs> {
       case 'Playlists':
         return _ProfilePlaylistsTab(userId: widget.user.id);
       case 'Concerts / Tour':
-        return _ProfileEventsTab(artistId: widget.user.id);
+        return ProfileTourTab(artistId: widget.user.id, isOwner: true);
       case 'Membership':
         return _ProfileMembershipTab(artistId: widget.user.id);
       case 'Tickets':
-        return const _ProfileTicketsTab();
+        return const ProfileMobileTicketsTab();
       default:
         return const SizedBox.shrink();
     }
   }
-
 }
 
 class _PopularTracksTab extends ConsumerWidget {
@@ -962,43 +784,53 @@ class _PopularTracksTab extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    return ref.watch(_profileTracksProvider(userId)).when(
-      loading: () => const _RecentLoading(),
-      error: (_, __) => const _ProfileEmptyTab(
-        icon: Icons.cloud_off_outlined,
-        title: 'Couldn\'t load tracks',
-        description: 'Pull down to refresh and try again.',
-      ),
-      data: (profileTracks) {
-        final tracks = [...profileTracks]
-          ..sort((a, b) => b.countPlay.compareTo(a.countPlay));
-
-        if (tracks.isEmpty) {
-          return const _ProfileEmptyTab(
-            icon: Icons.music_off_outlined,
-            title: 'No tracks yet',
-            description: 'Uploaded tracks will appear here.',
-          );
-        }
-
-        return Container(
-          decoration: BoxDecoration(
-            color: const Color(0xFF141414),
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: const Color(0xFF262626)),
+    return ref
+        .watch(_profileTracksProvider(userId))
+        .when(
+          loading: () => const _RecentLoading(),
+          error: (_, __) => const _ProfileEmptyTab(
+            icon: Icons.cloud_off_outlined,
+            title: 'Couldn\'t load tracks',
+            description: 'Pull down to refresh and try again.',
           ),
-          child: Column(
-            children: [
-              for (var index = 0; index < tracks.take(10).length; index++) ...[
-                _RecentTrackTile(index: index + 1, track: tracks[index]),
-                if (index < tracks.take(10).length - 1)
-                  const Divider(height: 1, indent: 62, color: Color(0xFF242424)),
-              ],
-            ],
-          ),
+          data: (profileTracks) {
+            final tracks = [...profileTracks]
+              ..sort((a, b) => b.countPlay.compareTo(a.countPlay));
+
+            if (tracks.isEmpty) {
+              return const _ProfileEmptyTab(
+                icon: Icons.music_off_outlined,
+                title: 'No tracks yet',
+                description: 'Uploaded tracks will appear here.',
+              );
+            }
+
+            return Container(
+              decoration: BoxDecoration(
+                color: const Color(0xFF141414),
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: const Color(0xFF262626)),
+              ),
+              child: Column(
+                children: [
+                  for (
+                    var index = 0;
+                    index < tracks.take(10).length;
+                    index++
+                  ) ...[
+                    _RecentTrackTile(index: index + 1, track: tracks[index]),
+                    if (index < tracks.take(10).length - 1)
+                      const Divider(
+                        height: 1,
+                        indent: 62,
+                        color: Color(0xFF242424),
+                      ),
+                  ],
+                ],
+              ),
+            );
+          },
         );
-      },
-    );
   }
 }
 
@@ -1009,154 +841,113 @@ class _ProfilePlaylistsTab extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    return ref.watch(_profilePlaylistsProvider(userId)).when(
-      loading: () => const _RecentLoading(),
-      error: (_, __) => const _ProfileEmptyTab(
-        icon: Icons.cloud_off_outlined,
-        title: 'Playlist unavailable',
-        description: 'Pull down to refresh and try again.',
-      ),
-      data: (playlists) {
-        if (playlists.isEmpty) {
-          return const _ProfileEmptyTab(
-            icon: Icons.queue_music_rounded,
-            title: 'No playlists yet',
-            description: 'Your public playlists will appear here.',
-          );
-        }
+    return ref
+        .watch(_profilePlaylistsProvider(userId))
+        .when(
+          loading: () => const _RecentLoading(),
+          error: (_, __) => const _ProfileEmptyTab(
+            icon: Icons.cloud_off_outlined,
+            title: 'Playlist unavailable',
+            description: 'Pull down to refresh and try again.',
+          ),
+          data: (playlists) {
+            if (playlists.isEmpty) {
+              return const _ProfileEmptyTab(
+                icon: Icons.queue_music_rounded,
+                title: 'No playlists yet',
+                description: 'Your public playlists will appear here.',
+              );
+            }
 
-        return Column(
-          children: playlists.map((playlist) {
-            final title = (playlist['title'] ?? 'Untitled playlist').toString();
-            final tracks = playlist['tracks'] is List
-                ? playlist['tracks'] as List
-                : const <dynamic>[];
-            final isPublic = playlist['isPublic'] != false;
-            final cover = tracks.isNotEmpty && tracks.first is Map
-                ? _resolveMediaUrl((tracks.first as Map)['imgUrl']?.toString())
-                : null;
+            return Column(
+              children: playlists.map((playlist) {
+                final title = (playlist['title'] ?? 'Untitled playlist')
+                    .toString();
+                final tracks = playlist['tracks'] is List
+                    ? playlist['tracks'] as List
+                    : const <dynamic>[];
+                final isPublic = playlist['isPublic'] != false;
+                final cover = tracks.isNotEmpty && tracks.first is Map
+                    ? _resolveMediaUrl(
+                        (tracks.first as Map)['imgUrl']?.toString(),
+                      )
+                    : null;
 
-            return Container(
-              margin: const EdgeInsets.only(bottom: 12),
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: const Color(0xFF141414),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: const Color(0xFF292929)),
-              ),
-              child: Row(
-                children: [
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(7),
-                    child: Container(
-                      width: 68,
-                      height: 68,
-                      color: const Color(0xFF252525),
-                      child: cover == null
-                          ? const Icon(
-                              Icons.queue_music_rounded,
-                              color: Color(0xFFFF5500),
-                            )
-                          : Image.network(
-                              cover,
-                              fit: BoxFit.cover,
-                              errorBuilder: (_, __, ___) => const Icon(
-                                Icons.queue_music_rounded,
-                                color: Color(0xFFFF5500),
-                              ),
-                            ),
-                    ),
+                return Container(
+                  margin: const EdgeInsets.only(bottom: 12),
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF141414),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: const Color(0xFF292929)),
                   ),
-                  const SizedBox(width: 14),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          title,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 15,
-                            fontWeight: FontWeight.w900,
-                          ),
+                  child: Row(
+                    children: [
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(7),
+                        child: Container(
+                          width: 68,
+                          height: 68,
+                          color: const Color(0xFF252525),
+                          child: cover == null
+                              ? const Icon(
+                                  Icons.queue_music_rounded,
+                                  color: Color(0xFFFF5500),
+                                )
+                              : Image.network(
+                                  cover,
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (_, __, ___) => const Icon(
+                                    Icons.queue_music_rounded,
+                                    color: Color(0xFFFF5500),
+                                  ),
+                                ),
                         ),
-                        const SizedBox(height: 7),
-                        Row(
+                      ),
+                      const SizedBox(width: 14),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Icon(
-                              isPublic ? Icons.public : Icons.lock_outline,
-                              size: 14,
-                              color: const Color(0xFF999999),
-                            ),
-                            const SizedBox(width: 5),
                             Text(
-                              '${tracks.length} tracks',
+                              title,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
                               style: const TextStyle(
-                                color: Color(0xFF999999),
-                                fontSize: 12,
+                                color: Colors.white,
+                                fontSize: 15,
+                                fontWeight: FontWeight.w900,
                               ),
+                            ),
+                            const SizedBox(height: 7),
+                            Row(
+                              children: [
+                                Icon(
+                                  isPublic ? Icons.public : Icons.lock_outline,
+                                  size: 14,
+                                  color: const Color(0xFF999999),
+                                ),
+                                const SizedBox(width: 5),
+                                Text(
+                                  '${tracks.length} tracks',
+                                  style: const TextStyle(
+                                    color: Color(0xFF999999),
+                                    fontSize: 12,
+                                  ),
+                                ),
+                              ],
                             ),
                           ],
                         ),
-                      ],
-                    ),
+                      ),
+                      const Icon(Icons.chevron_right, color: Color(0xFF888888)),
+                    ],
                   ),
-                  const Icon(Icons.chevron_right, color: Color(0xFF888888)),
-                ],
-              ),
+                );
+              }).toList(),
             );
-          }).toList(),
+          },
         );
-      },
-    );
-  }
-}
-
-class _ProfileEventsTab extends ConsumerWidget {
-  const _ProfileEventsTab({required this.artistId});
-
-  final String artistId;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    return ref.watch(_profileEventsProvider(artistId)).when(
-      loading: () => const _RecentLoading(),
-      error: (_, __) => const _ProfileEmptyTab(
-        icon: Icons.cloud_off_outlined,
-        title: 'Events unavailable',
-        description: 'Pull down to refresh and try again.',
-      ),
-      data: (events) {
-        if (events.isEmpty) {
-          return const _ProfileEmptyTab(
-            icon: Icons.confirmation_number_outlined,
-            title: 'No upcoming events',
-            description: 'Published concerts and tour dates will appear here.',
-          );
-        }
-
-        return Column(
-          children: events.map((event) {
-            final name = _firstText(event, ['eventName', 'name', 'title']);
-            final venue = _firstText(event, ['venueName', 'venueAddress']);
-            final start = _firstText(event, ['eventStartAt', 'startAt']);
-            final image = _resolveMediaUrl(
-              _firstText(event, ['ticketImageUrl', 'imageUrl', 'ticketImage']),
-            );
-
-            return _ProfileDataCard(
-              imageUrl: image,
-              icon: Icons.event_rounded,
-              title: name.isEmpty ? 'SoundClone event' : name,
-              subtitle: venue.isEmpty ? _readableDate(start) : venue,
-              trailing: venue.isEmpty ? '' : _readableDate(start),
-            );
-          }).toList(),
-        );
-      },
-    );
   }
 }
 
@@ -1167,98 +958,68 @@ class _ProfileMembershipTab extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    return ref.watch(_profileMembershipProvider(artistId)).when(
-      loading: () => const _RecentLoading(),
-      error: (_, __) => const _ProfileEmptyTab(
-        icon: Icons.cloud_off_outlined,
-        title: 'Membership unavailable',
-        description: 'Pull down to refresh and try again.',
-      ),
-      data: (data) {
-        if (data.plans.isEmpty && data.posts.isEmpty) {
-          return const _ProfileEmptyTab(
-            icon: Icons.workspace_premium_outlined,
-            title: 'No membership content yet',
-            description: 'Plans and exclusive artist posts will appear here.',
-          );
-        }
+    return ref
+        .watch(_profileMembershipProvider(artistId))
+        .when(
+          loading: () => const _RecentLoading(),
+          error: (_, __) => const _ProfileEmptyTab(
+            icon: Icons.cloud_off_outlined,
+            title: 'Membership unavailable',
+            description: 'Pull down to refresh and try again.',
+          ),
+          data: (data) {
+            if (data.plans.isEmpty && data.posts.isEmpty) {
+              return const _ProfileEmptyTab(
+                icon: Icons.workspace_premium_outlined,
+                title: 'No membership content yet',
+                description:
+                    'Plans and exclusive artist posts will appear here.',
+              );
+            }
 
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            if (data.plans.isNotEmpty) ...[
-              const _TabSectionTitle('Membership plans'),
-              ...data.plans.map((plan) {
-                final name = _firstText(plan, ['name', 'title']);
-                final price = plan['price'] ?? plan['monthlyPrice'];
-                return _ProfileDataCard(
-                  icon: Icons.workspace_premium_rounded,
-                  title: name.isEmpty ? 'Membership plan' : name,
-                  subtitle: _firstText(plan, ['description']),
-                  trailing: _formatMoney(price),
-                );
-              }),
-            ],
-            if (data.posts.isNotEmpty) ...[
-              const SizedBox(height: 12),
-              const _TabSectionTitle('Community'),
-              ...data.posts.map((post) {
-                final title = _firstText(post, ['title', 'content', 'caption']);
-                return _ProfileDataCard(
-                  icon: Icons.article_outlined,
-                  title: title.isEmpty ? 'Exclusive post' : title,
-                  subtitle: _firstText(post, ['visibility', 'postType', 'type']),
-                  trailing: _readableDate(
-                    _firstText(post, ['publishedAt', 'createdAt']),
-                  ),
-                );
-              }),
-            ],
-          ],
-        );
-      },
-    );
-  }
-}
-
-class _ProfileTicketsTab extends ConsumerWidget {
-  const _ProfileTicketsTab();
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    return ref.watch(_profileTicketsProvider).when(
-      loading: () => const _RecentLoading(),
-      error: (_, __) => const _ProfileEmptyTab(
-        icon: Icons.cloud_off_outlined,
-        title: 'Tickets unavailable',
-        description: 'Pull down to refresh and try again.',
-      ),
-      data: (tickets) {
-        if (tickets.isEmpty) {
-          return const _ProfileEmptyTab(
-            icon: Icons.local_activity_outlined,
-            title: 'No tickets yet',
-            description: 'Tickets purchased on SoundClone will appear here.',
-          );
-        }
-
-        return Column(
-          children: tickets.map((ticket) {
-            final event = ticket['event'] is Map
-                ? Map<String, dynamic>.from(ticket['event'] as Map)
-                : ticket;
-            final title = _firstText(event, ['eventName', 'name', 'title']);
-            final code = _firstText(ticket, ['ticketCode', 'code', 'orderCode']);
-            return _ProfileDataCard(
-              icon: Icons.local_activity_rounded,
-              title: title.isEmpty ? 'SoundClone ticket' : title,
-              subtitle: code.isEmpty ? 'Purchased ticket' : code,
-              trailing: _firstText(ticket, ['status']),
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (data.plans.isNotEmpty) ...[
+                  const _TabSectionTitle('Membership plans'),
+                  ...data.plans.map((plan) {
+                    final name = _firstText(plan, ['name', 'title']);
+                    final price = plan['price'] ?? plan['monthlyPrice'];
+                    return _ProfileDataCard(
+                      icon: Icons.workspace_premium_rounded,
+                      title: name.isEmpty ? 'Membership plan' : name,
+                      subtitle: _firstText(plan, ['description']),
+                      trailing: _formatMoney(price),
+                    );
+                  }),
+                ],
+                if (data.posts.isNotEmpty) ...[
+                  const SizedBox(height: 12),
+                  const _TabSectionTitle('Community'),
+                  ...data.posts.map((post) {
+                    final title = _firstText(post, [
+                      'title',
+                      'content',
+                      'caption',
+                    ]);
+                    return _ProfileDataCard(
+                      icon: Icons.article_outlined,
+                      title: title.isEmpty ? 'Exclusive post' : title,
+                      subtitle: _firstText(post, [
+                        'visibility',
+                        'postType',
+                        'type',
+                      ]),
+                      trailing: _readableDate(
+                        _firstText(post, ['publishedAt', 'createdAt']),
+                      ),
+                    );
+                  }),
+                ],
+              ],
             );
-          }).toList(),
+          },
         );
-      },
-    );
   }
 }
 
@@ -1288,14 +1049,12 @@ class _ProfileDataCard extends StatelessWidget {
     required this.title,
     required this.subtitle,
     required this.trailing,
-    this.imageUrl,
   });
 
   final IconData icon;
   final String title;
   final String subtitle;
   final String trailing;
-  final String? imageUrl;
 
   @override
   Widget build(BuildContext context) {
@@ -1315,14 +1074,7 @@ class _ProfileDataCard extends StatelessWidget {
               width: 58,
               height: 58,
               color: const Color(0xFF242424),
-              child: imageUrl == null
-                  ? Icon(icon, color: const Color(0xFFFF5500))
-                  : Image.network(
-                      imageUrl!,
-                      fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) =>
-                          Icon(icon, color: const Color(0xFFFF5500)),
-                    ),
+              child: Icon(icon, color: const Color(0xFFFF5500)),
             ),
           ),
           const SizedBox(width: 12),
@@ -1434,20 +1186,15 @@ class _RecentSection extends ConsumerWidget {
   final bool embedded;
 
   @override
-  Widget build(
-      BuildContext context,
-      WidgetRef ref,
-      ) {
-    final home =
-    ref.watch(homeFeedProvider);
+  Widget build(BuildContext context, WidgetRef ref) {
+    final home = ref.watch(homeFeedProvider);
 
     return Padding(
       padding: embedded
           ? EdgeInsets.zero
           : const EdgeInsets.symmetric(horizontal: 18),
       child: Column(
-        crossAxisAlignment:
-        CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text(
             'Recent',
@@ -1465,74 +1212,41 @@ class _RecentSection extends ConsumerWidget {
             loading: () {
               return const _RecentLoading();
             },
-            error: (
-                error,
-                stackTrace,
-                ) {
+            error: (error, stackTrace) {
               return _RecentEmpty(
-                icon:
-                Icons.cloud_off_outlined,
-                title:
-                'Couldn\'t load recent tracks',
-                description:
-                'Pull down to try again.',
+                icon: Icons.cloud_off_outlined,
+                title: 'Couldn\'t load recent tracks',
+                description: 'Pull down to try again.',
               );
             },
             data: (data) {
-              final tracks = data.historyTracks
-                  .take(5)
-                  .toList();
+              final tracks = data.historyTracks.take(5).toList();
 
               if (tracks.isEmpty) {
                 return const _RecentEmpty(
-                  icon:
-                  Icons.history_rounded,
-                  title:
-                  'No listening history yet',
+                  icon: Icons.history_rounded,
+                  title: 'No listening history yet',
                   description:
-                  'Your five most recently played tracks will appear here.',
+                      'Your five most recently played tracks will appear here.',
                 );
               }
 
               return Container(
                 decoration: BoxDecoration(
-                  color: const Color(
-                    0xFF141414,
-                  ),
-                  borderRadius:
-                  BorderRadius.circular(
-                    14,
-                  ),
-                  border: Border.all(
-                    color: const Color(
-                      0xFF262626,
-                    ),
-                  ),
+                  color: const Color(0xFF141414),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: const Color(0xFF262626)),
                 ),
                 child: Column(
                   children: [
-                    for (
-                    int index = 0;
-                    index <
-                        tracks.length;
-                    index++
-                    ) ...[
-                      _RecentTrackTile(
-                        index:
-                        index + 1,
-                        track:
-                        tracks[index],
-                      ),
+                    for (int index = 0; index < tracks.length; index++) ...[
+                      _RecentTrackTile(index: index + 1, track: tracks[index]),
 
-                      if (index !=
-                          tracks.length -
-                              1)
+                      if (index != tracks.length - 1)
                         const Divider(
                           height: 1,
                           indent: 62,
-                          color: Color(
-                            0xFF242424,
-                          ),
+                          color: Color(0xFF242424),
                         ),
                     ],
                   ],
@@ -1550,57 +1264,39 @@ class _RecentSection extends ConsumerWidget {
 // RECENT TRACK
 // ============================================================
 
-class _RecentTrackTile
-    extends StatelessWidget {
-  const _RecentTrackTile({
-    required this.index,
-    required this.track,
-  });
+class _RecentTrackTile extends StatelessWidget {
+  const _RecentTrackTile({required this.index, required this.track});
 
   final int index;
   final HomeTrack track;
 
   @override
   Widget build(BuildContext context) {
-    final imageUrl = _resolveMediaUrl(
-      track.imgUrl,
-    );
+    final imageUrl = _resolveMediaUrl(track.imgUrl);
 
     return InkWell(
-      borderRadius:
-      BorderRadius.circular(14),
+      borderRadius: BorderRadius.circular(14),
       onTap: () {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(
+        ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(
-              'Opening ${track.title}',
-            ),
-            behavior:
-            SnackBarBehavior.floating,
+            content: Text('Opening ${track.title}'),
+            behavior: SnackBarBehavior.floating,
           ),
         );
       },
       child: Padding(
-        padding:
-        const EdgeInsets.symmetric(
-          horizontal: 12,
-          vertical: 11,
-        ),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
         child: Row(
           children: [
             SizedBox(
               width: 22,
               child: Text(
                 '$index',
-                textAlign:
-                TextAlign.center,
+                textAlign: TextAlign.center,
                 style: const TextStyle(
-                  color:
-                  Color(0xFF888888),
+                  color: Color(0xFF888888),
                   fontSize: 12,
-                  fontWeight:
-                  FontWeight.w700,
+                  fontWeight: FontWeight.w700,
                 ),
               ),
             ),
@@ -1608,43 +1304,26 @@ class _RecentTrackTile
             const SizedBox(width: 8),
 
             ClipRRect(
-              borderRadius:
-              BorderRadius.circular(
-                5,
-              ),
+              borderRadius: BorderRadius.circular(5),
               child: Container(
                 width: 46,
                 height: 46,
-                color:
-                const Color(
-                  0xFF262626,
-                ),
-                child: imageUrl == null ||
-                    imageUrl.isEmpty
+                color: const Color(0xFF262626),
+                child: imageUrl == null || imageUrl.isEmpty
                     ? const Icon(
-                  Icons
-                      .music_note_rounded,
-                  color: Color(
-                    0xFF777777,
-                  ),
-                )
+                        Icons.music_note_rounded,
+                        color: Color(0xFF777777),
+                      )
                     : Image.network(
-                  imageUrl,
-                  fit: BoxFit.cover,
-                  errorBuilder: (
-                      context,
-                      error,
-                      stackTrace,
-                      ) {
-                    return const Icon(
-                      Icons
-                          .music_note_rounded,
-                      color: Color(
-                        0xFF777777,
+                        imageUrl,
+                        fit: BoxFit.cover,
+                        errorBuilder: (context, error, stackTrace) {
+                          return const Icon(
+                            Icons.music_note_rounded,
+                            color: Color(0xFF777777),
+                          );
+                        },
                       ),
-                    );
-                  },
-                ),
               ),
             ),
 
@@ -1652,41 +1331,27 @@ class _RecentTrackTile
 
             Expanded(
               child: Column(
-                crossAxisAlignment:
-                CrossAxisAlignment
-                    .start,
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
                     track.title,
                     maxLines: 1,
-                    overflow:
-                    TextOverflow
-                        .ellipsis,
-                    style:
-                    const TextStyle(
-                      color:
-                      Colors.white,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      color: Colors.white,
                       fontSize: 14,
-                      fontWeight:
-                      FontWeight.w800,
+                      fontWeight: FontWeight.w800,
                     ),
                   ),
 
-                  const SizedBox(
-                    height: 4,
-                  ),
+                  const SizedBox(height: 4),
 
                   Text(
                     track.artistName,
                     maxLines: 1,
-                    overflow:
-                    TextOverflow
-                        .ellipsis,
-                    style:
-                    const TextStyle(
-                      color: Color(
-                        0xFF8E8E8E,
-                      ),
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      color: Color(0xFF8E8E8E),
                       fontSize: 12,
                     ),
                   ),
@@ -1698,14 +1363,11 @@ class _RecentTrackTile
 
             IconButton(
               tooltip: 'More',
-              visualDensity:
-              VisualDensity.compact,
+              visualDensity: VisualDensity.compact,
               onPressed: () {},
               icon: const Icon(
-                Icons
-                    .more_vert_rounded,
-                color:
-                Color(0xFF999999),
+                Icons.more_vert_rounded,
+                color: Color(0xFF999999),
                 size: 20,
               ),
             ),
@@ -1720,8 +1382,7 @@ class _RecentTrackTile
 // RECENT LOADING
 // ============================================================
 
-class _RecentLoading
-    extends StatelessWidget {
+class _RecentLoading extends StatelessWidget {
   const _RecentLoading();
 
   @override
@@ -1729,18 +1390,12 @@ class _RecentLoading
     return Container(
       height: 110,
       decoration: BoxDecoration(
-        color:
-        const Color(0xFF141414),
-        borderRadius:
-        BorderRadius.circular(14),
-        border: Border.all(
-          color:
-          const Color(0xFF262626),
-        ),
+        color: const Color(0xFF141414),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: const Color(0xFF262626)),
       ),
       child: const Center(
-        child:
-        CircularProgressIndicator(
+        child: CircularProgressIndicator(
           color: Color(0xFFFF5500),
           strokeWidth: 2.5,
         ),
@@ -1753,8 +1408,7 @@ class _RecentLoading
 // RECENT EMPTY
 // ============================================================
 
-class _RecentEmpty
-    extends StatelessWidget {
+class _RecentEmpty extends StatelessWidget {
   const _RecentEmpty({
     required this.icon,
     required this.title,
@@ -1769,50 +1423,31 @@ class _RecentEmpty
   Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.symmetric(
-        horizontal: 22,
-        vertical: 32,
-      ),
+      padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 32),
       decoration: BoxDecoration(
-        color:
-        const Color(0xFF141414),
-        borderRadius:
-        BorderRadius.circular(14),
-        border: Border.all(
-          color:
-          const Color(0xFF262626),
-        ),
+        color: const Color(0xFF141414),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: const Color(0xFF262626)),
       ),
       child: Column(
         children: [
-          Icon(
-            icon,
-            size: 38,
-            color:
-            const Color(
-              0xFFFF5500,
-            ),
-          ),
+          Icon(icon, size: 38, color: const Color(0xFFFF5500)),
           const SizedBox(height: 11),
           Text(
             title,
-            textAlign:
-            TextAlign.center,
+            textAlign: TextAlign.center,
             style: const TextStyle(
               color: Colors.white,
               fontSize: 15,
-              fontWeight:
-              FontWeight.w800,
+              fontWeight: FontWeight.w800,
             ),
           ),
           const SizedBox(height: 5),
           Text(
             description,
-            textAlign:
-            TextAlign.center,
+            textAlign: TextAlign.center,
             style: const TextStyle(
-              color:
-              Color(0xFF888888),
+              color: Color(0xFF888888),
               fontSize: 12,
               height: 1.4,
             ),
@@ -1827,22 +1462,17 @@ class _RecentEmpty
 // ABOUT
 // ============================================================
 
-class _AboutCard
-    extends StatelessWidget {
-  const _AboutCard({
-    required this.user,
-  });
+class _AboutCard extends StatelessWidget {
+  const _AboutCard({required this.user});
 
   final UserModel user;
 
   @override
   Widget build(BuildContext context) {
-    final createdAt =
-        user.createdAt;
+    final createdAt = user.createdAt;
 
     return Column(
-      crossAxisAlignment:
-      CrossAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const Text(
           'About',
@@ -1858,28 +1488,16 @@ class _AboutCard
 
         Container(
           width: double.infinity,
-          padding: const EdgeInsets.all(
-            16,
-          ),
+          padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color:
-            const Color(0xFF141414),
-            borderRadius:
-            BorderRadius.circular(
-              14,
-            ),
-            border: Border.all(
-              color:
-              const Color(
-                0xFF262626,
-              ),
-            ),
+            color: const Color(0xFF141414),
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: const Color(0xFF262626)),
           ),
           child: Column(
             children: [
               _AboutRow(
-                icon:
-                Icons.email_outlined,
+                icon: Icons.email_outlined,
                 label: 'Email',
                 value: user.email,
               ),
@@ -1887,47 +1505,29 @@ class _AboutCard
               const _AboutDivider(),
 
               _AboutRow(
-                icon: Icons
-                    .verified_user_outlined,
+                icon: Icons.verified_user_outlined,
                 label: 'Account',
-                value: user.isVerify
-                    ? 'Verified'
-                    : 'Not verified',
-                valueColor: user.isVerify
-                    ? const Color(
-                  0xFFFF782F,
-                )
-                    : null,
+                value: user.isVerify ? 'Verified' : 'Not verified',
+                valueColor: user.isVerify ? const Color(0xFFFF782F) : null,
               ),
 
-              if (user.role
-                  .trim()
-                  .isNotEmpty) ...[
+              if (user.role.trim().isNotEmpty) ...[
                 const _AboutDivider(),
 
                 _AboutRow(
-                  icon: Icons
-                      .person_outline_rounded,
+                  icon: Icons.person_outline_rounded,
                   label: 'Role',
-                  value: _formatRole(
-                    user.role,
-                  ),
+                  value: _formatRole(user.role),
                 ),
               ],
 
-              if (createdAt !=
-                  null) ...[
+              if (createdAt != null) ...[
                 const _AboutDivider(),
 
                 _AboutRow(
-                  icon: Icons
-                      .calendar_today_outlined,
-                  label:
-                  'Member since',
-                  value:
-                  _formatDate(
-                    createdAt,
-                  ),
+                  icon: Icons.calendar_today_outlined,
+                  label: 'Member since',
+                  value: _formatDate(createdAt),
                 ),
               ],
             ],
@@ -1942,8 +1542,7 @@ class _AboutCard
 // ABOUT ROW
 // ============================================================
 
-class _AboutRow
-    extends StatelessWidget {
+class _AboutRow extends StatelessWidget {
   const _AboutRow({
     required this.icon,
     required this.label,
@@ -1959,31 +1558,22 @@ class _AboutRow
   @override
   Widget build(BuildContext context) {
     return Row(
-      crossAxisAlignment:
-      CrossAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Icon(
-          icon,
-          color:
-          const Color(0xFF999999),
-          size: 20,
-        ),
+        Icon(icon, color: const Color(0xFF999999), size: 20),
 
         const SizedBox(width: 13),
 
         Expanded(
           child: Column(
-            crossAxisAlignment:
-            CrossAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
                 label,
                 style: const TextStyle(
-                  color:
-                  Color(0xFF777777),
+                  color: Color(0xFF777777),
                   fontSize: 11,
-                  fontWeight:
-                  FontWeight.w600,
+                  fontWeight: FontWeight.w600,
                 ),
               ),
 
@@ -1992,11 +1582,9 @@ class _AboutRow
               Text(
                 value,
                 style: TextStyle(
-                  color: valueColor ??
-                      Colors.white,
+                  color: valueColor ?? Colors.white,
                   fontSize: 14,
-                  fontWeight:
-                  FontWeight.w700,
+                  fontWeight: FontWeight.w700,
                 ),
               ),
             ],
@@ -2007,21 +1595,14 @@ class _AboutRow
   }
 }
 
-class _AboutDivider
-    extends StatelessWidget {
+class _AboutDivider extends StatelessWidget {
   const _AboutDivider();
 
   @override
   Widget build(BuildContext context) {
     return const Padding(
-      padding:
-      EdgeInsets.symmetric(
-        vertical: 14,
-      ),
-      child: Divider(
-        color: Color(0xFF262626),
-        height: 1,
-      ),
+      padding: EdgeInsets.symmetric(vertical: 14),
+      child: Divider(color: Color(0xFF262626), height: 1),
     );
   }
 }
@@ -2030,139 +1611,86 @@ class _AboutDivider
 // LOG OUT
 // ============================================================
 
-class _LogoutButton
-    extends ConsumerWidget {
+class _LogoutButton extends ConsumerWidget {
   const _LogoutButton();
 
   @override
-  Widget build(
-      BuildContext context,
-      WidgetRef ref,
-      ) {
+  Widget build(BuildContext context, WidgetRef ref) {
     return SizedBox(
       width: double.infinity,
       child: OutlinedButton.icon(
         onPressed: () async {
-          final shouldLogout =
-          await _confirmLogout(
-            context,
-          );
+          final shouldLogout = await _confirmLogout(context);
 
           if (!shouldLogout) {
             return;
           }
 
-          await ref
-              .read(authProvider.notifier)
-              .logout();
+          await ref.read(authProvider.notifier).logout();
 
           if (context.mounted) {
             context.go('/login');
           }
         },
-        icon: const Icon(
-          Icons.logout_rounded,
-          size: 19,
-        ),
-        label: const Text(
-          'Log out',
-        ),
-        style:
-        OutlinedButton.styleFrom(
-          foregroundColor:
-          const Color(
-            0xFFFF5C5C,
+        icon: const Icon(Icons.logout_rounded, size: 19),
+        label: const Text('Log out'),
+        style: OutlinedButton.styleFrom(
+          foregroundColor: const Color(0xFFFF5C5C),
+          side: const BorderSide(color: Color(0xFF512828)),
+          padding: const EdgeInsets.symmetric(vertical: 14),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
           ),
-          side: const BorderSide(
-            color:
-            Color(0xFF512828),
-          ),
-          padding:
-          const EdgeInsets.symmetric(
-            vertical: 14,
-          ),
-          shape:
-          RoundedRectangleBorder(
-            borderRadius:
-            BorderRadius.circular(
-              12,
-            ),
-          ),
-          textStyle: const TextStyle(
-            fontSize: 14,
-            fontWeight: FontWeight.w800,
-          ),
+          textStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800),
         ),
       ),
     );
   }
 
-  Future<bool> _confirmLogout(
-      BuildContext context,
-      ) async {
+  Future<bool> _confirmLogout(BuildContext context) async {
     return await showDialog<bool>(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          backgroundColor:
-          const Color(
-            0xFF1B1B1B,
-          ),
-          surfaceTintColor:
-          Colors.transparent,
-          title: const Text(
-            'Log out?',
-            style: TextStyle(
-              color: Colors.white,
-              fontWeight:
-              FontWeight.w800,
-            ),
-          ),
-          content: const Text(
-            'Are you sure you want to log out of SoundClone?',
-            style: TextStyle(
-              color:
-              Color(0xFFB0B0B0),
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.pop(
-                  context,
-                  false,
-                );
-              },
-              child: const Text(
-                'Cancel',
+          context: context,
+          builder: (context) {
+            return AlertDialog(
+              backgroundColor: const Color(0xFF1B1B1B),
+              surfaceTintColor: Colors.transparent,
+              title: const Text(
+                'Log out?',
                 style: TextStyle(
-                  color:
-                  Colors.white,
+                  color: Colors.white,
+                  fontWeight: FontWeight.w800,
                 ),
               ),
-            ),
-            TextButton(
-              onPressed: () {
-                Navigator.pop(
-                  context,
-                  true,
-                );
-              },
-              child: const Text(
-                'Log out',
-                style: TextStyle(
-                  color: Color(
-                    0xFFFF5C5C,
+              content: const Text(
+                'Are you sure you want to log out of SoundClone?',
+                style: TextStyle(color: Color(0xFFB0B0B0)),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () {
+                    Navigator.pop(context, false);
+                  },
+                  child: const Text(
+                    'Cancel',
+                    style: TextStyle(color: Colors.white),
                   ),
-                  fontWeight:
-                  FontWeight.w800,
                 ),
-              ),
-            ),
-          ],
-        );
-      },
-    ) ??
+                TextButton(
+                  onPressed: () {
+                    Navigator.pop(context, true);
+                  },
+                  child: const Text(
+                    'Log out',
+                    style: TextStyle(
+                      color: Color(0xFFFF5C5C),
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ),
+              ],
+            );
+          },
+        ) ??
         false;
   }
 }
@@ -2171,11 +1699,8 @@ class _LogoutButton
 // ERROR
 // ============================================================
 
-class _ProfileError
-    extends StatelessWidget {
-  const _ProfileError({
-    required this.onRetry,
-  });
+class _ProfileError extends StatelessWidget {
+  const _ProfileError({required this.onRetry});
 
   final VoidCallback onRetry;
 
@@ -2184,66 +1709,44 @@ class _ProfileError
     return SafeArea(
       child: Center(
         child: Padding(
-          padding:
-          const EdgeInsets.all(30),
+          padding: const EdgeInsets.all(30),
           child: Column(
-            mainAxisSize:
-            MainAxisSize.min,
+            mainAxisSize: MainAxisSize.min,
             children: [
               const Icon(
-                Icons
-                    .account_circle_outlined,
-                color:
-                Color(0xFFFF5500),
+                Icons.account_circle_outlined,
+                color: Color(0xFFFF5500),
                 size: 58,
               ),
 
-              const SizedBox(
-                height: 16,
-              ),
+              const SizedBox(height: 16),
 
               const Text(
                 'Couldn\'t load profile',
                 style: TextStyle(
                   color: Colors.white,
                   fontSize: 19,
-                  fontWeight:
-                  FontWeight.w900,
+                  fontWeight: FontWeight.w900,
                 ),
               ),
 
-              const SizedBox(
-                height: 8,
-              ),
+              const SizedBox(height: 8),
 
               const Text(
                 'Please check your connection and try again.',
-                textAlign:
-                TextAlign.center,
-                style: TextStyle(
-                  color:
-                  Color(0xFF999999),
-                ),
+                textAlign: TextAlign.center,
+                style: TextStyle(color: Color(0xFF999999)),
               ),
 
-              const SizedBox(
-                height: 22,
-              ),
+              const SizedBox(height: 22),
 
               FilledButton(
                 onPressed: onRetry,
-                style:
-                FilledButton.styleFrom(
-                  backgroundColor:
-                  const Color(
-                    0xFFFF5500,
-                  ),
-                  foregroundColor:
-                  Colors.white,
+                style: FilledButton.styleFrom(
+                  backgroundColor: const Color(0xFFFF5500),
+                  foregroundColor: Colors.white,
                 ),
-                child: const Text(
-                  'Try Again',
-                ),
+                child: const Text('Try Again'),
               ),
             ],
           ),
@@ -2259,15 +1762,13 @@ class _ProfileError
 
 String _formatCount(int value) {
   if (value >= 1000000) {
-    final number =
-        value / 1000000;
+    final number = value / 1000000;
 
     return '${number.toStringAsFixed(number >= 10 ? 0 : 1)}M';
   }
 
   if (value >= 1000) {
-    final number =
-        value / 1000;
+    final number = value / 1000;
 
     return '${number.toStringAsFixed(number >= 100 ? 0 : 1)}K';
   }
@@ -2280,16 +1781,14 @@ String _formatRole(String role) {
     return 'User';
   }
 
-  final normalized =
-  role.trim().toLowerCase();
+  final normalized = role.trim().toLowerCase();
 
   return normalized
       .split('_')
       .map(
-        (word) => word.isEmpty
-        ? ''
-        : '${word[0].toUpperCase()}${word.substring(1)}',
-  )
+        (word) =>
+            word.isEmpty ? '' : '${word[0].toUpperCase()}${word.substring(1)}',
+      )
       .join(' ');
 }
 
@@ -2350,34 +1849,22 @@ String _formatMoney(dynamic value) {
   return '${buffer.toString()} ₫';
 }
 
-void _showComingSoon(
-    BuildContext context,
-    String feature,
-    ) {
-  ScaffoldMessenger.of(context)
-      .hideCurrentSnackBar();
+void _showComingSoon(BuildContext context, String feature) {
+  ScaffoldMessenger.of(context).hideCurrentSnackBar();
 
-  ScaffoldMessenger.of(context)
-      .showSnackBar(
+  ScaffoldMessenger.of(context).showSnackBar(
     SnackBar(
-      behavior:
-      SnackBarBehavior.floating,
-      backgroundColor:
-      const Color(0xFF262626),
+      behavior: SnackBarBehavior.floating,
+      backgroundColor: const Color(0xFF262626),
       content: Text(
         '$feature will be added next.',
-        style: const TextStyle(
-          color: Colors.white,
-        ),
+        style: const TextStyle(color: Colors.white),
       ),
     ),
   );
 }
 
-Future<void> _shareProfile(
-  BuildContext context,
-  UserModel user,
-) async {
+Future<void> _shareProfile(BuildContext context, UserModel user) async {
   final profileUrl = '${ApiConfig.frontendUrl}/profile/${user.id}';
   await Clipboard.setData(ClipboardData(text: profileUrl));
 

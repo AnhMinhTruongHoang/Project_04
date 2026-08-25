@@ -19,8 +19,6 @@ class ApiConfig {
 
   static final String apiV1 = '$baseUrl/api/v1';
 
-
-
   // ==========================================================
   // AUTH
   // ==========================================================
@@ -101,11 +99,9 @@ class ApiConfig {
   // LEGACY MEDIA
   // ==========================================================
 
-  static final String imagesUrl =
-      '$baseUrl/uploads/images/';
+  static final String imagesUrl = '$baseUrl/uploads/images/';
 
-  static final String audioUrl =
-      '$baseUrl/uploads/audio/';
+  static final String audioUrl = '$baseUrl/uploads/audio/';
 
   static String _resolveBaseUrl(String configuredUrl) {
     var url = configuredUrl.trim().replaceFirst(RegExp(r'/+$'), '');

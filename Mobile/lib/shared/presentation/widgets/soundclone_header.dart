@@ -803,12 +803,14 @@ class _AccountMenuItem extends StatelessWidget {
     required this.icon,
     required this.text,
     this.iconColor,
+    this.highlighted = false,
   });
 
   final IconData icon;
   final String text;
 
   final Color? iconColor;
+  final bool highlighted;
 
   @override
   Widget build(BuildContext context) {

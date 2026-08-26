@@ -36,6 +36,16 @@ dependencies:
   # Phat nhac trong mini player.
   just_audio: ^0.10.6
 
+  # Chọn avatar và ảnh bìa từ thư viện ảnh/camera của thiết bị.
+  image_picker: ^1.2.1
+
+  # Quét QR check-in vé và hiển thị QR vé đã mua.
+  mobile_scanner: ^7.1.3
+  qr_flutter: ^4.1.0
+
+  # Mở trang thanh toán VNPay trong trình duyệt/ứng dụng ngoài.
+  url_launcher: ^6.3.2
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
@@ -46,3 +56,6 @@ dev_dependencies:
 flutter:
   # Cho phép sử dụng Material Icons.
   uses-material-design: true
+
+  assets:
+    - assets/images/sc_logo.png

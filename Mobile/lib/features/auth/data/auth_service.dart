@@ -17,33 +17,20 @@ class AuthService {
     try {
       final response = await DioClient.instance.post<dynamic>(
         '/auth/login',
-        data: {
-          'email': email.trim().toLowerCase(),
-          'password': password,
-        },
+        data: {'email': email.trim().toLowerCase(), 'password': password},
       );
 
-      final authResponse = AuthResponse.fromApi(
-        response.data,
-      );
+      final authResponse = AuthResponse.fromApi(response.data);
 
-      await TokenStorage.saveAccessToken(
-        authResponse.accessToken,
-      );
+      await TokenStorage.saveAccessToken(authResponse.accessToken);
 
-      await TokenStorage.saveRefreshToken(
-        authResponse.refreshToken,
-      );
+      await TokenStorage.saveRefreshToken(authResponse.refreshToken);
 
       return authResponse;
     } on DioException catch (error) {
-      throw AuthException(
-        _extractMessage(error),
-      );
+      throw AuthException(_extractMessage(error));
     } on FormatException catch (error) {
-      throw AuthException(
-        error.message,
-      );
+      throw AuthException(error.message);
     }
   }
 
@@ -56,12 +43,10 @@ class AuthService {
     required String email,
     required String password,
   }) async {
-    final normalizedEmail =
-    email.trim().toLowerCase();
+    final normalizedEmail = email.trim().toLowerCase();
 
     try {
-      final response =
-      await DioClient.instance.post<dynamic>(
+      final response = await DioClient.instance.post<dynamic>(
         '/auth/register',
         data: {
           'name': name.trim(),
@@ -70,35 +55,22 @@ class AuthService {
         },
       );
 
-      final root =
-      _asMapOrEmpty(response.data);
+      final root = _asMapOrEmpty(response.data);
 
-      final statusCode =
-      _parseStatusCode(
+      final statusCode = _parseStatusCode(
         root['statusCode'],
         fallback: response.statusCode,
       );
 
-      final message =
-      _parseMessage(
-        root['message'],
-      );
+      final message = _parseMessage(root['message']);
 
-      final data =
-      _asMapOrEmpty(
-        root['data'],
-      );
+      final data = _asMapOrEmpty(root['data']);
 
       if (_isSuccessStatus(statusCode)) {
-        final responseEmail =
-        data['email']
-            ?.toString()
-            .trim()
-            .toLowerCase();
+        final responseEmail = data['email']?.toString().trim().toLowerCase();
 
         return RegisterResult(
-          email: responseEmail != null &&
-              responseEmail.isNotEmpty
+          email: responseEmail != null && responseEmail.isNotEmpty
               ? responseEmail
               : normalizedEmail,
           message: message.isNotEmpty
@@ -113,8 +85,7 @@ class AuthService {
             ? message
             : 'Registration failed. Please try again.',
         email: data['email']?.toString(),
-        requiresVerification:
-        _parseRequiresVerification(
+        requiresVerification: _parseRequiresVerification(
           data: data,
           message: message,
         ),
@@ -122,35 +93,22 @@ class AuthService {
     } on DioException catch (error) {
       final response = error.response;
 
-      final root =
-      _asMapOrEmpty(
-        response?.data,
-      );
+      final root = _asMapOrEmpty(response?.data);
 
-      final data =
-      _asMapOrEmpty(
-        root['data'],
-      );
+      final data = _asMapOrEmpty(root['data']);
 
-      final statusCode =
-      _parseStatusCode(
+      final statusCode = _parseStatusCode(
         root['statusCode'],
         fallback: response?.statusCode,
       );
 
-      final message =
-      _parseMessage(
-        root['message'],
-      );
+      final message = _parseMessage(root['message']);
 
       throw AuthRegisterException(
         statusCode: statusCode,
-        message: message.isNotEmpty
-            ? message
-            : _extractMessage(error),
+        message: message.isNotEmpty ? message : _extractMessage(error),
         email: data['email']?.toString(),
-        requiresVerification:
-        _parseRequiresVerification(
+        requiresVerification: _parseRequiresVerification(
           data: data,
           message: message,
         ),
@@ -158,13 +116,10 @@ class AuthService {
     } on AuthRegisterException {
       rethrow;
     } on FormatException catch (error) {
-      throw AuthRegisterException(
-        message: error.message,
-      );
+      throw AuthRegisterException(message: error.message);
     } catch (_) {
       throw const AuthRegisterException(
-        message:
-        'Registration failed. Please try again.',
+        message: 'Registration failed. Please try again.',
       );
     }
   }
@@ -177,62 +132,39 @@ class AuthService {
     required String email,
     required String otp,
   }) async {
-    final normalizedEmail =
-    email.trim().toLowerCase();
+    final normalizedEmail = email.trim().toLowerCase();
 
-    final normalizedOtp =
-    otp.trim();
+    final normalizedOtp = otp.trim();
 
     try {
-      final response =
-      await DioClient.instance.post<dynamic>(
+      final response = await DioClient.instance.post<dynamic>(
         '/auth/verify-otp',
-        data: {
-          'email': normalizedEmail,
-          'otp': normalizedOtp,
-        },
+        data: {'email': normalizedEmail, 'otp': normalizedOtp},
       );
 
-      final root =
-      _asMapOrEmpty(
-        response.data,
-      );
+      final root = _asMapOrEmpty(response.data);
 
-      final statusCode =
-      _parseStatusCode(
+      final statusCode = _parseStatusCode(
         root['statusCode'],
         fallback: response.statusCode,
       );
 
-      final message =
-      _parseMessage(
-        root['message'],
-      );
+      final message = _parseMessage(root['message']);
 
       if (_isSuccessStatus(statusCode)) {
         return OtpResult(
           email: normalizedEmail,
-          message: message.isNotEmpty
-              ? message
-              : 'Verify OTP success.',
+          message: message.isNotEmpty ? message : 'Verify OTP success.',
         );
       }
 
-      throw AuthException(
-        message.isNotEmpty
-            ? message
-            : 'Verify OTP failed.',
-      );
+      throw AuthException(message.isNotEmpty ? message : 'Verify OTP failed.');
     } on DioException catch (error) {
-      throw AuthException(
-        _extractMessage(error),
-      );
+      throw AuthException(_extractMessage(error));
     } on AuthException {
       rethrow;
     } catch (_) {
-      throw const AuthException(
-        'Verify OTP failed. Please try again.',
-      );
+      throw const AuthException('Verify OTP failed. Please try again.');
     }
   }
 
@@ -240,36 +172,23 @@ class AuthService {
   // RESEND REGISTER OTP
   // ============================================================
 
-  Future<OtpResult> resendRegisterOtp({
-    required String email,
-  }) async {
-    final normalizedEmail =
-    email.trim().toLowerCase();
+  Future<OtpResult> resendRegisterOtp({required String email}) async {
+    final normalizedEmail = email.trim().toLowerCase();
 
     try {
-      final response =
-      await DioClient.instance.post<dynamic>(
+      final response = await DioClient.instance.post<dynamic>(
         '/auth/resend-otp',
-        data: {
-          'email': normalizedEmail,
-        },
+        data: {'email': normalizedEmail},
       );
 
-      final root =
-      _asMapOrEmpty(
-        response.data,
-      );
+      final root = _asMapOrEmpty(response.data);
 
-      final statusCode =
-      _parseStatusCode(
+      final statusCode = _parseStatusCode(
         root['statusCode'],
         fallback: response.statusCode,
       );
 
-      final message =
-      _parseMessage(
-        root['message'],
-      );
+      final message = _parseMessage(root['message']);
 
       if (_isSuccessStatus(statusCode)) {
         return OtpResult(
@@ -280,21 +199,13 @@ class AuthService {
         );
       }
 
-      throw AuthException(
-        message.isNotEmpty
-            ? message
-            : 'Resend OTP failed.',
-      );
+      throw AuthException(message.isNotEmpty ? message : 'Resend OTP failed.');
     } on DioException catch (error) {
-      throw AuthException(
-        _extractMessage(error),
-      );
+      throw AuthException(_extractMessage(error));
     } on AuthException {
       rethrow;
     } catch (_) {
-      throw const AuthException(
-        'Resend OTP failed. Please try again.',
-      );
+      throw const AuthException('Resend OTP failed. Please try again.');
     }
   }
 
@@ -302,36 +213,23 @@ class AuthService {
   // FORGOT PASSWORD
   // ============================================================
 
-  Future<ForgotPasswordResult> forgotPassword({
-    required String email,
-  }) async {
-    final normalizedEmail =
-    email.trim().toLowerCase();
+  Future<ForgotPasswordResult> forgotPassword({required String email}) async {
+    final normalizedEmail = email.trim().toLowerCase();
 
     try {
-      final response =
-      await DioClient.instance.post<dynamic>(
+      final response = await DioClient.instance.post<dynamic>(
         '/auth/forgot-password',
-        data: {
-          'email': normalizedEmail,
-        },
+        data: {'email': normalizedEmail},
       );
 
-      final root =
-      _asMapOrEmpty(
-        response.data,
-      );
+      final root = _asMapOrEmpty(response.data);
 
-      final statusCode =
-      _parseStatusCode(
+      final statusCode = _parseStatusCode(
         root['statusCode'],
         fallback: response.statusCode,
       );
 
-      final message =
-      _parseMessage(
-        root['message'],
-      );
+      final message = _parseMessage(root['message']);
 
       if (_isSuccessStatus(statusCode)) {
         return ForgotPasswordResult(
@@ -343,20 +241,14 @@ class AuthService {
       }
 
       throw AuthException(
-        message.isNotEmpty
-            ? message
-            : 'Send OTP failed. Please try again.',
+        message.isNotEmpty ? message : 'Send OTP failed. Please try again.',
       );
     } on DioException catch (error) {
-      throw AuthException(
-        _extractMessage(error),
-      );
+      throw AuthException(_extractMessage(error));
     } on AuthException {
       rethrow;
     } catch (_) {
-      throw const AuthException(
-        'Send OTP failed. Please try again.',
-      );
+      throw const AuthException('Send OTP failed. Please try again.');
     }
   }
 
@@ -369,15 +261,12 @@ class AuthService {
     required String otp,
     required String newPassword,
   }) async {
-    final normalizedEmail =
-    email.trim().toLowerCase();
+    final normalizedEmail = email.trim().toLowerCase();
 
-    final normalizedOtp =
-    otp.trim();
+    final normalizedOtp = otp.trim();
 
     try {
-      final response =
-      await DioClient.instance.post<dynamic>(
+      final response = await DioClient.instance.post<dynamic>(
         '/auth/reset-password',
         data: {
           'email': normalizedEmail,
@@ -386,28 +275,19 @@ class AuthService {
         },
       );
 
-      final root =
-      _asMapOrEmpty(
-        response.data,
-      );
+      final root = _asMapOrEmpty(response.data);
 
-      final statusCode =
-      _parseStatusCode(
+      final statusCode = _parseStatusCode(
         root['statusCode'],
         fallback: response.statusCode,
       );
 
-      final message =
-      _parseMessage(
-        root['message'],
-      );
+      final message = _parseMessage(root['message']);
 
       if (_isSuccessStatus(statusCode)) {
         return ResetPasswordResult(
           email: normalizedEmail,
-          message: message.isNotEmpty
-              ? message
-              : 'Reset password success.',
+          message: message.isNotEmpty ? message : 'Reset password success.',
         );
       }
 
@@ -417,15 +297,11 @@ class AuthService {
             : 'Reset password failed. Please try again.',
       );
     } on DioException catch (error) {
-      throw AuthException(
-        _extractMessage(error),
-      );
+      throw AuthException(_extractMessage(error));
     } on AuthException {
       rethrow;
     } catch (_) {
-      throw const AuthException(
-        'Reset password failed. Please try again.',
-      );
+      throw const AuthException('Reset password failed. Please try again.');
     }
   }
 
@@ -435,37 +311,19 @@ class AuthService {
 
   Future<UserModel> getAccount() async {
     try {
-      final response =
-      await DioClient.instance.get<dynamic>(
-        '/auth/account',
-      );
+      final response = await DioClient.instance.get<dynamic>('/auth/account');
 
-      final root =
-      _asMap(
-        response.data,
-      );
+      final root = _asMap(response.data);
 
-      final data =
-      _asMap(
-        root['data'],
-      );
+      final data = _asMap(root['data']);
 
-      final user =
-      _asMap(
-        data['user'],
-      );
+      final user = _asMap(data['user']);
 
-      return UserModel.fromJson(
-        user,
-      );
+      return UserModel.fromJson(user);
     } on DioException catch (error) {
-      throw AuthException(
-        _extractMessage(error),
-      );
+      throw AuthException(_extractMessage(error));
     } on FormatException catch (error) {
-      throw AuthException(
-        error.message,
-      );
+      throw AuthException(error.message);
     }
   }
 
@@ -475,9 +333,7 @@ class AuthService {
 
   Future<void> logout() async {
     try {
-      await DioClient.instance.post<dynamic>(
-        '/auth/logout',
-      );
+      await DioClient.instance.post<dynamic>('/auth/logout');
     } catch (_) {
       // Dù backend logout lỗi vẫn xóa token local.
     } finally {
@@ -489,67 +345,46 @@ class AuthService {
   // ERROR MESSAGE
   // ============================================================
 
-  String _extractMessage(
-      DioException error,
-      ) {
-    final responseData =
-        error.response?.data;
+  String _extractMessage(DioException error) {
+    final responseData = error.response?.data;
 
     if (responseData is Map) {
-      final message =
-      _parseMessage(
-        responseData['message'],
-      );
+      final message = _parseMessage(responseData['message']);
 
       if (message.isNotEmpty) {
         return message;
       }
 
-      final data =
-      _asMapOrEmpty(
-        responseData['data'],
-      );
+      final data = _asMapOrEmpty(responseData['data']);
 
-      final nestedMessage =
-      _parseMessage(
-        data['message'],
-      );
+      final nestedMessage = _parseMessage(data['message']);
 
       if (nestedMessage.isNotEmpty) {
         return nestedMessage;
       }
 
-      final errorMessage =
-      _parseMessage(
-        responseData['error'],
-      );
+      final errorMessage = _parseMessage(responseData['error']);
 
       if (errorMessage.isNotEmpty) {
         return errorMessage;
       }
     }
 
-    if (error.type ==
-        DioExceptionType.connectionTimeout ||
-        error.type ==
-            DioExceptionType.receiveTimeout ||
-        error.type ==
-            DioExceptionType.sendTimeout) {
+    if (error.type == DioExceptionType.connectionTimeout ||
+        error.type == DioExceptionType.receiveTimeout ||
+        error.type == DioExceptionType.sendTimeout) {
       return 'Connection to the server timed out.';
     }
 
-    if (error.type ==
-        DioExceptionType.connectionError) {
+    if (error.type == DioExceptionType.connectionError) {
       return 'Unable to connect to the SoundClone server.';
     }
 
-    if (error.type ==
-        DioExceptionType.badCertificate) {
+    if (error.type == DioExceptionType.badCertificate) {
       return 'Unable to establish a secure connection to the server.';
     }
 
-    if (error.type ==
-        DioExceptionType.cancel) {
+    if (error.type == DioExceptionType.cancel) {
       return 'The request was cancelled.';
     }
 
@@ -562,10 +397,7 @@ class AuthService {
 // ============================================================
 
 class RegisterResult {
-  const RegisterResult({
-    required this.email,
-    required this.message,
-  });
+  const RegisterResult({required this.email, required this.message});
 
   final String email;
   final String message;
@@ -576,10 +408,7 @@ class RegisterResult {
 // ============================================================
 
 class OtpResult {
-  const OtpResult({
-    required this.email,
-    required this.message,
-  });
+  const OtpResult({required this.email, required this.message});
 
   final String email;
   final String message;
@@ -590,10 +419,7 @@ class OtpResult {
 // ============================================================
 
 class ForgotPasswordResult {
-  const ForgotPasswordResult({
-    required this.email,
-    required this.message,
-  });
+  const ForgotPasswordResult({required this.email, required this.message});
 
   final String email;
   final String message;
@@ -604,10 +430,7 @@ class ForgotPasswordResult {
 // ============================================================
 
 class ResetPasswordResult {
-  const ResetPasswordResult({
-    required this.email,
-    required this.message,
-  });
+  const ResetPasswordResult({required this.email, required this.message});
 
   final String email;
   final String message;
@@ -618,9 +441,7 @@ class ResetPasswordResult {
 // ============================================================
 
 class AuthException implements Exception {
-  const AuthException(
-      this.message,
-      );
+  const AuthException(this.message);
 
   final String message;
 
@@ -632,8 +453,7 @@ class AuthException implements Exception {
 // REGISTER EXCEPTION
 // ============================================================
 
-class AuthRegisterException
-    extends AuthException {
+class AuthRegisterException extends AuthException {
   const AuthRegisterException({
     required String message,
     this.statusCode,
@@ -650,77 +470,53 @@ class AuthRegisterException
 // HELPERS
 // ============================================================
 
-Map<String, dynamic> _asMap(
-    dynamic value,
-    ) {
+Map<String, dynamic> _asMap(dynamic value) {
   if (value is Map<String, dynamic>) {
     return value;
   }
 
   if (value is Map) {
-    return Map<String, dynamic>.from(
-      value,
-    );
+    return Map<String, dynamic>.from(value);
   }
 
-  throw const FormatException(
-    'Invalid data returned from the server.',
-  );
+  throw const FormatException('Invalid data returned from the server.');
 }
 
-Map<String, dynamic> _asMapOrEmpty(
-    dynamic value,
-    ) {
+Map<String, dynamic> _asMapOrEmpty(dynamic value) {
   if (value is Map<String, dynamic>) {
     return value;
   }
 
   if (value is Map) {
-    return Map<String, dynamic>.from(
-      value,
-    );
+    return Map<String, dynamic>.from(value);
   }
 
   return <String, dynamic>{};
 }
 
-String _parseMessage(
-    dynamic value,
-    ) {
+String _parseMessage(dynamic value) {
   if (value == null) {
     return '';
   }
 
   if (value is List) {
     return value
-        .where(
-          (item) => item != null,
-    )
-        .map(
-          (item) =>
-          item.toString().trim(),
-    )
-        .where(
-          (item) => item.isNotEmpty,
-    )
+        .where((item) => item != null)
+        .map((item) => item.toString().trim())
+        .where((item) => item.isNotEmpty)
         .join(', ');
   }
 
   return value.toString().trim();
 }
 
-int? _parseStatusCode(
-    dynamic value, {
-      int? fallback,
-    }) {
+int? _parseStatusCode(dynamic value, {int? fallback}) {
   if (value is int) {
     return value;
   }
 
   if (value != null) {
-    final parsed = int.tryParse(
-      value.toString(),
-    );
+    final parsed = int.tryParse(value.toString());
 
     if (parsed != null) {
       return parsed;
@@ -730,40 +526,27 @@ int? _parseStatusCode(
   return fallback;
 }
 
-bool _isSuccessStatus(
-    int? statusCode,
-    ) {
-  return statusCode != null &&
-      statusCode >= 200 &&
-      statusCode < 300;
+bool _isSuccessStatus(int? statusCode) {
+  return statusCode != null && statusCode >= 200 && statusCode < 300;
 }
 
 bool _parseRequiresVerification({
   required Map<String, dynamic> data,
   required String message,
 }) {
-  final value =
-  data['requiresVerification'];
+  final value = data['requiresVerification'];
 
   if (value == true) {
     return true;
   }
 
-  if (value is String &&
-      value.toLowerCase() == 'true') {
+  if (value is String && value.toLowerCase() == 'true') {
     return true;
   }
 
-  final lowerMessage =
-  message.toLowerCase();
+  final lowerMessage = message.toLowerCase();
 
-  return lowerMessage.contains(
-    'not been verified',
-  ) ||
-      lowerMessage.contains(
-        'not verified',
-      ) ||
-      lowerMessage.contains(
-        'verify your email',
-      );
+  return lowerMessage.contains('not been verified') ||
+      lowerMessage.contains('not verified') ||
+      lowerMessage.contains('verify your email');
 }

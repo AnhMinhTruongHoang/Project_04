@@ -5,40 +5,27 @@ import 'package:go_router/go_router.dart';
 import '../data/auth_service.dart';
 import 'widgets/auth_page_shell.dart';
 
-class ResetPasswordScreen
-    extends StatefulWidget {
-  const ResetPasswordScreen({
-    super.key,
-    this.initialEmail = '',
-  });
+class ResetPasswordScreen extends StatefulWidget {
+  const ResetPasswordScreen({super.key, this.initialEmail = ''});
 
   final String initialEmail;
 
   @override
-  State<ResetPasswordScreen>
-  createState() =>
-      _ResetPasswordScreenState();
+  State<ResetPasswordScreen> createState() => _ResetPasswordScreenState();
 }
 
-class _ResetPasswordScreenState
-    extends State<ResetPasswordScreen> {
-  final _formKey =
-  GlobalKey<FormState>();
+class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
+  final _formKey = GlobalKey<FormState>();
 
-  late final TextEditingController
-  _emailController;
+  late final TextEditingController _emailController;
 
-  final _otpController =
-  TextEditingController();
+  final _otpController = TextEditingController();
 
-  final _newPasswordController =
-  TextEditingController();
+  final _newPasswordController = TextEditingController();
 
-  final _rePasswordController =
-  TextEditingController();
+  final _rePasswordController = TextEditingController();
 
-  final AuthService _authService =
-  AuthService();
+  final AuthService _authService = AuthService();
 
   bool _loading = false;
 
@@ -52,10 +39,7 @@ class _ResetPasswordScreenState
   void initState() {
     super.initState();
 
-    _emailController =
-        TextEditingController(
-          text: widget.initialEmail,
-        );
+    _emailController = TextEditingController(text: widget.initialEmail);
   }
 
   @override
@@ -83,15 +67,11 @@ class _ResetPasswordScreenState
       return;
     }
 
-    final email = _emailController.text
-        .trim()
-        .toLowerCase();
+    final email = _emailController.text.trim().toLowerCase();
 
-    final otp =
-    _otpController.text.trim();
+    final otp = _otpController.text.trim();
 
-    final newPassword =
-        _newPasswordController.text;
+    final newPassword = _newPasswordController.text;
 
     setState(() {
       _loading = true;
@@ -100,8 +80,7 @@ class _ResetPasswordScreenState
     });
 
     try {
-      final result =
-      await _authService.resetPassword(
+      final result = await _authService.resetPassword(
         email: email,
         otp: otp,
         newPassword: newPassword,
@@ -117,9 +96,7 @@ class _ResetPasswordScreenState
       });
 
       // FE cũng chờ khoảng 900ms rồi quay về Sign in.
-      await Future.delayed(
-        const Duration(milliseconds: 900),
-      );
+      await Future.delayed(const Duration(milliseconds: 900));
 
       if (!mounted) {
         return;
@@ -142,8 +119,7 @@ class _ResetPasswordScreenState
 
       setState(() {
         _success = false;
-        _message =
-        'Reset password failed. Please try again.';
+        _message = 'Reset password failed. Please try again.';
       });
     } finally {
       if (mounted) {
@@ -164,60 +140,42 @@ class _ResetPasswordScreenState
       maxWidth: 500,
       onBack: () {
         if (!_loading) {
-          context.go(
-            '/auth/forgot-password',
-          );
+          context.go('/auth/forgot-password');
         }
       },
       child: Form(
         key: _formKey,
         child: Column(
-          crossAxisAlignment:
-          CrossAxisAlignment.stretch,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             _buildHeader(),
 
             const SizedBox(height: 26),
 
             if (_message.isNotEmpty) ...[
-              AuthStatusMessage(
-                message: _message,
-                success: _success,
-              ),
+              AuthStatusMessage(message: _message, success: _success),
               const SizedBox(height: 20),
             ],
 
             // ==================================================
             // EMAIL
             // ==================================================
-
             AuthFieldGroup(
               label: 'Email',
               child: TextFormField(
-                controller:
-                _emailController,
+                controller: _emailController,
                 enabled: !_loading,
-                keyboardType:
-                TextInputType.emailAddress,
-                textInputAction:
-                TextInputAction.next,
-                autofillHints: const [
-                  AutofillHints.email,
-                ],
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 15,
-                ),
-                decoration:
-                authInputDecoration(
-                  hint: 'your@email.com',
-                ).copyWith(
-                  prefixIcon: const Icon(
-                    Icons.mail_outline_rounded,
-                    color:
-                    Color(0xFF8B949E),
-                  ),
-                ),
+                keyboardType: TextInputType.emailAddress,
+                textInputAction: TextInputAction.next,
+                autofillHints: const [AutofillHints.email],
+                style: const TextStyle(color: Colors.white, fontSize: 15),
+                decoration: authInputDecoration(hint: 'your@email.com')
+                    .copyWith(
+                      prefixIcon: const Icon(
+                        Icons.mail_outline_rounded,
+                        color: Color(0xFF8B949E),
+                      ),
+                    ),
                 validator: _validateEmail,
               ),
             ),
@@ -227,43 +185,29 @@ class _ResetPasswordScreenState
             // ==================================================
             // OTP
             // ==================================================
-
             AuthFieldGroup(
               label: 'OTP Code',
               child: TextFormField(
-                controller:
-                _otpController,
+                controller: _otpController,
                 enabled: !_loading,
-                autofocus:
-                widget.initialEmail
-                    .isNotEmpty,
-                keyboardType:
-                TextInputType.number,
-                textInputAction:
-                TextInputAction.next,
+                autofocus: widget.initialEmail.isNotEmpty,
+                keyboardType: TextInputType.number,
+                textInputAction: TextInputAction.next,
                 maxLength: 6,
                 inputFormatters: [
-                  FilteringTextInputFormatter
-                      .digitsOnly,
-                  LengthLimitingTextInputFormatter(
-                    6,
-                  ),
+                  FilteringTextInputFormatter.digitsOnly,
+                  LengthLimitingTextInputFormatter(6),
                 ],
-                textAlign:
-                TextAlign.center,
+                textAlign: TextAlign.center,
                 style: const TextStyle(
                   color: Colors.white,
                   fontSize: 22,
-                  fontWeight:
-                  FontWeight.w900,
+                  fontWeight: FontWeight.w900,
                   letterSpacing: 8,
                 ),
-                decoration:
-                authInputDecoration(
+                decoration: authInputDecoration(
                   hint: '000000',
-                ).copyWith(
-                  counterText: '',
-                ),
+                ).copyWith(counterText: ''),
                 validator: _validateOtp,
               ),
             ),
@@ -273,60 +217,40 @@ class _ResetPasswordScreenState
             // ==================================================
             // NEW PASSWORD
             // ==================================================
-
             AuthFieldGroup(
               label: 'New Password',
               child: TextFormField(
-                controller:
-                _newPasswordController,
+                controller: _newPasswordController,
                 enabled: !_loading,
-                obscureText:
-                !_showNewPassword,
-                textInputAction:
-                TextInputAction.next,
-                autofillHints: const [
-                  AutofillHints.newPassword,
-                ],
-                style: const TextStyle(
-                  color: Colors.white,
-                ),
-                decoration:
-                authInputDecoration(
-                  hint: '••••••••',
-                ).copyWith(
+                obscureText: !_showNewPassword,
+                textInputAction: TextInputAction.next,
+                autofillHints: const [AutofillHints.newPassword],
+                style: const TextStyle(color: Colors.white),
+                decoration: authInputDecoration(hint: '••••••••').copyWith(
                   prefixIcon: const Icon(
-                    Icons
-                        .lock_outline_rounded,
-                    color:
-                    Color(0xFF8B949E),
+                    Icons.lock_outline_rounded,
+                    color: Color(0xFF8B949E),
                   ),
                   suffixIcon: IconButton(
-                    tooltip:
-                    _showNewPassword
+                    tooltip: _showNewPassword
                         ? 'Hide password'
                         : 'Show password',
                     onPressed: _loading
                         ? null
                         : () {
-                      setState(() {
-                        _showNewPassword =
-                        !_showNewPassword;
-                      });
-                    },
+                            setState(() {
+                              _showNewPassword = !_showNewPassword;
+                            });
+                          },
                     icon: Icon(
                       _showNewPassword
-                          ? Icons
-                          .visibility_outlined
-                          : Icons
-                          .visibility_off_outlined,
-                      color: const Color(
-                        0xFF8B949E,
-                      ),
+                          ? Icons.visibility_outlined
+                          : Icons.visibility_off_outlined,
+                      color: const Color(0xFF8B949E),
                     ),
                   ),
                 ),
-                validator:
-                _validateNewPassword,
+                validator: _validateNewPassword,
               ),
             ),
 
@@ -335,65 +259,45 @@ class _ResetPasswordScreenState
             // ==================================================
             // RE PASSWORD
             // ==================================================
-
             AuthFieldGroup(
               label: 'Re Password',
               child: TextFormField(
-                controller:
-                _rePasswordController,
+                controller: _rePasswordController,
                 enabled: !_loading,
-                obscureText:
-                !_showRePassword,
-                textInputAction:
-                TextInputAction.done,
-                autofillHints: const [
-                  AutofillHints.newPassword,
-                ],
+                obscureText: !_showRePassword,
+                textInputAction: TextInputAction.done,
+                autofillHints: const [AutofillHints.newPassword],
                 onFieldSubmitted: (_) {
                   if (!_loading) {
                     _submit();
                   }
                 },
-                style: const TextStyle(
-                  color: Colors.white,
-                ),
-                decoration:
-                authInputDecoration(
-                  hint: '••••••••',
-                ).copyWith(
+                style: const TextStyle(color: Colors.white),
+                decoration: authInputDecoration(hint: '••••••••').copyWith(
                   prefixIcon: const Icon(
-                    Icons
-                        .lock_outline_rounded,
-                    color:
-                    Color(0xFF8B949E),
+                    Icons.lock_outline_rounded,
+                    color: Color(0xFF8B949E),
                   ),
                   suffixIcon: IconButton(
-                    tooltip:
-                    _showRePassword
+                    tooltip: _showRePassword
                         ? 'Hide password'
                         : 'Show password',
                     onPressed: _loading
                         ? null
                         : () {
-                      setState(() {
-                        _showRePassword =
-                        !_showRePassword;
-                      });
-                    },
+                            setState(() {
+                              _showRePassword = !_showRePassword;
+                            });
+                          },
                     icon: Icon(
                       _showRePassword
-                          ? Icons
-                          .visibility_outlined
-                          : Icons
-                          .visibility_off_outlined,
-                      color: const Color(
-                        0xFF8B949E,
-                      ),
+                          ? Icons.visibility_outlined
+                          : Icons.visibility_off_outlined,
+                      color: const Color(0xFF8B949E),
                     ),
                   ),
                 ),
-                validator:
-                _validateRePassword,
+                validator: _validateRePassword,
               ),
             ),
 
@@ -402,7 +306,6 @@ class _ResetPasswordScreenState
             // ==================================================
             // RESET BUTTON
             // ==================================================
-
             AuthPrimaryButton(
               loading: _loading,
               onPressed: _submit,
@@ -415,34 +318,25 @@ class _ResetPasswordScreenState
             // ==================================================
             // BACK TO SIGN IN
             // ==================================================
-
             Row(
-              mainAxisAlignment:
-              MainAxisAlignment.center,
+              mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 const Text(
                   'Back to ',
-                  style: TextStyle(
-                    color:
-                    Color(0xFFB8B8B8),
-                    fontSize: 14,
-                  ),
+                  style: TextStyle(color: Color(0xFFB8B8B8), fontSize: 14),
                 ),
                 GestureDetector(
                   onTap: _loading
                       ? null
                       : () {
-                    context.go(
-                      '/login',
-                    );
-                  },
+                          context.go('/login');
+                        },
                   child: const Text(
                     'Sign in',
                     style: TextStyle(
                       color: authCyan,
                       fontSize: 14,
-                      fontWeight:
-                      FontWeight.w800,
+                      fontWeight: FontWeight.w800,
                     ),
                   ),
                 ),
@@ -466,23 +360,13 @@ class _ResetPasswordScreenState
           height: 68,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
-            color:
-            authOrange.withValues(
-              alpha: 0.14,
-            ),
+            color: authOrange.withValues(alpha: 0.14),
             border: Border.all(
-              color: const Color(
-                0xFFFF7A00,
-              ).withValues(
-                alpha: 0.40,
-              ),
+              color: const Color(0xFFFF7A00).withValues(alpha: 0.40),
             ),
             boxShadow: [
               BoxShadow(
-                color:
-                authOrange.withValues(
-                  alpha: 0.25,
-                ),
+                color: authOrange.withValues(alpha: 0.25),
                 blurRadius: 28,
               ),
             ],
@@ -502,8 +386,7 @@ class _ResetPasswordScreenState
           style: TextStyle(
             color: Colors.white,
             fontSize: 32,
-            fontWeight:
-            FontWeight.w900,
+            fontWeight: FontWeight.w900,
             letterSpacing: -0.8,
           ),
         ),
@@ -514,8 +397,7 @@ class _ResetPasswordScreenState
           'Enter your OTP and create a new password.',
           textAlign: TextAlign.center,
           style: TextStyle(
-            color:
-            Color(0xFF8B949E),
+            color: Color(0xFF8B949E),
             fontSize: 14,
             height: 1.45,
           ),
@@ -528,19 +410,14 @@ class _ResetPasswordScreenState
   // VALIDATION
   // ============================================================
 
-  String? _validateEmail(
-      String? value,
-      ) {
-    final email =
-        value?.trim() ?? '';
+  String? _validateEmail(String? value) {
+    final email = value?.trim() ?? '';
 
     if (email.isEmpty) {
       return 'Email is required.';
     }
 
-    final emailRegex = RegExp(
-      r'^[^\s@]+@[^\s@]+\.[^\s@]+$',
-    );
+    final emailRegex = RegExp(r'^[^\s@]+@[^\s@]+\.[^\s@]+$');
 
     if (!emailRegex.hasMatch(email)) {
       return 'Email is invalid.';
@@ -549,11 +426,8 @@ class _ResetPasswordScreenState
     return null;
   }
 
-  String? _validateOtp(
-      String? value,
-      ) {
-    final otp =
-        value?.trim() ?? '';
+  String? _validateOtp(String? value) {
+    final otp = value?.trim() ?? '';
 
     if (otp.isEmpty) {
       return 'OTP is required.';
@@ -566,11 +440,8 @@ class _ResetPasswordScreenState
     return null;
   }
 
-  String? _validateNewPassword(
-      String? value,
-      ) {
-    final password =
-        value ?? '';
+  String? _validateNewPassword(String? value) {
+    final password = value ?? '';
 
     if (password.trim().isEmpty) {
       return 'New password is required.';
@@ -584,16 +455,12 @@ class _ResetPasswordScreenState
     return null;
   }
 
-  String? _validateRePassword(
-      String? value,
-      ) {
-    if (value == null ||
-        value.isEmpty) {
+  String? _validateRePassword(String? value) {
+    if (value == null || value.isEmpty) {
       return 'Please re-enter your password.';
     }
 
-    if (value !=
-        _newPasswordController.text) {
+    if (value != _newPasswordController.text) {
       return 'Passwords do not match.';
     }
 

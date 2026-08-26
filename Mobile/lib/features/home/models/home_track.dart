@@ -57,10 +57,7 @@ class HomeTrack {
 
   factory HomeTrack.fromJson(dynamic value) {
     if (value is! Map) {
-      return const HomeTrack(
-        id: '',
-        title: 'Unknown track',
-      );
+      return const HomeTrack(id: '', title: 'Unknown track');
     }
 
     final json = Map<String, dynamic>.from(value);
@@ -68,28 +65,20 @@ class HomeTrack {
     Map<String, dynamic> uploader = {};
 
     if (json['uploader'] is Map) {
-      uploader = Map<String, dynamic>.from(
-        json['uploader'],
-      );
+      uploader = Map<String, dynamic>.from(json['uploader']);
     }
 
     return HomeTrack(
-      id: _string(
-        json['id'] ?? json['_id'],
-      ),
+      id: _string(json['id'] ?? json['_id']),
       title: _string(json['title']).isEmpty
           ? 'Unknown track'
           : _string(json['title']),
       slug: _nullableString(json['slug']),
       imgUrl: _nullableString(
-        json['imgUrl'] ??
-            json['image'] ??
-            json['thumbnail'],
+        json['imgUrl'] ?? json['image'] ?? json['thumbnail'],
       ),
       trackUrl: _nullableString(
-        json['trackUrl'] ??
-            json['audioUrl'] ??
-            json['audio'],
+        json['trackUrl'] ?? json['audioUrl'] ?? json['audio'],
       ),
       description:
       _nullableString(json['description']),
@@ -124,12 +113,9 @@ String _string(dynamic value) {
 }
 
 String? _nullableString(dynamic value) {
-  final result =
-  value?.toString().trim();
+  final result = value?.toString().trim();
 
-  if (result == null ||
-      result.isEmpty ||
-      result == 'null') {
+  if (result == null || result.isEmpty || result == 'null') {
     return null;
   }
 
@@ -145,10 +131,7 @@ int _toInt(dynamic value) {
     return value.toInt();
   }
 
-  return int.tryParse(
-    value?.toString() ?? '',
-  ) ??
-      0;
+  return int.tryParse(value?.toString() ?? '') ?? 0;
 }
 
 double? _toDouble(dynamic value) {

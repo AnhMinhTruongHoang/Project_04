@@ -9,11 +9,7 @@ void main() {
 
   DioClient.initialize();
 
-  runApp(
-    const ProviderScope(
-      child: SoundCloneApp(),
-    ),
-  );
+  runApp(const ProviderScope(child: SoundCloneApp()));
 }
 
 class SoundCloneApp extends StatelessWidget {
@@ -44,7 +40,6 @@ class SoundCloneApp extends StatelessWidget {
         // ========================================================
         // APP BAR
         // ========================================================
-
         appBarTheme: const AppBarTheme(
           backgroundColor: Color(0xFF0B0B0B),
           foregroundColor: Colors.white,
@@ -56,7 +51,6 @@ class SoundCloneApp extends StatelessWidget {
         // ========================================================
         // NAVIGATION FOOTER
         // ========================================================
-
         navigationBarTheme: NavigationBarThemeData(
           backgroundColor: const Color(0xFF0B0B0B),
 
@@ -64,46 +58,34 @@ class SoundCloneApp extends StatelessWidget {
 
           elevation: 0,
 
-          iconTheme: WidgetStateProperty.resolveWith(
-                (states) {
-              if (states.contains(WidgetState.selected)) {
-                return const IconThemeData(
-                  color: Color(0xFFFF5500),
-                  size: 27,
-                );
-              }
+          iconTheme: WidgetStateProperty.resolveWith((states) {
+            if (states.contains(WidgetState.selected)) {
+              return const IconThemeData(color: Color(0xFFFF5500), size: 27);
+            }
 
-              return const IconThemeData(
-                color: Color(0xFF8B8B8B),
-                size: 25,
-              );
-            },
-          ),
+            return const IconThemeData(color: Color(0xFF8B8B8B), size: 25);
+          }),
 
-          labelTextStyle: WidgetStateProperty.resolveWith(
-                (states) {
-              if (states.contains(WidgetState.selected)) {
-                return const TextStyle(
-                  color: Colors.white,
-                  fontSize: 11,
-                  fontWeight: FontWeight.w700,
-                );
-              }
-
+          labelTextStyle: WidgetStateProperty.resolveWith((states) {
+            if (states.contains(WidgetState.selected)) {
               return const TextStyle(
-                color: Color(0xFF888888),
+                color: Colors.white,
                 fontSize: 11,
-                fontWeight: FontWeight.w600,
+                fontWeight: FontWeight.w700,
               );
-            },
-          ),
+            }
+
+            return const TextStyle(
+              color: Color(0xFF888888),
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+            );
+          }),
         ),
 
         dividerColor: const Color(0xFF202020),
 
-        splashColor: Colors.white.withValues(
-          alpha: 0.05,
-        ),
+        splashColor: Colors.white.withValues(alpha: 0.05),
 
         highlightColor: Colors.transparent,
       ),

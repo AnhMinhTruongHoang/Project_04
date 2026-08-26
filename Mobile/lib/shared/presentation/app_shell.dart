@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../features/auth/models/user_model.dart';
+import '../../features/player/presentation/mini_player.dart';
 import 'widgets/soundclone_footer.dart';
 import 'widgets/soundclone_header.dart';
 
-class AppShell extends StatelessWidget {
+class AppShell extends ConsumerWidget {
   const AppShell({
     super.key,
     required this.navigationShell,
@@ -23,7 +25,7 @@ class AppShell extends StatelessWidget {
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     return Scaffold(
       backgroundColor: const Color(0xFF0D0D0D),
 
@@ -45,7 +47,19 @@ class AppShell extends StatelessWidget {
       ),
 
       // NỘI DUNG CỦA TỪNG TAB
-      body: navigationShell,
+      body: Stack(
+        children: [
+          Positioned.fill(
+            child: navigationShell,
+          ),
+          const Positioned(
+            left: 0,
+            right: 0,
+            bottom: 0,
+            child: MiniPlayer(),
+          ),
+        ],
+      ),
 
       // FOOTER DÙNG CHUNG
       bottomNavigationBar: SoundCloneFooter(

@@ -12,6 +12,7 @@ class HomeFeed {
     this.kpopTracks = const [],
     this.popTracks = const [],
     this.lofiTracks = const [],
+    this.discoverTracks = const [],
   });
 
   final String historyTitle;
@@ -25,6 +26,7 @@ class HomeFeed {
   final List<HomeTrack> kpopTracks;
   final List<HomeTrack> popTracks;
   final List<HomeTrack> lofiTracks;
+  final List<HomeTrack> discoverTracks;
 
   bool get isEmpty {
     return historyTracks.isEmpty &&
@@ -33,6 +35,7 @@ class HomeFeed {
         ncsTracks.isEmpty &&
         kpopTracks.isEmpty &&
         popTracks.isEmpty &&
-        lofiTracks.isEmpty;
+        lofiTracks.isEmpty &&
+        discoverTracks.isEmpty;
   }
 }

@@ -1154,6 +1154,10 @@ class ApiService {
     return _request(method: 'GET', path: '/tracks/liked');
   }
 
+  Future<ApiResponse<dynamic>> increasePlayCountApi(String trackId) {
+    return _request(method: 'POST', path: '/tracks/${_id(trackId)}/play');
+  }
+
   /*
    * COMPATIBILITY ALIAS.
    *

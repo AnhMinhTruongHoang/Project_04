@@ -18,6 +18,10 @@ class PlayerSocialController extends Notifier<PlayerSocialState> {
   PlayerSocialState build() {
     _apiService = ApiService.instance;
 
+    ref.listen(likedTracksProvider, (_, next) {
+      next.whenData(markTracksLiked);
+    });
+
     return const PlayerSocialState();
   }
 
@@ -224,6 +228,32 @@ class PlayerSocialController extends Notifier<PlayerSocialState> {
     if (track.id.isNotEmpty) {
       _markTrackLiked(track.id);
     }
+  }
+
+  void markTrackUnliked(HomeTrack track) {
+    if (track.id.isNotEmpty) {
+      _markTrackUnliked(track.id);
+    }
+  }
+
+  void markTracksLiked(Iterable<HomeTrack> tracks) {
+    final ids = tracks
+        .map((track) => track.id)
+        .where((id) => id.isNotEmpty)
+        .toSet();
+
+    if (ids.isEmpty) {
+      return;
+    }
+
+    state = state.copyWith(
+      likedTrackIds: {...state.likedTrackIds, ...ids},
+      trackLikeCounts: {
+        ...state.trackLikeCounts,
+        for (final track in tracks)
+          if (track.id.isNotEmpty) track.id: track.countLike,
+      },
+    );
   }
 
   void markArtistFollowed(HomeTrack track) {

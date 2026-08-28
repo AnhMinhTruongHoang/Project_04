@@ -79,8 +79,8 @@ class PlayerController extends Notifier<PlayerState> {
 
     final nextIndex = max(0, foundIndex);
 
-    // Lưu lịch sử bài cũ trước khi chuyển bài
-    await _saveCurrentHistory(playing: false);
+    // Lưu lịch sử bài cũ chạy nền, không chặn việc chuyển sang bài mới.
+    unawaited(_saveCurrentHistory(playing: false));
 
     _historyTimer?.cancel();
 
@@ -339,13 +339,6 @@ class PlayerController extends Notifier<PlayerState> {
          */
         final isPlaying = playerState.playing && !completed;
 
-        debugPrint(
-          'AUDIO STATE => '
-          'playing=${playerState.playing}, '
-          'isPlaying=$isPlaying, '
-          'processing=$processingState',
-        );
-
         state = state.copyWith(isPlaying: isPlaying, isLoading: loading);
 
         if (completed) {
@@ -472,3 +465,4 @@ class PlayerController extends Notifier<PlayerState> {
     }
   }
 }
+

@@ -4,10 +4,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../services/api/api_service.dart';
 import '../../home/models/home_track.dart';
 import '../../home/providers/home_provider.dart';
+import '../../library/providers/library_provider.dart';
 import '../../player/providers/player_provider.dart';
 import '../../player/providers/player_social_provider.dart';
 import '../../profile/presentation/profile_screen.dart';
-import '../providers/liked_tracks_provider.dart';
 
 class LikeScreen extends ConsumerWidget {
   const LikeScreen({super.key});

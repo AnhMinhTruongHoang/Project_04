@@ -168,13 +168,14 @@ class PlaylistsScreen extends ConsumerWidget {
       backgroundColor: const Color(0xFF161616),
       isScrollControlled: true,
       showDragHandle: true,
+      useRootNavigator: true,
       builder: (context) {
         return Padding(
           padding: EdgeInsets.fromLTRB(
             18,
             4,
             18,
-            MediaQuery.of(context).viewInsets.bottom + 18,
+            MediaQuery.of(context).viewInsets.bottom + 104,
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -266,6 +267,7 @@ class PlaylistsScreen extends ConsumerWidget {
       backgroundColor: const Color(0xFF161616),
       isScrollControlled: true,
       showDragHandle: true,
+      useRootNavigator: true,
       builder: (context) {
         return StatefulBuilder(
           builder: (context, setState) {
@@ -274,7 +276,7 @@ class PlaylistsScreen extends ConsumerWidget {
                 18,
                 4,
                 18,
-                MediaQuery.of(context).viewInsets.bottom + 18,
+                MediaQuery.of(context).viewInsets.bottom + 104,
               ),
               child: Column(
                 mainAxisSize: MainAxisSize.min,

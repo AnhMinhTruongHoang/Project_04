@@ -26,6 +26,8 @@ class AppShell extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final keyboardOpen = MediaQuery.viewInsetsOf(context).bottom > 0;
+
     return Scaffold(
       backgroundColor: const Color(0xFF0D0D0D),
 
@@ -52,12 +54,13 @@ class AppShell extends ConsumerWidget {
           Positioned.fill(
             child: navigationShell,
           ),
-          const Positioned(
-            left: 0,
-            right: 0,
-            bottom: 0,
-            child: MiniPlayer(),
-          ),
+          if (!keyboardOpen)
+            const Positioned(
+              left: 0,
+              right: 0,
+              bottom: 0,
+              child: MiniPlayer(),
+            ),
         ],
       ),
 

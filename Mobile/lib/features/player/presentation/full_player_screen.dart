@@ -97,9 +97,7 @@ class _FullPlayerScreenState extends ConsumerState<FullPlayerScreen> {
                     ),
                     const SizedBox(height: 26),
                     _ActionRow(
-                      likeCount: _likeCount > social.likeCountFor(track)
-                          ? _likeCount
-                          : social.likeCountFor(track),
+                      likeCount: social.likeCountFor(track),
                       commentCount: _commentCount,
                       isLiking: _isLiking,
                       isLiked: social.isTrackLiked(track),
@@ -618,6 +616,18 @@ class _CenterControls extends ConsumerWidget {
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
         _RoundButton(
+          tooltip: 'Previous',
+          icon: Icons.skip_previous_rounded,
+          onPressed: player.hasPrevious
+              ? ref.read(playerProvider.notifier).previous
+              : null,
+          backgroundColor: const Color(0xE6000000),
+          foregroundColor: Colors.white,
+          size: 74,
+          iconSize: 42,
+        ),
+        const SizedBox(width: 24),
+        _RoundButton(
           key: ValueKey('full-player-${player.isPlaying}'),
           tooltip: player.isPlaying ? 'Pause' : 'Play',
           icon: player.isPlaying
@@ -631,7 +641,7 @@ class _CenterControls extends ConsumerWidget {
           size: 88,
           iconSize: 48,
         ),
-        const SizedBox(width: 96),
+        const SizedBox(width: 24),
         _RoundButton(
           tooltip: 'Next',
           icon: Icons.skip_next_rounded,

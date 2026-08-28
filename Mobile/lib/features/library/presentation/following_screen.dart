@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../services/api/api_service.dart';
 import '../../auth/models/user_model.dart';
+import '../../player/providers/player_social_provider.dart';
 import '../providers/library_provider.dart';
 
 class FollowingScreen extends ConsumerWidget {
@@ -93,6 +94,7 @@ class FollowingScreen extends ConsumerWidget {
       }
 
       ref.invalidate(followingProvider);
+      ref.read(playerSocialProvider.notifier).markUserUnfollowed(user.id);
 
       if (!context.mounted) return;
 

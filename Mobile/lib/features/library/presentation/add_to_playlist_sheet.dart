@@ -14,6 +14,7 @@ Future<void> showAddToPlaylistSheet({
     context: context,
     backgroundColor: const Color(0xFF161616),
     showDragHandle: true,
+    useRootNavigator: true,
     builder: (context) {
       return _AddToPlaylistSheet(track: track);
     },

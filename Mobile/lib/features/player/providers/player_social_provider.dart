@@ -1,8 +1,11 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../services/api/api_service.dart';
+import '../../auth/models/user_model.dart';
 import '../../home/models/home_track.dart';
+import '../../home/providers/home_provider.dart';
 import '../../library/providers/library_provider.dart';
+import '../../profile/presentation/profile_screen.dart';
 import '../models/player_social_state.dart';
 
 final playerSocialProvider =
@@ -20,6 +23,10 @@ class PlayerSocialController extends Notifier<PlayerSocialState> {
 
     ref.listen(likedTracksProvider, (_, next) {
       next.whenData(markTracksLiked);
+    });
+
+    ref.listen(followingProvider, (_, next) {
+      next.whenData(markUsersFollowed);
     });
 
     return const PlayerSocialState();
@@ -48,7 +55,7 @@ class PlayerSocialController extends Notifier<PlayerSocialState> {
             _nextLikeCount(track, liked: false);
 
         _markTrackUnliked(track.id, countLike: countLike);
-        ref.invalidate(likedTracksProvider);
+        _invalidateTrackCollections();
 
         return PlayerSocialActionResult(
           success: true,
@@ -72,7 +79,7 @@ class PlayerSocialController extends Notifier<PlayerSocialState> {
             track.id,
             countLike: _countLikeFromResponse(response.data),
           );
-          ref.invalidate(likedTracksProvider);
+          _invalidateTrackCollections();
 
           return PlayerSocialActionResult(
             success: true,
@@ -91,7 +98,7 @@ class PlayerSocialController extends Notifier<PlayerSocialState> {
           _nextLikeCount(track, liked: true);
 
       _markTrackLiked(track.id, countLike: countLike);
-      ref.invalidate(likedTracksProvider);
+      _invalidateTrackCollections();
 
       return PlayerSocialActionResult(
         success: true,
@@ -104,7 +111,7 @@ class PlayerSocialController extends Notifier<PlayerSocialState> {
           track.id,
           countLike: _nextLikeCount(track, liked: true),
         );
-        ref.invalidate(likedTracksProvider);
+        _invalidateTrackCollections();
 
         return PlayerSocialActionResult(
           success: true,
@@ -150,6 +157,7 @@ class PlayerSocialController extends Notifier<PlayerSocialState> {
         }
 
         _markArtistUnfollowed(uploaderId);
+        _invalidateFollowCollections();
 
         return const PlayerSocialActionResult(
           success: true,
@@ -182,6 +190,7 @@ class PlayerSocialController extends Notifier<PlayerSocialState> {
       }
 
       _markArtistFollowed(uploaderId);
+      _invalidateFollowCollections();
 
       return const PlayerSocialActionResult(
         success: true,
@@ -233,6 +242,7 @@ class PlayerSocialController extends Notifier<PlayerSocialState> {
   void markTrackUnliked(HomeTrack track) {
     if (track.id.isNotEmpty) {
       _markTrackUnliked(track.id);
+      _invalidateTrackCollections();
     }
   }
 
@@ -262,6 +272,24 @@ class PlayerSocialController extends Notifier<PlayerSocialState> {
     if (uploaderId != null && uploaderId.isNotEmpty) {
       _markArtistFollowed(uploaderId);
     }
+  }
+
+  void markUserUnfollowed(String userId) {
+    if (userId.isNotEmpty) {
+      _markArtistUnfollowed(userId);
+      _invalidateFollowCollections();
+    }
+  }
+
+  void markUsersFollowed(Iterable<UserModel> users) {
+    final ids = users
+        .map((user) => user.id)
+        .where((id) => id.isNotEmpty)
+        .toSet();
+
+    state = state.copyWith(
+      followedUserIds: ids,
+    );
   }
 
   int _nextLikeCount(HomeTrack track, {required bool liked}) {
@@ -315,6 +343,21 @@ class PlayerSocialController extends Notifier<PlayerSocialState> {
           if (id != uploaderId) id,
       },
     );
+  }
+
+  void _invalidateTrackCollections() {
+    ref.invalidate(likedTracksProvider);
+    ref.invalidate(homeFeedProvider);
+    ref.invalidate(profileTracksProvider);
+    ref.invalidate(profilePlaylistsProvider);
+    ref.invalidate(playlistsProvider);
+    ref.invalidate(albumsProvider);
+    ref.invalidate(suggestedTracksProvider);
+  }
+
+  void _invalidateFollowCollections() {
+    ref.invalidate(followingProvider);
+    ref.invalidate(homeFeedProvider);
   }
 }
 

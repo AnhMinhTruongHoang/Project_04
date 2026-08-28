@@ -149,20 +149,6 @@ class DioClient {
       ),
     );
 
-    // ==========================================================
-    // LOGGING
-    // ==========================================================
-
-    instance.interceptors.add(
-      LogInterceptor(
-        request: true,
-        requestBody: true,
-        requestHeader: false,
-        responseBody: true,
-        responseHeader: false,
-        error: true,
-      ),
-    );
   }
 
   // ============================================================

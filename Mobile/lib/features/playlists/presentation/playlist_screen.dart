@@ -142,6 +142,7 @@ class PlaylistScreen extends ConsumerWidget {
       context: context,
       isScrollControlled: true,
       useSafeArea: true,
+      useRootNavigator: true,
       backgroundColor: const Color(0xFF181A1B),
       builder: (sheetContext) => StatefulBuilder(
         builder: (context, setState) {

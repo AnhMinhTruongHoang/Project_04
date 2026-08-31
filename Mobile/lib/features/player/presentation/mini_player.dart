@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import 'full_player_screen.dart';
 import '../../home/models/home_track.dart';
@@ -410,14 +411,34 @@ class _MiniPlayerState extends ConsumerState<MiniPlayer> {
                                 // ----------------------------------
                                 // ARTIST
                                 // ----------------------------------
-                                Text(
-                                  displayTrack.artistName,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: const TextStyle(
-                                    color: Color(0xFFB5B5B5),
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w500,
+                                MouseRegion(
+                                  cursor: SystemMouseCursors.click,
+                                  child: Tooltip(
+                                    message: 'Open artist profile',
+                                    child: GestureDetector(
+                                      behavior: HitTestBehavior.opaque,
+                                      onTap: () {
+                                        final uploaderId =
+                                            displayTrack.uploaderId;
+
+                                        if (uploaderId == null ||
+                                            uploaderId.isEmpty) {
+                                          return;
+                                        }
+
+                                        context.push('/profile/$uploaderId');
+                                      },
+                                      child: Text(
+                                        displayTrack.artistName,
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: const TextStyle(
+                                          color: Color(0xFFB5B5B5),
+                                          fontSize: 13,
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                                      ),
+                                    ),
                                   ),
                                 ),
                               ],

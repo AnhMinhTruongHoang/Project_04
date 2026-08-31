@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
+
+import '../data/news_articles.dart';
 
 class NewsScreen extends StatefulWidget {
   const NewsScreen({super.key});
@@ -25,55 +28,16 @@ class _NewsScreenState extends State<NewsScreen> {
     'K-Pop',
   ];
 
-  static const List<_NewsArticle> _articles = [
-    _NewsArticle(
-      image: 'assets/images/news/blackpink01.jpg',
-      category: 'K-Pop',
-      title: 'BLACKPINK: Four Voices, One Visual Language',
-      description:
-          'An editorial journey through BLACKPINK distinct identities, iconic performances, global influence, and a powerful black-and-pink universe.',
-      author: 'SoundClone',
-      readTime: '6 min read',
-    ),
-    _NewsArticle(
-      image: 'assets/images/news/weeknd01.jpg',
-      category: 'Synth-Pop',
-      title: 'Blinding Lights: The Red-Neon Fever Dream',
-      description:
-          'A midnight ride through neon loneliness, retro synths, fast cars, and the cinematic visual language behind a pop era.',
-      author: 'Minh',
-      readTime: '5 min read',
-    ),
-    _NewsArticle(
-      image: 'assets/images/news/sontungP.jpg',
-      category: 'V-Pop',
-      title: 'Son Tung M-TP: Pop As A Visual Era',
-      description:
-          'A cinematic look at image, ambition, sound, and the influence behind modern Vietnamese pop culture.',
-      author: 'SoundClone',
-      readTime: '7 min read',
-    ),
-    _NewsArticle(
-      image: 'assets/images/news/ncs.jpg',
-      category: 'Electronic',
-      title: 'NCS: The Colored Circles That Powered Creators',
-      description:
-          'The story of NoCopyrightSounds, electronic music culture, independent creators, and an identity recognized worldwide.',
-      author: 'Minh',
-      readTime: '4 min read',
-    ),
-  ];
-
   @override
   void dispose() {
     _searchController.dispose();
     super.dispose();
   }
 
-  List<_NewsArticle> get _filteredArticles {
+  List<NewsArticle> get _filteredArticles {
     final normalizedQuery = _query.trim().toLowerCase();
 
-    return _articles.where((article) {
+    return newsArticles.where((article) {
       final matchesCategory =
           _category == 'All' || article.category == _category;
       final matchesQuery = normalizedQuery.isEmpty ||
@@ -140,7 +104,10 @@ class _NewsScreenState extends State<NewsScreen> {
           ),
           const SizedBox(height: 22),
           if (featured != null) ...[
-            _FeaturedArticleCard(article: featured),
+            _FeaturedArticleCard(
+              article: featured,
+              onTap: () => context.push('/news/${featured.slug}'),
+            ),
             const SizedBox(height: 24),
           ],
           Row(
@@ -168,7 +135,12 @@ class _NewsScreenState extends State<NewsScreen> {
           if (articles.isEmpty)
             const _EmptyNewsState()
           else
-            ...articles.map((article) => _NewsListArticle(article: article)),
+            ...articles.map((article) {
+              return _NewsListArticle(
+                article: article,
+                onTap: () => context.push('/news/${article.slug}'),
+              );
+            }),
         ],
       ),
     );
@@ -268,16 +240,25 @@ class _CategoryChips extends StatelessWidget {
 }
 
 class _FeaturedArticleCard extends StatelessWidget {
-  const _FeaturedArticleCard({required this.article});
+  const _FeaturedArticleCard({
+    required this.article,
+    required this.onTap,
+  });
 
-  final _NewsArticle article;
+  final NewsArticle article;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    return ClipRRect(
+    return Material(
+      color: _NewsScreenState._surface,
       borderRadius: BorderRadius.circular(8),
-      child: DecoratedBox(
-        decoration: const BoxDecoration(color: _NewsScreenState._surface),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        hoverColor: const Color(0x2200E5D4),
+        splashColor: const Color(0x3300E5D4),
+        mouseCursor: SystemMouseCursors.click,
+        onTap: onTap,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -327,53 +308,64 @@ class _FeaturedArticleCard extends StatelessWidget {
 }
 
 class _NewsListArticle extends StatelessWidget {
-  const _NewsListArticle({required this.article});
+  const _NewsListArticle({
+    required this.article,
+    required this.onTap,
+  });
 
-  final _NewsArticle article;
+  final NewsArticle article;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 14),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          ClipRRect(
-            borderRadius: BorderRadius.circular(8),
-            child: Image.asset(
-              article.image,
-              width: 104,
-              height: 104,
-              fit: BoxFit.cover,
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: SizedBox(
-              height: 104,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _ArticleTag(article.category),
-                  const SizedBox(height: 7),
-                  Text(
-                    article.title,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 15,
-                      height: 1.12,
-                      fontWeight: FontWeight.w900,
-                    ),
-                  ),
-                  const Spacer(),
-                  _ArticleMeta(article: article),
-                ],
+    return InkWell(
+      borderRadius: BorderRadius.circular(8),
+      hoverColor: const Color(0x1A00E5D4),
+      splashColor: const Color(0x3300E5D4),
+      mouseCursor: SystemMouseCursors.click,
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.only(bottom: 14),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            ClipRRect(
+              borderRadius: BorderRadius.circular(8),
+              child: Image.asset(
+                article.image,
+                width: 104,
+                height: 104,
+                fit: BoxFit.cover,
               ),
             ),
-          ),
-        ],
+            const SizedBox(width: 12),
+            Expanded(
+              child: SizedBox(
+                height: 104,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _ArticleTag(article.category),
+                    const SizedBox(height: 7),
+                    Text(
+                      article.title,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 15,
+                        height: 1.12,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                    const Spacer(),
+                    _ArticleMeta(article: article),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -402,7 +394,7 @@ class _ArticleTag extends StatelessWidget {
 class _ArticleMeta extends StatelessWidget {
   const _ArticleMeta({required this.article});
 
-  final _NewsArticle article;
+  final NewsArticle article;
 
   @override
   Widget build(BuildContext context) {
@@ -461,22 +453,4 @@ class _EmptyNewsState extends StatelessWidget {
       ),
     );
   }
-}
-
-class _NewsArticle {
-  const _NewsArticle({
-    required this.image,
-    required this.category,
-    required this.title,
-    required this.description,
-    required this.author,
-    required this.readTime,
-  });
-
-  final String image;
-  final String category;
-  final String title;
-  final String description;
-  final String author;
-  final String readTime;
 }

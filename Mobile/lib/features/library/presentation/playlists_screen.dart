@@ -607,6 +607,8 @@ class _FilterOptionTile extends StatelessWidget {
   Widget build(BuildContext context) {
     return ListTile(
       contentPadding: EdgeInsets.zero,
+      hoverColor: const Color(0x1AFF5500),
+      mouseCursor: SystemMouseCursors.click,
       title: Text(
         title,
         style: const TextStyle(
@@ -689,6 +691,8 @@ class _PlaylistTile extends StatelessWidget {
     return ListTile(
       minVerticalPadding: 10,
       contentPadding: const EdgeInsets.symmetric(horizontal: 6),
+      hoverColor: const Color(0x1AFF5500),
+      mouseCursor: SystemMouseCursors.click,
       leading: ClipRRect(
         borderRadius: BorderRadius.circular(8),
         child: Container(

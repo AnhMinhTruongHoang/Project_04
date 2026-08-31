@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../services/api/api_service.dart';
 import '../../auth/models/user_model.dart';
@@ -653,6 +654,8 @@ class _SuggestionTile extends StatelessWidget {
   Widget build(BuildContext context) {
     return ListTile(
       contentPadding: EdgeInsets.zero,
+      hoverColor: const Color(0x1AFF5500),
+      mouseCursor: SystemMouseCursors.click,
       leading: const Icon(
         Icons.search_rounded,
         color: Color(0xFFBDBDBD),
@@ -692,6 +695,8 @@ class _RecentSearchTile extends StatelessWidget {
     return ListTile(
       contentPadding: EdgeInsets.zero,
       minLeadingWidth: 0,
+      hoverColor: const Color(0x1AFF5500),
+      mouseCursor: SystemMouseCursors.click,
       leading: const SizedBox(
         width: 56,
         height: 56,
@@ -759,6 +764,8 @@ class _UserResultTile extends StatelessWidget {
 
     return ListTile(
       contentPadding: EdgeInsets.zero,
+      hoverColor: const Color(0x1AFF5500),
+      mouseCursor: SystemMouseCursors.click,
       leading: CircleAvatar(
         radius: 29,
         backgroundColor: const Color(0xFF2A2A2A),
@@ -783,11 +790,7 @@ class _UserResultTile extends StatelessWidget {
         style: const TextStyle(color: Color(0xFFAAAAAA)),
       ),
       onTap: () {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Public profile will be added later.'),
-          ),
-        );
+        context.push('/profile/${user.id}');
       },
     );
   }
@@ -808,6 +811,8 @@ class _TrackResultTile extends StatelessWidget {
 
     return ListTile(
       contentPadding: EdgeInsets.zero,
+      hoverColor: const Color(0x1AFF5500),
+      mouseCursor: SystemMouseCursors.click,
       leading: ClipRRect(
         borderRadius: BorderRadius.circular(8),
         child: Container(
@@ -899,4 +904,3 @@ class _SearchStateMessage extends StatelessWidget {
     );
   }
 }
-

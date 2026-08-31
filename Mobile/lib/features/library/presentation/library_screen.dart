@@ -370,6 +370,9 @@ class _RecentCard extends ConsumerWidget {
 
     return InkWell(
       borderRadius: BorderRadius.circular(8),
+      hoverColor: const Color(0x1AFF5500),
+      splashColor: const Color(0x33FF5500),
+      mouseCursor: SystemMouseCursors.click,
       onTap: () {
         ref.read(playerProvider.notifier).playTrack(track, queue: queue);
       },
@@ -426,6 +429,9 @@ class _LibraryNavItem extends StatelessWidget {
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(8),
+      hoverColor: const Color(0x1AFF5500),
+      splashColor: const Color(0x33FF5500),
+      mouseCursor: SystemMouseCursors.click,
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: 18),
         child: Row(
@@ -482,6 +488,8 @@ class _HistoryTile extends ConsumerWidget {
 
     return ListTile(
       contentPadding: EdgeInsets.zero,
+      hoverColor: const Color(0x1AFF5500),
+      mouseCursor: SystemMouseCursors.click,
       leading: _Artwork(url: track.resolvedImageUrl),
       title: Text(
         track.title,

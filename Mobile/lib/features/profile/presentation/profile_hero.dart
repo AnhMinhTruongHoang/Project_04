@@ -4,10 +4,12 @@ class ProfileMobileHero extends ConsumerWidget {
   const ProfileMobileHero({
     super.key,
     required this.user,
+    required this.isOwner,
     required this.onUploadCover,
   });
 
   final UserModel user;
+  final bool isOwner;
   final VoidCallback onUploadCover;
 
   @override
@@ -46,26 +48,30 @@ class ProfileMobileHero extends ConsumerWidget {
             ),
           ),
         ),
-        Positioned(
-          top: 70,
-          right: 14,
-          child: FilledButton.icon(
-            onPressed: onUploadCover,
-            style: FilledButton.styleFrom(
-              backgroundColor: const Color(0xE6050505),
-              foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 10),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(5),
+        if (isOwner)
+          Positioned(
+            top: 70,
+            right: 14,
+            child: FilledButton.icon(
+              onPressed: onUploadCover,
+              style: FilledButton.styleFrom(
+                backgroundColor: const Color(0xE6050505),
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 13,
+                  vertical: 10,
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(5),
+                ),
+              ),
+              icon: const Icon(Icons.camera_alt_rounded, size: 17),
+              label: const Text(
+                'Upload header image',
+                style: TextStyle(fontSize: 12, fontWeight: FontWeight.w900),
               ),
             ),
-            icon: const Icon(Icons.camera_alt_rounded, size: 17),
-            label: const Text(
-              'Upload header image',
-              style: TextStyle(fontSize: 12, fontWeight: FontWeight.w900),
-            ),
           ),
-        ),
         Positioned(
           left: 18,
           right: 18,
@@ -142,23 +148,24 @@ class ProfileMobileHero extends ConsumerWidget {
                       ),
                     ),
                     const SizedBox(height: 6),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 4,
-                      ),
-                      color: const Color(0xB8000000),
-                      child: Text(
-                        user.email,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          color: Color(0xFFD0D0D0),
-                          fontSize: 13,
-                          fontWeight: FontWeight.w800,
+                    if (isOwner || _publicHandle(user).isNotEmpty)
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 4,
+                        ),
+                        color: const Color(0xB8000000),
+                        child: Text(
+                          isOwner ? user.email : _publicHandle(user),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            color: Color(0xFFD0D0D0),
+                            fontSize: 13,
+                            fontWeight: FontWeight.w800,
+                          ),
                         ),
                       ),
-                    ),
                     if (secondaryBadges.isNotEmpty) ...[
                       const SizedBox(height: 7),
                       Wrap(
@@ -184,10 +191,12 @@ class ProfileMobileDetails extends StatelessWidget {
   const ProfileMobileDetails({
     super.key,
     required this.user,
+    required this.isOwner,
     required this.onEdit,
     required this.onShare,
   });
   final UserModel user;
+  final bool isOwner;
   final VoidCallback onEdit;
   final VoidCallback onShare;
 
@@ -206,16 +215,18 @@ class ProfileMobileDetails extends StatelessWidget {
                 tooltip: 'Share',
                 onTap: onShare,
               ),
-              const SizedBox(width: 8),
-              OutlinedButton.icon(
-                onPressed: onEdit,
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: Colors.white,
-                  side: const BorderSide(color: Color(0xFF555555)),
+              if (isOwner) ...[
+                const SizedBox(width: 8),
+                OutlinedButton.icon(
+                  onPressed: onEdit,
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: Colors.white,
+                    side: const BorderSide(color: Color(0xFF555555)),
+                  ),
+                  icon: const Icon(Icons.edit_rounded, size: 16),
+                  label: const Text('Edit'),
                 ),
-                icon: const Icon(Icons.edit_rounded, size: 16),
-                label: const Text('Edit'),
-              ),
+              ],
             ],
           ),
           const SizedBox(height: 12),
@@ -257,6 +268,16 @@ class ProfileMobileDetails extends StatelessWidget {
       ),
     );
   }
+}
+
+String _publicHandle(UserModel user) {
+  final username = user.username?.trim() ?? '';
+
+  if (username.isEmpty || username.contains('@')) {
+    return '';
+  }
+
+  return '@$username';
 }
 
 class _HeroCoverFallback extends StatelessWidget {

@@ -3,6 +3,7 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter/services.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../services/api/api_service.dart';
 import '../../home/models/home_track.dart';
@@ -71,6 +72,7 @@ class _FullPlayerScreenState extends ConsumerState<FullPlayerScreen> {
                       title: track.title,
                       artist: track.artistName,
                       isFollowing: social.isArtistFollowed(track),
+                      onArtistTap: () => _openArtistProfile(track),
                       onFollow: () => _followArtist(track),
                       onClose: () {
                         Navigator.of(context).pop();
@@ -234,6 +236,17 @@ class _FullPlayerScreenState extends ConsumerState<FullPlayerScreen> {
     } else {
       _showAppToast(message: 'Could not follow this artist.');
     }
+  }
+
+  void _openArtistProfile(HomeTrack track) {
+    final uploaderId = track.uploaderId;
+
+    if (uploaderId == null || uploaderId.isEmpty) {
+      _showAppToast(message: 'This artist profile is unavailable.');
+      return;
+    }
+
+    context.push('/profile/$uploaderId');
   }
 
   Future<void> _shareTrack(HomeTrack track) async {
@@ -507,6 +520,7 @@ class _TopBar extends StatelessWidget {
     required this.title,
     required this.artist,
     required this.isFollowing,
+    required this.onArtistTap,
     required this.onFollow,
     required this.onClose,
   });
@@ -514,6 +528,7 @@ class _TopBar extends StatelessWidget {
   final String title;
   final String artist;
   final bool isFollowing;
+  final VoidCallback onArtistTap;
   final VoidCallback onFollow;
   final VoidCallback onClose;
 
@@ -532,10 +547,19 @@ class _TopBar extends StatelessWidget {
                 fontWeight: FontWeight.w900,
               ),
               const SizedBox(height: 6),
-              _TextChip(
-                text: artist,
-                fontSize: 21,
-                fontWeight: FontWeight.w800,
+              MouseRegion(
+                cursor: SystemMouseCursors.click,
+                child: Tooltip(
+                  message: 'Open artist profile',
+                  child: GestureDetector(
+                    onTap: onArtistTap,
+                    child: _TextChip(
+                      text: artist,
+                      fontSize: 21,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ),
               ),
             ],
           ),

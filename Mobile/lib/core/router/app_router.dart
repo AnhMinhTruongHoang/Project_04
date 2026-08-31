@@ -13,6 +13,7 @@ import '../../features/likes/presentation/like_screen.dart';
 import '../../features/library/presentation/library_screen.dart';
 import '../../features/library/presentation/playlists_screen.dart';
 
+import '../../features/news/presentation/news_detail_screen.dart';
 import '../../features/news/presentation/news_screen.dart';
 import '../../features/profile/presentation/profile_screen.dart';
 import '../../features/search/presentation/search_screen.dart';
@@ -130,6 +131,16 @@ final GoRouter appRouter = GoRouter(
               builder: (context, state) {
                 return const NewsScreen();
               },
+              routes: [
+                GoRoute(
+                  path: ':slug',
+                  builder: (context, state) {
+                    final slug = state.pathParameters['slug'] ?? '';
+
+                    return NewsDetailScreen(slug: slug);
+                  },
+                ),
+              ],
             ),
           ],
         ),
@@ -158,6 +169,16 @@ final GoRouter appRouter = GoRouter(
               builder: (context, state) {
                 return const ProfileScreen();
               },
+              routes: [
+                GoRoute(
+                  path: ':userId',
+                  builder: (context, state) {
+                    final userId = state.pathParameters['userId'] ?? '';
+
+                    return PublicProfileScreen(userId: userId);
+                  },
+                ),
+              ],
             ),
           ],
         ),

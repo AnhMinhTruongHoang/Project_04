@@ -109,7 +109,7 @@ class SoundCloneHeader extends ConsumerWidget implements PreferredSizeWidget {
         break;
 
       case 'news':
-        context.push('/blog');
+        context.go('/news');
         break;
 
       case 'library':

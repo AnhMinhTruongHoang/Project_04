@@ -13,6 +13,7 @@ import '../../features/likes/presentation/like_screen.dart';
 import '../../features/library/presentation/library_screen.dart';
 import '../../features/library/presentation/playlists_screen.dart';
 
+import '../../features/news/presentation/news_screen.dart';
 import '../../features/profile/presentation/profile_screen.dart';
 import '../../features/search/presentation/search_screen.dart';
 
@@ -127,10 +128,7 @@ final GoRouter appRouter = GoRouter(
             GoRoute(
               path: '/news',
               builder: (context, state) {
-                return const _PlaceholderScreen(
-                  title: 'News',
-                  icon: Icons.article_outlined,
-                );
+                return const NewsScreen();
               },
             ),
           ],

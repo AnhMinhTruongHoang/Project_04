@@ -117,6 +117,18 @@ class _AddToPlaylistSheet extends ConsumerWidget {
     required WidgetRef ref,
     required Playlist playlist,
   }) async {
+    final alreadyAdded = playlist.tracks.any((item) => item.id == track.id);
+
+    if (alreadyAdded) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('${track.title} is already in ${playlist.title}'),
+        ),
+      );
+
+      return;
+    }
+
     try {
       await ref.read(libraryServiceProvider).addTrackToPlaylist(
             playlist: playlist,

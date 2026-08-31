@@ -470,6 +470,43 @@ class _MiniPlayerState extends ConsumerState<MiniPlayer> {
                         },
                       ),
 
+                      IconButton(
+                        tooltip: 'Stop playback',
+                        color: Colors.white,
+                        iconSize: 28,
+                        onPressed: () async {
+                          if (_isTransitioning) {
+                            return;
+                          }
+
+                          try {
+                            await ref.read(playerProvider.notifier).stop();
+
+                            if (!context.mounted) {
+                              return;
+                            }
+
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('Playback stopped'),
+                                backgroundColor: MiniPlayer._orange,
+                              ),
+                            );
+                          } catch (_) {
+                            if (!context.mounted) {
+                              return;
+                            }
+
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('Could not stop playback.'),
+                              ),
+                            );
+                          }
+                        },
+                        icon: const Icon(Icons.close_rounded),
+                      ),
+
                       const SizedBox(width: 12),
                     ],
                   ),

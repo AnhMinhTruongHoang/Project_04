@@ -98,6 +98,8 @@ class LibraryService {
       isPublic: isPublic,
     );
 
+    _ensureSuccess(response);
+
     final data = _unwrap(response.data);
 
     if (data is Map) {
@@ -122,6 +124,8 @@ class LibraryService {
       },
     );
 
+    _ensureSuccess(response);
+
     final data = _unwrap(response.data);
 
     if (data is Map) {
@@ -132,11 +136,15 @@ class LibraryService {
   }
 
   Future<void> deletePlaylist(String playlistId) async {
-    await _apiService.deletePlaylistApi(playlistId);
+    final response = await _apiService.deletePlaylistApi(playlistId);
+
+    _ensureSuccess(response);
   }
 
   Future<void> unlikeTrack(String trackId) async {
-    await _apiService.dislikeTrackApi(trackId);
+    final response = await _apiService.dislikeTrackApi(trackId);
+
+    _ensureSuccess(response);
   }
 
   Future<void> addTrackToPlaylist({
@@ -217,5 +225,15 @@ class LibraryService {
         .map((item) => UserModel.fromJson(Map<String, dynamic>.from(item)))
         .where((user) => user.id.isNotEmpty)
         .toList();
+  }
+
+  void _ensureSuccess(ApiResponse<dynamic> response) {
+    if (response.isSuccess) {
+      return;
+    }
+
+    throw StateError(
+      response.message.isEmpty ? 'Request failed.' : response.message,
+    );
   }
 }

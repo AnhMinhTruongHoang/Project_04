@@ -10,8 +10,8 @@ import '../../features/auth/presentation/signup_screen.dart';
 import '../../features/auth/presentation/splash_screen.dart';
 import '../../features/auth/providers/auth_provider.dart';
 import '../../features/likes/presentation/like_screen.dart';
-import '../../features/playlists/presentation/playlist_screen.dart';
 import '../../features/library/presentation/library_screen.dart';
+import '../../features/library/presentation/playlists_screen.dart';
 
 import '../../features/profile/presentation/profile_screen.dart';
 
@@ -103,7 +103,7 @@ final GoRouter appRouter = GoRouter(
             GoRoute(
               path: '/playlist',
               builder: (context, state) {
-                return const PlaylistScreen();
+                return const PlaylistsScreen();
               },
             ),
           ],

@@ -14,6 +14,7 @@ import '../../features/library/presentation/library_screen.dart';
 import '../../features/library/presentation/playlists_screen.dart';
 
 import '../../features/profile/presentation/profile_screen.dart';
+import '../../features/search/presentation/search_screen.dart';
 
 import '../../shared/presentation/app_shell.dart';
 
@@ -79,7 +80,10 @@ final GoRouter appRouter = GoRouter(
     // ============================================================
     StatefulShellRoute.indexedStack(
       builder: (context, state, navigationShell) {
-        return _AuthenticatedShell(navigationShell: navigationShell);
+        return _AuthenticatedShell(
+          navigationShell: navigationShell,
+          currentLocation: state.uri.path,
+        );
       },
 
       branches: [
@@ -92,6 +96,12 @@ final GoRouter appRouter = GoRouter(
               path: '/home',
               builder: (context, state) {
                 return const AuthGate();
+              },
+            ),
+            GoRoute(
+              path: '/search',
+              builder: (context, state) {
+                return const SearchScreen();
               },
             ),
             GoRoute(
@@ -110,16 +120,16 @@ final GoRouter appRouter = GoRouter(
         ),
 
         // ========================================================
-        // SEARCH
+        // NEWS
         // ========================================================
         StatefulShellBranch(
           routes: [
             GoRoute(
-              path: '/search',
+              path: '/news',
               builder: (context, state) {
                 return const _PlaceholderScreen(
-                  title: 'Search',
-                  icon: Icons.search_rounded,
+                  title: 'News',
+                  icon: Icons.article_outlined,
                 );
               },
             ),
@@ -163,9 +173,13 @@ final GoRouter appRouter = GoRouter(
 // ================================================================
 
 class _AuthenticatedShell extends ConsumerWidget {
-  const _AuthenticatedShell({required this.navigationShell});
+  const _AuthenticatedShell({
+    required this.navigationShell,
+    required this.currentLocation,
+  });
 
   final StatefulNavigationShell navigationShell;
+  final String currentLocation;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -194,7 +208,11 @@ class _AuthenticatedShell extends ConsumerWidget {
           return const LoginScreen();
         }
 
-        return AppShell(navigationShell: navigationShell, user: user);
+        return AppShell(
+          navigationShell: navigationShell,
+          currentLocation: currentLocation,
+          user: user,
+        );
       },
     );
   }
@@ -204,8 +222,7 @@ class _AuthenticatedShell extends ConsumerWidget {
 // TEMPORARY PLACEHOLDER
 //
 // Chỉ còn sử dụng cho:
-// - Search
-// - Library
+// - News
 //
 // Profile đã có ProfileScreen riêng.
 // ================================================================

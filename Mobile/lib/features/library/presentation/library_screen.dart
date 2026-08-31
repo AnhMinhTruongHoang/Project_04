@@ -380,16 +380,16 @@ class _RecentCard extends ConsumerWidget {
           children: [
             _Artwork(
               url: track.resolvedImageUrl,
-              size: 136,
+              size: 124,
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: 8),
             Text(
               track.title,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: const TextStyle(
                 color: Colors.white,
-                fontSize: 15,
+                fontSize: 14,
                 fontWeight: FontWeight.w900,
               ),
             ),

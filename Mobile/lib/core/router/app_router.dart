@@ -18,6 +18,8 @@ import '../../features/news/presentation/news_screen.dart';
 import '../../features/notifications/presentation/notifications_screen.dart';
 import '../../features/profile/presentation/profile_screen.dart';
 import '../../features/search/presentation/search_screen.dart';
+import '../../features/home/models/home_track.dart';
+import '../../features/track/presentation/track_detail_screen.dart';
 
 import '../../shared/presentation/app_shell.dart';
 
@@ -123,6 +125,20 @@ final GoRouter appRouter = GoRouter(
               path: '/notifications',
               builder: (context, state) {
                 return const NotificationsScreen();
+              },
+            ),
+            GoRoute(
+              path: '/track/:trackId',
+              builder: (context, state) {
+                final trackId = state.pathParameters['trackId'] ?? '';
+                final initialTrack = state.extra is HomeTrack
+                    ? state.extra! as HomeTrack
+                    : null;
+
+                return TrackDetailScreen(
+                  trackId: trackId,
+                  initialTrack: initialTrack,
+                );
               },
             ),
           ],

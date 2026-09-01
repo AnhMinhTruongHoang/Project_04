@@ -2,6 +2,7 @@ import 'dart:ui';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../auth/models/user_model.dart';
 import '../../player/providers/player_provider.dart';
@@ -60,10 +61,7 @@ class HomeScreen extends ConsumerWidget {
                 physics: const AlwaysScrollableScrollPhysics(
                   parent: BouncingScrollPhysics(),
                 ),
-                padding: const EdgeInsets.only(
-                  top: 6,
-                  bottom: 178,
-                ),
+                padding: const EdgeInsets.only(top: 6, bottom: 178),
                 children: [
                   // ===============================================
                   // HISTORY
@@ -73,6 +71,9 @@ class HomeScreen extends ConsumerWidget {
                       title: data.historyTitle,
                       tracks: data.historyTracks,
                       onTrackTap: (track) {
+                        _openTrackDetail(context, track);
+                      },
+                      onTrackPlay: (track) {
                         ref
                             .read(playerProvider.notifier)
                             .playTrack(track, queue: data.historyTracks);
@@ -87,6 +88,9 @@ class HomeScreen extends ConsumerWidget {
                       title: data.becauseTitle,
                       tracks: data.becauseTracks,
                       onTrackTap: (track) {
+                        _openTrackDetail(context, track);
+                      },
+                      onTrackPlay: (track) {
                         ref
                             .read(playerProvider.notifier)
                             .playTrack(track, queue: data.becauseTracks);
@@ -101,6 +105,9 @@ class HomeScreen extends ConsumerWidget {
                       title: 'Hidden Gems',
                       tracks: data.hiddenGems,
                       onTrackTap: (track) {
+                        _openTrackDetail(context, track);
+                      },
+                      onTrackPlay: (track) {
                         ref
                             .read(playerProvider.notifier)
                             .playTrack(track, queue: data.hiddenGems);
@@ -115,6 +122,9 @@ class HomeScreen extends ConsumerWidget {
                       title: 'Top NCS',
                       tracks: data.ncsTracks,
                       onTrackTap: (track) {
+                        _openTrackDetail(context, track);
+                      },
+                      onTrackPlay: (track) {
                         ref
                             .read(playerProvider.notifier)
                             .playTrack(track, queue: data.ncsTracks);
@@ -129,6 +139,9 @@ class HomeScreen extends ConsumerWidget {
                       title: 'Top KPOP',
                       tracks: data.kpopTracks,
                       onTrackTap: (track) {
+                        _openTrackDetail(context, track);
+                      },
+                      onTrackPlay: (track) {
                         ref
                             .read(playerProvider.notifier)
                             .playTrack(track, queue: data.kpopTracks);
@@ -143,6 +156,9 @@ class HomeScreen extends ConsumerWidget {
                       title: 'Top POP',
                       tracks: data.popTracks,
                       onTrackTap: (track) {
+                        _openTrackDetail(context, track);
+                      },
+                      onTrackPlay: (track) {
                         ref
                             .read(playerProvider.notifier)
                             .playTrack(track, queue: data.popTracks);
@@ -157,6 +173,9 @@ class HomeScreen extends ConsumerWidget {
                       title: 'Top LOFI',
                       tracks: data.lofiTracks,
                       onTrackTap: (track) {
+                        _openTrackDetail(context, track);
+                      },
+                      onTrackPlay: (track) {
                         ref
                             .read(playerProvider.notifier)
                             .playTrack(track, queue: data.lofiTracks);
@@ -171,6 +190,9 @@ class HomeScreen extends ConsumerWidget {
                       title: 'Discover more music',
                       tracks: data.discoverTracks,
                       onTrackTap: (track) {
+                        _openTrackDetail(context, track);
+                      },
+                      onTrackPlay: (track) {
                         ref
                             .read(playerProvider.notifier)
                             .playTrack(track, queue: data.discoverTracks);
@@ -191,6 +213,16 @@ class HomeScreen extends ConsumerWidget {
   }
 }
 
+void _openTrackDetail(BuildContext context, HomeTrack track) {
+  final key = track.slug?.trim().isNotEmpty == true ? track.slug! : track.id;
+
+  if (key.isEmpty) {
+    return;
+  }
+
+  context.push('/track/$key', extra: track);
+}
+
 // ============================================================================
 // TRACK SECTION
 // ============================================================================
@@ -200,11 +232,13 @@ class _TrackSection extends StatefulWidget {
     required this.title,
     required this.tracks,
     required this.onTrackTap,
+    required this.onTrackPlay,
   });
 
   final String title;
   final List<HomeTrack> tracks;
   final ValueChanged<HomeTrack> onTrackTap;
+  final ValueChanged<HomeTrack> onTrackPlay;
 
   @override
   State<_TrackSection> createState() => _TrackSectionState();
@@ -239,9 +273,7 @@ class _TrackSectionState extends State<_TrackSection> {
             children: [
               Expanded(
                 child: Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 18,
-                  ),
+                  padding: const EdgeInsets.symmetric(horizontal: 18),
                   child: Text(
                     widget.title,
                     maxLines: 2,
@@ -278,22 +310,21 @@ class _TrackSectionState extends State<_TrackSection> {
               behavior: const _HorizontalTrackScrollBehavior(),
               child: ListView.separated(
                 controller: _controller,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 18,
-                ),
+                padding: const EdgeInsets.symmetric(horizontal: 18),
                 physics: const BouncingScrollPhysics(),
                 scrollDirection: Axis.horizontal,
                 itemCount: widget.tracks.length,
                 separatorBuilder: (_, _) {
-                  return const SizedBox(
-                    width: 14,
-                  );
+                  return const SizedBox(width: 14);
                 },
                 itemBuilder: (context, index) {
                   return _TrackCard(
                     track: widget.tracks[index],
                     onTap: () {
                       widget.onTrackTap(widget.tracks[index]);
+                    },
+                    onPlay: () {
+                      widget.onTrackPlay(widget.tracks[index]);
                     },
                   );
                 },
@@ -321,10 +352,7 @@ class _HorizontalTrackScrollBehavior extends MaterialScrollBehavior {
 }
 
 class _SectionScrollButton extends StatelessWidget {
-  const _SectionScrollButton({
-    required this.icon,
-    required this.onPressed,
-  });
+  const _SectionScrollButton({required this.icon, required this.onPressed});
 
   final IconData icon;
   final VoidCallback onPressed;
@@ -367,10 +395,12 @@ class _TrackCard extends StatelessWidget {
   const _TrackCard({
     required this.track,
     required this.onTap,
+    required this.onPlay,
   });
 
   final HomeTrack track;
   final VoidCallback onTap;
+  final VoidCallback onPlay;
 
   static const double _cardWidth = 145;
 
@@ -404,10 +434,12 @@ class _TrackCard extends StatelessWidget {
                       color: Color(0xFFFF5500),
                       shape: BoxShape.circle,
                     ),
-                    child: const Icon(
-                      Icons.play_arrow_rounded,
+                    child: IconButton(
+                      tooltip: 'Play',
+                      padding: EdgeInsets.zero,
                       color: Colors.white,
-                      size: 27,
+                      onPressed: onPlay,
+                      icon: const Icon(Icons.play_arrow_rounded, size: 27),
                     ),
                   ),
                 ),

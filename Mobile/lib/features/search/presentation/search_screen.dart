@@ -54,10 +54,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
       return;
     }
 
-    _debounce = Timer(
-      const Duration(milliseconds: 450),
-      () => _search(value),
-    );
+    _debounce = Timer(const Duration(milliseconds: 450), () => _search(value));
   }
 
   void _search(String value) {
@@ -135,10 +132,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
   }
 
   Future<void> _saveRecentSearches(List<String> values) {
-    return _storage.write(
-      key: _recentSearchesKey,
-      value: jsonEncode(values),
-    );
+    return _storage.write(key: _recentSearchesKey, value: jsonEncode(values));
   }
 
   void _applySuggestion(String value) {
@@ -162,9 +156,9 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
 
     final tracks = serverTracksResponse.isSuccess
         ? _resultList(serverTracksResponse.data)
-            .map(HomeTrack.fromJson)
-            .where((track) => track.id.isNotEmpty)
-            .toList()
+              .map(HomeTrack.fromJson)
+              .where((track) => track.id.isNotEmpty)
+              .toList()
         : <HomeTrack>[];
 
     final normalizedQuery = _normalizedText(query);
@@ -242,7 +236,8 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
 
     return _SearchUserData(
       items: userMap.values.toList(),
-      hasError: !responses[0].isSuccess &&
+      hasError:
+          !responses[0].isSuccess &&
           !responses[1].isSuccess &&
           !responses[2].isSuccess,
     );
@@ -360,8 +355,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                   : FutureBuilder<_SearchResults>(
                       future: _future,
                       builder: (context, snapshot) {
-                        if (snapshot.connectionState !=
-                            ConnectionState.done) {
+                        if (snapshot.connectionState != ConnectionState.done) {
                           return const Center(
                             child: CircularProgressIndicator(color: _orange),
                           );
@@ -533,10 +527,7 @@ class _SearchResults {
 }
 
 class _SearchUserData {
-  const _SearchUserData({
-    required this.items,
-    this.hasError = false,
-  });
+  const _SearchUserData({required this.items, this.hasError = false});
 
   final List<UserModel> items;
   final bool hasError;
@@ -582,10 +573,18 @@ class _SearchResultsList extends ConsumerWidget {
             return _TrackResultTile(
               track: track,
               onTap: () {
-                ref.read(playerProvider.notifier).playTrack(
-                      track,
-                      queue: results.tracks,
-                    );
+                final key = track.slug?.trim().isNotEmpty == true
+                    ? track.slug!
+                    : track.id;
+
+                if (key.isNotEmpty) {
+                  context.push('/track/$key', extra: track);
+                }
+              },
+              onPlay: () {
+                ref
+                    .read(playerProvider.notifier)
+                    .playTrack(track, queue: results.tracks);
               },
             );
           }),
@@ -642,10 +641,7 @@ class _SearchIdle extends StatelessWidget {
 }
 
 class _SuggestionTile extends StatelessWidget {
-  const _SuggestionTile({
-    required this.text,
-    required this.onTap,
-  });
+  const _SuggestionTile({required this.text, required this.onTap});
 
   final String text;
   final VoidCallback onTap;
@@ -656,10 +652,7 @@ class _SuggestionTile extends StatelessWidget {
       contentPadding: EdgeInsets.zero,
       hoverColor: const Color(0x1AFF5500),
       mouseCursor: SystemMouseCursors.click,
-      leading: const Icon(
-        Icons.search_rounded,
-        color: Color(0xFFBDBDBD),
-      ),
+      leading: const Icon(Icons.search_rounded, color: Color(0xFFBDBDBD)),
       title: Text(
         text,
         maxLines: 1,
@@ -670,10 +663,7 @@ class _SuggestionTile extends StatelessWidget {
           fontWeight: FontWeight.w700,
         ),
       ),
-      trailing: const Icon(
-        Icons.north_west_rounded,
-        color: Color(0xFFBDBDBD),
-      ),
+      trailing: const Icon(Icons.north_west_rounded, color: Color(0xFFBDBDBD)),
       onTap: onTap,
     );
   }
@@ -705,10 +695,7 @@ class _RecentSearchTile extends StatelessWidget {
             color: Color(0xFF242424),
             shape: BoxShape.circle,
           ),
-          child: Icon(
-            Icons.history_rounded,
-            color: Color(0xFFBDBDBD),
-          ),
+          child: Icon(Icons.history_rounded, color: Color(0xFFBDBDBD)),
         ),
       ),
       title: Text(
@@ -800,10 +787,12 @@ class _TrackResultTile extends StatelessWidget {
   const _TrackResultTile({
     required this.track,
     required this.onTap,
+    required this.onPlay,
   });
 
   final HomeTrack track;
   final VoidCallback onTap;
+  final VoidCallback onPlay;
 
   @override
   Widget build(BuildContext context) {
@@ -851,7 +840,7 @@ class _TrackResultTile extends StatelessWidget {
       trailing: IconButton(
         tooltip: 'Play',
         color: _SearchScreenState._orange,
-        onPressed: onTap,
+        onPressed: onPlay,
         icon: const Icon(Icons.play_circle_fill_rounded),
       ),
       onTap: onTap,
@@ -893,10 +882,7 @@ class _SearchStateMessage extends StatelessWidget {
             Text(
               subtitle,
               textAlign: TextAlign.center,
-              style: const TextStyle(
-                color: Color(0xFF999999),
-                fontSize: 13,
-              ),
+              style: const TextStyle(color: Color(0xFF999999), fontSize: 13),
             ),
           ],
         ),

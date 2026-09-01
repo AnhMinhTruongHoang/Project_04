@@ -46,7 +46,7 @@ class AppShell extends ConsumerWidget {
               },
 
               onNotification: () {
-                // Sau này làm màn Notifications thì router ở đây.
+                context.push('/notifications');
               },
 
               onProfile: () {

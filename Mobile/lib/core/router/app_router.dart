@@ -15,6 +15,7 @@ import '../../features/library/presentation/playlists_screen.dart';
 
 import '../../features/news/presentation/news_detail_screen.dart';
 import '../../features/news/presentation/news_screen.dart';
+import '../../features/notifications/presentation/notifications_screen.dart';
 import '../../features/profile/presentation/profile_screen.dart';
 import '../../features/search/presentation/search_screen.dart';
 
@@ -116,6 +117,12 @@ final GoRouter appRouter = GoRouter(
               path: '/playlist',
               builder: (context, state) {
                 return const PlaylistsScreen();
+              },
+            ),
+            GoRoute(
+              path: '/notifications',
+              builder: (context, state) {
+                return const NotificationsScreen();
               },
             ),
           ],

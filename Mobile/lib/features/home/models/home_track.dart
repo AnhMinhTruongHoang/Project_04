@@ -13,11 +13,16 @@ class HomeTrack {
     this.uploaderName,
     this.countPlay = 0,
     this.countLike = 0,
+    this.countComment = 0,
     this.durationSeconds,
     this.processingStatus,
     this.licenseReviewStatus,
     this.approvalStatus,
     this.copyrightStatus,
+    this.copyrightMessage,
+    this.rejectionReason,
+    this.audioHash,
+    this.isDeleted = false,
     this.createdAt,
   });
 
@@ -34,11 +39,16 @@ class HomeTrack {
 
   final int countPlay;
   final int countLike;
+  final int countComment;
   final double? durationSeconds;
   final String? processingStatus;
   final String? licenseReviewStatus;
   final String? approvalStatus;
   final String? copyrightStatus;
+  final String? copyrightMessage;
+  final String? rejectionReason;
+  final String? audioHash;
+  final bool isDeleted;
   final String? createdAt;
 
   String? get resolvedImageUrl {
@@ -118,6 +128,9 @@ class HomeTrack {
       uploaderName: _nullableString(uploader['name'] ?? uploader['username']),
       countPlay: _toInt(json['countPlay']),
       countLike: _toInt(json['countLike']),
+      countComment: _toInt(
+        json['countComment'] ?? json['commentCount'] ?? json['commentsCount'],
+      ),
       durationSeconds: _toDouble(
         json['durationSeconds'] ?? json['duration'] ?? json['audioDuration'],
       ),
@@ -125,6 +138,10 @@ class HomeTrack {
       licenseReviewStatus: _nullableString(json['licenseReviewStatus']),
       approvalStatus: _nullableString(json['approvalStatus']),
       copyrightStatus: _nullableString(json['copyrightStatus']),
+      copyrightMessage: _nullableString(json['copyrightMessage']),
+      rejectionReason: _nullableString(json['rejectionReason']),
+      audioHash: _nullableString(json['audioHash']),
+      isDeleted: json['isDeleted'] == true,
       createdAt: _nullableString(json['createdAt'] ?? json['createdAtDate']),
     );
   }

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../home/models/home_track.dart';
 import '../../player/providers/player_provider.dart';
@@ -173,15 +174,7 @@ class LibraryScreen extends ConsumerWidget {
               _LibraryNavItem(
                 title: 'Your insights',
                 onTap: () {
-                  Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (_) => const PlaceholderLibraryScreen(
-                        title: 'Your insights',
-                        message:
-                            'Insights can be connected to Artist Studio stats for artist accounts.',
-                      ),
-                    ),
-                  );
+                  context.push('/artist-studio');
                 },
               ),
               _LibraryNavItem(

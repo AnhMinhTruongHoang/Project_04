@@ -9,6 +9,7 @@ import '../../features/auth/presentation/reset_password_screen.dart';
 import '../../features/auth/presentation/signup_screen.dart';
 import '../../features/auth/presentation/splash_screen.dart';
 import '../../features/auth/providers/auth_provider.dart';
+import '../../features/artist_studio/presentation/artist_studio_screen.dart';
 import '../../features/likes/presentation/like_screen.dart';
 import '../../features/library/presentation/library_screen.dart';
 import '../../features/library/presentation/playlists_screen.dart';
@@ -132,6 +133,12 @@ final GoRouter appRouter = GoRouter(
               path: '/track/upload',
               builder: (context, state) {
                 return const TrackUploadScreen();
+              },
+            ),
+            GoRoute(
+              path: '/artist-studio',
+              builder: (context, state) {
+                return const ArtistStudioScreen();
               },
             ),
             GoRoute(

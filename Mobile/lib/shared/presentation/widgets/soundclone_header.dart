@@ -420,6 +420,17 @@ class SoundCloneHeader extends ConsumerWidget implements PreferredSizeWidget {
             ),
           ),
 
+          IconButton(
+            tooltip: 'Upload track',
+            visualDensity: VisualDensity.compact,
+            color: const Color(0xFFD8D8D8),
+            hoverColor: _kOrange.withValues(alpha: 0.14),
+            onPressed: () {
+              context.push('/track/upload');
+            },
+            icon: const Icon(Icons.upload_rounded, size: 22),
+          ),
+
           // ===================================================================
           // NOTIFICATION
           // ===================================================================

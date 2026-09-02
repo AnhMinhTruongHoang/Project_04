@@ -125,9 +125,11 @@ class PlayerController extends Notifier<PlayerState> {
        */
       unawaited(_audioPlayer.play());
 
-      _startHistoryTimer();
+      if (track.canUsePublicTrackActions) {
+        _startHistoryTimer();
 
-      unawaited(_increasePlayCount(track));
+        unawaited(_increasePlayCount(track));
+      }
     } catch (error, stackTrace) {
       debugPrint('Play track error: $error');
 
@@ -194,7 +196,9 @@ class PlayerController extends Notifier<PlayerState> {
        */
       unawaited(_audioPlayer.play());
 
-      _startHistoryTimer();
+      if (state.currentTrack?.canUsePublicTrackActions == true) {
+        _startHistoryTimer();
+      }
     } catch (error, stackTrace) {
       debugPrint('Toggle play/pause error: $error');
 
@@ -435,7 +439,7 @@ class PlayerController extends Notifier<PlayerState> {
       return;
     }
 
-    if (track.id.isEmpty) {
+    if (track.id.isEmpty || !track.canUsePublicTrackActions) {
       return;
     }
 
@@ -465,4 +469,3 @@ class PlayerController extends Notifier<PlayerState> {
     }
   }
 }
-

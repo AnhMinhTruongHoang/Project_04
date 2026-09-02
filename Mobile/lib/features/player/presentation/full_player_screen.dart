@@ -59,9 +59,7 @@ class _FullPlayerScreenState extends ConsumerState<FullPlayerScreen> {
       backgroundColor: const Color(0xFF0D0D0D),
       body: Stack(
         children: [
-          Positioned.fill(
-            child: _BlurredArtwork(url: track.resolvedImageUrl),
-          ),
+          Positioned.fill(child: _BlurredArtwork(url: track.resolvedImageUrl)),
           Positioned.fill(
             child: SafeArea(
               child: Padding(
@@ -86,16 +84,14 @@ class _FullPlayerScreenState extends ConsumerState<FullPlayerScreen> {
                       duration: player.duration,
                       value: player.progress,
                       onChanged: (value) {
-                        ref
-                            .read(playerProvider.notifier)
-                            .seekByProgress(value);
+                        ref.read(playerProvider.notifier).seekByProgress(value);
                       },
                     ),
                     const SizedBox(height: 28),
                     _CommentBox(
                       controller: _commentController,
                       isSending: _isSendingComment,
-                      onSend: () => _sendComment(track.id, player.position),
+                      onSend: () => _sendComment(track, player.position),
                     ),
                     const SizedBox(height: 26),
                     _ActionRow(
@@ -104,7 +100,7 @@ class _FullPlayerScreenState extends ConsumerState<FullPlayerScreen> {
                       isLiking: _isLiking,
                       isLiked: social.isTrackLiked(track),
                       onLike: () => _likeTrack(track),
-                      onComments: () => _showCommentsSheet(track.id),
+                      onComments: () => _showCommentsSheet(track),
                       onShare: () => _shareTrack(track),
                       onPlaylist: () {
                         showAddToPlaylistSheet(
@@ -136,7 +132,13 @@ class _FullPlayerScreenState extends ConsumerState<FullPlayerScreen> {
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted && _loadedTrackId == track.id) {
-        _loadCommentCount(track.id);
+        if (track.canUsePublicTrackActions) {
+          _loadCommentCount(track.id);
+        } else {
+          setState(() {
+            _commentCount = 0;
+          });
+        }
       }
     });
   }
@@ -167,13 +169,19 @@ class _FullPlayerScreenState extends ConsumerState<FullPlayerScreen> {
   Future<void> _likeTrack(HomeTrack track) async {
     if (_isLiking) return;
 
+    if (!track.canUsePublicTrackActions) {
+      _showAppToast(message: 'This track is still being reviewed.');
+      return;
+    }
+
     setState(() {
       _isLiking = true;
     });
 
     final wasLiked = ref.read(playerSocialProvider).isTrackLiked(track);
-    final result =
-        await ref.read(playerSocialProvider.notifier).toggleLike(track);
+    final result = await ref
+        .read(playerSocialProvider.notifier)
+        .toggleLike(track);
 
     if (result.success) {
       if (mounted && result.likeCount != null) {
@@ -224,8 +232,9 @@ class _FullPlayerScreenState extends ConsumerState<FullPlayerScreen> {
       return;
     }
 
-    final result =
-        await ref.read(playerSocialProvider.notifier).toggleFollow(track);
+    final result = await ref
+        .read(playerSocialProvider.notifier)
+        .toggleFollow(track);
 
     if (result.reason == PlayerSocialActionReason.self) {
       _showAppToast(message: 'You cannot follow yourself.');
@@ -259,10 +268,15 @@ class _FullPlayerScreenState extends ConsumerState<FullPlayerScreen> {
     _showAppToast(message: 'Track link copied');
   }
 
-  Future<void> _sendComment(String trackId, Duration position) async {
+  Future<void> _sendComment(HomeTrack track, Duration position) async {
     final content = _commentController.text.trim();
 
     if (content.isEmpty || _isSendingComment) {
+      return;
+    }
+
+    if (!track.canUsePublicTrackActions) {
+      _showAppToast(message: 'This track is still being reviewed.');
       return;
     }
 
@@ -271,11 +285,17 @@ class _FullPlayerScreenState extends ConsumerState<FullPlayerScreen> {
     });
 
     try {
-      await ApiService.instance.createTrackCommentApi(
-        trackId: trackId,
+      final response = await ApiService.instance.createTrackCommentApi(
+        trackId: track.id,
         content: content,
         moment: position.inMilliseconds / 1000,
       );
+
+      if (!response.isSuccess) {
+        _showAppToast(message: 'Could not post comment.');
+        return;
+      }
+
       _commentController.clear();
       if (mounted) {
         setState(() {
@@ -294,14 +314,19 @@ class _FullPlayerScreenState extends ConsumerState<FullPlayerScreen> {
     }
   }
 
-  void _showCommentsSheet(String trackId) {
+  void _showCommentsSheet(HomeTrack track) {
+    if (!track.canUsePublicTrackActions) {
+      _showAppToast(message: 'This track is still being reviewed.');
+      return;
+    }
+
     showModalBottomSheet<void>(
       context: context,
       backgroundColor: const Color(0xFF171717),
       showDragHandle: true,
       isScrollControlled: true,
       builder: (context) {
-        return _CommentsSheet(trackId: trackId);
+        return _CommentsSheet(trackId: track.id);
       },
     );
   }
@@ -410,11 +435,7 @@ class _FullPlayerScreenState extends ConsumerState<FullPlayerScreen> {
 }
 
 class _AppToast extends StatelessWidget {
-  const _AppToast({
-    required this.message,
-    this.actionLabel,
-    this.onAction,
-  });
+  const _AppToast({required this.message, this.actionLabel, this.onAction});
 
   final String message;
   final String? actionLabel;
@@ -487,9 +508,8 @@ class _BlurredArtwork extends StatelessWidget {
           Image.network(
             url!,
             fit: BoxFit.cover,
-            errorBuilder: (_, _, _) => const ColoredBox(
-              color: Color(0xFF202020),
-            ),
+            errorBuilder: (_, _, _) =>
+                const ColoredBox(color: Color(0xFF202020)),
           )
         else
           const ColoredBox(color: Color(0xFF202020)),
@@ -502,11 +522,7 @@ class _BlurredArtwork extends StatelessWidget {
             gradient: LinearGradient(
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,
-              colors: [
-                Color(0x223A1010),
-                Color(0x5524272D),
-                Color(0xEE0D0D0D),
-              ],
+              colors: [Color(0x223A1010), Color(0x5524272D), Color(0xEE0D0D0D)],
             ),
           ),
         ),
@@ -541,11 +557,7 @@ class _TopBar extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _TextChip(
-                text: title,
-                fontSize: 27,
-                fontWeight: FontWeight.w900,
-              ),
+              _TextChip(text: title, fontSize: 27, fontWeight: FontWeight.w900),
               const SizedBox(height: 6),
               MouseRegion(
                 cursor: SystemMouseCursors.click,
@@ -576,10 +588,7 @@ class _TopBar extends StatelessWidget {
               size: 64,
             ),
             const SizedBox(height: 20),
-            _FollowRoundButton(
-              isFollowing: isFollowing,
-              onPressed: onFollow,
-            ),
+            _FollowRoundButton(isFollowing: isFollowing, onPressed: onFollow),
           ],
         ),
       ],
@@ -669,8 +678,9 @@ class _CenterControls extends ConsumerWidget {
         _RoundButton(
           tooltip: 'Next',
           icon: Icons.skip_next_rounded,
-          onPressed:
-              player.hasNext ? ref.read(playerProvider.notifier).next : null,
+          onPressed: player.hasNext
+              ? ref.read(playerProvider.notifier).next
+              : null,
           backgroundColor: const Color(0xE6000000),
           foregroundColor: Colors.white,
           size: 74,
@@ -704,10 +714,7 @@ class _ProgressRow extends StatelessWidget {
         ),
         const Padding(
           padding: EdgeInsets.symmetric(horizontal: 10),
-          child: Text(
-            '|',
-            style: TextStyle(color: Colors.white, fontSize: 18),
-          ),
+          child: Text('|', style: TextStyle(color: Colors.white, fontSize: 18)),
         ),
         Text(
           _formatDuration(duration),
@@ -718,12 +725,8 @@ class _ProgressRow extends StatelessWidget {
           child: SliderTheme(
             data: SliderTheme.of(context).copyWith(
               trackHeight: 2,
-              thumbShape: const RoundSliderThumbShape(
-                enabledThumbRadius: 5,
-              ),
-              overlayShape: const RoundSliderOverlayShape(
-                overlayRadius: 14,
-              ),
+              thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 5),
+              overlayShape: const RoundSliderOverlayShape(overlayRadius: 14),
               activeTrackColor: Colors.white,
               inactiveTrackColor: Colors.white38,
               thumbColor: Colors.white,
@@ -842,7 +845,9 @@ class _ActionRow extends StatelessWidget {
     return Row(
       children: [
         _BottomAction(
-          icon: isLiked ? Icons.favorite_rounded : Icons.favorite_border_rounded,
+          icon: isLiked
+              ? Icons.favorite_rounded
+              : Icons.favorite_border_rounded,
           label: _compactCount(likeCount),
           color: isLiked ? const Color(0xFFFF5500) : Colors.white,
           onPressed: isLiking ? null : onLike,
@@ -967,10 +972,7 @@ class _BottomAction extends StatelessWidget {
       icon: Icon(icon, size: 34),
       label: Text(
         label,
-        style: const TextStyle(
-          fontSize: 18,
-          fontWeight: FontWeight.w900,
-        ),
+        style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900),
       ),
     );
   }
@@ -1119,10 +1121,7 @@ class _CommentTile extends StatelessWidget {
 }
 
 class _SheetMessage extends StatelessWidget {
-  const _SheetMessage({
-    required this.icon,
-    required this.title,
-  });
+  const _SheetMessage({required this.icon, required this.title});
 
   final IconData icon;
   final String title;
@@ -1182,18 +1181,15 @@ class _TrackComment {
 
   factory _TrackComment.fromJson(dynamic value) {
     if (value is! Map) {
-      return const _TrackComment(
-        author: 'Someone',
-        content: '',
-      );
+      return const _TrackComment(author: 'Someone', content: '');
     }
 
     final json = Map<String, dynamic>.from(value);
     final user = json['user'] is Map
         ? Map<String, dynamic>.from(json['user'])
         : json['account'] is Map
-            ? Map<String, dynamic>.from(json['account'])
-            : <String, dynamic>{};
+        ? Map<String, dynamic>.from(json['account'])
+        : <String, dynamic>{};
 
     return _TrackComment(
       author: _string(
@@ -1204,10 +1200,7 @@ class _TrackComment {
             'Someone',
       ),
       content: _string(
-        json['content'] ??
-            json['comment'] ??
-            json['text'] ??
-            '',
+        json['content'] ?? json['comment'] ?? json['text'] ?? '',
       ),
       moment: _toDouble(json['moment'] ?? json['position']),
     );

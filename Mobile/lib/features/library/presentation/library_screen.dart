@@ -10,6 +10,7 @@ import 'liked_tracks_screen.dart';
 import 'listening_history_screen.dart';
 import 'placeholder_library_screen.dart';
 import 'playlists_screen.dart';
+import 'your_uploads_screen.dart';
 
 class LibraryScreen extends ConsumerWidget {
   const LibraryScreen({super.key});
@@ -24,6 +25,7 @@ class LibraryScreen extends ConsumerWidget {
     final playlists = ref.watch(playlistsProvider);
     final albums = ref.watch(albumsProvider);
     final following = ref.watch(followingProvider);
+    final uploads = ref.watch(myUploadsProvider);
 
     return ColoredBox(
       color: background,
@@ -38,10 +40,12 @@ class LibraryScreen extends ConsumerWidget {
             ref.invalidate(playlistsProvider);
             ref.invalidate(albumsProvider);
             ref.invalidate(listeningHistoryProvider);
+            ref.invalidate(myUploadsProvider);
             await Future.wait([
               ref.read(likedTracksProvider.future),
               ref.read(playlistsProvider.future),
               ref.read(listeningHistoryProvider.future),
+              ref.read(myUploadsProvider.future),
             ]);
           },
           child: ListView(
@@ -118,9 +122,7 @@ class LibraryScreen extends ConsumerWidget {
                 ),
                 onTap: () {
                   Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (_) => const PlaylistsScreen(),
-                    ),
+                    MaterialPageRoute(builder: (_) => const PlaylistsScreen()),
                   );
                 },
               ),
@@ -150,9 +152,7 @@ class LibraryScreen extends ConsumerWidget {
                 ),
                 onTap: () {
                   Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (_) => const FollowingScreen(),
-                    ),
+                    MaterialPageRoute(builder: (_) => const FollowingScreen()),
                   );
                 },
               ),
@@ -186,14 +186,14 @@ class LibraryScreen extends ConsumerWidget {
               ),
               _LibraryNavItem(
                 title: 'Your uploads',
+                subtitle: uploads.maybeWhen(
+                  data: (items) => '${items.length} tracks',
+                  orElse: () => null,
+                ),
                 onTap: () {
                   Navigator.of(context).push(
                     MaterialPageRoute(
-                      builder: (_) => const PlaceholderLibraryScreen(
-                        title: 'Your uploads',
-                        message:
-                            'Uploads can be connected to /tracks/my-tracks and the upload flow.',
-                      ),
+                      builder: (_) => const YourUploadsScreen(),
                     ),
                   );
                 },
@@ -252,10 +252,7 @@ class LibraryScreen extends ConsumerWidget {
                   return Column(
                     children: [
                       for (final item in items.take(4))
-                        _HistoryTile(
-                          item: item,
-                          queue: queue,
-                        ),
+                        _HistoryTile(item: item, queue: queue),
                     ],
                   );
                 },
@@ -312,9 +309,7 @@ class _RecentlyPlayedSection extends StatelessWidget {
             return const SizedBox(
               height: 176,
               child: Center(
-                child: CircularProgressIndicator(
-                  color: LibraryScreen.orange,
-                ),
+                child: CircularProgressIndicator(color: LibraryScreen.orange),
               ),
             );
           },
@@ -341,10 +336,7 @@ class _RecentlyPlayedSection extends StatelessWidget {
                 itemCount: recentItems.length,
                 separatorBuilder: (_, _) => const SizedBox(width: 16),
                 itemBuilder: (context, index) {
-                  return _RecentCard(
-                    item: recentItems[index],
-                    queue: queue,
-                  );
+                  return _RecentCard(item: recentItems[index], queue: queue);
                 },
               ),
             );
@@ -356,10 +348,7 @@ class _RecentlyPlayedSection extends StatelessWidget {
 }
 
 class _RecentCard extends ConsumerWidget {
-  const _RecentCard({
-    required this.item,
-    required this.queue,
-  });
+  const _RecentCard({required this.item, required this.queue});
 
   final ListeningHistoryItem item;
   final List<HomeTrack> queue;
@@ -381,10 +370,7 @@ class _RecentCard extends ConsumerWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _Artwork(
-              url: track.resolvedImageUrl,
-              size: 124,
-            ),
+            _Artwork(url: track.resolvedImageUrl, size: 124),
             const SizedBox(height: 8),
             Text(
               track.title,
@@ -401,10 +387,7 @@ class _RecentCard extends ConsumerWidget {
               track.artistName,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
-                color: Color(0xFFAAAAAA),
-                fontSize: 13,
-              ),
+              style: const TextStyle(color: Color(0xFFAAAAAA), fontSize: 13),
             ),
           ],
         ),
@@ -474,10 +457,7 @@ class _LibraryNavItem extends StatelessWidget {
 }
 
 class _HistoryTile extends ConsumerWidget {
-  const _HistoryTile({
-    required this.item,
-    required this.queue,
-  });
+  const _HistoryTile({required this.item, required this.queue});
 
   final ListeningHistoryItem item;
   final List<HomeTrack> queue;
@@ -518,10 +498,7 @@ class _HistoryTile extends ConsumerWidget {
 }
 
 class _Artwork extends StatelessWidget {
-  const _Artwork({
-    required this.url,
-    this.size = 58,
-  });
+  const _Artwork({required this.url, this.size = 58});
 
   final String? url;
   final double size;
@@ -535,10 +512,7 @@ class _Artwork extends StatelessWidget {
         height: size,
         color: const Color(0xFF222222),
         child: url == null
-            ? const Icon(
-                Icons.music_note_rounded,
-                color: Color(0xFF777777),
-              )
+            ? const Icon(Icons.music_note_rounded, color: Color(0xFF777777))
             : Image.network(
                 url!,
                 fit: BoxFit.cover,
@@ -565,10 +539,7 @@ class _LibraryHint extends StatelessWidget {
       padding: const EdgeInsets.symmetric(vertical: 18),
       child: Text(
         text,
-        style: const TextStyle(
-          color: Color(0xFF888888),
-          fontSize: 14,
-        ),
+        style: const TextStyle(color: Color(0xFF888888), fontSize: 14),
       ),
     );
   }

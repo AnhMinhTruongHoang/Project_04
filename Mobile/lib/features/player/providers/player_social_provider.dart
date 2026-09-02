@@ -10,8 +10,8 @@ import '../models/player_social_state.dart';
 
 final playerSocialProvider =
     NotifierProvider<PlayerSocialController, PlayerSocialState>(
-  PlayerSocialController.new,
-);
+      PlayerSocialController.new,
+    );
 
 class PlayerSocialController extends Notifier<PlayerSocialState> {
   late final ApiService _apiService;
@@ -33,11 +33,8 @@ class PlayerSocialController extends Notifier<PlayerSocialState> {
   }
 
   Future<PlayerSocialActionResult> toggleLike(HomeTrack track) async {
-    if (track.id.isEmpty) {
-      return const PlayerSocialActionResult(
-        success: false,
-        isActive: false,
-      );
+    if (track.id.isEmpty || !track.canUsePublicTrackActions) {
+      return const PlayerSocialActionResult(success: false, isActive: false);
     }
 
     if (state.isTrackLiked(track)) {
@@ -45,13 +42,11 @@ class PlayerSocialController extends Notifier<PlayerSocialState> {
         final response = await _apiService.dislikeTrackApi(track.id);
 
         if (!response.isSuccess) {
-          return const PlayerSocialActionResult(
-            success: false,
-            isActive: true,
-          );
+          return const PlayerSocialActionResult(success: false, isActive: true);
         }
 
-        final countLike = _countLikeFromResponse(response.data) ??
+        final countLike =
+            _countLikeFromResponse(response.data) ??
             _nextLikeCount(track, liked: false);
 
         _markTrackUnliked(track.id, countLike: countLike);
@@ -63,10 +58,7 @@ class PlayerSocialController extends Notifier<PlayerSocialState> {
           likeCount: countLike,
         );
       } catch (_) {
-        return const PlayerSocialActionResult(
-          success: false,
-          isActive: true,
-        );
+        return const PlayerSocialActionResult(success: false, isActive: true);
       }
     }
 
@@ -88,13 +80,11 @@ class PlayerSocialController extends Notifier<PlayerSocialState> {
           );
         }
 
-        return const PlayerSocialActionResult(
-          success: false,
-          isActive: false,
-        );
+        return const PlayerSocialActionResult(success: false, isActive: false);
       }
 
-      final countLike = _countLikeFromResponse(response.data) ??
+      final countLike =
+          _countLikeFromResponse(response.data) ??
           _nextLikeCount(track, liked: true);
 
       _markTrackLiked(track.id, countLike: countLike);
@@ -120,10 +110,7 @@ class PlayerSocialController extends Notifier<PlayerSocialState> {
         );
       }
 
-      return const PlayerSocialActionResult(
-        success: false,
-        isActive: false,
-      );
+      return const PlayerSocialActionResult(success: false, isActive: false);
     }
   }
 
@@ -131,10 +118,7 @@ class PlayerSocialController extends Notifier<PlayerSocialState> {
     final uploaderId = track.uploaderId;
 
     if (uploaderId == null || uploaderId.isEmpty) {
-      return const PlayerSocialActionResult(
-        success: false,
-        isActive: false,
-      );
+      return const PlayerSocialActionResult(success: false, isActive: false);
     }
 
     if (await _isCurrentUser(uploaderId)) {
@@ -150,24 +134,15 @@ class PlayerSocialController extends Notifier<PlayerSocialState> {
         final response = await _apiService.unfollowUserApi(uploaderId);
 
         if (!response.isSuccess) {
-          return const PlayerSocialActionResult(
-            success: false,
-            isActive: true,
-          );
+          return const PlayerSocialActionResult(success: false, isActive: true);
         }
 
         _markArtistUnfollowed(uploaderId);
         _invalidateFollowCollections();
 
-        return const PlayerSocialActionResult(
-          success: true,
-          isActive: false,
-        );
+        return const PlayerSocialActionResult(success: true, isActive: false);
       } catch (_) {
-        return const PlayerSocialActionResult(
-          success: false,
-          isActive: true,
-        );
+        return const PlayerSocialActionResult(success: false, isActive: true);
       }
     }
 
@@ -183,19 +158,13 @@ class PlayerSocialController extends Notifier<PlayerSocialState> {
           );
         }
 
-        return const PlayerSocialActionResult(
-          success: false,
-          isActive: false,
-        );
+        return const PlayerSocialActionResult(success: false, isActive: false);
       }
 
       _markArtistFollowed(uploaderId);
       _invalidateFollowCollections();
 
-      return const PlayerSocialActionResult(
-        success: true,
-        isActive: true,
-      );
+      return const PlayerSocialActionResult(success: true, isActive: true);
     } catch (error) {
       if (error.toString().toLowerCase().contains('cannot follow yourself')) {
         return const PlayerSocialActionResult(
@@ -205,10 +174,7 @@ class PlayerSocialController extends Notifier<PlayerSocialState> {
         );
       }
 
-      return const PlayerSocialActionResult(
-        success: false,
-        isActive: false,
-      );
+      return const PlayerSocialActionResult(success: false, isActive: false);
     }
   }
 
@@ -287,9 +253,7 @@ class PlayerSocialController extends Notifier<PlayerSocialState> {
         .where((id) => id.isNotEmpty)
         .toSet();
 
-    state = state.copyWith(
-      followedUserIds: ids,
-    );
+    state = state.copyWith(followedUserIds: ids);
   }
 
   int _nextLikeCount(HomeTrack track, {required bool liked}) {
@@ -324,10 +288,7 @@ class PlayerSocialController extends Notifier<PlayerSocialState> {
       return state.trackLikeCounts;
     }
 
-    return {
-      ...state.trackLikeCounts,
-      trackId: countLike,
-    };
+    return {...state.trackLikeCounts, trackId: countLike};
   }
 
   void _markArtistFollowed(String uploaderId) {
@@ -375,9 +336,7 @@ class PlayerSocialActionResult {
   final PlayerSocialActionReason? reason;
 }
 
-enum PlayerSocialActionReason {
-  self,
-}
+enum PlayerSocialActionReason { self }
 
 dynamic _unwrap(dynamic value) {
   if (value is Map && value['data'] != null) {

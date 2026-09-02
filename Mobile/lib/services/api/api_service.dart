@@ -808,6 +808,34 @@ class ApiService {
     );
   }
 
+  Future<ApiResponse<dynamic>> createTrackBytesApi({
+    required Map<String, dynamic> fields,
+    required Map<String, Uint8List> files,
+    required Map<String, String> filenames,
+  }) async {
+    final formMap = <String, dynamic>{};
+
+    for (final entry in fields.entries) {
+      if (entry.value != null) {
+        formMap[entry.key] = entry.value;
+      }
+    }
+
+    for (final entry in files.entries) {
+      formMap[entry.key] = MultipartFile.fromBytes(
+        entry.value,
+        filename: filenames[entry.key] ?? 'upload',
+      );
+    }
+
+    return _request(
+      method: 'POST',
+      path: '/tracks',
+      data: FormData.fromMap(formMap),
+      options: Options(method: 'POST', contentType: 'multipart/form-data'),
+    );
+  }
+
   Future<ApiResponse<dynamic>> updateTrackApi({
     required String trackId,
     required Map<String, dynamic> fields,

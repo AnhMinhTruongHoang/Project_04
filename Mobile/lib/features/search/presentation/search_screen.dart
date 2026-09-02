@@ -9,6 +9,7 @@ import 'package:go_router/go_router.dart';
 import '../../../services/api/api_service.dart';
 import '../../auth/models/user_model.dart';
 import '../../home/models/home_track.dart';
+import '../../library/providers/library_provider.dart';
 import '../../player/providers/player_provider.dart';
 
 class SearchScreen extends ConsumerStatefulWidget {
@@ -151,10 +152,11 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
     final api = ApiService.instance;
     final usersFuture = _loadUsers(api);
     final serverTracksFuture = api.searchTracksApi(query);
+    final uploadsFuture = ref.refresh(myUploadsProvider.future);
     final userData = await usersFuture;
     final serverTracksResponse = await serverTracksFuture;
 
-    final tracks = serverTracksResponse.isSuccess
+    final serverTracks = serverTracksResponse.isSuccess
         ? _resultList(serverTracksResponse.data)
               .map(HomeTrack.fromJson)
               .where((track) => track.id.isNotEmpty)
@@ -162,6 +164,27 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
         : <HomeTrack>[];
 
     final normalizedQuery = _normalizedText(query);
+    final uploadTracks = await uploadsFuture
+        .then((tracks) {
+          final matches = tracks.where((track) {
+            return _matchesTrack(track, normalizedQuery);
+          }).toList();
+
+          debugPrint(
+            '[SearchScreen] my uploads total=${tracks.length} matches=${matches.length} query="$query"',
+          );
+
+          return matches;
+        })
+        .catchError((error) {
+          debugPrint('[SearchScreen] could not load my uploads: $error');
+          return <HomeTrack>[];
+        });
+    final tracks = _mergeTracks(serverTracks, uploadTracks);
+
+    debugPrint(
+      '[SearchScreen] server tracks=${serverTracks.length} merged=${tracks.length} query="$query"',
+    );
 
     final userMap = <String, UserModel>{};
 
@@ -283,6 +306,27 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
     final name = _normalizedText(user.name);
 
     return name.contains(query);
+  }
+
+  bool _matchesTrack(HomeTrack track, String query) {
+    return _normalizedText(track.title).contains(query) ||
+        _normalizedText(track.artistName).contains(query) ||
+        _normalizedText(track.category ?? '').contains(query);
+  }
+
+  List<HomeTrack> _mergeTracks(
+    List<HomeTrack> primary,
+    List<HomeTrack> secondary,
+  ) {
+    final byId = <String, HomeTrack>{};
+
+    for (final track in [...primary, ...secondary]) {
+      if (track.id.isNotEmpty) {
+        byId[track.id] = track;
+      }
+    }
+
+    return byId.values.toList();
   }
 
   @override

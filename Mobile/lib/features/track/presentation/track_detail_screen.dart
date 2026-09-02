@@ -177,6 +177,11 @@ class _TrackDetailScreenState extends ConsumerState<TrackDetailScreen> {
   }
 
   Future<HomeTrack?> _loadTrack() async {
+    if (widget.initialTrack != null &&
+        !widget.initialTrack!.canUsePublicTrackActions) {
+      return widget.initialTrack;
+    }
+
     try {
       final response = await ApiService.instance.getTrackBySlugOrIdApi(
         widget.trackId,
@@ -205,12 +210,21 @@ class _TrackDetailScreenState extends ConsumerState<TrackDetailScreen> {
   }
 
   Future<List<_TrackComment>> _loadComments() async {
+    if (widget.initialTrack != null &&
+        !widget.initialTrack!.canUsePublicTrackActions) {
+      return const [];
+    }
+
     final id = widget.initialTrack?.id.isNotEmpty == true
         ? widget.initialTrack!.id
         : widget.trackId;
 
     try {
       final response = await ApiService.instance.getTrackCommentsApi(id);
+      if (!response.isSuccess) {
+        return const [];
+      }
+
       return _commentsFromResponse(response);
     } catch (_) {
       return const [];
@@ -219,6 +233,15 @@ class _TrackDetailScreenState extends ConsumerState<TrackDetailScreen> {
 
   Future<void> _toggleLike(HomeTrack track) async {
     if (_isLiking) return;
+
+    if (!track.canUsePublicTrackActions) {
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(
+          const SnackBar(content: Text('This track is still being reviewed.')),
+        );
+      return;
+    }
 
     setState(() {
       _isLiking = true;
@@ -255,15 +278,34 @@ class _TrackDetailScreenState extends ConsumerState<TrackDetailScreen> {
 
     if (content.isEmpty || _isSendingComment) return;
 
+    if (!track.canUsePublicTrackActions) {
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(
+          const SnackBar(content: Text('This track is still being reviewed.')),
+        );
+      return;
+    }
+
     setState(() {
       _isSendingComment = true;
     });
 
     try {
-      await ApiService.instance.createTrackCommentApi(
+      final response = await ApiService.instance.createTrackCommentApi(
         trackId: track.id,
         content: content,
       );
+
+      if (!response.isSuccess) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context)
+          ..hideCurrentSnackBar()
+          ..showSnackBar(
+            const SnackBar(content: Text('Could not post comment.')),
+          );
+        return;
+      }
 
       _commentController.clear();
       setState(() {

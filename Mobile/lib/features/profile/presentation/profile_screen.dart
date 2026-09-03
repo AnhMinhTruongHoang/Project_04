@@ -59,7 +59,43 @@ class ProfileScreen extends ConsumerWidget {
             return const SizedBox.shrink();
           }
 
-          return _ProfileContent(user: user);
+          return _ProfileContent(user: user, isOwner: true);
+        },
+      ),
+    );
+  }
+}
+
+class PublicProfileScreen extends ConsumerWidget {
+  const PublicProfileScreen({
+    super.key,
+    required this.userId,
+  });
+
+  final String userId;
+
+  static const _background = Color(0xFF0D0D0D);
+  static const _orange = Color(0xFFFF5500);
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final profile = ref.watch(_fullProfileProvider(userId));
+
+    return ColoredBox(
+      color: _background,
+      child: profile.when(
+        loading: () {
+          return const Center(child: CircularProgressIndicator(color: _orange));
+        },
+        error: (_, _) {
+          return _ProfileError(
+            onRetry: () {
+              ref.invalidate(_fullProfileProvider(userId));
+            },
+          );
+        },
+        data: (user) {
+          return _ProfileContent(user: user, isOwner: false);
         },
       ),
     );
@@ -71,9 +107,13 @@ class ProfileScreen extends ConsumerWidget {
 // ============================================================
 
 class _ProfileContent extends ConsumerWidget {
-  const _ProfileContent({required this.user});
+  const _ProfileContent({
+    required this.user,
+    required this.isOwner,
+  });
 
   final UserModel user;
+  final bool isOwner;
 
   static const _background = Color(0xFF0D0D0D);
   static const _orange = Color(0xFFFF5500);
@@ -91,26 +131,30 @@ class _ProfileContent extends ConsumerWidget {
         backgroundColor: const Color(0xFF202020),
         onRefresh: () async {
           ref.invalidate(_fullProfileProvider(user.id));
-          ref.invalidate(homeFeedProvider);
           ref.invalidate(profileTracksProvider(user.id));
           ref.invalidate(profilePlaylistsProvider(user.id));
           ref.invalidate(_profileEventsProvider(user.id));
           ref.invalidate(_profileMembershipProvider(user.id));
-          ref.invalidate(_profileTicketsProvider);
           ref.invalidate(_profileBadgesProvider(user.id));
 
-          final authNotifier = ref.read(authProvider.notifier);
+          if (isOwner) {
+            ref.invalidate(homeFeedProvider);
+            ref.invalidate(_profileTicketsProvider);
+          }
 
           try {
             await Future.wait([
-              ref.read(homeFeedProvider.future),
               ref.read(profileTracksProvider(user.id).future),
               ref.read(profilePlaylistsProvider(user.id).future),
             ]);
           } catch (_) {}
 
-          // Keep this last: reloadAccount can rebuild/unmount ProfileScreen.
-          await authNotifier.reloadAccount();
+          if (isOwner) {
+            final authNotifier = ref.read(authProvider.notifier);
+
+            // Keep this last: reloadAccount can rebuild/unmount ProfileScreen.
+            await authNotifier.reloadAccount();
+          }
         },
         child: CustomScrollView(
           physics: const AlwaysScrollableScrollPhysics(
@@ -128,11 +172,18 @@ class _ProfileContent extends ConsumerWidget {
               expandedHeight: 320,
               backgroundColor: _background,
               surfaceTintColor: Colors.transparent,
-              leading: const SizedBox.shrink(),
-              leadingWidth: 0,
+              leading: isOwner
+                  ? const SizedBox.shrink()
+                  : IconButton(
+                      tooltip: 'Back',
+                      color: Colors.white,
+                      onPressed: () => context.pop(),
+                      icon: const Icon(Icons.arrow_back_rounded),
+                    ),
+              leadingWidth: isOwner ? 0 : null,
               titleSpacing: 18,
-              title: const Text(
-                'Profile',
+              title: Text(
+                isOwner ? 'Profile' : user.name,
                 style: TextStyle(
                   color: Colors.white,
                   fontSize: 20,
@@ -140,22 +191,24 @@ class _ProfileContent extends ConsumerWidget {
                 ),
               ),
               actions: [
-                IconButton(
-                  tooltip: 'More',
-                  onPressed: () {
-                    _showProfileMenu(context, ref);
-                  },
-                  icon: const Icon(
-                    Icons.more_vert_rounded,
-                    color: Colors.white,
+                if (isOwner)
+                  IconButton(
+                    tooltip: 'More',
+                    onPressed: () {
+                      _showProfileMenu(context, ref);
+                    },
+                    icon: const Icon(
+                      Icons.more_vert_rounded,
+                      color: Colors.white,
+                    ),
                   ),
-                ),
                 const SizedBox(width: 6),
               ],
               flexibleSpace: FlexibleSpaceBar(
                 collapseMode: CollapseMode.parallax,
                 background: ProfileMobileHero(
                   user: profileUser,
+                  isOwner: isOwner,
                   onUploadCover: () =>
                       _pickAndUpdateCover(context, ref, profileUser),
                 ),
@@ -168,6 +221,7 @@ class _ProfileContent extends ConsumerWidget {
             SliverToBoxAdapter(
               child: ProfileMobileDetails(
                 user: profileUser,
+                isOwner: isOwner,
                 onEdit: () => _showEditProfile(context, ref, profileUser),
                 onShare: () => _shareProfile(context, profileUser),
               ),
@@ -176,19 +230,20 @@ class _ProfileContent extends ConsumerWidget {
             SliverToBoxAdapter(
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(18, 0, 18, 18),
-                child: _ProfileTabs(user: profileUser),
+                child: _ProfileTabs(user: profileUser, isOwner: isOwner),
               ),
             ),
 
             // ==================================================
             // LOG OUT
             // ==================================================
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(18, 0, 18, 115),
-                child: _LogoutButton(),
+            if (isOwner)
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(18, 0, 18, 115),
+                  child: _LogoutButton(),
+                ),
               ),
-            ),
           ],
         ),
       ),
@@ -678,9 +733,13 @@ class _ProfileMeta extends StatelessWidget {
 // ============================================================
 
 class _ProfileTabs extends ConsumerStatefulWidget {
-  const _ProfileTabs({required this.user});
+  const _ProfileTabs({
+    required this.user,
+    required this.isOwner,
+  });
 
   final UserModel user;
+  final bool isOwner;
 
   @override
   ConsumerState<_ProfileTabs> createState() => _ProfileTabsState();
@@ -697,7 +756,10 @@ class _ProfileTabsState extends ConsumerState<_ProfileTabs> {
       tabs.addAll(['Concerts / Tour', 'Membership']);
     }
 
-    tabs.add('Tickets');
+    if (widget.isOwner) {
+      tabs.add('Tickets');
+    }
+
     return tabs;
   }
 
@@ -758,10 +820,21 @@ class _ProfileTabsState extends ConsumerState<_ProfileTabs> {
   Widget _buildSelectedTab() {
     switch (_selectedTab) {
       case 'All':
+        if (widget.isOwner) {
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const _RecentSection(embedded: true),
+              const SizedBox(height: 26),
+              _AboutCard(user: widget.user),
+            ],
+          );
+        }
+
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const _RecentSection(embedded: true),
+            _PopularTracksTab(userId: widget.user.id),
             const SizedBox(height: 26),
             _AboutCard(user: widget.user),
           ],
@@ -771,7 +844,7 @@ class _ProfileTabsState extends ConsumerState<_ProfileTabs> {
       case 'Playlists':
         return _ProfilePlaylistsTab(userId: widget.user.id);
       case 'Concerts / Tour':
-        return ProfileTourTab(artistId: widget.user.id, isOwner: true);
+        return ProfileTourTab(artistId: widget.user.id, isOwner: widget.isOwner);
       case 'Membership':
         return _ProfileMembershipTab(artistId: widget.user.id);
       case 'Tickets':

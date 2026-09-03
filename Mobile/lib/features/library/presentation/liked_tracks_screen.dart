@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../home/models/home_track.dart';
 import '../../player/providers/player_provider.dart';
+import '../../player/providers/player_social_provider.dart';
 import '../providers/library_provider.dart';
 import 'add_to_playlist_sheet.dart';
 
@@ -67,6 +68,9 @@ class LikedTracksScreen extends ConsumerWidget {
                   track: track,
                   onTap: () {
                     ref
+                        .read(playerSocialProvider.notifier)
+                        .markTracksLiked(tracks);
+                    ref
                         .read(playerProvider.notifier)
                         .playTrack(track, queue: tracks);
                   },
@@ -100,6 +104,7 @@ class LikedTracksScreen extends ConsumerWidget {
   }) async {
     try {
       await ref.read(libraryServiceProvider).unlikeTrack(track.id);
+      ref.read(playerSocialProvider.notifier).markTrackUnliked(track);
       ref.invalidate(likedTracksProvider);
 
       if (!context.mounted) return;

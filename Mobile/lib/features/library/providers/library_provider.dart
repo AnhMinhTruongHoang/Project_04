@@ -34,21 +34,30 @@ final suggestedTracksProvider = FutureProvider<List<HomeTrack>>((ref) async {
   return service.getSuggestedTracks(limit: 20);
 });
 
+final myUploadsProvider = FutureProvider<List<HomeTrack>>((ref) async {
+  final service = ref.read(libraryServiceProvider);
+
+  return service.getMyUploads();
+});
+
 final albumsProvider = FutureProvider<List<Playlist>>((ref) async {
   final service = ref.read(libraryServiceProvider);
 
   return service.getMyAlbums();
 });
 
-final listeningHistoryProvider =
-    FutureProvider<List<ListeningHistoryItem>>((ref) async {
+final listeningHistoryProvider = FutureProvider<List<ListeningHistoryItem>>((
+  ref,
+) async {
   final service = ref.read(libraryServiceProvider);
 
   return service.getListeningHistory(limit: 30);
 });
 
-final playlistDetailProvider =
-    FutureProvider.family<Playlist?, String>((ref, playlistId) async {
+final playlistDetailProvider = FutureProvider.family<Playlist?, String>((
+  ref,
+  playlistId,
+) async {
   final service = ref.read(libraryServiceProvider);
 
   return service.getPlaylistById(playlistId);

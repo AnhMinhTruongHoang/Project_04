@@ -4,8 +4,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../services/api/api_service.dart';
 import '../../home/models/home_track.dart';
 import '../../home/providers/home_provider.dart';
+import '../../library/providers/library_provider.dart';
+import '../../player/providers/player_provider.dart';
+import '../../player/providers/player_social_provider.dart';
 import '../../profile/presentation/profile_screen.dart';
-import '../providers/liked_tracks_provider.dart';
 
 class LikeScreen extends ConsumerWidget {
   const LikeScreen({super.key});
@@ -60,6 +62,14 @@ class LikeScreen extends ConsumerWidget {
                       delegate: SliverChildBuilderDelegate(
                         (context, index) => _LikedTrackCard(
                           track: tracks[index],
+                          onPlay: () {
+                            ref
+                                .read(playerSocialProvider.notifier)
+                                .markTracksLiked(tracks);
+                            ref
+                                .read(playerProvider.notifier)
+                                .playTrack(tracks[index], queue: tracks);
+                          },
                           onUnlike: () => _unlike(context, ref, tracks[index]),
                         ),
                         childCount: tracks.length,
@@ -82,6 +92,7 @@ class LikeScreen extends ConsumerWidget {
     final result = await ApiService.instance.dislikeTrackApi(track.id);
     if (!context.mounted) return;
     if (result.isSuccess) {
+      ref.read(playerSocialProvider.notifier).markTrackUnliked(track);
       ref.invalidate(homeFeedProvider);
       ref.invalidate(profileTracksProvider);
       final likedRefresh = ref.refresh(likedTracksProvider.future);
@@ -137,9 +148,14 @@ class _LikeHeader extends StatelessWidget {
 }
 
 class _LikedTrackCard extends StatelessWidget {
-  const _LikedTrackCard({required this.track, required this.onUnlike});
+  const _LikedTrackCard({
+    required this.track,
+    required this.onPlay,
+    required this.onUnlike,
+  });
 
   final HomeTrack track;
+  final VoidCallback onPlay;
   final VoidCallback onUnlike;
 
   @override
@@ -150,7 +166,9 @@ class _LikedTrackCard extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Expanded(
-          child: Stack(
+          child: GestureDetector(
+            onTap: onPlay,
+            child: Stack(
             fit: StackFit.expand,
             children: [
               ClipRRect(
@@ -213,6 +231,7 @@ class _LikedTrackCard extends StatelessWidget {
                 ),
               ),
             ],
+            ),
           ),
         ),
         const SizedBox(height: 9),

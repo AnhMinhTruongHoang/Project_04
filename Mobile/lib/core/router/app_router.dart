@@ -9,11 +9,19 @@ import '../../features/auth/presentation/reset_password_screen.dart';
 import '../../features/auth/presentation/signup_screen.dart';
 import '../../features/auth/presentation/splash_screen.dart';
 import '../../features/auth/providers/auth_provider.dart';
+import '../../features/artist_studio/presentation/artist_studio_screen.dart';
 import '../../features/likes/presentation/like_screen.dart';
-import '../../features/playlists/presentation/playlist_screen.dart';
 import '../../features/library/presentation/library_screen.dart';
+import '../../features/library/presentation/playlists_screen.dart';
 
+import '../../features/news/presentation/news_detail_screen.dart';
+import '../../features/news/presentation/news_screen.dart';
+import '../../features/notifications/presentation/notifications_screen.dart';
 import '../../features/profile/presentation/profile_screen.dart';
+import '../../features/search/presentation/search_screen.dart';
+import '../../features/home/models/home_track.dart';
+import '../../features/track/presentation/track_detail_screen.dart';
+import '../../features/track/presentation/track_upload_screen.dart';
 
 import '../../shared/presentation/app_shell.dart';
 
@@ -79,7 +87,10 @@ final GoRouter appRouter = GoRouter(
     // ============================================================
     StatefulShellRoute.indexedStack(
       builder: (context, state, navigationShell) {
-        return _AuthenticatedShell(navigationShell: navigationShell);
+        return _AuthenticatedShell(
+          navigationShell: navigationShell,
+          currentLocation: state.uri.path,
+        );
       },
 
       branches: [
@@ -95,6 +106,12 @@ final GoRouter appRouter = GoRouter(
               },
             ),
             GoRoute(
+              path: '/search',
+              builder: (context, state) {
+                return const SearchScreen();
+              },
+            ),
+            GoRoute(
               path: '/like',
               builder: (context, state) {
                 return const LikeScreen();
@@ -103,25 +120,64 @@ final GoRouter appRouter = GoRouter(
             GoRoute(
               path: '/playlist',
               builder: (context, state) {
-                return const PlaylistScreen();
+                return const PlaylistsScreen();
+              },
+            ),
+            GoRoute(
+              path: '/notifications',
+              builder: (context, state) {
+                return const NotificationsScreen();
+              },
+            ),
+            GoRoute(
+              path: '/track/upload',
+              builder: (context, state) {
+                return const TrackUploadScreen();
+              },
+            ),
+            GoRoute(
+              path: '/artist-studio',
+              builder: (context, state) {
+                return const ArtistStudioScreen();
+              },
+            ),
+            GoRoute(
+              path: '/track/:trackId',
+              builder: (context, state) {
+                final trackId = state.pathParameters['trackId'] ?? '';
+                final initialTrack = state.extra is HomeTrack
+                    ? state.extra! as HomeTrack
+                    : null;
+
+                return TrackDetailScreen(
+                  trackId: trackId,
+                  initialTrack: initialTrack,
+                );
               },
             ),
           ],
         ),
 
         // ========================================================
-        // SEARCH
+        // NEWS
         // ========================================================
         StatefulShellBranch(
           routes: [
             GoRoute(
-              path: '/search',
+              path: '/news',
               builder: (context, state) {
-                return const _PlaceholderScreen(
-                  title: 'Search',
-                  icon: Icons.search_rounded,
-                );
+                return const NewsScreen();
               },
+              routes: [
+                GoRoute(
+                  path: ':slug',
+                  builder: (context, state) {
+                    final slug = state.pathParameters['slug'] ?? '';
+
+                    return NewsDetailScreen(slug: slug);
+                  },
+                ),
+              ],
             ),
           ],
         ),
@@ -150,6 +206,16 @@ final GoRouter appRouter = GoRouter(
               builder: (context, state) {
                 return const ProfileScreen();
               },
+              routes: [
+                GoRoute(
+                  path: ':userId',
+                  builder: (context, state) {
+                    final userId = state.pathParameters['userId'] ?? '';
+
+                    return PublicProfileScreen(userId: userId);
+                  },
+                ),
+              ],
             ),
           ],
         ),
@@ -163,9 +229,13 @@ final GoRouter appRouter = GoRouter(
 // ================================================================
 
 class _AuthenticatedShell extends ConsumerWidget {
-  const _AuthenticatedShell({required this.navigationShell});
+  const _AuthenticatedShell({
+    required this.navigationShell,
+    required this.currentLocation,
+  });
 
   final StatefulNavigationShell navigationShell;
+  final String currentLocation;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -194,7 +264,11 @@ class _AuthenticatedShell extends ConsumerWidget {
           return const LoginScreen();
         }
 
-        return AppShell(navigationShell: navigationShell, user: user);
+        return AppShell(
+          navigationShell: navigationShell,
+          currentLocation: currentLocation,
+          user: user,
+        );
       },
     );
   }
@@ -204,8 +278,7 @@ class _AuthenticatedShell extends ConsumerWidget {
 // TEMPORARY PLACEHOLDER
 //
 // Chỉ còn sử dụng cho:
-// - Search
-// - Library
+// - News
 //
 // Profile đã có ProfileScreen riêng.
 // ================================================================

@@ -1,3 +1,4 @@
+import '../../../core/storage/token_storage.dart';
 import '../../../services/api/api_service.dart';
 import '../../auth/models/user_model.dart';
 import '../../home/models/home_track.dart';
@@ -5,9 +6,8 @@ import '../models/listening_history_item.dart';
 import '../models/playlist.dart';
 
 class LibraryService {
-  LibraryService({
-    ApiService? apiService,
-  }) : _apiService = apiService ?? ApiService.instance;
+  LibraryService({ApiService? apiService})
+    : _apiService = apiService ?? ApiService.instance;
 
   final ApiService _apiService;
 
@@ -29,9 +29,7 @@ class LibraryService {
     return _userList(response.data);
   }
 
-  Future<List<HomeTrack>> getSuggestedTracks({
-    int limit = 12,
-  }) async {
+  Future<List<HomeTrack>> getSuggestedTracks({int limit = 12}) async {
     final response = await _apiService.getTracksApi(
       current: 1,
       pageSize: limit,
@@ -40,25 +38,29 @@ class LibraryService {
     return _trackList(response.data);
   }
 
+  Future<List<HomeTrack>> getMyUploads() async {
+    final response = await _apiService.getMyTracksApi();
+
+    if (response.isUnauthorized) {
+      await TokenStorage.clearTokens();
+      return const [];
+    }
+
+    return _trackList(response.data);
+  }
+
   Future<List<Playlist>> getMyAlbums() async {
     final response = await _apiService.getMyPlaylistsApi();
 
-    return _resultList(response.data)
-        .map(Playlist.fromJson)
-        .where((playlist) {
-          return playlist.id.isNotEmpty &&
-              !playlist.isDeleted &&
-              playlist.isAlbum;
-        })
-        .toList();
+    return _resultList(response.data).map(Playlist.fromJson).where((playlist) {
+      return playlist.id.isNotEmpty && !playlist.isDeleted && playlist.isAlbum;
+    }).toList();
   }
 
   Future<List<ListeningHistoryItem>> getListeningHistory({
     int limit = 20,
   }) async {
-    final response = await _apiService.getHomeListeningHistoryApi(
-      limit: limit,
-    );
+    final response = await _apiService.getHomeListeningHistoryApi(limit: limit);
     final data = _unwrap(response.data);
 
     if (data is! Map) {
@@ -98,6 +100,8 @@ class LibraryService {
       isPublic: isPublic,
     );
 
+    _ensureSuccess(response);
+
     final data = _unwrap(response.data);
 
     if (data is Map) {
@@ -115,12 +119,10 @@ class LibraryService {
   }) async {
     final response = await _apiService.updatePlaylistApi(
       playlistId: playlistId,
-      payload: {
-        'title': title,
-        'isPublic': isPublic,
-        'trackIds': trackIds,
-      },
+      payload: {'title': title, 'isPublic': isPublic, 'trackIds': trackIds},
     );
+
+    _ensureSuccess(response);
 
     final data = _unwrap(response.data);
 
@@ -132,11 +134,15 @@ class LibraryService {
   }
 
   Future<void> deletePlaylist(String playlistId) async {
-    await _apiService.deletePlaylistApi(playlistId);
+    final response = await _apiService.deletePlaylistApi(playlistId);
+
+    _ensureSuccess(response);
   }
 
   Future<void> unlikeTrack(String trackId) async {
-    await _apiService.dislikeTrackApi(trackId);
+    final response = await _apiService.dislikeTrackApi(trackId);
+
+    _ensureSuccess(response);
   }
 
   Future<void> addTrackToPlaylist({
@@ -183,10 +189,9 @@ class LibraryService {
   }
 
   List<HomeTrack> _trackList(dynamic value) {
-    return _resultList(value)
-        .map(HomeTrack.fromJson)
-        .where((track) => track.id.isNotEmpty)
-        .toList();
+    return _resultList(
+      value,
+    ).map(HomeTrack.fromJson).where((track) => track.id.isNotEmpty).toList();
   }
 
   List<ListeningHistoryItem> _historyList(dynamic value) {
@@ -201,14 +206,9 @@ class LibraryService {
   }
 
   List<Playlist> _playlistList(dynamic value) {
-    return _resultList(value)
-        .map(Playlist.fromJson)
-        .where((playlist) {
-          return playlist.id.isNotEmpty &&
-              !playlist.isDeleted &&
-              !playlist.isAlbum;
-        })
-        .toList();
+    return _resultList(value).map(Playlist.fromJson).where((playlist) {
+      return playlist.id.isNotEmpty && !playlist.isDeleted && !playlist.isAlbum;
+    }).toList();
   }
 
   List<UserModel> _userList(dynamic value) {
@@ -217,5 +217,15 @@ class LibraryService {
         .map((item) => UserModel.fromJson(Map<String, dynamic>.from(item)))
         .where((user) => user.id.isNotEmpty)
         .toList();
+  }
+
+  void _ensureSuccess(ApiResponse<dynamic> response) {
+    if (response.isSuccess) {
+      return;
+    }
+
+    throw StateError(
+      response.message.isEmpty ? 'Request failed.' : response.message,
+    );
   }
 }

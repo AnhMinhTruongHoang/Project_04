@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../features/auth/models/user_model.dart';
 import '../../../features/auth/providers/auth_provider.dart';
+import '../../../features/notifications/presentation/notification_bell_button.dart';
 
 // ============================================================================
 // COLORS
@@ -109,7 +110,7 @@ class SoundCloneHeader extends ConsumerWidget implements PreferredSizeWidget {
         break;
 
       case 'news':
-        context.push('/blog');
+        context.go('/news');
         break;
 
       case 'library':
@@ -419,30 +420,26 @@ class SoundCloneHeader extends ConsumerWidget implements PreferredSizeWidget {
             ),
           ),
 
+          IconButton(
+            tooltip: 'Upload track',
+            visualDensity: VisualDensity.compact,
+            color: const Color(0xFFD8D8D8),
+            hoverColor: _kOrange.withValues(alpha: 0.14),
+            onPressed: () {
+              context.push('/track/upload');
+            },
+            icon: const Icon(Icons.upload_rounded, size: 22),
+          ),
+
           // ===================================================================
           // NOTIFICATION
           // ===================================================================
-          SizedBox(
-            width: 35,
-            height: 40,
-            child: IconButton(
-              tooltip: 'Notifications',
-
-              padding: EdgeInsets.zero,
-
-              onPressed:
-                  onNotification ??
-                  () {
-                    // Sau này:
-                    // context.push('/notifications');
-                  },
-
-              icon: const Icon(
-                Icons.notifications_none_rounded,
-                color: Color(0xFFD8D8D8),
-                size: 23,
-              ),
-            ),
+          NotificationBellButton(
+            onViewAll:
+                onNotification ??
+                () {
+                  context.push('/notifications');
+                },
           ),
 
           const SizedBox(width: 3),

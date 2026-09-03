@@ -44,9 +44,9 @@ class SoundCloneFooter extends StatelessWidget {
             ),
 
             NavigationDestination(
-              icon: Icon(Icons.search_rounded),
-              selectedIcon: Icon(Icons.search_rounded),
-              label: 'Search',
+              icon: Icon(Icons.article_outlined),
+              selectedIcon: Icon(Icons.article_rounded),
+              label: 'News',
             ),
 
             NavigationDestination(

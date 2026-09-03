@@ -11,10 +11,12 @@ class AppShell extends ConsumerWidget {
   const AppShell({
     super.key,
     required this.navigationShell,
+    required this.currentLocation,
     required this.user,
   });
 
   final StatefulNavigationShell navigationShell;
+  final String currentLocation;
   final UserModel user;
 
   void _changeTab(int index) {
@@ -26,25 +28,31 @@ class AppShell extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final keyboardOpen = MediaQuery.viewInsetsOf(context).bottom > 0;
+    final hideShellChrome =
+        currentLocation == '/search' || currentLocation.startsWith('/news/');
+
     return Scaffold(
       backgroundColor: const Color(0xFF0D0D0D),
 
       // HEADER DÙNG CHUNG
-      appBar: SoundCloneHeader(
-        user: user,
+      appBar: hideShellChrome
+          ? null
+          : SoundCloneHeader(
+              user: user,
 
-        onSearch: () {
-          _changeTab(1);
-        },
+              onSearch: () {
+                context.push('/search');
+              },
 
-        onNotification: () {
-          // Sau này làm màn Notifications thì router ở đây.
-        },
+              onNotification: () {
+                context.push('/notifications');
+              },
 
-        onProfile: () {
-          _changeTab(3);
-        },
-      ),
+              onProfile: () {
+                _changeTab(3);
+              },
+            ),
 
       // NỘI DUNG CỦA TỪNG TAB
       body: Stack(
@@ -52,20 +60,23 @@ class AppShell extends ConsumerWidget {
           Positioned.fill(
             child: navigationShell,
           ),
-          const Positioned(
-            left: 0,
-            right: 0,
-            bottom: 0,
-            child: MiniPlayer(),
-          ),
+          if (!hideShellChrome && !keyboardOpen)
+            const Positioned(
+              left: 0,
+              right: 0,
+              bottom: 0,
+              child: MiniPlayer(),
+            ),
         ],
       ),
 
       // FOOTER DÙNG CHUNG
-      bottomNavigationBar: SoundCloneFooter(
-        currentIndex: navigationShell.currentIndex,
-        onTap: _changeTab,
-      ),
+      bottomNavigationBar: hideShellChrome
+          ? null
+          : SoundCloneFooter(
+              currentIndex: navigationShell.currentIndex,
+              onTap: _changeTab,
+            ),
     );
   }
 }

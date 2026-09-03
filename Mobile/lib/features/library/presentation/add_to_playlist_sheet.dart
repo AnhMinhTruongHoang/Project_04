@@ -14,6 +14,7 @@ Future<void> showAddToPlaylistSheet({
     context: context,
     backgroundColor: const Color(0xFF161616),
     showDragHandle: true,
+    useRootNavigator: true,
     builder: (context) {
       return _AddToPlaylistSheet(track: track);
     },
@@ -116,6 +117,18 @@ class _AddToPlaylistSheet extends ConsumerWidget {
     required WidgetRef ref,
     required Playlist playlist,
   }) async {
+    final alreadyAdded = playlist.tracks.any((item) => item.id == track.id);
+
+    if (alreadyAdded) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('${track.title} is already in ${playlist.title}'),
+        ),
+      );
+
+      return;
+    }
+
     try {
       await ref.read(libraryServiceProvider).addTrackToPlaylist(
             playlist: playlist,

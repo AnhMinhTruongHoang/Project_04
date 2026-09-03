@@ -79,8 +79,8 @@ class PlayerController extends Notifier<PlayerState> {
 
     final nextIndex = max(0, foundIndex);
 
-    // Lưu lịch sử bài cũ trước khi chuyển bài
-    await _saveCurrentHistory(playing: false);
+    // Lưu lịch sử bài cũ chạy nền, không chặn việc chuyển sang bài mới.
+    unawaited(_saveCurrentHistory(playing: false));
 
     _historyTimer?.cancel();
 
@@ -125,9 +125,11 @@ class PlayerController extends Notifier<PlayerState> {
        */
       unawaited(_audioPlayer.play());
 
-      _startHistoryTimer();
+      if (track.canUsePublicTrackActions) {
+        _startHistoryTimer();
 
-      unawaited(_increasePlayCount(track));
+        unawaited(_increasePlayCount(track));
+      }
     } catch (error, stackTrace) {
       debugPrint('Play track error: $error');
 
@@ -194,7 +196,9 @@ class PlayerController extends Notifier<PlayerState> {
        */
       unawaited(_audioPlayer.play());
 
-      _startHistoryTimer();
+      if (state.currentTrack?.canUsePublicTrackActions == true) {
+        _startHistoryTimer();
+      }
     } catch (error, stackTrace) {
       debugPrint('Toggle play/pause error: $error');
 
@@ -339,13 +343,6 @@ class PlayerController extends Notifier<PlayerState> {
          */
         final isPlaying = playerState.playing && !completed;
 
-        debugPrint(
-          'AUDIO STATE => '
-          'playing=${playerState.playing}, '
-          'isPlaying=$isPlaying, '
-          'processing=$processingState',
-        );
-
         state = state.copyWith(isPlaying: isPlaying, isLoading: loading);
 
         if (completed) {
@@ -442,7 +439,7 @@ class PlayerController extends Notifier<PlayerState> {
       return;
     }
 
-    if (track.id.isEmpty) {
+    if (track.id.isEmpty || !track.canUsePublicTrackActions) {
       return;
     }
 

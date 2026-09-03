@@ -256,71 +256,95 @@ class _PlaylistBody extends ConsumerWidget {
 
   Future<void> _renamePlaylist(BuildContext context, WidgetRef ref) async {
     final controller = TextEditingController(text: playlist.title);
+    var isPublic = playlist.isPublic;
 
-    final title = await showModalBottomSheet<String>(
+    final result = await showModalBottomSheet<_PlaylistEditResult>(
       context: context,
       backgroundColor: const Color(0xFF161616),
       isScrollControlled: true,
       showDragHandle: true,
+      useRootNavigator: true,
       builder: (context) {
-        return Padding(
-          padding: EdgeInsets.fromLTRB(
-            18,
-            4,
-            18,
-            MediaQuery.of(context).viewInsets.bottom + 18,
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
-                'Rename playlist',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 20,
-                  fontWeight: FontWeight.w900,
-                ),
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return Padding(
+              padding: EdgeInsets.fromLTRB(
+                18,
+                4,
+                18,
+                MediaQuery.of(context).viewInsets.bottom + 104,
               ),
-              const SizedBox(height: 16),
-              TextField(
-                controller: controller,
-                autofocus: true,
-                decoration: const InputDecoration(
-                  labelText: 'Playlist title',
-                ),
-              ),
-              const SizedBox(height: 16),
-              SizedBox(
-                width: double.infinity,
-                child: FilledButton(
-                  style: FilledButton.styleFrom(
-                    backgroundColor: _orange,
-                    foregroundColor: Colors.white,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Edit playlist',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 20,
+                      fontWeight: FontWeight.w900,
+                    ),
                   ),
-                  onPressed: () {
-                    Navigator.of(context).pop(controller.text.trim());
-                  },
-                  child: const Text('Save'),
-                ),
+                  const SizedBox(height: 16),
+                  TextField(
+                    controller: controller,
+                    autofocus: true,
+                    decoration: const InputDecoration(
+                      labelText: 'Playlist title',
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+                  _PlaylistVisibilityTile(
+                    isPublic: isPublic,
+                    onChanged: (value) {
+                      setState(() {
+                        isPublic = value;
+                      });
+                    },
+                  ),
+                  const SizedBox(height: 16),
+                  SizedBox(
+                    width: double.infinity,
+                    child: FilledButton(
+                      style: FilledButton.styleFrom(
+                        backgroundColor: _orange,
+                        foregroundColor: Colors.white,
+                      ),
+                      onPressed: () {
+                        Navigator.of(context).pop(
+                          _PlaylistEditResult(
+                            title: controller.text.trim(),
+                            isPublic: isPublic,
+                          ),
+                        );
+                      },
+                      child: const Text('Save'),
+                    ),
+                  ),
+                ],
               ),
-            ],
-          ),
+            );
+          },
         );
       },
     );
 
     controller.dispose();
 
-    if (title == null || title.isEmpty || title == playlist.title) {
+    if (result == null || result.title.isEmpty) {
+      return;
+    }
+
+    if (result.title == playlist.title && result.isPublic == playlist.isPublic) {
       return;
     }
 
     try {
       await ref.read(libraryServiceProvider).updatePlaylist(
             playlistId: playlist.id,
-            title: title,
-            isPublic: playlist.isPublic,
+            title: result.title,
+            isPublic: result.isPublic,
             trackIds: playlist.tracks.map((track) => track.id).toList(),
           );
 
@@ -330,7 +354,7 @@ class _PlaylistBody extends ConsumerWidget {
 
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Playlist renamed'),
+          content: Text('Playlist updated'),
           backgroundColor: _orange,
         ),
       );
@@ -338,7 +362,7 @@ class _PlaylistBody extends ConsumerWidget {
       if (!context.mounted) return;
 
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Could not rename playlist.')),
+        const SnackBar(content: Text('Could not update playlist.')),
       );
     }
   }
@@ -393,6 +417,30 @@ class _PlaylistBody extends ConsumerWidget {
     WidgetRef ref,
     HomeTrack track,
   ) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Remove track?'),
+          content: Text('Remove "${track.title}" from this playlist?'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              child: const Text('Remove'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (confirmed != true) {
+      return;
+    }
+
     final trackIds = playlist.tracks
         .where((item) => item.id != track.id)
         .map((item) => item.id)
@@ -463,6 +511,59 @@ class _PlaylistBody extends ConsumerWidget {
   void _refreshPlaylist(WidgetRef ref) {
     ref.invalidate(playlistDetailProvider(playlist.id));
     ref.invalidate(playlistsProvider);
+  }
+}
+
+class _PlaylistEditResult {
+  const _PlaylistEditResult({
+    required this.title,
+    required this.isPublic,
+  });
+
+  final String title;
+  final bool isPublic;
+}
+
+class _PlaylistVisibilityTile extends StatelessWidget {
+  const _PlaylistVisibilityTile({
+    required this.isPublic,
+    required this.onChanged,
+  });
+
+  final bool isPublic;
+  final ValueChanged<bool> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: const Color(0xFF121212),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: const Color(0xFF2A2A2A)),
+      ),
+      child: SwitchListTile(
+        contentPadding: const EdgeInsets.symmetric(horizontal: 14),
+        value: isPublic,
+        activeThumbColor: const Color(0xFFFF5500),
+        title: Text(
+          isPublic ? 'Public playlist' : 'Private playlist',
+          style: const TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.w900,
+          ),
+        ),
+        subtitle: Text(
+          isPublic
+              ? 'Anyone can view this playlist.'
+              : 'Only you can view this playlist.',
+          style: const TextStyle(
+            color: Color(0xFFAAAAAA),
+            fontSize: 13,
+          ),
+        ),
+        onChanged: onChanged,
+      ),
+    );
   }
 }
 
@@ -618,7 +719,7 @@ class _PlaylistHeader extends StatelessWidget {
               children: [
                 ListTile(
                   leading: const Icon(Icons.edit_rounded),
-                  title: const Text('Rename playlist'),
+                  title: const Text('Edit playlist'),
                   onTap: () {
                     Navigator.of(context).pop();
                     onRename();

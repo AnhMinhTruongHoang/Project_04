@@ -4,7 +4,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/config/api_config.dart';
+import '../../../core/storage/token_storage.dart';
 import '../../../services/api/api_service.dart';
+import '../../auth/providers/auth_provider.dart';
 import '../../home/models/home_track.dart';
 import '../../library/providers/library_provider.dart';
 import '../../notifications/models/notification_item.dart';
@@ -12,6 +15,8 @@ import '../../notifications/providers/notification_provider.dart';
 import '../../player/providers/player_provider.dart';
 
 part 'widgets/studio_comments_section.dart';
+part 'widgets/studio_benefits_section.dart';
+part 'widgets/studio_earnings_section.dart';
 part 'widgets/studio_header.dart';
 part 'widgets/studio_subscription_section.dart';
 part 'widgets/studio_tracks_section.dart';
@@ -22,7 +27,16 @@ const _studioOrange = Color(0xFFFF5500);
 final artistStudioStatsProvider = FutureProvider<_ArtistStudioStats>((
   ref,
 ) async {
+  if (!await _hasStoredToken()) {
+    return const _ArtistStudioStats();
+  }
+
   final response = await ApiService.instance.getArtistStudioStatsApi();
+
+  if (response.isUnauthorized) {
+    await TokenStorage.clearTokens();
+    return const _ArtistStudioStats();
+  }
 
   if (!response.isSuccess) {
     return const _ArtistStudioStats();
@@ -33,7 +47,16 @@ final artistStudioStatsProvider = FutureProvider<_ArtistStudioStats>((
 
 final artistStudioSubscriptionProvider =
     FutureProvider<_StudioSubscriptionData?>((ref) async {
+      if (!await _hasStoredToken()) {
+        return null;
+      }
+
       final response = await ApiService.instance.getMySubscriptionApi();
+
+      if (response.isUnauthorized) {
+        await TokenStorage.clearTokens();
+        return null;
+      }
 
       if (!response.isSuccess) {
         return null;
@@ -64,6 +87,72 @@ final artistStudioTrackCommentsProvider =
       }
 
       return _studioCommentsFromResponse(response.data);
+    });
+
+final artistStudioBenefitsProvider = FutureProvider<List<_ArtistBenefit>>((
+  ref,
+) async {
+  final response = await ApiService.instance.getArtistBenefitsApi();
+
+  if (!response.isSuccess) {
+    return const [];
+  }
+
+  return _resultList(response.data)
+      .map(_ArtistBenefit.fromJson)
+      .where((benefit) => benefit.title.isNotEmpty)
+      .toList()
+    ..sort((first, second) => first.sortOrder.compareTo(second.sortOrder));
+});
+
+final artistWalletProvider = FutureProvider<_ArtistWallet?>((ref) async {
+  if (!await _hasStoredToken()) {
+    return null;
+  }
+
+  final response = await ApiService.instance.getArtistWalletApi();
+
+  if (!response.isSuccess) {
+    return null;
+  }
+
+  return _ArtistWallet.fromJson(_unwrap(response.data));
+});
+
+final artistEarningHistoryProvider =
+    FutureProvider.family<_EarningHistoryPage, String?>((ref, status) async {
+      if (!await _hasStoredToken()) {
+        return const _EarningHistoryPage();
+      }
+
+      final response = await ApiService.instance.getArtistEarningHistoryApi(
+        status: status,
+        pageSize: 10,
+      );
+
+      if (!response.isSuccess) {
+        return const _EarningHistoryPage();
+      }
+
+      return _EarningHistoryPage.fromJson(_unwrap(response.data));
+    });
+
+final artistPayoutHistoryProvider =
+    FutureProvider.family<_PayoutHistoryPage, String?>((ref, status) async {
+      if (!await _hasStoredToken()) {
+        return const _PayoutHistoryPage();
+      }
+
+      final response = await ApiService.instance.getArtistPayoutHistoryApi(
+        status: status,
+        pageSize: 10,
+      );
+
+      if (!response.isSuccess) {
+        return const _PayoutHistoryPage();
+      }
+
+      return _PayoutHistoryPage.fromJson(_unwrap(response.data));
     });
 
 class ArtistStudioScreen extends ConsumerStatefulWidget {
@@ -103,9 +192,36 @@ class _ArtistStudioScreenState extends ConsumerState<ArtistStudioScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final authState = ref.watch(authProvider);
+
+    if (authState.isLoading) {
+      return Scaffold(
+        backgroundColor: const Color(0xFF0D0D0D),
+        appBar: AppBar(title: const Text('Artist Studio')),
+        body: const Center(
+          child: CircularProgressIndicator(color: _studioOrange),
+        ),
+      );
+    }
+
+    final signedInUser = authState.hasValue ? authState.value : null;
+
+    if (signedInUser == null) {
+      return Scaffold(
+        backgroundColor: const Color(0xFF0D0D0D),
+        appBar: AppBar(title: const Text('Artist Studio')),
+        body: const _StudioMessage(
+          icon: Icons.lock_outline_rounded,
+          title: 'Please sign in again',
+          subtitle: 'Your session expired before Artist Studio could load.',
+        ),
+      );
+    }
+
     final uploads = ref.watch(myUploadsProvider);
     final stats = ref.watch(artistStudioStatsProvider);
     final subscription = ref.watch(artistStudioSubscriptionProvider);
+    final benefits = ref.watch(artistStudioBenefitsProvider);
     final notificationState = ref.watch(notificationProvider);
     final commentNotifications = notificationState.items
         .where(_isCommentNotification)
@@ -133,10 +249,15 @@ class _ArtistStudioScreenState extends ConsumerState<ArtistStudioScreen> {
           ref.invalidate(myUploadsProvider);
           ref.invalidate(artistStudioStatsProvider);
           ref.invalidate(artistStudioSubscriptionProvider);
+          ref.invalidate(artistStudioBenefitsProvider);
+          ref.invalidate(artistWalletProvider);
+          ref.invalidate(artistEarningHistoryProvider);
+          ref.invalidate(artistPayoutHistoryProvider);
           await Future.wait([
             ref.read(myUploadsProvider.future),
             ref.read(artistStudioStatsProvider.future),
             ref.read(artistStudioSubscriptionProvider.future),
+            ref.read(artistStudioBenefitsProvider.future),
             ref.read(notificationProvider.notifier).refresh(preview: true),
           ]);
         },
@@ -182,6 +303,10 @@ class _ArtistStudioScreenState extends ConsumerState<ArtistStudioScreen> {
                     ref.invalidate(myUploadsProvider);
                     ref.invalidate(artistStudioStatsProvider);
                     ref.invalidate(artistStudioSubscriptionProvider);
+                    ref.invalidate(artistStudioBenefitsProvider);
+                    ref.invalidate(artistWalletProvider);
+                    ref.invalidate(artistEarningHistoryProvider);
+                    ref.invalidate(artistPayoutHistoryProvider);
                     ref
                         .read(notificationProvider.notifier)
                         .refresh(preview: true);
@@ -272,6 +397,23 @@ class _ArtistStudioScreenState extends ConsumerState<ArtistStudioScreen> {
                   ),
                   const SizedBox(height: 12),
                   _SubscriptionPanel(subscription: subscription),
+                ] else if (_section == _StudioSection.earnings) ...[
+                  const _SectionHeader(
+                    title: 'Earnings',
+                    subtitle: 'Wallet, revenue history and payouts',
+                  ),
+                  const SizedBox(height: 12),
+                  _EarningsSection(subscription: subscription),
+                ] else if (_section == _StudioSection.benefits) ...[
+                  const _SectionHeader(
+                    title: 'Benefits',
+                    subtitle: 'Artist Pro membership perks',
+                  ),
+                  const SizedBox(height: 12),
+                  _BenefitsSection(
+                    benefits: benefits,
+                    subscription: subscription,
+                  ),
                 ] else ...[
                   _LockedStudioSection(section: _section),
                 ],
@@ -324,4 +466,3 @@ class _ArtistStudioScreenState extends ConsumerState<ArtistStudioScreen> {
     context.push('/track/$key', extra: track);
   }
 }
-

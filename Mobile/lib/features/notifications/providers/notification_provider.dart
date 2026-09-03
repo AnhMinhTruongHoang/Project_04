@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
+import '../../../core/storage/token_storage.dart';
 import '../../../services/api/api_service.dart';
 import '../models/notification_item.dart';
 
@@ -10,8 +11,8 @@ enum NotificationFilter { all, unread }
 
 final notificationProvider =
     NotifierProvider<NotificationController, NotificationState>(
-  NotificationController.new,
-);
+      NotificationController.new,
+    );
 
 class NotificationState {
   const NotificationState({
@@ -105,12 +106,11 @@ class NotificationController extends Notifier<NotificationState> {
       return;
     }
 
-    await Future.wait([
-      refresh(),
-      refreshUnreadCount(),
-    ]);
+    await Future.wait([refresh(), refreshUnreadCount()]);
 
-    _startPolling();
+    if (await _hasToken()) {
+      _startPolling();
+    }
   }
 
   void _startPolling() {
@@ -123,6 +123,27 @@ class NotificationController extends Notifier<NotificationState> {
     _pollTimer = Timer.periodic(const Duration(seconds: 60), (_) {
       unawaited(refreshUnreadCount());
     });
+  }
+
+  void _stopPolling() {
+    _pollTimer?.cancel();
+    _pollTimer = null;
+  }
+
+  void _ensurePolling() {
+    if (_pollTimer != null || !state.enabled) {
+      return;
+    }
+
+    _startPolling();
+  }
+
+  Future<bool> _hasToken() async {
+    final accessToken = await TokenStorage.getAccessToken();
+    final refreshToken = await TokenStorage.getRefreshToken();
+
+    return accessToken?.trim().isNotEmpty == true ||
+        refreshToken?.trim().isNotEmpty == true;
   }
 
   Future<void> toggleEnabled(bool enabled) async {
@@ -142,10 +163,7 @@ class NotificationController extends Notifier<NotificationState> {
 
     _startPolling();
 
-    await Future.wait([
-      refresh(),
-      refreshUnreadCount(),
-    ]);
+    await Future.wait([refresh(), refreshUnreadCount()]);
   }
 
   Future<void> setFilter(NotificationFilter filter) async {
@@ -167,6 +185,17 @@ class NotificationController extends Notifier<NotificationState> {
   Future<void> refresh({bool preview = false}) async {
     if (!state.enabled) {
       state = state.copyWith(items: const [], unreadCount: 0);
+      return;
+    }
+
+    if (!await _hasToken()) {
+      _stopPolling();
+      state = state.copyWith(
+        items: const [],
+        unreadCount: 0,
+        loading: false,
+        refreshing: false,
+      );
       return;
     }
 
@@ -203,12 +232,23 @@ class NotificationController extends Notifier<NotificationState> {
       return;
     }
 
-    final response = await ApiService.instance.getUnreadNotificationCountApi();
-
-    if (!response.isSuccess) {
+    if (!await _hasToken()) {
+      _stopPolling();
+      state = state.copyWith(unreadCount: 0);
       return;
     }
 
+    final response = await ApiService.instance.getUnreadNotificationCountApi();
+
+    if (!response.isSuccess) {
+      if (response.isUnauthorized) {
+        _stopPolling();
+        state = state.copyWith(items: const [], unreadCount: 0);
+      }
+      return;
+    }
+
+    _ensurePolling();
     state = state.copyWith(unreadCount: _extractUnreadCount(response.data));
   }
 
@@ -218,8 +258,21 @@ class NotificationController extends Notifier<NotificationState> {
     required int size,
   }) async {
     try {
-      final status =
-          state.filter == NotificationFilter.unread ? 'unread' : 'all';
+      if (!await _hasToken()) {
+        _stopPolling();
+        state = state.copyWith(
+          items: append ? state.items : const [],
+          unreadCount: 0,
+          loading: false,
+          loadingMore: false,
+          refreshing: false,
+        );
+        return;
+      }
+
+      final status = state.filter == NotificationFilter.unread
+          ? 'unread'
+          : 'all';
 
       final response = await ApiService.instance.getNotificationsApi(
         page: requestedPage,
@@ -228,6 +281,18 @@ class NotificationController extends Notifier<NotificationState> {
       );
 
       if (!response.isSuccess) {
+        if (response.isUnauthorized) {
+          _stopPolling();
+          state = state.copyWith(
+            items: append ? state.items : const [],
+            unreadCount: 0,
+            loading: false,
+            loadingMore: false,
+            refreshing: false,
+          );
+          return;
+        }
+
         throw StateError(response.message);
       }
 
@@ -295,7 +360,8 @@ class NotificationController extends Notifier<NotificationState> {
     state = state.copyWith(markingAll: true, clearError: true);
 
     try {
-      final response = await ApiService.instance.markAllNotificationsAsReadApi();
+      final response = await ApiService.instance
+          .markAllNotificationsAsReadApi();
 
       if (!response.isSuccess) {
         throw StateError(response.message);
@@ -308,8 +374,8 @@ class NotificationController extends Notifier<NotificationState> {
         items: state.filter == NotificationFilter.unread
             ? const []
             : state.items
-                .map((item) => item.copyWith(isRead: true, readAt: now))
-                .toList(),
+                  .map((item) => item.copyWith(isRead: true, readAt: now))
+                  .toList(),
         markingAll: false,
       );
     } catch (error) {

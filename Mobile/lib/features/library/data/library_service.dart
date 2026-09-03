@@ -1,3 +1,4 @@
+import '../../../core/storage/token_storage.dart';
 import '../../../services/api/api_service.dart';
 import '../../auth/models/user_model.dart';
 import '../../home/models/home_track.dart';
@@ -39,6 +40,11 @@ class LibraryService {
 
   Future<List<HomeTrack>> getMyUploads() async {
     final response = await _apiService.getMyTracksApi();
+
+    if (response.isUnauthorized) {
+      await TokenStorage.clearTokens();
+      return const [];
+    }
 
     return _trackList(response.data);
   }

@@ -89,6 +89,14 @@ bool _isRejectedTrack(HomeTrack track) {
       }.contains(copyright);
 }
 
+Future<bool> _hasStoredToken() async {
+  final accessToken = await TokenStorage.getAccessToken();
+  final refreshToken = await TokenStorage.getRefreshToken();
+
+  return accessToken?.trim().isNotEmpty == true ||
+      refreshToken?.trim().isNotEmpty == true;
+}
+
 _BadgeTone _statusTone(String? value) {
   final status = _status(value);
 
@@ -281,13 +289,30 @@ bool _isCommentNotification(NotificationItem item) {
 
 _StudioComment _studioCommentFromNotification(NotificationItem item) {
   final parsed = _parseCommentNotificationMessage(item.message);
+  final metadataComment = _notificationCommentContent(item);
 
   return _StudioComment(
     author: parsed.author ?? 'Someone',
-    content: parsed.content ?? item.title,
+    content: metadataComment ?? parsed.content ?? item.title,
     trackTitle: parsed.trackTitle,
     createdLabel: _formatStudioDateTime(item.createdAt?.toIso8601String()),
   );
+}
+
+String? _notificationCommentContent(NotificationItem item) {
+  try {
+    final metadata = item.metadata();
+
+    return _nullableString(
+      metadata['content'] ??
+          metadata['comment'] ??
+          metadata['commentText'] ??
+          metadata['text'] ??
+          metadata['body'],
+    );
+  } catch (_) {
+    return null;
+  }
 }
 
 _ParsedNotificationComment _parseCommentNotificationMessage(String message) {
@@ -603,6 +628,307 @@ class _PlanFeatureData {
   final String value;
 }
 
+class _ArtistBenefit {
+  const _ArtistBenefit({
+    this.id,
+    required this.title,
+    this.description = '',
+    this.imageUrl,
+    this.saveLabel,
+    this.sortOrder = 0,
+  });
+
+  final String? id;
+  final String title;
+  final String description;
+  final String? imageUrl;
+  final String? saveLabel;
+  final int sortOrder;
+
+  String? get resolvedImageUrl {
+    final raw = imageUrl?.trim();
+
+    if (raw == null || raw.isEmpty) {
+      return null;
+    }
+
+    if (raw.startsWith('http://') || raw.startsWith('https://')) {
+      return raw;
+    }
+
+    if (raw.startsWith('/')) {
+      return '${ApiConfig.baseUrl}$raw';
+    }
+
+    return '${ApiConfig.baseUrl}/$raw';
+  }
+
+  factory _ArtistBenefit.fromJson(dynamic value) {
+    if (value is! Map) {
+      return const _ArtistBenefit(title: '');
+    }
+
+    final json = Map<String, dynamic>.from(value);
+
+    return _ArtistBenefit(
+      id: _nullableString(json['id'] ?? json['_id']),
+      title: _string(json['title'] ?? json['name']),
+      description: _string(json['description'] ?? json['subtitle']),
+      imageUrl: _nullableString(json['imageUrl'] ?? json['image']),
+      saveLabel: _nullableString(
+        json['saveLabel'] ?? json['badge'] ?? json['savingLabel'],
+      ),
+      sortOrder: _toInt(json['sortOrder'] ?? json['order']),
+    );
+  }
+}
+
+class _ArtistWallet {
+  const _ArtistWallet({
+    this.pendingBalance = 0,
+    this.availableBalance = 0,
+    this.reservedBalance = 0,
+    this.withdrawnBalance = 0,
+    this.lifetimeEarnings = 0,
+    this.currency = 'VND',
+    this.status = 'UNKNOWN',
+  });
+
+  final double pendingBalance;
+  final double availableBalance;
+  final double reservedBalance;
+  final double withdrawnBalance;
+  final double lifetimeEarnings;
+  final String currency;
+  final String status;
+
+  factory _ArtistWallet.fromJson(dynamic value) {
+    if (value is! Map) {
+      return const _ArtistWallet();
+    }
+
+    final json = Map<String, dynamic>.from(value);
+
+    return _ArtistWallet(
+      pendingBalance: _toDouble(json['pendingBalance']),
+      availableBalance: _toDouble(json['availableBalance']),
+      reservedBalance: _toDouble(json['reservedBalance']),
+      withdrawnBalance: _toDouble(json['withdrawnBalance']),
+      lifetimeEarnings: _toDouble(json['lifetimeEarnings']),
+      currency: _string(json['currency']).isEmpty
+          ? 'VND'
+          : _string(json['currency']),
+      status: _string(json['status']).isEmpty
+          ? 'UNKNOWN'
+          : _string(json['status']).toUpperCase(),
+    );
+  }
+}
+
+class _EarningHistoryPage {
+  const _EarningHistoryPage({
+    this.items = const [],
+    this.totalItems = 0,
+    this.totalPages = 1,
+  });
+
+  final List<_EarningItem> items;
+  final int totalItems;
+  final int totalPages;
+
+  factory _EarningHistoryPage.fromJson(dynamic value) {
+    if (value is! Map) {
+      return _EarningHistoryPage(
+        items: _resultList(value).map(_EarningItem.fromJson).toList(),
+      );
+    }
+
+    final json = Map<String, dynamic>.from(value);
+    final items = _resultList(json).map(_EarningItem.fromJson).toList();
+
+    return _EarningHistoryPage(
+      items: items,
+      totalItems: _toInt(json['totalItems'] ?? json['totalElements']),
+      totalPages: (_toInt(json['totalPages']) <= 0)
+          ? 1
+          : _toInt(json['totalPages']),
+    );
+  }
+}
+
+class _EarningItem {
+  const _EarningItem({
+    this.id,
+    this.trackId,
+    this.amount = 0,
+    this.currency = 'VND',
+    this.status = 'PENDING',
+    this.earningDate,
+    this.qualifiedAt,
+    this.availableAt,
+    this.rejectionReason,
+  });
+
+  final String? id;
+  final String? trackId;
+  final double amount;
+  final String currency;
+  final String status;
+  final String? earningDate;
+  final String? qualifiedAt;
+  final String? availableAt;
+  final String? rejectionReason;
+
+  factory _EarningItem.fromJson(dynamic value) {
+    if (value is! Map) {
+      return const _EarningItem();
+    }
+
+    final json = Map<String, dynamic>.from(value);
+
+    return _EarningItem(
+      id: _nullableString(json['id'] ?? json['_id']),
+      trackId: _nullableString(json['trackId'] ?? json['track_id']),
+      amount: _toDouble(json['amount']),
+      currency: _string(json['currency']).isEmpty
+          ? 'VND'
+          : _string(json['currency']),
+      status: _string(json['status']).isEmpty
+          ? 'PENDING'
+          : _string(json['status']).toUpperCase(),
+      earningDate: _nullableString(json['earningDate'] ?? json['createdAt']),
+      qualifiedAt: _nullableString(json['qualifiedAt']),
+      availableAt: _nullableString(json['availableAt']),
+      rejectionReason: _nullableString(json['rejectionReason']),
+    );
+  }
+}
+
+class _PayoutHistoryPage {
+  const _PayoutHistoryPage({
+    this.items = const [],
+    this.totalItems = 0,
+    this.totalPages = 1,
+  });
+
+  final List<_PayoutItem> items;
+  final int totalItems;
+  final int totalPages;
+
+  factory _PayoutHistoryPage.fromJson(dynamic value) {
+    if (value is! Map) {
+      return _PayoutHistoryPage(
+        items: _resultList(value).map(_PayoutItem.fromJson).toList(),
+      );
+    }
+
+    final json = Map<String, dynamic>.from(value);
+    final items = _resultList(json).map(_PayoutItem.fromJson).toList();
+
+    return _PayoutHistoryPage(
+      items: items,
+      totalItems: _toInt(json['totalItems'] ?? json['totalElements']),
+      totalPages: (_toInt(json['totalPages']) <= 0)
+          ? 1
+          : _toInt(json['totalPages']),
+    );
+  }
+}
+
+class _PayoutItem {
+  const _PayoutItem({
+    this.id,
+    this.amount = 0,
+    this.currency = 'VND',
+    this.status = 'PENDING',
+    this.bankName,
+    this.accountNumber,
+    this.accountHolderName,
+    this.artistNote,
+    this.adminNote,
+    this.transactionReference,
+    this.requestedAt,
+  });
+
+  final String? id;
+  final double amount;
+  final String currency;
+  final String status;
+  final String? bankName;
+  final String? accountNumber;
+  final String? accountHolderName;
+  final String? artistNote;
+  final String? adminNote;
+  final String? transactionReference;
+  final String? requestedAt;
+
+  bool get canCancel => id?.trim().isNotEmpty == true && status == 'PENDING';
+
+  factory _PayoutItem.fromJson(dynamic value) {
+    if (value is! Map) {
+      return const _PayoutItem();
+    }
+
+    final json = Map<String, dynamic>.from(value);
+
+    return _PayoutItem(
+      id: _nullableString(json['id'] ?? json['_id']),
+      amount: _toDouble(json['amount']),
+      currency: _string(json['currency']).isEmpty
+          ? 'VND'
+          : _string(json['currency']),
+      status: _string(json['status']).isEmpty
+          ? 'PENDING'
+          : _string(json['status']).toUpperCase(),
+      bankName: _nullableString(json['bankName'] ?? json['bankCode']),
+      accountNumber: _nullableString(json['accountNumber']),
+      accountHolderName: _nullableString(json['accountHolderName']),
+      artistNote: _nullableString(json['artistNote']),
+      adminNote: _nullableString(json['adminNote']),
+      transactionReference: _nullableString(json['transactionReference']),
+      requestedAt: _nullableString(json['requestedAt'] ?? json['createdAt']),
+    );
+  }
+}
+
+String _formatCurrency(num amount, [String currency = 'VND']) {
+  final normalized = currency.trim().isEmpty ? 'VND' : currency.trim();
+
+  if (normalized.toUpperCase() != 'VND') {
+    return '${amount.toStringAsFixed(amount % 1 == 0 ? 0 : 2)} $normalized';
+  }
+
+  return '${_formatMoney(amount)}';
+}
+
+String _shortId(String? value) {
+  final text = value?.trim();
+
+  if (text == null || text.isEmpty) {
+    return '--';
+  }
+
+  if (text.length <= 14) {
+    return text;
+  }
+
+  return '${text.substring(0, 7)}...${text.substring(text.length - 5)}';
+}
+
+String _maskAccount(String? value) {
+  final text = value?.replaceAll(RegExp(r'\s+'), '').trim();
+
+  if (text == null || text.isEmpty) {
+    return '--';
+  }
+
+  if (text.length <= 4) {
+    return text;
+  }
+
+  return '${List.filled(text.length - 4, '*').join()}${text.substring(text.length - 4)}';
+}
+
 class _InfoRowData {
   const _InfoRowData(this.label, this.value);
 
@@ -777,6 +1103,26 @@ class _StudioComment {
   final String? createdLabel;
 
   bool get canDelete => id?.trim().isNotEmpty == true;
+
+  String get actionLabel {
+    final title = trackTitle?.trim();
+
+    if (title != null && title.isNotEmpty) {
+      return 'Commented on $title';
+    }
+
+    return content;
+  }
+
+  String? get commentPreview {
+    final text = content.trim();
+
+    if (text.isEmpty || text.toLowerCase().startsWith('commented on ')) {
+      return null;
+    }
+
+    return text;
+  }
 
   String get authorInitial {
     final trimmed = author.trim();

@@ -146,7 +146,7 @@ class _CommentsOverviewState extends ConsumerState<_CommentsOverview> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          filteredComments[index].content,
+                          filteredComments[index].actionLabel,
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
                           style: const TextStyle(
@@ -154,10 +154,10 @@ class _CommentsOverviewState extends ConsumerState<_CommentsOverview> {
                             fontWeight: FontWeight.w700,
                           ),
                         ),
-                        if (filteredComments[index].trackTitle != null) ...[
+                        if (filteredComments[index].commentPreview != null) ...[
                           const SizedBox(height: 6),
                           Text(
-                            filteredComments[index].trackTitle!,
+                            filteredComments[index].commentPreview!,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: const TextStyle(

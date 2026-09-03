@@ -85,6 +85,7 @@ class _BenefitsSection extends ConsumerWidget {
       builder: (_) {
         return _PlansSheet(
           current: current,
+          onPaymentStarted: (_) {},
           onPlanChanged: () async {
             ref.invalidate(artistStudioSubscriptionProvider);
             ref.invalidate(artistStudioStatsProvider);

@@ -134,6 +134,7 @@ class _EarningsSectionState extends ConsumerState<_EarningsSection> {
       builder: (_) {
         return _PlansSheet(
           current: current,
+          onPaymentStarted: (_) {},
           onPlanChanged: () async {
             ref.invalidate(artistStudioSubscriptionProvider);
             ref.invalidate(artistStudioStatsProvider);
@@ -228,7 +229,7 @@ class _EarningsSectionState extends ConsumerState<_EarningsSection> {
   }
 }
 
-class _EarningsDetails extends ConsumerWidget {
+class _EarningsDetails extends ConsumerStatefulWidget {
   const _EarningsDetails({
     required this.earningStatus,
     required this.payoutStatus,
@@ -250,33 +251,178 @@ class _EarningsDetails extends ConsumerWidget {
   final ValueChanged<_PayoutItem> onCancelPayout;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final earnings = ref.watch(artistEarningHistoryProvider(earningStatus));
-    final payouts = ref.watch(artistPayoutHistoryProvider(payoutStatus));
+  ConsumerState<_EarningsDetails> createState() => _EarningsDetailsState();
+}
+
+class _EarningsDetailsState extends ConsumerState<_EarningsDetails> {
+  int _earningPage = 1;
+  int _payoutPage = 1;
+
+  @override
+  void didUpdateWidget(covariant _EarningsDetails oldWidget) {
+    super.didUpdateWidget(oldWidget);
+
+    if (oldWidget.earningStatus != widget.earningStatus) {
+      _earningPage = 1;
+    }
+
+    if (oldWidget.payoutStatus != widget.payoutStatus) {
+      _payoutPage = 1;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final earnings = _mergedEarnings();
+    final payouts = _mergedPayouts();
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         const SizedBox(height: 14),
         _EarningHistoryPanel(
-          selectedStatus: earningStatus,
-          statuses: earningStatuses,
+          selectedStatus: widget.earningStatus,
+          statuses: widget.earningStatuses,
           history: earnings,
-          onStatusChanged: onEarningStatusChanged,
-          onRefresh: () => ref.invalidate(artistEarningHistoryProvider),
+          onStatusChanged: widget.onEarningStatusChanged,
+          onRefresh: _refreshEarnings,
+          onLoadMore: _loadMoreEarnings,
         ),
         const SizedBox(height: 14),
         _PayoutHistoryPanel(
-          selectedStatus: payoutStatus,
-          statuses: payoutStatuses,
+          selectedStatus: widget.payoutStatus,
+          statuses: widget.payoutStatuses,
           history: payouts,
-          cancelingPayoutId: cancelingPayoutId,
-          onStatusChanged: onPayoutStatusChanged,
-          onRefresh: () => ref.invalidate(artistPayoutHistoryProvider),
-          onCancel: onCancelPayout,
+          cancelingPayoutId: widget.cancelingPayoutId,
+          onStatusChanged: widget.onPayoutStatusChanged,
+          onRefresh: _refreshPayouts,
+          onLoadMore: _loadMorePayouts,
+          onCancel: widget.onCancelPayout,
         ),
       ],
     );
+  }
+
+  _PagedEarningHistory _mergedEarnings() {
+    final values = [
+      for (var page = 1; page <= _earningPage; page++)
+        ref.watch(
+          artistEarningHistoryProvider(
+            _HistoryQuery(status: widget.earningStatus, page: page),
+          ),
+        ),
+    ];
+
+    final items = <_EarningItem>[];
+    var totalPages = 1;
+    var totalItems = 0;
+    var initialLoading = false;
+    var loadingMore = false;
+    var hasError = false;
+
+    for (var index = 0; index < values.length; index++) {
+      values[index].when(
+        loading: () {
+          if (index == 0 && items.isEmpty) {
+            initialLoading = true;
+          } else {
+            loadingMore = true;
+          }
+        },
+        error: (_, _) {
+          hasError = true;
+        },
+        data: (page) {
+          items.addAll(page.items);
+          totalPages = page.totalPages;
+          totalItems = page.totalItems;
+        },
+      );
+    }
+
+    return _PagedEarningHistory(
+      items: items,
+      currentPage: _earningPage,
+      totalPages: totalPages,
+      totalItems: totalItems,
+      initialLoading: initialLoading,
+      loadingMore: loadingMore,
+      hasError: hasError,
+    );
+  }
+
+  _PagedPayoutHistory _mergedPayouts() {
+    final values = [
+      for (var page = 1; page <= _payoutPage; page++)
+        ref.watch(
+          artistPayoutHistoryProvider(
+            _HistoryQuery(status: widget.payoutStatus, page: page),
+          ),
+        ),
+    ];
+
+    final items = <_PayoutItem>[];
+    var totalPages = 1;
+    var totalItems = 0;
+    var initialLoading = false;
+    var loadingMore = false;
+    var hasError = false;
+
+    for (var index = 0; index < values.length; index++) {
+      values[index].when(
+        loading: () {
+          if (index == 0 && items.isEmpty) {
+            initialLoading = true;
+          } else {
+            loadingMore = true;
+          }
+        },
+        error: (_, _) {
+          hasError = true;
+        },
+        data: (page) {
+          items.addAll(page.items);
+          totalPages = page.totalPages;
+          totalItems = page.totalItems;
+        },
+      );
+    }
+
+    return _PagedPayoutHistory(
+      items: items,
+      currentPage: _payoutPage,
+      totalPages: totalPages,
+      totalItems: totalItems,
+      initialLoading: initialLoading,
+      loadingMore: loadingMore,
+      hasError: hasError,
+    );
+  }
+
+  void _refreshEarnings() {
+    setState(() {
+      _earningPage = 1;
+    });
+    ref.invalidate(artistEarningHistoryProvider);
+  }
+
+  void _refreshPayouts() {
+    setState(() {
+      _payoutPage = 1;
+    });
+    ref.invalidate(artistPayoutHistoryProvider);
+  }
+
+  void _loadMoreEarnings() {
+    setState(() {
+      _earningPage++;
+    });
+  }
+
+  void _loadMorePayouts() {
+    setState(() {
+      _payoutPage++;
+    });
   }
 }
 
@@ -590,6 +736,50 @@ class _WalletMetricCard extends StatelessWidget {
   }
 }
 
+class _PagedEarningHistory {
+  const _PagedEarningHistory({
+    required this.items,
+    required this.currentPage,
+    required this.totalPages,
+    required this.totalItems,
+    required this.initialLoading,
+    required this.loadingMore,
+    required this.hasError,
+  });
+
+  final List<_EarningItem> items;
+  final int currentPage;
+  final int totalPages;
+  final int totalItems;
+  final bool initialLoading;
+  final bool loadingMore;
+  final bool hasError;
+
+  bool get canLoadMore => currentPage < totalPages && !loadingMore;
+}
+
+class _PagedPayoutHistory {
+  const _PagedPayoutHistory({
+    required this.items,
+    required this.currentPage,
+    required this.totalPages,
+    required this.totalItems,
+    required this.initialLoading,
+    required this.loadingMore,
+    required this.hasError,
+  });
+
+  final List<_PayoutItem> items;
+  final int currentPage;
+  final int totalPages;
+  final int totalItems;
+  final bool initialLoading;
+  final bool loadingMore;
+  final bool hasError;
+
+  bool get canLoadMore => currentPage < totalPages && !loadingMore;
+}
+
 class _EarningHistoryPanel extends StatelessWidget {
   const _EarningHistoryPanel({
     required this.selectedStatus,
@@ -597,13 +787,15 @@ class _EarningHistoryPanel extends StatelessWidget {
     required this.history,
     required this.onStatusChanged,
     required this.onRefresh,
+    required this.onLoadMore,
   });
 
   final String? selectedStatus;
   final List<String?> statuses;
-  final AsyncValue<_EarningHistoryPage> history;
+  final _PagedEarningHistory history;
   final ValueChanged<String?> onStatusChanged;
   final VoidCallback onRefresh;
+  final VoidCallback onLoadMore;
 
   @override
   Widget build(BuildContext context) {
@@ -624,42 +816,52 @@ class _EarningHistoryPanel extends StatelessWidget {
             onChanged: onStatusChanged,
           ),
           const SizedBox(height: 12),
-          history.when(
-            loading: () {
-              return const Padding(
-                padding: EdgeInsets.symmetric(vertical: 32),
-                child: Center(
-                  child: CircularProgressIndicator(color: _studioOrange),
-                ),
-              );
-            },
-            error: (_, _) {
-              return const _StudioMessage(
-                icon: Icons.history_rounded,
-                title: 'Could not load earning history',
-                subtitle: 'Try refreshing this section.',
-              );
-            },
-            data: (page) {
-              if (page.items.isEmpty) {
-                return const _InlineEmptyState(
-                  icon: Icons.music_note_rounded,
-                  title: 'No earnings found',
-                  subtitle: 'Qualified stream earnings will appear here.',
-                );
-              }
-
-              return Column(
-                children: [
-                  for (var index = 0; index < page.items.length; index++) ...[
-                    _EarningTile(item: page.items[index]),
-                    if (index != page.items.length - 1)
-                      const Divider(height: 22, color: Color(0xFF282828)),
-                  ],
+          if (history.initialLoading)
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 32),
+              child: Center(
+                child: CircularProgressIndicator(color: _studioOrange),
+              ),
+            )
+          else if (history.hasError && history.items.isEmpty)
+            const _StudioMessage(
+              icon: Icons.history_rounded,
+              title: 'Could not load earning history',
+              subtitle: 'Try refreshing this section.',
+            )
+          else if (history.items.isEmpty)
+            const _InlineEmptyState(
+              icon: Icons.music_note_rounded,
+              title: 'No earnings found',
+              subtitle: 'Qualified stream earnings will appear here.',
+            )
+          else
+            Column(
+              children: [
+                for (var index = 0; index < history.items.length; index++) ...[
+                  _EarningTile(item: history.items[index]),
+                  if (index != history.items.length - 1)
+                    const Divider(height: 22, color: Color(0xFF282828)),
                 ],
-              );
-            },
-          ),
+                if (history.hasError) ...[
+                  const SizedBox(height: 12),
+                  const _PayoutFormMessage(
+                    icon: Icons.error_outline_rounded,
+                    message: 'Could not load more earnings.',
+                    error: true,
+                  ),
+                ],
+                if (history.currentPage < history.totalPages) ...[
+                  const SizedBox(height: 12),
+                  _LoadMoreButton(
+                    loading: history.loadingMore,
+                    label:
+                        'Load more (${history.currentPage}/${history.totalPages})',
+                    onPressed: history.canLoadMore ? onLoadMore : null,
+                  ),
+                ],
+              ],
+            ),
         ],
       ),
     );
@@ -674,15 +876,17 @@ class _PayoutHistoryPanel extends StatelessWidget {
     required this.cancelingPayoutId,
     required this.onStatusChanged,
     required this.onRefresh,
+    required this.onLoadMore,
     required this.onCancel,
   });
 
   final String? selectedStatus;
   final List<String?> statuses;
-  final AsyncValue<_PayoutHistoryPage> history;
+  final _PagedPayoutHistory history;
   final String? cancelingPayoutId;
   final ValueChanged<String?> onStatusChanged;
   final VoidCallback onRefresh;
+  final VoidCallback onLoadMore;
   final ValueChanged<_PayoutItem> onCancel;
 
   @override
@@ -704,48 +908,91 @@ class _PayoutHistoryPanel extends StatelessWidget {
             onChanged: onStatusChanged,
           ),
           const SizedBox(height: 12),
-          history.when(
-            loading: () {
-              return const Padding(
-                padding: EdgeInsets.symmetric(vertical: 32),
-                child: Center(
-                  child: CircularProgressIndicator(color: _studioOrange),
-                ),
-              );
-            },
-            error: (_, _) {
-              return const _StudioMessage(
-                icon: Icons.account_balance_rounded,
-                title: 'Could not load payout history',
-                subtitle: 'Try refreshing this section.',
-              );
-            },
-            data: (page) {
-              if (page.items.isEmpty) {
-                return const _InlineEmptyState(
-                  icon: Icons.account_balance_rounded,
-                  title: 'No payout requests',
-                  subtitle: 'Your payout requests will appear here.',
-                );
-              }
-
-              return Column(
-                children: [
-                  for (var index = 0; index < page.items.length; index++) ...[
-                    _PayoutTile(
-                      item: page.items[index],
-                      canceling: cancelingPayoutId == page.items[index].id,
-                      onCancel: () => onCancel(page.items[index]),
-                    ),
-                    if (index != page.items.length - 1)
-                      const Divider(height: 22, color: Color(0xFF282828)),
-                  ],
+          if (history.initialLoading)
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 32),
+              child: Center(
+                child: CircularProgressIndicator(color: _studioOrange),
+              ),
+            )
+          else if (history.hasError && history.items.isEmpty)
+            const _StudioMessage(
+              icon: Icons.account_balance_rounded,
+              title: 'Could not load payout history',
+              subtitle: 'Try refreshing this section.',
+            )
+          else if (history.items.isEmpty)
+            const _InlineEmptyState(
+              icon: Icons.account_balance_rounded,
+              title: 'No payout requests',
+              subtitle: 'Your payout requests will appear here.',
+            )
+          else
+            Column(
+              children: [
+                for (var index = 0; index < history.items.length; index++) ...[
+                  _PayoutTile(
+                    item: history.items[index],
+                    canceling: cancelingPayoutId == history.items[index].id,
+                    onCancel: () => onCancel(history.items[index]),
+                  ),
+                  if (index != history.items.length - 1)
+                    const Divider(height: 22, color: Color(0xFF282828)),
                 ],
-              );
-            },
-          ),
+                if (history.hasError) ...[
+                  const SizedBox(height: 12),
+                  const _PayoutFormMessage(
+                    icon: Icons.error_outline_rounded,
+                    message: 'Could not load more payouts.',
+                    error: true,
+                  ),
+                ],
+                if (history.currentPage < history.totalPages) ...[
+                  const SizedBox(height: 12),
+                  _LoadMoreButton(
+                    loading: history.loadingMore,
+                    label:
+                        'Load more (${history.currentPage}/${history.totalPages})',
+                    onPressed: history.canLoadMore ? onLoadMore : null,
+                  ),
+                ],
+              ],
+            ),
         ],
       ),
+    );
+  }
+}
+
+class _LoadMoreButton extends StatelessWidget {
+  const _LoadMoreButton({
+    required this.loading,
+    required this.label,
+    required this.onPressed,
+  });
+
+  final bool loading;
+  final String label;
+  final VoidCallback? onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return OutlinedButton.icon(
+      style: OutlinedButton.styleFrom(
+        foregroundColor: Colors.white,
+        disabledForegroundColor: const Color(0xFF777777),
+        side: const BorderSide(color: Color(0xFF444444)),
+        minimumSize: const Size.fromHeight(42),
+      ),
+      onPressed: onPressed,
+      icon: loading
+          ? const SizedBox(
+              width: 16,
+              height: 16,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            )
+          : const Icon(Icons.expand_more_rounded),
+      label: Text(loading ? 'Loading...' : label),
     );
   }
 }

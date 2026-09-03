@@ -215,6 +215,291 @@ dynamic _unwrap(dynamic value) {
   return value;
 }
 
+String? _extractPaymentUrl(dynamic value) {
+  final data = _unwrap(value);
+
+  if (data is String) {
+    final text = data.trim();
+    return _looksLikePaymentUrl(text) ? text : null;
+  }
+
+  if (data is! Map) {
+    return null;
+  }
+
+  final json = Map<String, dynamic>.from(data);
+  const directKeys = [
+    'paymentUrl',
+    'paymentURL',
+    'vnpayUrl',
+    'vnPayUrl',
+    'payUrl',
+    'checkoutUrl',
+    'checkoutURL',
+    'redirectUrl',
+    'paymentLink',
+    'url',
+  ];
+
+  for (final key in directKeys) {
+    final candidate = _nullableString(json[key]);
+
+    if (candidate != null && _looksLikePaymentUrl(candidate)) {
+      return candidate;
+    }
+  }
+
+  const nestedKeys = [
+    'payment',
+    'checkout',
+    'vnpay',
+    'vnPay',
+    'result',
+    'data',
+  ];
+
+  for (final key in nestedKeys) {
+    final nested = json[key];
+
+    if (identical(nested, value)) {
+      continue;
+    }
+
+    final candidate = _extractPaymentUrl(nested);
+
+    if (candidate != null) {
+      return candidate;
+    }
+  }
+
+  return null;
+}
+
+bool _looksLikePaymentUrl(String value) {
+  final uri = Uri.tryParse(value.trim());
+
+  return uri != null &&
+      (uri.scheme == 'http' || uri.scheme == 'https') &&
+      uri.host.isNotEmpty;
+}
+
+String? _extractPaymentOrderCode(dynamic value) {
+  final data = _unwrap(value);
+
+  if (data is! Map) {
+    return null;
+  }
+
+  final json = Map<String, dynamic>.from(data);
+  const directKeys = [
+    'orderCode',
+    'orderId',
+    'transactionId',
+    'paymentCode',
+    'txnRef',
+    'vnp_TxnRef',
+  ];
+
+  for (final key in directKeys) {
+    final candidate = _nullableString(json[key]);
+
+    if (candidate != null) {
+      return candidate;
+    }
+  }
+
+  const nestedKeys = [
+    'payment',
+    'checkout',
+    'vnpay',
+    'vnPay',
+    'result',
+    'data',
+  ];
+
+  for (final key in nestedKeys) {
+    final nested = json[key];
+
+    if (identical(nested, value)) {
+      continue;
+    }
+
+    final candidate = _extractPaymentOrderCode(nested);
+
+    if (candidate != null) {
+      return candidate;
+    }
+  }
+
+  return null;
+}
+
+String _normalizePaymentStatus(dynamic value) {
+  final text = _string(value).toUpperCase();
+
+  if (text.isEmpty) {
+    return 'PENDING';
+  }
+
+  if (text == 'SUCCESS' || text == 'COMPLETED') {
+    return 'PAID';
+  }
+
+  if (text == 'CANCELLED') {
+    return 'CANCELED';
+  }
+
+  return text;
+}
+
+bool _isFinalPaymentStatus(String status) {
+  return const {
+    'PAID',
+    'FAILED',
+    'CANCELED',
+    'EXPIRED',
+    'INVALID',
+  }.contains(status.toUpperCase());
+}
+
+class _PendingSubscriptionPayment {
+  const _PendingSubscriptionPayment({
+    required this.orderCode,
+    required this.planCode,
+    required this.planName,
+    required this.paymentUrl,
+    required this.amount,
+    this.currency = 'VND',
+    this.status = 'PENDING',
+    this.createdAt,
+  });
+
+  final String orderCode;
+  final String planCode;
+  final String planName;
+  final String paymentUrl;
+  final double amount;
+  final String currency;
+  final String status;
+  final String? createdAt;
+
+  _PendingSubscriptionPayment copyWith({String? status}) {
+    return _PendingSubscriptionPayment(
+      orderCode: orderCode,
+      planCode: planCode,
+      planName: planName,
+      paymentUrl: paymentUrl,
+      amount: amount,
+      currency: currency,
+      status: status ?? this.status,
+      createdAt: createdAt,
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'orderCode': orderCode,
+      'planCode': planCode,
+      'planName': planName,
+      'paymentUrl': paymentUrl,
+      'amount': amount,
+      'currency': currency,
+      'status': status,
+      'createdAt': createdAt,
+    };
+  }
+
+  factory _PendingSubscriptionPayment.fromJson(dynamic value) {
+    if (value is! Map) {
+      return const _PendingSubscriptionPayment(
+        orderCode: '',
+        planCode: '',
+        planName: 'Plan',
+        paymentUrl: '',
+        amount: 0,
+      );
+    }
+
+    final json = Map<String, dynamic>.from(value);
+
+    return _PendingSubscriptionPayment(
+      orderCode: _string(json['orderCode']),
+      planCode: _string(json['planCode']),
+      planName: _string(json['planName']).isEmpty
+          ? _planName(_string(json['planCode']))
+          : _string(json['planName']),
+      paymentUrl: _string(json['paymentUrl']),
+      amount: _toDouble(json['amount']),
+      currency: _string(json['currency']).isEmpty
+          ? 'VND'
+          : _string(json['currency']),
+      status: _normalizePaymentStatus(json['status']),
+      createdAt: _nullableString(json['createdAt']),
+    );
+  }
+
+  factory _PendingSubscriptionPayment.fromCreateResponse({
+    required dynamic response,
+    required _StudioPlan plan,
+  }) {
+    final data = _unwrap(response);
+    final json = data is Map ? Map<String, dynamic>.from(data) : {};
+
+    return _PendingSubscriptionPayment(
+      orderCode: _extractPaymentOrderCode(data) ?? '',
+      planCode: _string(json['planCode']).isEmpty
+          ? plan.code
+          : _string(json['planCode']),
+      planName: _string(json['planName']).isEmpty
+          ? plan.name
+          : _string(json['planName']),
+      paymentUrl: _extractPaymentUrl(data) ?? '',
+      amount: _toDouble(json['amount']).toDouble(),
+      currency: _string(json['currency']).isEmpty
+          ? 'VND'
+          : _string(json['currency']),
+      status: _normalizePaymentStatus(json['status']),
+      createdAt: DateTime.now().toIso8601String(),
+    );
+  }
+
+  bool get isValid => orderCode.isNotEmpty && paymentUrl.isNotEmpty;
+}
+
+class _SubscriptionPaymentStatus {
+  const _SubscriptionPaymentStatus({
+    required this.orderCode,
+    required this.status,
+    this.responseCode,
+    this.transactionStatus,
+    this.subscriptionId,
+    this.failureReason,
+  });
+
+  final String orderCode;
+  final String status;
+  final String? responseCode;
+  final String? transactionStatus;
+  final String? subscriptionId;
+  final String? failureReason;
+
+  bool get paid => status == 'PAID';
+
+  factory _SubscriptionPaymentStatus.fromJson(dynamic value) {
+    final data = _unwrap(value);
+    final json = data is Map ? Map<String, dynamic>.from(data) : {};
+
+    return _SubscriptionPaymentStatus(
+      orderCode: _string(json['orderCode']),
+      status: _normalizePaymentStatus(json['status']),
+      responseCode: _nullableString(json['responseCode']),
+      transactionStatus: _nullableString(json['transactionStatus']),
+      subscriptionId: _nullableString(json['subscriptionId']),
+      failureReason: _nullableString(json['failureReason']),
+    );
+  }
+}
+
 List<dynamic> _resultList(dynamic value) {
   final data = _unwrap(value);
 
@@ -728,11 +1013,13 @@ class _ArtistWallet {
 class _EarningHistoryPage {
   const _EarningHistoryPage({
     this.items = const [],
+    this.currentPage = 1,
     this.totalItems = 0,
     this.totalPages = 1,
   });
 
   final List<_EarningItem> items;
+  final int currentPage;
   final int totalItems;
   final int totalPages;
 
@@ -748,6 +1035,9 @@ class _EarningHistoryPage {
 
     return _EarningHistoryPage(
       items: items,
+      currentPage: (_toInt(json['current'] ?? json['page']) <= 0)
+          ? 1
+          : _toInt(json['current'] ?? json['page']),
       totalItems: _toInt(json['totalItems'] ?? json['totalElements']),
       totalPages: (_toInt(json['totalPages']) <= 0)
           ? 1
@@ -807,11 +1097,13 @@ class _EarningItem {
 class _PayoutHistoryPage {
   const _PayoutHistoryPage({
     this.items = const [],
+    this.currentPage = 1,
     this.totalItems = 0,
     this.totalPages = 1,
   });
 
   final List<_PayoutItem> items;
+  final int currentPage;
   final int totalItems;
   final int totalPages;
 
@@ -827,6 +1119,9 @@ class _PayoutHistoryPage {
 
     return _PayoutHistoryPage(
       items: items,
+      currentPage: (_toInt(json['current'] ?? json['page']) <= 0)
+          ? 1
+          : _toInt(json['current'] ?? json['page']),
       totalItems: _toInt(json['totalItems'] ?? json['totalElements']),
       totalPages: (_toInt(json['totalPages']) <= 0)
           ? 1
@@ -889,6 +1184,23 @@ class _PayoutItem {
       requestedAt: _nullableString(json['requestedAt'] ?? json['createdAt']),
     );
   }
+}
+
+class _HistoryQuery {
+  const _HistoryQuery({required this.status, required this.page});
+
+  final String? status;
+  final int page;
+
+  @override
+  bool operator ==(Object other) {
+    return other is _HistoryQuery &&
+        other.status == status &&
+        other.page == page;
+  }
+
+  @override
+  int get hashCode => Object.hash(status, page);
 }
 
 String _formatCurrency(num amount, [String currency = 'VND']) {

@@ -1,10 +1,14 @@
 library artist_studio_screen;
 
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/config/api_config.dart';
+import '../../../core/storage/subscription_payment_storage.dart';
 import '../../../core/storage/token_storage.dart';
 import '../../../services/api/api_service.dart';
 import '../../auth/providers/auth_provider.dart';
@@ -120,13 +124,17 @@ final artistWalletProvider = FutureProvider<_ArtistWallet?>((ref) async {
 });
 
 final artistEarningHistoryProvider =
-    FutureProvider.family<_EarningHistoryPage, String?>((ref, status) async {
+    FutureProvider.family<_EarningHistoryPage, _HistoryQuery>((
+      ref,
+      query,
+    ) async {
       if (!await _hasStoredToken()) {
         return const _EarningHistoryPage();
       }
 
       final response = await ApiService.instance.getArtistEarningHistoryApi(
-        status: status,
+        status: query.status,
+        current: query.page,
         pageSize: 10,
       );
 
@@ -138,13 +146,17 @@ final artistEarningHistoryProvider =
     });
 
 final artistPayoutHistoryProvider =
-    FutureProvider.family<_PayoutHistoryPage, String?>((ref, status) async {
+    FutureProvider.family<_PayoutHistoryPage, _HistoryQuery>((
+      ref,
+      query,
+    ) async {
       if (!await _hasStoredToken()) {
         return const _PayoutHistoryPage();
       }
 
       final response = await ApiService.instance.getArtistPayoutHistoryApi(
-        status: status,
+        status: query.status,
+        current: query.page,
         pageSize: 10,
       );
 

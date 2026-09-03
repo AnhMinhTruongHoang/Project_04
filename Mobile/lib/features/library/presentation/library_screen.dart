@@ -6,6 +6,7 @@ import '../../home/models/home_track.dart';
 import '../../player/providers/player_provider.dart';
 import '../models/listening_history_item.dart';
 import '../providers/library_provider.dart';
+import 'albums_screen.dart';
 import 'following_screen.dart';
 import 'liked_tracks_screen.dart';
 import 'listening_history_screen.dart';
@@ -45,6 +46,7 @@ class LibraryScreen extends ConsumerWidget {
             await Future.wait([
               ref.read(likedTracksProvider.future),
               ref.read(playlistsProvider.future),
+              ref.read(albumsProvider.future),
               ref.read(listeningHistoryProvider.future),
               ref.read(myUploadsProvider.future),
             ]);
@@ -135,13 +137,7 @@ class LibraryScreen extends ConsumerWidget {
                 ),
                 onTap: () {
                   Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (_) => const PlaceholderLibraryScreen(
-                        title: 'Albums',
-                        message:
-                            'Albums are read from playlists marked as albums. Upload and album management can be added from Artist Studio.',
-                      ),
-                    ),
+                    MaterialPageRoute(builder: (_) => const AlbumsScreen()),
                   );
                 },
               ),
@@ -155,6 +151,13 @@ class LibraryScreen extends ConsumerWidget {
                   Navigator.of(context).push(
                     MaterialPageRoute(builder: (_) => const FollowingScreen()),
                   );
+                },
+              ),
+              _LibraryNavItem(
+                title: 'People',
+                subtitle: 'Find artists to follow',
+                onTap: () {
+                  context.push('/people');
                 },
               ),
               _LibraryNavItem(

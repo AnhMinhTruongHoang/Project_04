@@ -500,6 +500,108 @@ class _SubscriptionPaymentStatus {
   }
 }
 
+class _SubscriptionPaymentHistoryPage {
+  const _SubscriptionPaymentHistoryPage({
+    this.items = const [],
+    this.currentPage = 1,
+    this.totalItems = 0,
+    this.totalPages = 1,
+  });
+
+  final List<_SubscriptionPaymentHistoryItem> items;
+  final int currentPage;
+  final int totalItems;
+  final int totalPages;
+
+  factory _SubscriptionPaymentHistoryPage.fromJson(dynamic value) {
+    final data = _unwrap(value);
+    final json = data is Map ? Map<String, dynamic>.from(data) : {};
+    final meta = json['meta'] is Map
+        ? Map<String, dynamic>.from(json['meta'] as Map)
+        : const <String, dynamic>{};
+
+    return _SubscriptionPaymentHistoryPage(
+      items: _resultList(data)
+          .map(_SubscriptionPaymentHistoryItem.fromJson)
+          .where((payment) => payment.orderCode.isNotEmpty)
+          .toList(),
+      currentPage: (_toInt(meta['current'] ?? json['current']) <= 0)
+          ? 1
+          : _toInt(meta['current'] ?? json['current']),
+      totalItems: _toInt(meta['total'] ?? json['totalItems']),
+      totalPages: (_toInt(meta['pages'] ?? json['totalPages']) <= 0)
+          ? 1
+          : _toInt(meta['pages'] ?? json['totalPages']),
+    );
+  }
+}
+
+class _SubscriptionPaymentHistoryItem {
+  const _SubscriptionPaymentHistoryItem({
+    this.id,
+    required this.orderCode,
+    this.subscriptionId,
+    this.provider = 'VNPAY',
+    this.amount = 0,
+    this.currency = 'VND',
+    this.status = 'PENDING',
+    this.responseCode,
+    this.transactionStatus,
+    this.failureReason,
+    this.paymentUrl,
+    this.paidAt,
+    this.expiresAt,
+    this.createdAt,
+  });
+
+  final String? id;
+  final String orderCode;
+  final String? subscriptionId;
+  final String provider;
+  final double amount;
+  final String currency;
+  final String status;
+  final String? responseCode;
+  final String? transactionStatus;
+  final String? failureReason;
+  final String? paymentUrl;
+  final String? paidAt;
+  final String? expiresAt;
+  final String? createdAt;
+
+  bool get isPending => status == 'PENDING' || status == 'PROCESSING';
+  bool get paid => status == 'PAID';
+
+  factory _SubscriptionPaymentHistoryItem.fromJson(dynamic value) {
+    if (value is! Map) {
+      return const _SubscriptionPaymentHistoryItem(orderCode: '');
+    }
+
+    final json = Map<String, dynamic>.from(value);
+
+    return _SubscriptionPaymentHistoryItem(
+      id: _nullableString(json['id'] ?? json['_id']),
+      orderCode: _string(json['orderCode']),
+      subscriptionId: _nullableString(json['subscriptionId']),
+      provider: _string(json['provider']).isEmpty
+          ? 'VNPAY'
+          : _string(json['provider']),
+      amount: _toDouble(json['amount']),
+      currency: _string(json['currency']).isEmpty
+          ? 'VND'
+          : _string(json['currency']),
+      status: _normalizePaymentStatus(json['status']),
+      responseCode: _nullableString(json['responseCode']),
+      transactionStatus: _nullableString(json['transactionStatus']),
+      failureReason: _nullableString(json['failureReason']),
+      paymentUrl: _extractPaymentUrl(json),
+      paidAt: _nullableString(json['paidAt']),
+      expiresAt: _nullableString(json['expiresAt']),
+      createdAt: _nullableString(json['createdAt']),
+    );
+  }
+}
+
 List<dynamic> _resultList(dynamic value) {
   final data = _unwrap(value);
 

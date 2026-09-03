@@ -28,6 +28,8 @@ class _SubscriptionPanelState extends ConsumerState<_SubscriptionPanel>
     with WidgetsBindingObserver {
   bool _canceling = false;
   bool _checkingPayment = false;
+  String? _checkingHistoryOrderCode;
+  int _paymentHistoryLimit = 5;
   bool _refreshAfterPayment = false;
   _PendingSubscriptionPayment? _pendingPayment;
   String? _paymentMessage;
@@ -83,6 +85,9 @@ class _SubscriptionPanelState extends ConsumerState<_SubscriptionPanel>
         final plan = data.plan;
         final subscription = data.subscription;
         final usage = data.usage;
+        final history = ref.watch(
+          subscriptionPaymentHistoryProvider(_paymentHistoryLimit),
+        );
         final isBasic = plan.code.toUpperCase() == 'BASIC';
         final canCancel =
             !isBasic &&
@@ -165,7 +170,7 @@ class _SubscriptionPanelState extends ConsumerState<_SubscriptionPanel>
                       foregroundColor: Colors.white,
                       minimumSize: const Size.fromHeight(44),
                     ),
-                    onPressed: () => _showPlans(data),
+                    onPressed: () => context.push('/plans'),
                     icon: const Icon(Icons.credit_card_rounded),
                     label: const Text('View plans'),
                   ),
@@ -234,6 +239,22 @@ class _SubscriptionPanelState extends ConsumerState<_SubscriptionPanel>
               child: usage.unlimited
                   ? _UnlimitedQuotaStatus(usage: usage)
                   : _LimitedQuotaStatus(usage: usage),
+            ),
+            const SizedBox(height: 12),
+            _SubscriptionPaymentHistorySection(
+              history: history,
+              checkingOrderCode: _checkingHistoryOrderCode,
+              pendingPayment: _pendingPayment,
+              onRefresh: () {
+                ref.invalidate(subscriptionPaymentHistoryProvider);
+              },
+              onLoadMore: () {
+                setState(() {
+                  _paymentHistoryLimit += 5;
+                });
+              },
+              onOpenPayment: _openPaymentUrl,
+              onCheckStatus: _checkHistoryPayment,
             ),
             const SizedBox(height: 12),
             _StudioCard(
@@ -355,7 +376,7 @@ class _SubscriptionPanelState extends ConsumerState<_SubscriptionPanel>
           onPaymentStarted: (payment) {
             setState(() {
               _pendingPayment = payment;
-              _paymentMessage = 'Payment opened. Complete it in VNPay.';
+              _paymentMessage = _vnpayReturnInstruction;
             });
             _refreshAfterPayment = true;
           },
@@ -410,7 +431,7 @@ class _SubscriptionPanelState extends ConsumerState<_SubscriptionPanel>
 
     setState(() {
       _paymentMessage = opened
-          ? 'Payment opened. Complete it in VNPay.'
+          ? _vnpayReturnInstruction
           : 'Could not open VNPay payment.';
     });
   }
@@ -446,6 +467,8 @@ class _SubscriptionPanelState extends ConsumerState<_SubscriptionPanel>
           await _refreshSubscription();
         }
 
+        ref.invalidate(subscriptionPaymentHistoryProvider);
+
         if (!mounted) {
           return;
         }
@@ -462,6 +485,7 @@ class _SubscriptionPanelState extends ConsumerState<_SubscriptionPanel>
       }
 
       await SubscriptionPaymentStorage.savePendingPayment(nextPayment.toJson());
+      ref.invalidate(subscriptionPaymentHistoryProvider);
 
       if (!mounted) {
         return;
@@ -499,12 +523,98 @@ class _SubscriptionPanelState extends ConsumerState<_SubscriptionPanel>
       _pendingPayment = null;
       _paymentMessage = null;
     });
+    ref.invalidate(subscriptionPaymentHistoryProvider);
   }
 
   Future<void> _refreshSubscription() async {
     ref.invalidate(artistStudioSubscriptionProvider);
     ref.invalidate(artistStudioStatsProvider);
     await ref.read(artistStudioSubscriptionProvider.future);
+  }
+
+  Future<void> _openPaymentUrl(String paymentUrl) async {
+    final uri = Uri.tryParse(paymentUrl.trim());
+
+    if (uri == null) {
+      return;
+    }
+
+    _refreshAfterPayment = true;
+    await launchUrl(uri, mode: LaunchMode.externalApplication);
+  }
+
+  Future<void> _checkHistoryPayment(
+    _SubscriptionPaymentHistoryItem payment,
+  ) async {
+    if (_checkingHistoryOrderCode != null) {
+      return;
+    }
+
+    setState(() {
+      _checkingHistoryOrderCode = payment.orderCode;
+    });
+
+    try {
+      final response = await ApiService.instance.getPaymentApi(
+        payment.orderCode,
+      );
+
+      if (!response.isSuccess) {
+        throw StateError(response.message);
+      }
+
+      final status = _SubscriptionPaymentStatus.fromJson(response.data);
+
+      if (_pendingPayment?.orderCode == payment.orderCode) {
+        if (status.paid) {
+          await SubscriptionPaymentStorage.clearPendingPayment();
+        } else {
+          final nextPayment = _pendingPayment!.copyWith(status: status.status);
+          await SubscriptionPaymentStorage.savePendingPayment(
+            nextPayment.toJson(),
+          );
+        }
+      }
+
+      if (status.paid) {
+        await _refreshSubscription();
+      }
+
+      ref.invalidate(subscriptionPaymentHistoryProvider);
+
+      if (!mounted) {
+        return;
+      }
+
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(_paymentStatusMessage(status))));
+      setState(() {
+        if (_pendingPayment?.orderCode == payment.orderCode) {
+          if (status.paid) {
+            _pendingPayment = null;
+            _paymentMessage = null;
+          } else {
+            _pendingPayment = _pendingPayment!.copyWith(status: status.status);
+            _paymentMessage = _paymentStatusMessage(status);
+          }
+        }
+      });
+    } catch (_) {
+      if (!mounted) {
+        return;
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Could not check payment status.')),
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _checkingHistoryOrderCode = null;
+        });
+      }
+    }
   }
 }
 
@@ -607,6 +717,16 @@ class _PendingPaymentCard extends StatelessWidget {
                         fontWeight: FontWeight.w700,
                       ),
                     ),
+                    const SizedBox(height: 8),
+                    const Text(
+                      _vnpayReturnInstruction,
+                      style: TextStyle(
+                        color: Color(0xFF9FA6AD),
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                        height: 1.35,
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -689,7 +809,278 @@ String _paymentStatusMessage(_SubscriptionPaymentStatus status) {
     case 'INVALID':
       return 'Payment could not be verified.';
     default:
-      return 'Payment is still pending. Complete it in VNPay, then check again.';
+      return 'Payment is still pending. Complete it in VNPay, then return here and tap Check status.';
+  }
+}
+
+const _vnpayReturnInstruction =
+    'After VNPay, return to this app and tap Check status. If a web result tab opens, you can close it.';
+
+class _SubscriptionPaymentHistorySection extends StatelessWidget {
+  const _SubscriptionPaymentHistorySection({
+    required this.history,
+    required this.checkingOrderCode,
+    required this.pendingPayment,
+    required this.onRefresh,
+    required this.onLoadMore,
+    required this.onOpenPayment,
+    required this.onCheckStatus,
+  });
+
+  final AsyncValue<_SubscriptionPaymentHistoryPage> history;
+  final String? checkingOrderCode;
+  final _PendingSubscriptionPayment? pendingPayment;
+  final VoidCallback onRefresh;
+  final VoidCallback onLoadMore;
+  final Future<void> Function(String paymentUrl) onOpenPayment;
+  final Future<void> Function(_SubscriptionPaymentHistoryItem payment)
+  onCheckStatus;
+
+  @override
+  Widget build(BuildContext context) {
+    return _StudioCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.receipt_long_rounded, color: _studioOrange),
+              const SizedBox(width: 8),
+              const Expanded(
+                child: Text(
+                  'Payment history',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 18,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ),
+              IconButton(
+                tooltip: 'Refresh',
+                onPressed: onRefresh,
+                icon: const Icon(Icons.refresh_rounded),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          const Text(
+            'Recent subscription payments and VNPay status.',
+            style: TextStyle(
+              color: Color(0xFF9A9A9A),
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(height: 12),
+          history.when(
+            loading: () {
+              return const Padding(
+                padding: EdgeInsets.symmetric(vertical: 18),
+                child: Center(
+                  child: CircularProgressIndicator(color: _studioOrange),
+                ),
+              );
+            },
+            error: (_, _) {
+              return const _StudioMessage(
+                icon: Icons.cloud_off_rounded,
+                title: 'Could not load payment history',
+                subtitle: 'Try refreshing this section.',
+              );
+            },
+            data: (page) {
+              if (page.items.isEmpty) {
+                return const _StudioMessage(
+                  icon: Icons.receipt_long_rounded,
+                  title: 'No payments yet',
+                  subtitle: 'Subscription payment attempts will appear here.',
+                );
+              }
+
+              return Column(
+                children: [
+                  for (var index = 0; index < page.items.length; index++) ...[
+                    _SubscriptionPaymentHistoryTile(
+                      payment: page.items[index],
+                      pendingPayment: pendingPayment,
+                      checking:
+                          checkingOrderCode == page.items[index].orderCode,
+                      onOpenPayment: onOpenPayment,
+                      onCheckStatus: onCheckStatus,
+                    ),
+                    if (index != page.items.length - 1)
+                      const Divider(height: 18, color: Color(0xFF262626)),
+                  ],
+                  if (page.totalItems > page.items.length) ...[
+                    const SizedBox(height: 10),
+                    SizedBox(
+                      width: double.infinity,
+                      child: OutlinedButton.icon(
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: Colors.white,
+                          side: const BorderSide(color: Color(0xFF4A4A4A)),
+                          minimumSize: const Size.fromHeight(42),
+                        ),
+                        onPressed: onLoadMore,
+                        icon: const Icon(Icons.expand_more_rounded),
+                        label: Text(
+                          'Load more (${page.items.length}/${page.totalItems})',
+                        ),
+                      ),
+                    ),
+                  ],
+                ],
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SubscriptionPaymentHistoryTile extends StatelessWidget {
+  const _SubscriptionPaymentHistoryTile({
+    required this.payment,
+    required this.pendingPayment,
+    required this.checking,
+    required this.onOpenPayment,
+    required this.onCheckStatus,
+  });
+
+  final _SubscriptionPaymentHistoryItem payment;
+  final _PendingSubscriptionPayment? pendingPayment;
+  final bool checking;
+  final Future<void> Function(String paymentUrl) onOpenPayment;
+  final Future<void> Function(_SubscriptionPaymentHistoryItem payment)
+  onCheckStatus;
+
+  @override
+  Widget build(BuildContext context) {
+    final status = payment.status.toUpperCase();
+    final tone = payment.paid
+        ? _BadgeTone.success
+        : _isFinalPaymentStatus(status)
+        ? _BadgeTone.error
+        : _BadgeTone.warning;
+    final storedPaymentUrl = pendingPayment?.orderCode == payment.orderCode
+        ? pendingPayment?.paymentUrl
+        : null;
+    final paymentUrl = payment.paymentUrl ?? storedPaymentUrl;
+    final canOpen = payment.isPending && paymentUrl?.trim().isNotEmpty == true;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              width: 42,
+              height: 42,
+              decoration: BoxDecoration(
+                color: _studioOrange.withValues(alpha: 0.14),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                payment.paid
+                    ? Icons.check_circle_rounded
+                    : payment.isPending
+                    ? Icons.hourglass_top_rounded
+                    : Icons.error_outline_rounded,
+                color: payment.paid
+                    ? const Color(0xFF52D273)
+                    : payment.isPending
+                    ? _studioOrange
+                    : const Color(0xFFFF8A94),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 6,
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    children: [
+                      _StatusBadge(label: status, tone: tone),
+                      Text(
+                        _formatCurrency(payment.amount, payment.currency),
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    '${_shortId(payment.orderCode)} • ${_formatDate(payment.createdAt)}',
+                    style: const TextStyle(
+                      color: Color(0xFF9A9A9A),
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  if (payment.failureReason != null) ...[
+                    const SizedBox(height: 4),
+                    Text(
+                      payment.failureReason!,
+                      style: const TextStyle(
+                        color: Color(0xFFFFA0A7),
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ],
+        ),
+        if (payment.isPending) ...[
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton.icon(
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: Colors.white,
+                    disabledForegroundColor: const Color(0xFF666666),
+                    side: const BorderSide(color: Color(0xFF4A4A4A)),
+                  ),
+                  onPressed: canOpen ? () => onOpenPayment(paymentUrl!) : null,
+                  icon: const Icon(Icons.open_in_new_rounded, size: 18),
+                  label: const Text('VNPay'),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: FilledButton.icon(
+                  style: FilledButton.styleFrom(
+                    backgroundColor: _studioOrange,
+                    foregroundColor: Colors.white,
+                  ),
+                  onPressed: checking ? null : () => onCheckStatus(payment),
+                  icon: checking
+                      ? const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
+                      : const Icon(Icons.refresh_rounded, size: 18),
+                  label: Text(checking ? 'Checking' : 'Check'),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ],
+    );
   }
 }
 
@@ -837,7 +1228,7 @@ class _PlansSheetState extends ConsumerState<_PlansSheet> {
           ),
           content: Text(
             requiresPayment
-                ? 'VNPay will open so you can complete payment. Your Studio plan updates after the payment is confirmed.'
+                ? 'VNPay will open in another tab. After paying, return to this app and tap Check status. If VNPay opens a web result page, you can close it.'
                 : 'Your Studio access will update after the request succeeds.',
             style: const TextStyle(color: Color(0xFFBDBDBD)),
           ),
@@ -906,11 +1297,9 @@ class _PlansSheetState extends ConsumerState<_PlansSheet> {
           return;
         }
 
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Complete payment, then return and refresh Studio.'),
-          ),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text(_vnpayReturnInstruction)));
         Navigator.of(context).pop();
         return;
       }

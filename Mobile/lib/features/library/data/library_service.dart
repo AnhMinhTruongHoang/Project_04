@@ -29,6 +29,12 @@ class LibraryService {
     return _userList(response.data);
   }
 
+  Future<List<UserModel>> getWhoToFollow({int limit = 24}) async {
+    final response = await _apiService.getWhoToFollowApi(limit: limit);
+
+    return _userList(response.data);
+  }
+
   Future<List<HomeTrack>> getSuggestedTracks({int limit = 12}) async {
     final response = await _apiService.getTracksApi(
       current: 1,
@@ -55,6 +61,28 @@ class LibraryService {
     return _resultList(response.data).map(Playlist.fromJson).where((playlist) {
       return playlist.id.isNotEmpty && !playlist.isDeleted && playlist.isAlbum;
     }).toList();
+  }
+
+  Future<Playlist?> createAlbum({
+    required String title,
+    required bool isPublic,
+    required List<String> trackIds,
+  }) async {
+    final response = await _apiService.createAlbumApi(
+      title: title,
+      isPublic: isPublic,
+      trackIds: trackIds,
+    );
+
+    _ensureSuccess(response);
+
+    final data = _unwrap(response.data);
+
+    if (data is Map) {
+      return Playlist.fromJson(data);
+    }
+
+    return null;
   }
 
   Future<List<ListeningHistoryItem>> getListeningHistory({

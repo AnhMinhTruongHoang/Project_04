@@ -28,6 +28,12 @@ final followingProvider = FutureProvider<List<UserModel>>((ref) async {
   return service.getMyFollowing();
 });
 
+final whoToFollowProvider = FutureProvider<List<UserModel>>((ref) async {
+  final service = ref.read(libraryServiceProvider);
+
+  return service.getWhoToFollow(limit: 24);
+});
+
 final suggestedTracksProvider = FutureProvider<List<HomeTrack>>((ref) async {
   final service = ref.read(libraryServiceProvider);
 

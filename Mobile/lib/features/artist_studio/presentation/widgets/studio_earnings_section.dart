@@ -55,7 +55,7 @@ class _EarningsSectionState extends ConsumerState<_EarningsSection> {
             currentPlan: plan.name,
             onUpgrade: subscriptionData == null
                 ? null
-                : () => _showPlans(context, subscriptionData),
+                : () => context.push('/plans'),
           );
         }
 
@@ -121,28 +121,6 @@ class _EarningsSectionState extends ConsumerState<_EarningsSection> {
     if (created == true) {
       _refreshEarnings();
     }
-  }
-
-  Future<void> _showPlans(
-    BuildContext context,
-    _StudioSubscriptionData current,
-  ) async {
-    await showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (_) {
-        return _PlansSheet(
-          current: current,
-          onPaymentStarted: (_) {},
-          onPlanChanged: () async {
-            ref.invalidate(artistStudioSubscriptionProvider);
-            ref.invalidate(artistStudioStatsProvider);
-            await ref.read(artistStudioSubscriptionProvider.future);
-          },
-        );
-      },
-    );
   }
 
   Future<void> _confirmCancelPayout(_PayoutItem payout) async {

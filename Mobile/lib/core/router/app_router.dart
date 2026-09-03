@@ -17,6 +17,7 @@ import '../../features/library/presentation/playlists_screen.dart';
 import '../../features/news/presentation/news_detail_screen.dart';
 import '../../features/news/presentation/news_screen.dart';
 import '../../features/notifications/presentation/notifications_screen.dart';
+import '../../features/profile/presentation/people_screen.dart';
 import '../../features/profile/presentation/profile_screen.dart';
 import '../../features/search/presentation/search_screen.dart';
 import '../../features/home/models/home_track.dart';
@@ -79,6 +80,27 @@ final GoRouter appRouter = GoRouter(
         final email = state.uri.queryParameters['email'] ?? '';
 
         return ResetPasswordScreen(initialEmail: email);
+      },
+    ),
+
+    GoRoute(
+      path: '/payment/result',
+      builder: (context, state) {
+        return PaymentResultScreen(queryParameters: state.uri.queryParameters);
+      },
+    ),
+
+    GoRoute(
+      path: '/plans',
+      builder: (context, state) {
+        return const PlansScreen();
+      },
+    ),
+
+    GoRoute(
+      path: '/people',
+      builder: (context, state) {
+        return const PeopleScreen();
       },
     ),
 

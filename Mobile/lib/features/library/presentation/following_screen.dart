@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../services/api/api_service.dart';
 import '../../auth/models/user_model.dart';
@@ -41,10 +42,12 @@ class FollowingScreen extends ConsumerWidget {
           },
           data: (items) {
             if (items.isEmpty) {
-              return const _MessageState(
+              return _MessageState(
                 icon: Icons.person_add_alt_1_rounded,
                 title: 'No following yet',
                 subtitle: 'Artists you follow will show up here.',
+                actionLabel: 'Find people',
+                onAction: () => context.push('/people'),
               );
             }
 
@@ -55,10 +58,7 @@ class FollowingScreen extends ConsumerWidget {
               padding: const EdgeInsets.fromLTRB(12, 10, 12, 120),
               itemCount: items.length,
               separatorBuilder: (_, _) {
-                return const Divider(
-                  height: 1,
-                  color: Color(0xFF222222),
-                );
+                return const Divider(height: 1, color: Color(0xFF222222));
               },
               itemBuilder: (context, index) {
                 final user = items[index];
@@ -66,11 +66,7 @@ class FollowingScreen extends ConsumerWidget {
                 return _FollowingTile(
                   user: user,
                   onUnfollow: () async {
-                    await _unfollowUser(
-                      context: context,
-                      ref: ref,
-                      user: user,
-                    );
+                    await _unfollowUser(context: context, ref: ref, user: user);
                   },
                 );
               },
@@ -115,10 +111,7 @@ class FollowingScreen extends ConsumerWidget {
 }
 
 class _FollowingTile extends StatelessWidget {
-  const _FollowingTile({
-    required this.user,
-    required this.onUnfollow,
-  });
+  const _FollowingTile({required this.user, required this.onUnfollow});
 
   final UserModel user;
   final VoidCallback onUnfollow;
@@ -139,7 +132,9 @@ class _FollowingTile extends StatelessWidget {
         ),
       ),
       subtitle: Text(
-        user.username == null ? '${user.followers} followers' : '@${user.username}',
+        user.username == null
+            ? '${user.followers} followers'
+            : '@${user.username}',
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
       ),
@@ -184,11 +179,15 @@ class _MessageState extends StatelessWidget {
     required this.icon,
     required this.title,
     required this.subtitle,
+    this.actionLabel,
+    this.onAction,
   });
 
   final IconData icon;
   final String title;
   final String subtitle;
+  final String? actionLabel;
+  final VoidCallback? onAction;
 
   @override
   Widget build(BuildContext context) {
@@ -211,11 +210,22 @@ class _MessageState extends StatelessWidget {
         Text(
           subtitle,
           textAlign: TextAlign.center,
-          style: const TextStyle(
-            color: Color(0xFF888888),
-            fontSize: 13,
-          ),
+          style: const TextStyle(color: Color(0xFF888888), fontSize: 13),
         ),
+        if (actionLabel != null && onAction != null) ...[
+          const SizedBox(height: 18),
+          Center(
+            child: FilledButton.icon(
+              style: FilledButton.styleFrom(
+                backgroundColor: FollowingScreen._orange,
+                foregroundColor: Colors.white,
+              ),
+              onPressed: onAction,
+              icon: const Icon(Icons.person_search_rounded),
+              label: Text(actionLabel!),
+            ),
+          ),
+        ],
       ],
     );
   }

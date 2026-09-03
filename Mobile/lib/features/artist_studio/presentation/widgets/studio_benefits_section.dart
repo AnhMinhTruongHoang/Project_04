@@ -51,7 +51,7 @@ class _BenefitsSection extends ConsumerWidget {
                   unlocked: unlocked,
                   onUpgrade: subscriptionData == null
                       ? null
-                      : () => _showPlans(context, ref, subscriptionData),
+                      : () => context.push('/plans'),
                 ),
                 const SizedBox(height: 12),
                 if (items.isEmpty)
@@ -67,30 +67,6 @@ class _BenefitsSection extends ConsumerWidget {
                   ],
               ],
             );
-          },
-        );
-      },
-    );
-  }
-
-  Future<void> _showPlans(
-    BuildContext context,
-    WidgetRef ref,
-    _StudioSubscriptionData current,
-  ) async {
-    await showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (_) {
-        return _PlansSheet(
-          current: current,
-          onPaymentStarted: (_) {},
-          onPlanChanged: () async {
-            ref.invalidate(artistStudioSubscriptionProvider);
-            ref.invalidate(artistStudioStatsProvider);
-            ref.invalidate(artistStudioBenefitsProvider);
-            await ref.read(artistStudioSubscriptionProvider.future);
           },
         );
       },

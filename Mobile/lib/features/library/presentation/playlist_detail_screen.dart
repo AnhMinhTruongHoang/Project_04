@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../home/models/home_track.dart';
 import '../../player/providers/player_provider.dart';
+import '../../player/presentation/full_player_screen.dart';
 import '../models/playlist.dart';
 import '../providers/library_provider.dart';
 
@@ -128,17 +129,18 @@ class _PlaylistBody extends ConsumerWidget {
             onPlay: tracks.isEmpty
                 ? null
                 : () {
-                    ref
-                        .read(playerProvider.notifier)
-                        .playTrack(tracks.first, queue: tracks);
+                    _playAndOpenPlayer(context, ref, tracks.first, tracks);
                   },
             onShuffle: tracks.length < 2
                 ? null
                 : () {
                     final shuffled = [...tracks]..shuffle(Random());
-                    ref
-                        .read(playerProvider.notifier)
-                        .playTrack(shuffled.first, queue: shuffled);
+                    _playAndOpenPlayer(
+                      context,
+                      ref,
+                      shuffled.first,
+                      shuffled,
+                    );
                   },
             onRename: () => _renamePlaylist(context, ref),
             onDelete: () => _deletePlaylist(context, ref),
@@ -172,9 +174,7 @@ class _PlaylistBody extends ConsumerWidget {
                 return _TrackTile(
                   track: track,
                   onTap: () {
-                    ref
-                        .read(playerProvider.notifier)
-                        .playTrack(track, queue: tracks);
+                    _playAndOpenPlayer(context, ref, track, tracks);
                   },
                   onRemove: () => _removeTrack(context, ref, track),
                 );
@@ -365,6 +365,21 @@ class _PlaylistBody extends ConsumerWidget {
         const SnackBar(content: Text('Could not update playlist.')),
       );
     }
+  }
+
+  Future<void> _playAndOpenPlayer(
+    BuildContext context,
+    WidgetRef ref,
+    HomeTrack track,
+    List<HomeTrack> queue,
+  ) async {
+    await ref.read(playerProvider.notifier).playTrack(track, queue: queue);
+
+    if (!context.mounted) return;
+
+    await Navigator.of(context, rootNavigator: true).push(
+      MaterialPageRoute<void>(builder: (_) => const FullPlayerScreen()),
+    );
   }
 
   Future<void> _deletePlaylist(BuildContext context, WidgetRef ref) async {

@@ -11,6 +11,7 @@ import '../../library/presentation/add_to_playlist_sheet.dart';
 import '../models/player_state.dart';
 import '../providers/player_provider.dart';
 import '../providers/player_social_provider.dart';
+import 'player_queue_sheet.dart';
 
 class FullPlayerScreen extends ConsumerStatefulWidget {
   const FullPlayerScreen({super.key});
@@ -102,13 +103,7 @@ class _FullPlayerScreenState extends ConsumerState<FullPlayerScreen> {
                       onLike: () => _likeTrack(track),
                       onComments: () => _showCommentsSheet(track),
                       onShare: () => _shareTrack(track),
-                      onPlaylist: () {
-                        showAddToPlaylistSheet(
-                          context: context,
-                          ref: ref,
-                          track: track,
-                        );
-                      },
+                      onQueue: () => showPlayerQueueSheet(context),
                       onMore: _showMoreSheet,
                     ),
                   ],
@@ -826,7 +821,7 @@ class _ActionRow extends StatelessWidget {
     required this.onLike,
     required this.onComments,
     required this.onShare,
-    required this.onPlaylist,
+    required this.onQueue,
     required this.onMore,
   });
 
@@ -837,7 +832,7 @@ class _ActionRow extends StatelessWidget {
   final VoidCallback onLike;
   final VoidCallback onComments;
   final VoidCallback onShare;
-  final VoidCallback onPlaylist;
+  final VoidCallback onQueue;
   final VoidCallback onMore;
 
   @override
@@ -866,8 +861,8 @@ class _ActionRow extends StatelessWidget {
         ),
         _IconOnlyAction(
           icon: Icons.playlist_play_rounded,
-          onPressed: onPlaylist,
-          tooltip: 'Add to playlist',
+          onPressed: onQueue,
+          tooltip: 'Playlist queue',
         ),
         _IconOnlyAction(
           icon: Icons.more_vert_rounded,

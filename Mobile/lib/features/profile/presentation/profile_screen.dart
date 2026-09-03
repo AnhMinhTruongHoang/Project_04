@@ -16,6 +16,7 @@ import '../../auth/providers/auth_provider.dart';
 import '../../home/models/home_track.dart';
 import '../../home/providers/home_provider.dart';
 import '../../playlists/presentation/playlist_card.dart';
+import '../../player/providers/player_provider.dart';
 import '../../../services/api/api_service.dart';
 
 part 'profile_providers.dart';
@@ -896,7 +897,11 @@ class _PopularTracksTab extends ConsumerWidget {
                     index < tracks.take(10).length;
                     index++
                   ) ...[
-                    _RecentTrackTile(index: index + 1, track: tracks[index]),
+                    _RecentTrackTile(
+                      index: index + 1,
+                      track: tracks[index],
+                      queue: tracks,
+                    ),
                     if (index < tracks.take(10).length - 1)
                       const Divider(
                         height: 1,
@@ -1239,7 +1244,11 @@ class _RecentSection extends ConsumerWidget {
                 child: Column(
                   children: [
                     for (int index = 0; index < tracks.length; index++) ...[
-                      _RecentTrackTile(index: index + 1, track: tracks[index]),
+                      _RecentTrackTile(
+                        index: index + 1,
+                        track: tracks[index],
+                        queue: tracks,
+                      ),
 
                       if (index != tracks.length - 1)
                         const Divider(
@@ -1263,25 +1272,25 @@ class _RecentSection extends ConsumerWidget {
 // RECENT TRACK
 // ============================================================
 
-class _RecentTrackTile extends StatelessWidget {
-  const _RecentTrackTile({required this.index, required this.track});
+class _RecentTrackTile extends ConsumerWidget {
+  const _RecentTrackTile({
+    required this.index,
+    required this.track,
+    required this.queue,
+  });
 
   final int index;
   final HomeTrack track;
+  final List<HomeTrack> queue;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final imageUrl = _resolveMediaUrl(track.imgUrl);
 
     return InkWell(
       borderRadius: BorderRadius.circular(14),
       onTap: () {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Opening ${track.title}'),
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
+        ref.read(playerProvider.notifier).playTrack(track, queue: queue);
       },
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
@@ -1363,7 +1372,7 @@ class _RecentTrackTile extends StatelessWidget {
             IconButton(
               tooltip: 'More',
               visualDensity: VisualDensity.compact,
-              onPressed: () {},
+              onPressed: () => _showTrackActions(context, ref),
               icon: const Icon(
                 Icons.more_vert_rounded,
                 color: Color(0xFF999999),
@@ -1374,6 +1383,61 @@ class _RecentTrackTile extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  Future<void> _showTrackActions(BuildContext context, WidgetRef ref) async {
+    final action = await showModalBottomSheet<String>(
+      context: context,
+      backgroundColor: const Color(0xFF202020),
+      showDragHandle: true,
+      builder: (sheetContext) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.play_arrow_rounded),
+              title: const Text('Play'),
+              onTap: () => Navigator.pop(sheetContext, 'play'),
+            ),
+            ListTile(
+              leading: const Icon(
+                Icons.delete_outline_rounded,
+                color: Color(0xFFFF6B6B),
+              ),
+              title: const Text(
+                'Delete history',
+                style: TextStyle(color: Color(0xFFFF6B6B)),
+              ),
+              onTap: () => Navigator.pop(sheetContext, 'delete'),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    if (action == 'play') {
+      await ref.read(playerProvider.notifier).playTrack(track, queue: queue);
+      return;
+    }
+
+    if (action != 'delete') return;
+
+    final response = await ApiService.instance.deleteListeningHistoryApi(
+      track.id,
+    );
+
+    if (!context.mounted) return;
+
+    if (response.isSuccess || response.isNotFound) {
+      ref.invalidate(homeFeedProvider);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Deleted from listening history.')),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(response.message)),
+      );
+    }
   }
 }
 

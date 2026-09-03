@@ -22,6 +22,7 @@ import '../../features/search/presentation/search_screen.dart';
 import '../../features/home/models/home_track.dart';
 import '../../features/track/presentation/track_detail_screen.dart';
 import '../../features/track/presentation/track_upload_screen.dart';
+import '../../features/player/presentation/full_player_screen.dart';
 
 import '../../shared/presentation/app_shell.dart';
 
@@ -80,6 +81,11 @@ final GoRouter appRouter = GoRouter(
 
         return ResetPasswordScreen(initialEmail: email);
       },
+    ),
+
+    GoRoute(
+      path: '/player',
+      builder: (context, state) => const FullPlayerScreen(),
     ),
 
     // ============================================================

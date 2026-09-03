@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../services/api/api_service.dart';
 import '../../home/models/home_track.dart';
 import '../../library/models/playlist.dart';
 import '../../library/presentation/playlist_detail_screen.dart';
 import '../../player/providers/player_provider.dart';
-import '../../player/presentation/full_player_screen.dart';
 
 String playlistId(Map<String, dynamic> playlist) =>
     (playlist['id'] ?? playlist['_id'] ?? '').toString();
@@ -165,7 +165,7 @@ class ProfilePlaylistCard extends ConsumerWidget {
             Align(
               alignment: Alignment.centerRight,
               child: FilledButton.icon(
-                onPressed: onManage,
+                onPressed: () => _openPlaylist(context),
                 style: FilledButton.styleFrom(
                   backgroundColor: const Color(0xFF292B2D),
                   foregroundColor: Colors.white,
@@ -208,9 +208,11 @@ class ProfilePlaylistCard extends ConsumerWidget {
 
     if (!context.mounted) return;
 
-    await Navigator.of(context, rootNavigator: true).push(
-      MaterialPageRoute<void>(builder: (_) => const FullPlayerScreen()),
-    );
+    await WidgetsBinding.instance.endOfFrame;
+
+    if (!context.mounted) return;
+
+    await context.push('/player');
   }
 }
 
@@ -228,15 +230,7 @@ class _PreviewTrack extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final image = ApiService.instance.getImageUrl(track.imgUrl);
     return InkWell(
-      onTap: () => ref
-          .read(playerProvider.notifier)
-          .playTrack(track, queue: queue)
-          .then((_) {
-        if (!context.mounted) return;
-        Navigator.of(context, rootNavigator: true).push(
-          MaterialPageRoute<void>(builder: (_) => const FullPlayerScreen()),
-        );
-      }),
+      onTap: () => _playAndOpenPlayer(context, ref),
       child: SizedBox(
         height: 40,
         child: Row(
@@ -297,5 +291,20 @@ class _PreviewTrack extends ConsumerWidget {
         ),
       ),
     );
+  }
+
+  Future<void> _playAndOpenPlayer(
+    BuildContext context,
+    WidgetRef ref,
+  ) async {
+    await ref.read(playerProvider.notifier).playTrack(track, queue: queue);
+
+    if (!context.mounted) return;
+
+    await WidgetsBinding.instance.endOfFrame;
+
+    if (!context.mounted) return;
+
+    await context.push('/player');
   }
 }

@@ -105,11 +105,10 @@ class _PlaylistsScreenState extends ConsumerState<PlaylistsScreen> {
                       onTap: () {
                         Navigator.of(context).push(
                           MaterialPageRoute(
-                            builder: (_) =>
-                                PlaylistDetailScreen(
-                                  playlistId: visibleItems[index].id,
-                                  initialPlaylist: visibleItems[index],
-                                ),
+                            builder: (_) => PlaylistDetailScreen(
+                              playlistId: visibleItems[index].id,
+                              initialPlaylist: visibleItems[index],
+                            ),
                           ),
                         );
                       },
@@ -129,10 +128,7 @@ class _PlaylistsScreenState extends ConsumerState<PlaylistsScreen> {
                       },
                     ),
                     if (index < visibleItems.length - 1)
-                      const Divider(
-                        height: 1,
-                        color: Color(0xFF222222),
-                      ),
+                      const Divider(height: 1, color: Color(0xFF222222)),
                   ],
               ],
             );
@@ -179,67 +175,65 @@ class _PlaylistsScreenState extends ConsumerState<PlaylistsScreen> {
             return SafeArea(
               top: false,
               child: Padding(
-                  padding: const EdgeInsets.fromLTRB(18, 4, 18, 24),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          const Expanded(
-                            child: Text(
-                              'Filter playlists',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 20,
-                                fontWeight: FontWeight.w900,
-                              ),
+                padding: const EdgeInsets.fromLTRB(18, 4, 18, 24),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        const Expanded(
+                          child: Text(
+                            'Filter playlists',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 20,
+                              fontWeight: FontWeight.w900,
                             ),
                           ),
-                          FilledButton(
-                            style: FilledButton.styleFrom(
-                              backgroundColor: Colors.white,
-                              foregroundColor: Colors.black,
-                            ),
-                            onPressed: () {
-                              Navigator.of(context).pop(selectedFilter);
-                            },
-                            child: const Text('Save'),
+                        ),
+                        FilledButton(
+                          style: FilledButton.styleFrom(
+                            backgroundColor: Colors.white,
+                            foregroundColor: Colors.black,
                           ),
-                        ],
-                      ),
-                      const SizedBox(height: 16),
-                      _FilterOptionTile(
-                        title: 'All playlists',
-                        selected: selectedFilter == _PlaylistFilter.all,
-                        onTap: () {
-                          setState(() => selectedFilter = _PlaylistFilter.all);
-                        },
-                      ),
-                      _FilterOptionTile(
-                        title: 'Public playlists',
-                        subtitle: 'Anyone can view these playlists.',
-                        selected: selectedFilter == _PlaylistFilter.publicOnly,
-                        onTap: () {
-                          setState(
-                                () =>
-                            selectedFilter = _PlaylistFilter.publicOnly,
-                          );
-                        },
-                      ),
-                      _FilterOptionTile(
-                        title: 'Private playlists',
-                        subtitle: 'Only you can view these playlists.',
-                        selected: selectedFilter == _PlaylistFilter.privateOnly,
-                        onTap: () {
-                          setState(
-                                () =>
-                            selectedFilter = _PlaylistFilter.privateOnly,
-                          );
-                        },
-                      ),
-                    ],
-                  )
+                          onPressed: () {
+                            Navigator.of(context).pop(selectedFilter);
+                          },
+                          child: const Text('Save'),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                    _FilterOptionTile(
+                      title: 'All playlists',
+                      selected: selectedFilter == _PlaylistFilter.all,
+                      onTap: () {
+                        setState(() => selectedFilter = _PlaylistFilter.all);
+                      },
+                    ),
+                    _FilterOptionTile(
+                      title: 'Public playlists',
+                      subtitle: 'Anyone can view these playlists.',
+                      selected: selectedFilter == _PlaylistFilter.publicOnly,
+                      onTap: () {
+                        setState(
+                          () => selectedFilter = _PlaylistFilter.publicOnly,
+                        );
+                      },
+                    ),
+                    _FilterOptionTile(
+                      title: 'Private playlists',
+                      subtitle: 'Only you can view these playlists.',
+                      selected: selectedFilter == _PlaylistFilter.privateOnly,
+                      onTap: () {
+                        setState(
+                          () => selectedFilter = _PlaylistFilter.privateOnly,
+                        );
+                      },
+                    ),
+                  ],
+                ),
               ),
             );
           },
@@ -290,6 +284,7 @@ class _PlaylistsScreenState extends ConsumerState<PlaylistsScreen> {
     try {
       await ref.read(libraryServiceProvider).deletePlaylist(playlist.id);
       ref.invalidate(playlistsProvider);
+      await ref.read(playlistsProvider.future);
 
       if (!context.mounted) return;
 
@@ -308,9 +303,11 @@ class _PlaylistsScreenState extends ConsumerState<PlaylistsScreen> {
     }
   }
 
-  Future<void> _showRenamePlaylistSheet(BuildContext context,
-      WidgetRef ref,
-      Playlist playlist,) async {
+  Future<void> _showRenamePlaylistSheet(
+    BuildContext context,
+    WidgetRef ref,
+    Playlist playlist,
+  ) async {
     final titleController = TextEditingController(text: playlist.title);
     var isPublic = playlist.isPublic;
 
@@ -328,10 +325,7 @@ class _PlaylistsScreenState extends ConsumerState<PlaylistsScreen> {
                 18,
                 4,
                 18,
-                MediaQuery
-                    .of(context)
-                    .viewInsets
-                    .bottom + 104,
+                MediaQuery.of(context).viewInsets.bottom + 104,
               ),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
@@ -383,16 +377,22 @@ class _PlaylistsScreenState extends ConsumerState<PlaylistsScreen> {
                         }
 
                         try {
-                          await ref.read(libraryServiceProvider).updatePlaylist(
-                            playlistId: playlist.id,
-                            title: title,
-                            isPublic: isPublic,
-                            trackIds: playlist.tracks
-                                .map((track) => track.id)
-                                .toList(),
-                          );
-                          ref.invalidate(playlistsProvider);
-                          ref.invalidate(playlistDetailProvider(playlist.id));
+                          await ref
+                              .read(libraryServiceProvider)
+                              .updatePlaylist(
+                                playlistId: playlist.id,
+                                title: title,
+                                isPublic: isPublic,
+                                trackIds: playlist.tracks
+                                    .map((track) => track.id)
+                                    .toList(),
+                              );
+                          await Future.wait([
+                            ref.refresh(playlistsProvider.future),
+                            ref.refresh(
+                              playlistDetailProvider(playlist.id).future,
+                            ),
+                          ]);
 
                           if (!context.mounted) return;
 
@@ -427,8 +427,10 @@ class _PlaylistsScreenState extends ConsumerState<PlaylistsScreen> {
     titleController.dispose();
   }
 
-  Future<void> _showCreatePlaylistSheet(BuildContext context,
-      WidgetRef ref,) async {
+  Future<void> _showCreatePlaylistSheet(
+    BuildContext context,
+    WidgetRef ref,
+  ) async {
     final titleController = TextEditingController();
     var isPublic = true;
 
@@ -446,10 +448,7 @@ class _PlaylistsScreenState extends ConsumerState<PlaylistsScreen> {
                 18,
                 4,
                 18,
-                MediaQuery
-                    .of(context)
-                    .viewInsets
-                    .bottom + 104,
+                MediaQuery.of(context).viewInsets.bottom + 104,
               ),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
@@ -494,11 +493,11 @@ class _PlaylistsScreenState extends ConsumerState<PlaylistsScreen> {
                         if (title.isEmpty) return;
 
                         try {
-                          await ref.read(libraryServiceProvider).createPlaylist(
-                            title: title,
-                            isPublic: isPublic,
-                          );
+                          await ref
+                              .read(libraryServiceProvider)
+                              .createPlaylist(title: title, isPublic: isPublic);
                           ref.invalidate(playlistsProvider);
+                          await ref.read(playlistsProvider.future);
 
                           if (!context.mounted) return;
 
@@ -534,11 +533,7 @@ class _PlaylistsScreenState extends ConsumerState<PlaylistsScreen> {
   }
 }
 
-enum _PlaylistFilter {
-  all,
-  publicOnly,
-  privateOnly,
-}
+enum _PlaylistFilter { all, publicOnly, privateOnly }
 
 class _PlaylistSearchBar extends StatelessWidget {
   const _PlaylistSearchBar({
@@ -618,10 +613,7 @@ class _FilterOptionTile extends StatelessWidget {
       ),
       subtitle: subtitle == null
           ? null
-          : Text(
-        subtitle!,
-        style: const TextStyle(color: Color(0xFF999999)),
-      ),
+          : Text(subtitle!, style: const TextStyle(color: Color(0xFF999999))),
       trailing: selected
           ? const Icon(Icons.check_circle_rounded, color: Colors.white)
           : null,
@@ -662,10 +654,7 @@ class _PlaylistVisibilityTile extends StatelessWidget {
           isPublic
               ? 'Anyone can view this playlist.'
               : 'Only you can view this playlist.',
-          style: const TextStyle(
-            color: Color(0xFFAAAAAA),
-            fontSize: 13,
-          ),
+          style: const TextStyle(color: Color(0xFFAAAAAA), fontSize: 13),
         ),
         onChanged: onChanged,
       ),
@@ -699,22 +688,23 @@ class _PlaylistTile extends StatelessWidget {
           width: 56,
           height: 56,
           color: const Color(0xFF222222),
-          child: playlist.tracks.isEmpty ||
-              playlist.tracks.first.resolvedImageUrl == null
+          child:
+              playlist.tracks.isEmpty ||
+                  playlist.tracks.first.resolvedImageUrl == null
               ? const Icon(
-            Icons.queue_music_rounded,
-            color: PlaylistsScreen._orange,
-          )
+                  Icons.queue_music_rounded,
+                  color: PlaylistsScreen._orange,
+                )
               : Image.network(
-            playlist.tracks.first.resolvedImageUrl!,
-            fit: BoxFit.cover,
-            errorBuilder: (_, _, _) {
-              return const Icon(
-                Icons.queue_music_rounded,
-                color: PlaylistsScreen._orange,
-              );
-            },
-          ),
+                  playlist.tracks.first.resolvedImageUrl!,
+                  fit: BoxFit.cover,
+                  errorBuilder: (_, _, _) {
+                    return const Icon(
+                      Icons.queue_music_rounded,
+                      color: PlaylistsScreen._orange,
+                    );
+                  },
+                ),
         ),
       ),
       title: Text(
@@ -756,14 +746,8 @@ class _PlaylistTile extends StatelessWidget {
         },
         itemBuilder: (_) {
           return const [
-            PopupMenuItem(
-              value: 'rename',
-              child: Text('Edit playlist'),
-            ),
-            PopupMenuItem(
-              value: 'delete',
-              child: Text('Delete playlist'),
-            ),
+            PopupMenuItem(value: 'rename', child: Text('Edit playlist')),
+            PopupMenuItem(value: 'delete', child: Text('Delete playlist')),
           ];
         },
       ),
@@ -833,10 +817,7 @@ class _MessageState extends StatelessWidget {
     return ListView(
       physics: const AlwaysScrollableScrollPhysics(),
       children: [
-        SizedBox(height: MediaQuery
-            .of(context)
-            .size
-            .height * 0.2),
+        SizedBox(height: MediaQuery.of(context).size.height * 0.2),
         Icon(icon, color: const Color(0xFF555555), size: 54),
         const SizedBox(height: 14),
         Text(
@@ -852,10 +833,7 @@ class _MessageState extends StatelessWidget {
         Text(
           subtitle,
           textAlign: TextAlign.center,
-          style: const TextStyle(
-            color: Color(0xFF888888),
-            fontSize: 13,
-          ),
+          style: const TextStyle(color: Color(0xFF888888), fontSize: 13),
         ),
       ],
     );
@@ -892,10 +870,7 @@ class _InlinePlaylistMessage extends StatelessWidget {
         Text(
           subtitle,
           textAlign: TextAlign.center,
-          style: const TextStyle(
-            color: Color(0xFF888888),
-            fontSize: 13,
-          ),
+          style: const TextStyle(color: Color(0xFF888888), fontSize: 13),
         ),
       ],
     );

@@ -83,10 +83,7 @@ class _AddToPlaylistSheet extends ConsumerWidget {
                     shrinkWrap: true,
                     itemCount: items.length,
                     separatorBuilder: (_, _) {
-                      return const Divider(
-                        height: 1,
-                        color: Color(0xFF242424),
-                      );
+                      return const Divider(height: 1, color: Color(0xFF242424));
                     },
                     itemBuilder: (context, index) {
                       final playlist = items[index];
@@ -130,12 +127,13 @@ class _AddToPlaylistSheet extends ConsumerWidget {
     }
 
     try {
-      await ref.read(libraryServiceProvider).addTrackToPlaylist(
-            playlist: playlist,
-            track: track,
-          );
-      ref.invalidate(playlistsProvider);
-      ref.invalidate(playlistDetailProvider(playlist.id));
+      await ref
+          .read(libraryServiceProvider)
+          .addTrackToPlaylist(playlist: playlist, track: track);
+      await Future.wait([
+        ref.refresh(playlistsProvider.future),
+        ref.refresh(playlistDetailProvider(playlist.id).future),
+      ]);
 
       if (!context.mounted) return;
 
@@ -150,19 +148,14 @@ class _AddToPlaylistSheet extends ConsumerWidget {
       if (!context.mounted) return;
 
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Could not add this track.'),
-        ),
+        const SnackBar(content: Text('Could not add this track.')),
       );
     }
   }
 }
 
 class _PlaylistOption extends StatelessWidget {
-  const _PlaylistOption({
-    required this.playlist,
-    required this.onTap,
-  });
+  const _PlaylistOption({required this.playlist, required this.onTap});
 
   final Playlist playlist;
   final VoidCallback onTap;

@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:just_audio/just_audio.dart' as ja;
 
 import '../../../services/api/api_service.dart';
+import '../../downloads/data/downloaded_tracks_service.dart';
 import '../../home/models/home_track.dart';
 import '../models/player_state.dart';
 
@@ -106,8 +107,15 @@ class PlayerController extends Notifier<PlayerState> {
         return;
       }
 
-      // Load URL bài mới
-      await _audioPlayer.setUrl(audioUrl);
+      // Uu tien file da tai tren may; neu file khong con thi stream tu server.
+      final localPath = await DownloadedTracksService.instance.localPathFor(
+        track.id,
+      );
+      if (localPath != null) {
+        await _audioPlayer.setFilePath(localPath);
+      } else {
+        await _audioPlayer.setUrl(audioUrl);
+      }
 
       if (requestId != _playRequestId) {
         return;

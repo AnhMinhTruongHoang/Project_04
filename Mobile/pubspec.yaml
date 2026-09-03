@@ -24,6 +24,10 @@ dependencies:
   # Giữ lại để sử dụng cho interceptor hoặc download/upload nâng cao sau này.
   dio: ^5.10.0
 
+  # Luu cac bai hat da tai trong thu muc rieng cua ung dung.
+  path_provider: ^2.1.5
+  path: ^1.9.1
+
   # State management cho toàn bộ ứng dụng.
   flutter_riverpod: ^3.3.2
 

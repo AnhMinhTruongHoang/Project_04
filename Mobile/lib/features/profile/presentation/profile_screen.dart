@@ -15,6 +15,7 @@ import '../../auth/models/user_model.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../home/models/home_track.dart';
 import '../../home/providers/home_provider.dart';
+import '../../downloads/providers/downloads_provider.dart';
 import '../../playlists/presentation/playlist_card.dart';
 import '../../player/providers/player_provider.dart';
 import '../../../services/api/api_service.dart';
@@ -68,10 +69,7 @@ class ProfileScreen extends ConsumerWidget {
 }
 
 class PublicProfileScreen extends ConsumerWidget {
-  const PublicProfileScreen({
-    super.key,
-    required this.userId,
-  });
+  const PublicProfileScreen({super.key, required this.userId});
 
   final String userId;
 
@@ -108,10 +106,7 @@ class PublicProfileScreen extends ConsumerWidget {
 // ============================================================
 
 class _ProfileContent extends ConsumerWidget {
-  const _ProfileContent({
-    required this.user,
-    required this.isOwner,
-  });
+  const _ProfileContent({required this.user, required this.isOwner});
 
   final UserModel user;
   final bool isOwner;
@@ -734,10 +729,7 @@ class _ProfileMeta extends StatelessWidget {
 // ============================================================
 
 class _ProfileTabs extends ConsumerStatefulWidget {
-  const _ProfileTabs({
-    required this.user,
-    required this.isOwner,
-  });
+  const _ProfileTabs({required this.user, required this.isOwner});
 
   final UserModel user;
   final bool isOwner;
@@ -758,6 +750,7 @@ class _ProfileTabsState extends ConsumerState<_ProfileTabs> {
     }
 
     if (widget.isOwner) {
+      tabs.add('Downloads');
       tabs.add('Tickets');
     }
 
@@ -845,11 +838,16 @@ class _ProfileTabsState extends ConsumerState<_ProfileTabs> {
       case 'Playlists':
         return _ProfilePlaylistsTab(userId: widget.user.id);
       case 'Concerts / Tour':
-        return ProfileTourTab(artistId: widget.user.id, isOwner: widget.isOwner);
+        return ProfileTourTab(
+          artistId: widget.user.id,
+          isOwner: widget.isOwner,
+        );
       case 'Membership':
         return _ProfileMembershipTab(artistId: widget.user.id);
       case 'Tickets':
         return const ProfileMobileTicketsTab();
+      case 'Downloads':
+        return const _ProfileDownloadsTab();
       default:
         return const SizedBox.shrink();
     }
@@ -1400,6 +1398,11 @@ class _RecentTrackTile extends ConsumerWidget {
               onTap: () => Navigator.pop(sheetContext, 'play'),
             ),
             ListTile(
+              leading: const Icon(Icons.download_rounded),
+              title: const Text('Download'),
+              onTap: () => Navigator.pop(sheetContext, 'download'),
+            ),
+            ListTile(
               leading: const Icon(
                 Icons.delete_outline_rounded,
                 color: Color(0xFFFF6B6B),
@@ -1420,6 +1423,19 @@ class _RecentTrackTile extends ConsumerWidget {
       return;
     }
 
+    if (action == 'download') {
+      await ref.read(downloadsProvider.notifier).download(track);
+      if (!context.mounted) return;
+      final result = ref.read(downloadsProvider);
+      final errorMessage = result.hasError
+          ? _downloadErrorMessage(result.error)
+          : null;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(errorMessage ?? 'Downloaded ${track.title}.')),
+      );
+      return;
+    }
+
     if (action != 'delete') return;
 
     final response = await ApiService.instance.deleteListeningHistoryApi(
@@ -1434,10 +1450,109 @@ class _RecentTrackTile extends ConsumerWidget {
         const SnackBar(content: Text('Deleted from listening history.')),
       );
     } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(response.message)),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(response.message)));
     }
+  }
+}
+
+String _downloadErrorMessage(Object? error) {
+  final message = error?.toString() ?? '';
+  if (message.contains('MissingPluginException')) {
+    return 'Download cần khởi động lại ứng dụng sau khi cập nhật.';
+  }
+  if (message.contains('SocketException') ||
+      message.contains('connection error')) {
+    return 'Không thể kết nối máy chủ để tải bài hát.';
+  }
+  if (message.contains('status code of 404')) {
+    return 'File nhạc không còn tồn tại trên máy chủ.';
+  }
+  if (message.contains('status code of 401') ||
+      message.contains('status code of 403')) {
+    return 'Bạn không có quyền tải bài hát này.';
+  }
+  return 'Không thể tải bài hát: $message';
+}
+
+class _ProfileDownloadsTab extends ConsumerWidget {
+  const _ProfileDownloadsTab();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final downloads = ref.watch(downloadsProvider);
+    return downloads.when(
+      loading: () => const _RecentLoading(),
+      error: (error, stackTrace) => const _ProfileEmptyTab(
+        icon: Icons.error_outline_rounded,
+        title: 'Couldn\'t load downloads',
+        description: 'Please try again.',
+      ),
+      data: (items) {
+        if (items.isEmpty) {
+          return const _ProfileEmptyTab(
+            icon: Icons.download_for_offline_outlined,
+            title: 'No downloads yet',
+            description: 'Use the menu on a track to save it for offline play.',
+          );
+        }
+        final queue = items.map((item) => item.track).toList();
+        return Container(
+          decoration: BoxDecoration(
+            color: const Color(0xFF141414),
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: const Color(0xFF262626)),
+          ),
+          child: Column(
+            children: [
+              for (var index = 0; index < items.length; index++) ...[
+                ListTile(
+                  leading: const Icon(
+                    Icons.download_done_rounded,
+                    color: Color(0xFFFF5500),
+                  ),
+                  title: Text(
+                    items[index].track.title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                  subtitle: Text(
+                    items[index].track.artistName,
+                    style: const TextStyle(color: Color(0xFF8E8E8E)),
+                  ),
+                  onTap: () => ref
+                      .read(playerProvider.notifier)
+                      .playTrack(items[index].track, queue: queue),
+                  trailing: IconButton(
+                    tooltip: 'Remove download',
+                    icon: const Icon(
+                      Icons.delete_outline_rounded,
+                      color: Color(0xFFAAAAAA),
+                    ),
+                    onPressed: () async {
+                      await ref
+                          .read(downloadsProvider.notifier)
+                          .remove(items[index].track.id);
+                    },
+                  ),
+                ),
+                if (index != items.length - 1)
+                  const Divider(
+                    height: 1,
+                    indent: 56,
+                    color: Color(0xFF242424),
+                  ),
+              ],
+            ],
+          ),
+        );
+      },
+    );
   }
 }
 

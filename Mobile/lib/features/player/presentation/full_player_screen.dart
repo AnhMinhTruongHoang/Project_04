@@ -8,6 +8,7 @@ import 'package:go_router/go_router.dart';
 import '../../../services/api/api_service.dart';
 import '../../home/models/home_track.dart';
 import '../../library/presentation/add_to_playlist_sheet.dart';
+import '../../../shared/presentation/app_toast.dart';
 import '../models/player_state.dart';
 import '../providers/player_provider.dart';
 import '../providers/player_social_provider.dart';
@@ -21,7 +22,6 @@ class FullPlayerScreen extends ConsumerStatefulWidget {
 
 class _FullPlayerScreenState extends ConsumerState<FullPlayerScreen> {
   final TextEditingController _commentController = TextEditingController();
-  OverlayEntry? _toastEntry;
   String? _loadedTrackId;
   int _commentCount = 0;
   int _likeCount = 0;
@@ -30,7 +30,6 @@ class _FullPlayerScreenState extends ConsumerState<FullPlayerScreen> {
 
   @override
   void dispose() {
-    _toastEntry?.remove();
     _commentController.dispose();
     super.dispose();
   }
@@ -324,6 +323,7 @@ class _FullPlayerScreenState extends ConsumerState<FullPlayerScreen> {
       context: context,
       backgroundColor: const Color(0xFF171717),
       showDragHandle: true,
+      useRootNavigator: true,
       isScrollControlled: true,
       builder: (context) {
         return _CommentsSheet(trackId: track.id);
@@ -336,6 +336,7 @@ class _FullPlayerScreenState extends ConsumerState<FullPlayerScreen> {
       context: context,
       backgroundColor: const Color(0xFF171717),
       showDragHandle: true,
+      useRootNavigator: true,
       builder: (context) {
         return SafeArea(
           top: false,
@@ -398,98 +399,15 @@ class _FullPlayerScreenState extends ConsumerState<FullPlayerScreen> {
     String? actionLabel,
     VoidCallback? onAction,
   }) {
-    if (!mounted) return;
+    if (!mounted) {
+      return;
+    }
 
-    _toastEntry?.remove();
-
-    final overlay = Overlay.of(context);
-    final entry = OverlayEntry(
-      builder: (context) {
-        return Positioned(
-          left: 24,
-          right: 24,
-          bottom: 138,
-          child: _AppToast(
-            message: message,
-            actionLabel: actionLabel,
-            onAction: () {
-              _toastEntry?.remove();
-              _toastEntry = null;
-              onAction?.call();
-            },
-          ),
-        );
-      },
-    );
-
-    _toastEntry = entry;
-    overlay.insert(entry);
-
-    Future<void>.delayed(const Duration(seconds: 3), () {
-      if (_toastEntry == entry) {
-        _toastEntry?.remove();
-        _toastEntry = null;
-      }
-    });
-  }
-}
-
-class _AppToast extends StatelessWidget {
-  const _AppToast({required this.message, this.actionLabel, this.onAction});
-
-  final String message;
-  final String? actionLabel;
-  final VoidCallback? onAction;
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: Colors.transparent,
-      child: Container(
-        constraints: const BoxConstraints(minHeight: 58),
-        padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 14),
-        decoration: BoxDecoration(
-          color: const Color(0xF22D2D2D),
-          borderRadius: BorderRadius.circular(28),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.28),
-              blurRadius: 18,
-              offset: const Offset(0, 8),
-            ),
-          ],
-        ),
-        child: Row(
-          children: [
-            Expanded(
-              child: Text(
-                message,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 18,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ),
-            if (actionLabel != null) ...[
-              const SizedBox(width: 14),
-              TextButton(
-                onPressed: onAction,
-                child: Text(
-                  actionLabel!,
-                  style: const TextStyle(
-                    color: Color(0xFFFF5500),
-                    fontSize: 16,
-                    fontWeight: FontWeight.w900,
-                  ),
-                ),
-              ),
-            ],
-          ],
-        ),
-      ),
+    showAppToast(
+      context,
+      message: message,
+      actionLabel: actionLabel,
+      onAction: onAction,
     );
   }
 }
@@ -514,15 +432,15 @@ class _BlurredArtwork extends StatelessWidget {
         else
           const ColoredBox(color: Color(0xFF202020)),
         BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 34, sigmaY: 34),
-          child: Container(color: Colors.black.withValues(alpha: 0.42)),
+          filter: ImageFilter.blur(sigmaX: 3, sigmaY: 3),
+          child: Container(color: Colors.black.withValues(alpha: 0.14)),
         ),
         const DecoratedBox(
           decoration: BoxDecoration(
             gradient: LinearGradient(
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,
-              colors: [Color(0x223A1010), Color(0x5524272D), Color(0xEE0D0D0D)],
+              colors: [Color(0x063A1010), Color(0x1824272D), Color(0xB80D0D0D)],
             ),
           ),
         ),

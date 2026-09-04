@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../shared/presentation/app_toast.dart';
 import '../../home/models/home_track.dart';
 import '../models/playlist.dart';
 import '../providers/library_provider.dart';
@@ -83,10 +84,7 @@ class _AddToPlaylistSheet extends ConsumerWidget {
                     shrinkWrap: true,
                     itemCount: items.length,
                     separatorBuilder: (_, _) {
-                      return const Divider(
-                        height: 1,
-                        color: Color(0xFF242424),
-                      );
+                      return const Divider(height: 1, color: Color(0xFF242424));
                     },
                     itemBuilder: (context, index) {
                       final playlist = items[index];
@@ -120,49 +118,35 @@ class _AddToPlaylistSheet extends ConsumerWidget {
     final alreadyAdded = playlist.tracks.any((item) => item.id == track.id);
 
     if (alreadyAdded) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('${track.title} is already in ${playlist.title}'),
-        ),
+      showAppToast(
+        context,
+        message: '${track.title} is already in ${playlist.title}',
       );
 
       return;
     }
 
     try {
-      await ref.read(libraryServiceProvider).addTrackToPlaylist(
-            playlist: playlist,
-            track: track,
-          );
+      await ref
+          .read(libraryServiceProvider)
+          .addTrackToPlaylist(playlist: playlist, track: track);
       ref.invalidate(playlistsProvider);
       ref.invalidate(playlistDetailProvider(playlist.id));
 
       if (!context.mounted) return;
 
       Navigator.of(context).pop();
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Added to ${playlist.title}'),
-          backgroundColor: _orange,
-        ),
-      );
+      showAppToast(context, message: 'Added to ${playlist.title}');
     } catch (_) {
       if (!context.mounted) return;
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Could not add this track.'),
-        ),
-      );
+      showAppToast(context, message: 'Could not add this track.');
     }
   }
 }
 
 class _PlaylistOption extends StatelessWidget {
-  const _PlaylistOption({
-    required this.playlist,
-    required this.onTap,
-  });
+  const _PlaylistOption({required this.playlist, required this.onTap});
 
   final Playlist playlist;
   final VoidCallback onTap;

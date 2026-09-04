@@ -101,11 +101,25 @@ class LibraryService {
 
     for (final item in [...continueListening, ...recentlyPlayed]) {
       if (item.track.id.isNotEmpty) {
-        merged[item.track.id] = item;
+        final existing = merged[item.track.id];
+
+        if (existing == null ||
+            item.updatedAtMillis >= existing.updatedAtMillis) {
+          merged[item.track.id] = item;
+        }
       }
     }
 
-    return merged.values.toList();
+    final items = merged.values.toList();
+
+    if (items.any((item) => item.updatedAtMillis > 0)) {
+      items.sort(
+        (first, second) =>
+            second.updatedAtMillis.compareTo(first.updatedAtMillis),
+      );
+    }
+
+    return items;
   }
 
   Future<Playlist?> getPlaylistById(String playlistId) async {

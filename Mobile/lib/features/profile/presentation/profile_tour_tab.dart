@@ -322,6 +322,7 @@ Future<void> _showBuyTicketSheet(
 
   await showModalBottomSheet<void>(
     context: context,
+    useRootNavigator: true,
     useSafeArea: true,
     backgroundColor: const Color(0xFF181818),
     shape: const RoundedRectangleBorder(

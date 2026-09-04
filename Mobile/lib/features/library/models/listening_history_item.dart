@@ -7,6 +7,7 @@ class ListeningHistoryItem {
     this.lastPosition = 0,
     this.duration = 0,
     this.completed = false,
+    this.updatedAtMillis = 0,
   });
 
   final HomeTrack track;
@@ -14,6 +15,7 @@ class ListeningHistoryItem {
   final double lastPosition;
   final double duration;
   final bool completed;
+  final int updatedAtMillis;
 
   factory ListeningHistoryItem.fromJson(dynamic value) {
     if (value is! Map) {
@@ -30,6 +32,13 @@ class ListeningHistoryItem {
       lastPosition: _double(json['lastPosition']),
       duration: _double(json['duration']),
       completed: json['completed'] == true,
+      updatedAtMillis: _dateMillis(
+        json['updatedAt'] ??
+            json['lastPlayedAt'] ??
+            json['playedAt'] ??
+            json['listenedAt'] ??
+            json['createdAt'],
+      ),
     );
   }
 }
@@ -40,4 +49,13 @@ double _double(dynamic value) {
   }
 
   return double.tryParse(value?.toString() ?? '') ?? 0;
+}
+
+int _dateMillis(dynamic value) {
+  if (value is num) {
+    return value.toInt();
+  }
+
+  return DateTime.tryParse(value?.toString() ?? '')?.millisecondsSinceEpoch ??
+      0;
 }

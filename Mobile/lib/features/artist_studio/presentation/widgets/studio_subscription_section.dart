@@ -345,17 +345,13 @@ class _SubscriptionPanelState extends ConsumerState<_SubscriptionPanel>
         return;
       }
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Cancellation has been scheduled.')),
-      );
+      showAppToast(context, message: 'Cancellation has been scheduled.');
     } catch (_) {
       if (!mounted) {
         return;
       }
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Could not cancel subscription.')),
-      );
+      showAppToast(context, message: 'Could not cancel subscription.');
     } finally {
       if (mounted) {
         setState(() {
@@ -369,6 +365,7 @@ class _SubscriptionPanelState extends ConsumerState<_SubscriptionPanel>
     await showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
+      useRootNavigator: true,
       backgroundColor: Colors.transparent,
       builder: (sheetContext) {
         return _PlansSheet(
@@ -478,9 +475,7 @@ class _SubscriptionPanelState extends ConsumerState<_SubscriptionPanel>
           _paymentMessage = null;
         });
 
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Payment confirmed. Plan updated.')),
-        );
+        showAppToast(context, message: 'Payment confirmed. Plan updated.');
         return;
       }
 
@@ -586,9 +581,7 @@ class _SubscriptionPanelState extends ConsumerState<_SubscriptionPanel>
         return;
       }
 
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(_paymentStatusMessage(status))));
+      showAppToast(context, message: _paymentStatusMessage(status));
       setState(() {
         if (_pendingPayment?.orderCode == payment.orderCode) {
           if (status.paid) {
@@ -605,9 +598,7 @@ class _SubscriptionPanelState extends ConsumerState<_SubscriptionPanel>
         return;
       }
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Could not check payment status.')),
-      );
+      showAppToast(context, message: 'Could not check payment status.');
     } finally {
       if (mounted) {
         setState(() {
@@ -1297,9 +1288,7 @@ class _PlansSheetState extends ConsumerState<_PlansSheet> {
           return;
         }
 
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text(_vnpayReturnInstruction)));
+        showAppToast(context, message: _vnpayReturnInstruction);
         Navigator.of(context).pop();
         return;
       }
@@ -1310,23 +1299,18 @@ class _PlansSheetState extends ConsumerState<_PlansSheet> {
         return;
       }
 
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Switched to ${plan.name}')));
+      showAppToast(context, message: 'Switched to ${plan.name}');
       Navigator.of(context).pop();
     } catch (_) {
       if (!mounted) {
         return;
       }
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            requiresPayment
-                ? 'Could not start subscription payment.'
-                : 'Could not change plan.',
-          ),
-        ),
+      showAppToast(
+        context,
+        message: requiresPayment
+            ? 'Could not start subscription payment.'
+            : 'Could not change plan.',
       );
     } finally {
       if (mounted) {

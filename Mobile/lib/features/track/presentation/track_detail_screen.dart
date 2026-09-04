@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../services/api/api_service.dart';
+import '../../../shared/presentation/app_toast.dart';
 import '../../home/models/home_track.dart';
 import '../../library/presentation/add_to_playlist_sheet.dart';
 import '../../player/providers/player_provider.dart';
@@ -235,11 +236,7 @@ class _TrackDetailScreenState extends ConsumerState<TrackDetailScreen> {
     if (_isLiking) return;
 
     if (!track.canUsePublicTrackActions) {
-      ScaffoldMessenger.of(context)
-        ..hideCurrentSnackBar()
-        ..showSnackBar(
-          const SnackBar(content: Text('This track is still being reviewed.')),
-        );
+      showAppToast(context, message: 'This track is still being reviewed.');
       return;
     }
 
@@ -252,20 +249,14 @@ class _TrackDetailScreenState extends ConsumerState<TrackDetailScreen> {
         .toggleLike(track);
 
     if (mounted) {
-      ScaffoldMessenger.of(context)
-        ..hideCurrentSnackBar()
-        ..showSnackBar(
-          SnackBar(
-            content: Text(
-              result.success
-                  ? result.isActive
-                        ? 'Saved to your Library'
-                        : 'Removed from your Library'
-                  : 'Could not update like.',
-            ),
-            backgroundColor: result.success ? _orange : null,
-          ),
-        );
+      showAppToast(
+        context,
+        message: result.success
+            ? result.isActive
+                  ? 'Saved to your Library'
+                  : 'Removed from your Library'
+            : 'Could not update like.',
+      );
 
       setState(() {
         _isLiking = false;
@@ -279,11 +270,7 @@ class _TrackDetailScreenState extends ConsumerState<TrackDetailScreen> {
     if (content.isEmpty || _isSendingComment) return;
 
     if (!track.canUsePublicTrackActions) {
-      ScaffoldMessenger.of(context)
-        ..hideCurrentSnackBar()
-        ..showSnackBar(
-          const SnackBar(content: Text('This track is still being reviewed.')),
-        );
+      showAppToast(context, message: 'This track is still being reviewed.');
       return;
     }
 
@@ -299,11 +286,7 @@ class _TrackDetailScreenState extends ConsumerState<TrackDetailScreen> {
 
       if (!response.isSuccess) {
         if (!mounted) return;
-        ScaffoldMessenger.of(context)
-          ..hideCurrentSnackBar()
-          ..showSnackBar(
-            const SnackBar(content: Text('Could not post comment.')),
-          );
+        showAppToast(context, message: 'Could not post comment.');
         return;
       }
 
@@ -313,21 +296,10 @@ class _TrackDetailScreenState extends ConsumerState<TrackDetailScreen> {
       });
 
       if (!mounted) return;
-      ScaffoldMessenger.of(context)
-        ..hideCurrentSnackBar()
-        ..showSnackBar(
-          const SnackBar(
-            content: Text('Comment posted'),
-            backgroundColor: _orange,
-          ),
-        );
+      showAppToast(context, message: 'Comment posted');
     } catch (_) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context)
-        ..hideCurrentSnackBar()
-        ..showSnackBar(
-          const SnackBar(content: Text('Could not post comment.')),
-        );
+      showAppToast(context, message: 'Could not post comment.');
     } finally {
       if (mounted) {
         setState(() {
@@ -345,25 +317,14 @@ class _TrackDetailScreenState extends ConsumerState<TrackDetailScreen> {
 
     await Clipboard.setData(ClipboardData(text: text));
     if (!mounted) return;
-    ScaffoldMessenger.of(context)
-      ..hideCurrentSnackBar()
-      ..showSnackBar(
-        const SnackBar(
-          content: Text('Track link copied'),
-          backgroundColor: _orange,
-        ),
-      );
+    showAppToast(context, message: 'Track link copied');
   }
 
   void _openArtist(HomeTrack track) {
     final uploaderId = track.uploaderId;
 
     if (uploaderId == null || uploaderId.isEmpty) {
-      ScaffoldMessenger.of(context)
-        ..hideCurrentSnackBar()
-        ..showSnackBar(
-          const SnackBar(content: Text('This artist profile is unavailable.')),
-        );
+      showAppToast(context, message: 'This artist profile is unavailable.');
       return;
     }
 

@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../services/api/api_service.dart';
+import '../../../shared/presentation/app_toast.dart';
 import '../../home/providers/home_provider.dart';
 import '../../library/providers/library_provider.dart';
 import '../../profile/presentation/profile_screen.dart';
@@ -408,19 +409,7 @@ class _TrackUploadScreenState extends ConsumerState<TrackUploadScreen> {
 
   void _showMessage(String message) {
     if (!mounted) return;
-    ScaffoldMessenger.of(context)
-      ..hideCurrentSnackBar()
-      ..showSnackBar(
-        SnackBar(
-          content: Text(message),
-          backgroundColor:
-              message.toLowerCase().contains('could not') ||
-                  message.toLowerCase().contains('please') ||
-                  message.toLowerCase().contains('must')
-              ? null
-              : _orange,
-        ),
-      );
+    showAppToast(context, message: message);
   }
 }
 

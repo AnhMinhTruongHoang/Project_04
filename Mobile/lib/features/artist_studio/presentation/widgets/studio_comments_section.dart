@@ -366,17 +366,13 @@ class _CommentsOverviewState extends ConsumerState<_CommentsOverview> {
         return;
       }
 
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Comment deleted')));
+      showAppToast(context, message: 'Comment deleted');
     } catch (_) {
       if (!mounted) {
         return;
       }
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Could not delete comment.')),
-      );
+      showAppToast(context, message: 'Could not delete comment.');
     } finally {
       if (mounted) {
         setState(() {

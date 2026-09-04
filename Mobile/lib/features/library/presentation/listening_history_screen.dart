@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter/services.dart';
 
 import '../../player/providers/player_provider.dart';
+import '../../../shared/presentation/app_toast.dart';
 import '../models/listening_history_item.dart';
 import '../providers/library_provider.dart';
 import 'add_to_playlist_sheet.dart';
@@ -14,7 +16,7 @@ class ListeningHistoryScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final history = ref.watch(listeningHistoryProvider);
+    final history = ref.watch(effectiveListeningHistoryProvider);
 
     return Scaffold(
       backgroundColor: _background,
@@ -57,10 +59,7 @@ class ListeningHistoryScreen extends ConsumerWidget {
               padding: const EdgeInsets.fromLTRB(12, 10, 12, 120),
               itemCount: items.length,
               separatorBuilder: (_, _) {
-                return const Divider(
-                  height: 1,
-                  color: Color(0xFF222222),
-                );
+                return const Divider(height: 1, color: Color(0xFF222222));
               },
               itemBuilder: (context, index) {
                 final item = items[index];
@@ -79,6 +78,17 @@ class ListeningHistoryScreen extends ConsumerWidget {
                       track: item.track,
                     );
                   },
+                  onCopyLink: () async {
+                    await Clipboard.setData(
+                      ClipboardData(text: _shareText(item.track)),
+                    );
+
+                    if (!context.mounted) {
+                      return;
+                    }
+
+                    showAppToast(context, message: 'Track link copied');
+                  },
                 );
               },
             );
@@ -94,11 +104,13 @@ class _HistoryTile extends StatelessWidget {
     required this.item,
     required this.onTap,
     required this.onAddToPlaylist,
+    required this.onCopyLink,
   });
 
   final ListeningHistoryItem item;
   final VoidCallback onTap;
   final VoidCallback onAddToPlaylist;
+  final VoidCallback onCopyLink;
 
   @override
   Widget build(BuildContext context) {
@@ -123,16 +135,23 @@ class _HistoryTile extends StatelessWidget {
         color: const Color(0xFF242424),
         icon: const Icon(Icons.more_vert_rounded, color: Colors.white),
         onSelected: (value) {
+          if (value == 'play') {
+            onTap();
+          }
+
           if (value == 'playlist') {
             onAddToPlaylist();
+          }
+
+          if (value == 'share') {
+            onCopyLink();
           }
         },
         itemBuilder: (_) {
           return const [
-            PopupMenuItem(
-              value: 'playlist',
-              child: Text('Add to playlist'),
-            ),
+            PopupMenuItem(value: 'play', child: Text('Play')),
+            PopupMenuItem(value: 'playlist', child: Text('Add to playlist')),
+            PopupMenuItem(value: 'share', child: Text('Copy track link')),
           ];
         },
       ),
@@ -175,10 +194,7 @@ class _Artwork extends StatelessWidget {
         height: 54,
         color: const Color(0xFF222222),
         child: url == null
-            ? const Icon(
-                Icons.music_note_rounded,
-                color: Color(0xFF777777),
-              )
+            ? const Icon(Icons.music_note_rounded, color: Color(0xFF777777))
             : Image.network(
                 url!,
                 fit: BoxFit.cover,
@@ -226,12 +242,16 @@ class _MessageState extends StatelessWidget {
         Text(
           subtitle,
           textAlign: TextAlign.center,
-          style: const TextStyle(
-            color: Color(0xFF888888),
-            fontSize: 13,
-          ),
+          style: const TextStyle(color: Color(0xFF888888), fontSize: 13),
         ),
       ],
     );
   }
+}
+
+String _shareText(dynamic track) {
+  return [
+    '${track.title} - ${track.artistName}',
+    if (track.resolvedTrackUrl != null) track.resolvedTrackUrl!,
+  ].join('\n');
 }

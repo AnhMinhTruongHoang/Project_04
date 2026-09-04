@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../services/api/api_service.dart';
+import '../../../shared/presentation/app_toast.dart';
 import '../../auth/models/user_model.dart';
 import '../../player/providers/player_social_provider.dart';
 import '../providers/library_provider.dart';
@@ -94,18 +95,11 @@ class FollowingScreen extends ConsumerWidget {
 
       if (!context.mounted) return;
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Unfollowed ${user.name}'),
-          backgroundColor: _orange,
-        ),
-      );
+      showAppToast(context, message: 'Unfollowed ${user.name}');
     } catch (_) {
       if (!context.mounted) return;
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Could not unfollow this user.')),
-      );
+      showAppToast(context, message: 'Could not unfollow this user.');
     }
   }
 }

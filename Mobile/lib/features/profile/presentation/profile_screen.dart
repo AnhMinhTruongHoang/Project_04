@@ -67,10 +67,7 @@ class ProfileScreen extends ConsumerWidget {
 }
 
 class PublicProfileScreen extends ConsumerWidget {
-  const PublicProfileScreen({
-    super.key,
-    required this.userId,
-  });
+  const PublicProfileScreen({super.key, required this.userId});
 
   final String userId;
 
@@ -107,10 +104,7 @@ class PublicProfileScreen extends ConsumerWidget {
 // ============================================================
 
 class _ProfileContent extends ConsumerWidget {
-  const _ProfileContent({
-    required this.user,
-    required this.isOwner,
-  });
+  const _ProfileContent({required this.user, required this.isOwner});
 
   final UserModel user;
   final bool isOwner;
@@ -254,6 +248,7 @@ class _ProfileContent extends ConsumerWidget {
     final value = await showModalBottomSheet<String>(
       context: context,
       backgroundColor: const Color(0xFF181818),
+      useRootNavigator: true,
       useSafeArea: true,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
@@ -733,10 +728,7 @@ class _ProfileMeta extends StatelessWidget {
 // ============================================================
 
 class _ProfileTabs extends ConsumerStatefulWidget {
-  const _ProfileTabs({
-    required this.user,
-    required this.isOwner,
-  });
+  const _ProfileTabs({required this.user, required this.isOwner});
 
   final UserModel user;
   final bool isOwner;
@@ -844,7 +836,10 @@ class _ProfileTabsState extends ConsumerState<_ProfileTabs> {
       case 'Playlists':
         return _ProfilePlaylistsTab(userId: widget.user.id);
       case 'Concerts / Tour':
-        return ProfileTourTab(artistId: widget.user.id, isOwner: widget.isOwner);
+        return ProfileTourTab(
+          artistId: widget.user.id,
+          isOwner: widget.isOwner,
+        );
       case 'Membership':
         return _ProfileMembershipTab(artistId: widget.user.id);
       case 'Tickets':

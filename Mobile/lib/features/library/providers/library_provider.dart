@@ -60,6 +60,41 @@ final listeningHistoryProvider = FutureProvider<List<ListeningHistoryItem>>((
   return service.getListeningHistory(limit: 30);
 });
 
+final localListeningHistoryProvider =
+    NotifierProvider<
+      LocalListeningHistoryController,
+      List<ListeningHistoryItem>
+    >(LocalListeningHistoryController.new);
+
+class LocalListeningHistoryController
+    extends Notifier<List<ListeningHistoryItem>> {
+  @override
+  List<ListeningHistoryItem> build() {
+    return const [];
+  }
+
+  void upsert(ListeningHistoryItem item) {
+    final trackId = item.track.id;
+
+    if (trackId.isEmpty) {
+      return;
+    }
+
+    state = [
+      item,
+      ...state.where((history) => history.track.id != trackId),
+    ].take(30).toList();
+  }
+}
+
+final effectiveListeningHistoryProvider =
+    Provider<AsyncValue<List<ListeningHistoryItem>>>((ref) {
+      final local = ref.watch(localListeningHistoryProvider);
+      final remote = ref.watch(listeningHistoryProvider);
+
+      return remote.whenData((items) => _mergeHistory(local, items));
+    });
+
 final playlistDetailProvider = FutureProvider.family<Playlist?, String>((
   ref,
   playlistId,
@@ -68,3 +103,28 @@ final playlistDetailProvider = FutureProvider.family<Playlist?, String>((
 
   return service.getPlaylistById(playlistId);
 });
+
+List<ListeningHistoryItem> _mergeHistory(
+  List<ListeningHistoryItem> local,
+  List<ListeningHistoryItem> remote,
+) {
+  final merged = <String, ListeningHistoryItem>{};
+
+  for (final item in [...remote, ...local]) {
+    final trackId = item.track.id;
+
+    if (trackId.isEmpty) {
+      continue;
+    }
+
+    final existing = merged[trackId];
+
+    if (existing == null || item.updatedAtMillis >= existing.updatedAtMillis) {
+      merged[trackId] = item;
+    }
+  }
+
+  return merged.values.toList()..sort((first, second) {
+    return second.updatedAtMillis.compareTo(first.updatedAtMillis);
+  });
+}

@@ -1,16 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../home/models/home_track.dart';
 import '../../player/providers/player_provider.dart';
+import '../../../shared/presentation/app_toast.dart';
 import '../models/listening_history_item.dart';
 import '../providers/library_provider.dart';
+import 'add_to_playlist_sheet.dart';
 import 'albums_screen.dart';
 import 'following_screen.dart';
 import 'liked_tracks_screen.dart';
 import 'listening_history_screen.dart';
-import 'placeholder_library_screen.dart';
 import 'playlists_screen.dart';
 import 'your_uploads_screen.dart';
 
@@ -22,7 +24,7 @@ class LibraryScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final history = ref.watch(listeningHistoryProvider);
+    final history = ref.watch(effectiveListeningHistoryProvider);
     final liked = ref.watch(likedTracksProvider);
     final playlists = ref.watch(playlistsProvider);
     final albums = ref.watch(albumsProvider);
@@ -68,37 +70,6 @@ class LibraryScreen extends ConsumerWidget {
                         fontWeight: FontWeight.w900,
                       ),
                     ),
-                  ),
-                  TextButton(
-                    onPressed: () {
-                      Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (_) => const PlaceholderLibraryScreen(
-                            title: 'Upgrade',
-                            message:
-                                'Subscription features can be connected to the backend plans API later.',
-                          ),
-                        ),
-                      );
-                    },
-                    child: const Text(
-                      'GET PRO',
-                      style: TextStyle(
-                        color: orange,
-                        fontWeight: FontWeight.w900,
-                        letterSpacing: 1.5,
-                      ),
-                    ),
-                  ),
-                  IconButton(
-                    tooltip: 'Cast',
-                    onPressed: () {},
-                    icon: const Icon(Icons.cast_rounded),
-                  ),
-                  IconButton(
-                    tooltip: 'Settings',
-                    onPressed: () {},
-                    icon: const Icon(Icons.settings_rounded),
                   ),
                 ],
               ),
@@ -158,26 +129,6 @@ class LibraryScreen extends ConsumerWidget {
                 subtitle: 'Find artists to follow',
                 onTap: () {
                   context.push('/people');
-                },
-              ),
-              _LibraryNavItem(
-                title: 'Stations',
-                onTap: () {
-                  Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (_) => const PlaceholderLibraryScreen(
-                        title: 'Stations',
-                        message:
-                            'Station-style recommendations can reuse hidden gems and because-you-listened APIs.',
-                      ),
-                    ),
-                  );
-                },
-              ),
-              _LibraryNavItem(
-                title: 'Your insights',
-                onTap: () {
-                  context.push('/artist-studio');
                 },
               ),
               _LibraryNavItem(
@@ -483,12 +434,98 @@ class _HistoryTile extends ConsumerWidget {
       ),
       trailing: IconButton(
         tooltip: 'More',
-        onPressed: () {},
+        color: Colors.white70,
         icon: const Icon(Icons.more_vert_rounded),
+        onPressed: () => _showHistoryActions(context, ref, track),
       ),
       onTap: () {
         ref.read(playerProvider.notifier).playTrack(track, queue: queue);
       },
+    );
+  }
+
+  Future<void> _showHistoryActions(
+    BuildContext context,
+    WidgetRef ref,
+    HomeTrack track,
+  ) async {
+    final action = await showModalBottomSheet<String>(
+      context: context,
+      backgroundColor: const Color(0xFF171717),
+      showDragHandle: true,
+      useRootNavigator: true,
+      builder: (context) {
+        return SafeArea(
+          top: false,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(18, 4, 18, 18),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: const [
+                _HistoryActionTile(
+                  value: 'play',
+                  icon: Icons.play_arrow_rounded,
+                  title: 'Play',
+                ),
+                _HistoryActionTile(
+                  value: 'playlist',
+                  icon: Icons.queue_music_rounded,
+                  title: 'Add to playlist',
+                ),
+                _HistoryActionTile(
+                  value: 'share',
+                  icon: Icons.share_rounded,
+                  title: 'Copy track link',
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+
+    if (!context.mounted || action == null) {
+      return;
+    }
+
+    switch (action) {
+      case 'play':
+        ref.read(playerProvider.notifier).playTrack(track, queue: queue);
+      case 'playlist':
+        showAddToPlaylistSheet(context: context, ref: ref, track: track);
+      case 'share':
+        await Clipboard.setData(ClipboardData(text: _shareText(track)));
+        if (!context.mounted) {
+          return;
+        }
+        showAppToast(context, message: 'Track link copied');
+    }
+  }
+}
+
+class _HistoryActionTile extends StatelessWidget {
+  const _HistoryActionTile({
+    required this.value,
+    required this.icon,
+    required this.title,
+  });
+
+  final String value;
+  final IconData icon;
+  final String title;
+
+  @override
+  Widget build(BuildContext context) {
+    return ListTile(
+      leading: Icon(icon, color: Colors.white),
+      title: Text(
+        title,
+        style: const TextStyle(
+          color: Colors.white,
+          fontWeight: FontWeight.w800,
+        ),
+      ),
+      onTap: () => Navigator.of(context).pop(value),
     );
   }
 }
@@ -539,4 +576,11 @@ class _LibraryHint extends StatelessWidget {
       ),
     );
   }
+}
+
+String _shareText(HomeTrack track) {
+  return [
+    '${track.title} - ${track.artistName}',
+    if (track.resolvedTrackUrl != null) track.resolvedTrackUrl!,
+  ].join('\n');
 }

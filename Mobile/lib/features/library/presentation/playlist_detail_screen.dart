@@ -3,6 +3,7 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../shared/presentation/app_toast.dart';
 import '../../home/models/home_track.dart';
 import '../../player/providers/player_provider.dart';
 import '../models/playlist.dart';
@@ -38,9 +39,7 @@ class _PlaylistDetailScreenState extends ConsumerState<PlaylistDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final playlistAsync = ref.watch(
-      playlistDetailProvider(widget.playlistId),
-    );
+    final playlistAsync = ref.watch(playlistDetailProvider(widget.playlistId));
 
     return Scaffold(
       backgroundColor: _background,
@@ -57,9 +56,7 @@ class _PlaylistDetailScreenState extends ConsumerState<PlaylistDetailScreen> {
             );
           }
 
-          return const Center(
-            child: CircularProgressIndicator(color: _orange),
-          );
+          return const Center(child: CircularProgressIndicator(color: _orange));
         },
         error: (_, _) {
           return _ErrorState(
@@ -161,10 +158,7 @@ class _PlaylistBody extends ConsumerWidget {
             sliver: SliverList.separated(
               itemCount: filteredTracks.length,
               separatorBuilder: (_, _) {
-                return const Divider(
-                  height: 1,
-                  color: Color(0xFF222222),
-                );
+                return const Divider(height: 1, color: Color(0xFF222222));
               },
               itemBuilder: (context, index) {
                 final track = filteredTracks[index];
@@ -187,9 +181,9 @@ class _PlaylistBody extends ConsumerWidget {
             child: Text(
               'Suggested for you',
               style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w900,
-                  ),
+                color: Colors.white,
+                fontWeight: FontWeight.w900,
+              ),
             ),
           ),
         ),
@@ -198,9 +192,7 @@ class _PlaylistBody extends ConsumerWidget {
             return const SliverToBoxAdapter(
               child: Padding(
                 padding: EdgeInsets.symmetric(vertical: 18),
-                child: Center(
-                  child: CircularProgressIndicator(color: _orange),
-                ),
+                child: Center(child: CircularProgressIndicator(color: _orange)),
               ),
             );
           },
@@ -233,10 +225,7 @@ class _PlaylistBody extends ConsumerWidget {
               sliver: SliverList.separated(
                 itemCount: candidates.length,
                 separatorBuilder: (_, _) {
-                  return const Divider(
-                    height: 1,
-                    color: Color(0xFF222222),
-                  );
+                  return const Divider(height: 1, color: Color(0xFF222222));
                 },
                 itemBuilder: (context, index) {
                   final track = candidates[index];
@@ -336,12 +325,15 @@ class _PlaylistBody extends ConsumerWidget {
       return;
     }
 
-    if (result.title == playlist.title && result.isPublic == playlist.isPublic) {
+    if (result.title == playlist.title &&
+        result.isPublic == playlist.isPublic) {
       return;
     }
 
     try {
-      await ref.read(libraryServiceProvider).updatePlaylist(
+      await ref
+          .read(libraryServiceProvider)
+          .updatePlaylist(
             playlistId: playlist.id,
             title: result.title,
             isPublic: result.isPublic,
@@ -352,18 +344,11 @@ class _PlaylistBody extends ConsumerWidget {
 
       if (!context.mounted) return;
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Playlist updated'),
-          backgroundColor: _orange,
-        ),
-      );
+      showAppToast(context, message: 'Playlist updated');
     } catch (_) {
       if (!context.mounted) return;
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Could not update playlist.')),
-      );
+      showAppToast(context, message: 'Could not update playlist.');
     }
   }
 
@@ -397,18 +382,11 @@ class _PlaylistBody extends ConsumerWidget {
       if (!context.mounted) return;
 
       Navigator.of(context).pop();
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Playlist deleted'),
-          backgroundColor: _orange,
-        ),
-      );
+      showAppToast(context, message: 'Playlist deleted');
     } catch (_) {
       if (!context.mounted) return;
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Could not delete playlist.')),
-      );
+      showAppToast(context, message: 'Could not delete playlist.');
     }
   }
 
@@ -482,7 +460,9 @@ class _PlaylistBody extends ConsumerWidget {
     required String errorMessage,
   }) async {
     try {
-      await ref.read(libraryServiceProvider).updatePlaylist(
+      await ref
+          .read(libraryServiceProvider)
+          .updatePlaylist(
             playlistId: playlist.id,
             title: playlist.title,
             isPublic: playlist.isPublic,
@@ -493,18 +473,11 @@ class _PlaylistBody extends ConsumerWidget {
 
       if (!context.mounted) return;
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(successMessage),
-          backgroundColor: _orange,
-        ),
-      );
+      showAppToast(context, message: successMessage);
     } catch (_) {
       if (!context.mounted) return;
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(errorMessage)),
-      );
+      showAppToast(context, message: errorMessage);
     }
   }
 
@@ -515,10 +488,7 @@ class _PlaylistBody extends ConsumerWidget {
 }
 
 class _PlaylistEditResult {
-  const _PlaylistEditResult({
-    required this.title,
-    required this.isPublic,
-  });
+  const _PlaylistEditResult({required this.title, required this.isPublic});
 
   final String title;
   final bool isPublic;
@@ -556,10 +526,7 @@ class _PlaylistVisibilityTile extends StatelessWidget {
           isPublic
               ? 'Anyone can view this playlist.'
               : 'Only you can view this playlist.',
-          style: const TextStyle(
-            color: Color(0xFFAAAAAA),
-            fontSize: 13,
-          ),
+          style: const TextStyle(color: Color(0xFFAAAAAA), fontSize: 13),
         ),
         onChanged: onChanged,
       ),
@@ -592,9 +559,7 @@ class _PlaylistHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     return Stack(
       children: [
-        Positioned.fill(
-          child: _HeaderBackground(url: coverUrl),
-        ),
+        Positioned.fill(child: _HeaderBackground(url: coverUrl)),
         SafeArea(
           bottom: false,
           child: Padding(
@@ -689,10 +654,7 @@ class _PlaylistHeader extends StatelessWidget {
                         disabledForegroundColor: const Color(0xFF888888),
                       ),
                       onPressed: onPlay,
-                      icon: const Icon(
-                        Icons.play_arrow_rounded,
-                        size: 48,
-                      ),
+                      icon: const Icon(Icons.play_arrow_rounded, size: 48),
                     ),
                   ],
                 ),
@@ -709,6 +671,7 @@ class _PlaylistHeader extends StatelessWidget {
       context: context,
       backgroundColor: const Color(0xFF171717),
       showDragHandle: true,
+      useRootNavigator: true,
       builder: (context) {
         return SafeArea(
           top: false,
@@ -784,10 +747,7 @@ class _TrackTile extends StatelessWidget {
         },
         itemBuilder: (_) {
           return const [
-            PopupMenuItem(
-              value: 'remove',
-              child: Text('Remove from playlist'),
-            ),
+            PopupMenuItem(value: 'remove', child: Text('Remove from playlist')),
           ];
         },
       ),
@@ -797,10 +757,7 @@ class _TrackTile extends StatelessWidget {
 }
 
 class _SuggestedTrackTile extends StatelessWidget {
-  const _SuggestedTrackTile({
-    required this.track,
-    required this.onAdd,
-  });
+  const _SuggestedTrackTile({required this.track, required this.onAdd});
 
   final HomeTrack track;
   final VoidCallback onAdd;
@@ -862,11 +819,7 @@ class _HeaderBackground extends StatelessWidget {
             gradient: LinearGradient(
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,
-              colors: [
-                Color(0xAA000000),
-                Color(0x33000000),
-                Color(0xFF0D0D0D),
-              ],
+              colors: [Color(0xAA000000), Color(0x33000000), Color(0xFF0D0D0D)],
             ),
           ),
         ),
@@ -876,10 +829,7 @@ class _HeaderBackground extends StatelessWidget {
 }
 
 class _Cover extends StatelessWidget {
-  const _Cover({
-    required this.url,
-    required this.size,
-  });
+  const _Cover({required this.url, required this.size});
 
   final String? url;
   final double size;
@@ -893,10 +843,7 @@ class _Cover extends StatelessWidget {
         height: size,
         color: const Color(0xFF222222),
         child: url == null
-            ? const Icon(
-                Icons.queue_music_rounded,
-                color: Color(0xFF777777),
-              )
+            ? const Icon(Icons.queue_music_rounded, color: Color(0xFF777777))
             : Image.network(
                 url!,
                 fit: BoxFit.cover,
@@ -921,10 +868,7 @@ class _InlineEmpty extends StatelessWidget {
   Widget build(BuildContext context) {
     return Text(
       text,
-      style: const TextStyle(
-        color: Color(0xFF999999),
-        fontSize: 14,
-      ),
+      style: const TextStyle(color: Color(0xFF999999), fontSize: 14),
     );
   }
 }
@@ -958,10 +902,7 @@ class _ErrorState extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 16),
-            FilledButton(
-              onPressed: onRetry,
-              child: const Text('Try Again'),
-            ),
+            FilledButton(onPressed: onRetry, child: const Text('Try Again')),
           ],
         ),
       ),
@@ -970,10 +911,7 @@ class _ErrorState extends StatelessWidget {
 }
 
 class _EmptyState extends StatelessWidget {
-  const _EmptyState({
-    required this.title,
-    required this.subtitle,
-  });
+  const _EmptyState({required this.title, required this.subtitle});
 
   final String title;
   final String subtitle;
@@ -1005,10 +943,7 @@ class _EmptyState extends StatelessWidget {
             Text(
               subtitle,
               textAlign: TextAlign.center,
-              style: const TextStyle(
-                color: Color(0xFF888888),
-                fontSize: 13,
-              ),
+              style: const TextStyle(color: Color(0xFF888888), fontSize: 13),
             ),
           ],
         ),

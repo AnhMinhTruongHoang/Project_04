@@ -70,29 +70,13 @@ class HomeTrack {
   }
 
   bool get canUsePublicTrackActions {
-    final processing = processingStatus?.trim().toUpperCase();
-    final review = licenseReviewStatus?.trim().toUpperCase();
     final approval = approvalStatus?.trim().toUpperCase();
 
-    final isProcessingReady =
-        processing == null ||
-        processing.isEmpty ||
-        processing == 'COMPLETED' ||
-        processing == 'READY';
-
-    final isReviewReady =
-        review == null ||
-        review.isEmpty ||
-        review == 'APPROVED' ||
-        review == 'VERIFIED';
-
-    final isApprovalReady =
-        approval == null ||
-        approval.isEmpty ||
-        approval == 'APPROVED' ||
-        approval == 'PUBLIC';
-
-    return isProcessingReady && isReviewReady && isApprovalReady;
+    return !isDeleted &&
+        (approval == null ||
+            approval.isEmpty ||
+            approval == 'APPROVED' ||
+            approval == 'PUBLIC');
   }
 
   factory HomeTrack.fromJson(dynamic value) {

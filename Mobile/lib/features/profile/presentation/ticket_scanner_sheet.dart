@@ -42,6 +42,7 @@ Future<void> showTicketScannerSheet(BuildContext context, WidgetRef ref) async {
     await showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
+      useRootNavigator: true,
       useSafeArea: true,
       backgroundColor: const Color(0xFF111111),
       shape: const RoundedRectangleBorder(

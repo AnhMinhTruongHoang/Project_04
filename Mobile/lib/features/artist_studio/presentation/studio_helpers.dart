@@ -1682,8 +1682,6 @@ enum _StudioFilter {
 
 enum _StudioSection {
   tracks('SoundClone Tracks', false, ''),
-  distribution('Distribution', true, 'Artist plan required'),
-  vinyl('Vinyl Records', true, 'Artist plan required'),
   comments('Comments', false, ''),
   earnings('Earnings', true, 'Artist Pro required'),
   subscription('Subscription', true, 'Upgrade your Studio plan'),

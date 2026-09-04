@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../home/models/home_track.dart';
 import '../../player/providers/player_provider.dart';
 import '../../player/providers/player_social_provider.dart';
+import '../../../shared/presentation/app_toast.dart';
 import '../providers/library_provider.dart';
 import 'add_to_playlist_sheet.dart';
 
@@ -56,10 +57,7 @@ class LikedTracksScreen extends ConsumerWidget {
               padding: const EdgeInsets.fromLTRB(12, 10, 12, 120),
               itemCount: tracks.length,
               separatorBuilder: (_, _) {
-                return const Divider(
-                  height: 1,
-                  color: Color(0xFF222222),
-                );
+                return const Divider(height: 1, color: Color(0xFF222222));
               },
               itemBuilder: (context, index) {
                 final track = tracks[index];
@@ -109,18 +107,11 @@ class LikedTracksScreen extends ConsumerWidget {
 
       if (!context.mounted) return;
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Removed from your likes'),
-          backgroundColor: _orange,
-        ),
-      );
+      showAppToast(context, message: 'Removed from your likes');
     } catch (_) {
       if (!context.mounted) return;
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Could not unlike this track.')),
-      );
+      showAppToast(context, message: 'Could not unlike this track.');
     }
   }
 }
@@ -174,14 +165,8 @@ class _TrackTile extends StatelessWidget {
         },
         itemBuilder: (_) {
           return const [
-            PopupMenuItem(
-              value: 'playlist',
-              child: Text('Add to playlist'),
-            ),
-            PopupMenuItem(
-              value: 'unlike',
-              child: Text('Remove like'),
-            ),
+            PopupMenuItem(value: 'playlist', child: Text('Add to playlist')),
+            PopupMenuItem(value: 'unlike', child: Text('Remove like')),
           ];
         },
       ),
@@ -204,10 +189,7 @@ class _Artwork extends StatelessWidget {
         height: 54,
         color: const Color(0xFF222222),
         child: url == null
-            ? const Icon(
-                Icons.music_note_rounded,
-                color: Color(0xFF777777),
-              )
+            ? const Icon(Icons.music_note_rounded, color: Color(0xFF777777))
             : Image.network(
                 url!,
                 fit: BoxFit.cover,
@@ -255,10 +237,7 @@ class _MessageState extends StatelessWidget {
         Text(
           subtitle,
           textAlign: TextAlign.center,
-          style: const TextStyle(
-            color: Color(0xFF888888),
-            fontSize: 13,
-          ),
+          style: const TextStyle(color: Color(0xFF888888), fontSize: 13),
         ),
       ],
     );

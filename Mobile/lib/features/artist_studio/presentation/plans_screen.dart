@@ -175,10 +175,9 @@ class _PlansScreenState extends ConsumerState<PlansScreen> {
   }
 
   void _showMissingSubscriptionMessage() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Refresh subscription before changing plan.'),
-      ),
+    showAppToast(
+      context,
+      message: 'Refresh subscription before changing plan.',
     );
   }
 
@@ -278,9 +277,7 @@ class _PlansScreenState extends ConsumerState<PlansScreen> {
           return;
         }
 
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text(_vnpayReturnInstruction)));
+        showAppToast(context, message: _vnpayReturnInstruction);
         return;
       }
 
@@ -292,22 +289,17 @@ class _PlansScreenState extends ConsumerState<PlansScreen> {
         return;
       }
 
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Switched to ${plan.name}')));
+      showAppToast(context, message: 'Switched to ${plan.name}');
     } catch (_) {
       if (!mounted) {
         return;
       }
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            requiresPayment
-                ? 'Could not start subscription payment.'
-                : 'Could not change plan.',
-          ),
-        ),
+      showAppToast(
+        context,
+        message: requiresPayment
+            ? 'Could not start subscription payment.'
+            : 'Could not change plan.',
       );
     } finally {
       if (mounted) {

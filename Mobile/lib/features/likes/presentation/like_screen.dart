@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../services/api/api_service.dart';
+import '../../../shared/presentation/app_toast.dart';
 import '../../home/models/home_track.dart';
 import '../../home/providers/home_provider.dart';
 import '../../library/providers/library_provider.dart';
@@ -103,9 +104,7 @@ class LikeScreen extends ConsumerWidget {
     }
 
     if (context.mounted) {
-      ScaffoldMessenger.of(context)
-        ..hideCurrentSnackBar()
-        ..showSnackBar(SnackBar(content: Text(result.message)));
+      showAppToast(context, message: result.message);
     }
   }
 }
@@ -169,68 +168,68 @@ class _LikedTrackCard extends StatelessWidget {
           child: GestureDetector(
             onTap: onPlay,
             child: Stack(
-            fit: StackFit.expand,
-            children: [
-              ClipRRect(
-                borderRadius: BorderRadius.circular(6),
-                child: ColoredBox(
-                  color: const Color(0xFF111111),
-                  child: imageUrl.isEmpty
-                      ? const _CoverFallback()
-                      : Image.network(
-                          imageUrl,
-                          fit: BoxFit.cover,
-                          errorBuilder: (_, _, _) => const _CoverFallback(),
-                        ),
-                ),
-              ),
-              DecoratedBox(
-                decoration: BoxDecoration(
+              fit: StackFit.expand,
+              children: [
+                ClipRRect(
                   borderRadius: BorderRadius.circular(6),
-                  border: Border.all(color: const Color(0xFF303030)),
-                  gradient: const LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: [Colors.transparent, Color(0x99000000)],
-                    stops: [0.45, 1],
+                  child: ColoredBox(
+                    color: const Color(0xFF111111),
+                    child: imageUrl.isEmpty
+                        ? const _CoverFallback()
+                        : Image.network(
+                            imageUrl,
+                            fit: BoxFit.cover,
+                            errorBuilder: (_, _, _) => const _CoverFallback(),
+                          ),
                   ),
                 ),
-              ),
-              Center(
-                child: Container(
-                  width: 48,
-                  height: 48,
-                  decoration: const BoxDecoration(
-                    color: Color(0xFFFF5500),
-                    shape: BoxShape.circle,
-                    boxShadow: [
-                      BoxShadow(color: Color(0x66FF5500), blurRadius: 20),
-                    ],
-                  ),
-                  child: const Icon(
-                    Icons.play_arrow_rounded,
-                    color: Colors.white,
-                    size: 34,
+                DecoratedBox(
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(6),
+                    border: Border.all(color: const Color(0xFF303030)),
+                    gradient: const LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [Colors.transparent, Color(0x99000000)],
+                      stops: [0.45, 1],
+                    ),
                   ),
                 ),
-              ),
-              Positioned(
-                right: 5,
-                bottom: 5,
-                child: IconButton(
-                  tooltip: 'Unlike',
-                  onPressed: onUnlike,
-                  style: IconButton.styleFrom(
-                    backgroundColor: const Color(0xCC111111),
-                  ),
-                  icon: const Icon(
-                    Icons.favorite_rounded,
-                    color: Color(0xFFFF5500),
-                    size: 20,
+                Center(
+                  child: Container(
+                    width: 48,
+                    height: 48,
+                    decoration: const BoxDecoration(
+                      color: Color(0xFFFF5500),
+                      shape: BoxShape.circle,
+                      boxShadow: [
+                        BoxShadow(color: Color(0x66FF5500), blurRadius: 20),
+                      ],
+                    ),
+                    child: const Icon(
+                      Icons.play_arrow_rounded,
+                      color: Colors.white,
+                      size: 34,
+                    ),
                   ),
                 ),
-              ),
-            ],
+                Positioned(
+                  right: 5,
+                  bottom: 5,
+                  child: IconButton(
+                    tooltip: 'Unlike',
+                    onPressed: onUnlike,
+                    style: IconButton.styleFrom(
+                      backgroundColor: const Color(0xCC111111),
+                    ),
+                    icon: const Icon(
+                      Icons.favorite_rounded,
+                      color: Color(0xFFFF5500),
+                      size: 20,
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
         ),

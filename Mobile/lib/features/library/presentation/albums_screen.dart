@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../home/models/home_track.dart';
+import '../../../shared/presentation/app_toast.dart';
 import '../models/playlist.dart';
 import '../providers/library_provider.dart';
 import 'playlist_detail_screen.dart';
@@ -107,6 +108,8 @@ class _AlbumsScreenState extends ConsumerState<AlbumsScreen> {
                           ),
                         );
                       },
+                      onEdit: () => _showEditAlbumSheet(visibleItems[index]),
+                      onDelete: () => _deleteAlbum(visibleItems[index]),
                     ),
                     if (index < visibleItems.length - 1)
                       const Divider(height: 1, color: Color(0xFF222222)),
@@ -133,7 +136,7 @@ class _AlbumsScreenState extends ConsumerState<AlbumsScreen> {
   }
 
   Future<void> _showCreateAlbumSheet(BuildContext context) async {
-    final created = await showModalBottomSheet<bool>(
+    final request = await showModalBottomSheet<_CreateAlbumRequest>(
       context: context,
       isScrollControlled: true,
       useRootNavigator: true,
@@ -141,24 +144,216 @@ class _AlbumsScreenState extends ConsumerState<AlbumsScreen> {
       builder: (_) => const _CreateAlbumSheet(),
     );
 
-    if (created != true) {
+    if (request == null) {
       return;
     }
-
-    ref.invalidate(albumsProvider);
-    ref.invalidate(playlistsProvider);
 
     if (!context.mounted) {
       return;
     }
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Album created'),
-        backgroundColor: AlbumsScreen._orange,
-      ),
-    );
+    showAppToast(context, message: 'Creating album...');
+
+    try {
+      await ref
+          .read(libraryServiceProvider)
+          .createAlbum(
+            title: request.title,
+            isPublic: request.isPublic,
+            trackIds: request.trackIds,
+          );
+
+      ref.invalidate(albumsProvider);
+      ref.invalidate(playlistsProvider);
+
+      if (!context.mounted) {
+        return;
+      }
+
+      showAppToast(context, message: 'Album created');
+    } catch (_) {
+      if (!context.mounted) {
+        return;
+      }
+
+      showAppToast(context, message: 'Could not create album.');
+    }
   }
+
+  Future<void> _showEditAlbumSheet(Playlist album) async {
+    final titleController = TextEditingController(text: album.title);
+    var isPublic = album.isPublic;
+
+    await showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: const Color(0xFF161616),
+      isScrollControlled: true,
+      showDragHandle: true,
+      useRootNavigator: true,
+      builder: (sheetContext) {
+        return StatefulBuilder(
+          builder: (sheetContext, setSheetState) {
+            return Padding(
+              padding: EdgeInsets.fromLTRB(
+                18,
+                4,
+                18,
+                MediaQuery.of(sheetContext).viewInsets.bottom + 104,
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Edit album',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 20,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  TextField(
+                    controller: titleController,
+                    autofocus: true,
+                    decoration: const InputDecoration(labelText: 'Album title'),
+                  ),
+                  const SizedBox(height: 14),
+                  _AlbumPrivacyTile(
+                    isPublic: isPublic,
+                    onChanged: (value) {
+                      setSheetState(() {
+                        isPublic = value;
+                      });
+                    },
+                  ),
+                  const SizedBox(height: 16),
+                  SizedBox(
+                    width: double.infinity,
+                    child: FilledButton(
+                      style: FilledButton.styleFrom(
+                        backgroundColor: AlbumsScreen._orange,
+                        foregroundColor: Colors.white,
+                      ),
+                      onPressed: () async {
+                        final title = titleController.text.trim();
+
+                        if (title.isEmpty) {
+                          return;
+                        }
+
+                        if (title == album.title &&
+                            isPublic == album.isPublic) {
+                          return;
+                        }
+
+                        try {
+                          await ref
+                              .read(libraryServiceProvider)
+                              .updatePlaylist(
+                                playlistId: album.id,
+                                title: title,
+                                isPublic: isPublic,
+                                trackIds: album.tracks
+                                    .map((track) => track.id)
+                                    .toList(),
+                              );
+                          ref.invalidate(albumsProvider);
+                          ref.invalidate(playlistsProvider);
+                          ref.invalidate(playlistDetailProvider(album.id));
+
+                          if (!sheetContext.mounted) {
+                            return;
+                          }
+
+                          Navigator.of(sheetContext).pop();
+
+                          if (!mounted) {
+                            return;
+                          }
+
+                          showAppToast(context, message: 'Album updated');
+                        } catch (_) {
+                          if (!sheetContext.mounted) {
+                            return;
+                          }
+
+                          showAppToast(
+                            sheetContext,
+                            message: 'Could not update album.',
+                          );
+                        }
+                      },
+                      child: const Text('Save'),
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+
+    titleController.dispose();
+  }
+
+  Future<void> _deleteAlbum(Playlist album) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: const Text('Delete album?'),
+          content: Text('Delete "${album.title}" from your library?'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(false),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(dialogContext).pop(true),
+              child: const Text('Delete'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (confirmed != true) {
+      return;
+    }
+
+    try {
+      await ref.read(libraryServiceProvider).deletePlaylist(album.id);
+      ref.invalidate(albumsProvider);
+      ref.invalidate(playlistsProvider);
+      ref.invalidate(playlistDetailProvider(album.id));
+
+      if (!mounted) {
+        return;
+      }
+
+      showAppToast(context, message: 'Album deleted');
+    } catch (_) {
+      if (!mounted) {
+        return;
+      }
+
+      showAppToast(context, message: 'Could not delete album.');
+    }
+  }
+}
+
+class _CreateAlbumRequest {
+  const _CreateAlbumRequest({
+    required this.title,
+    required this.isPublic,
+    required this.trackIds,
+  });
+
+  final String title;
+  final bool isPublic;
+  final List<String> trackIds;
 }
 
 class _CreateAlbumSheet extends ConsumerStatefulWidget {
@@ -387,7 +582,7 @@ class _CreateAlbumSheetState extends ConsumerState<_CreateAlbumSheet> {
     });
   }
 
-  Future<void> _submit() async {
+  void _submit() {
     final title = _titleController.text.trim();
 
     if (title.isEmpty || _selectedTrackIds.isEmpty || _isSubmitting) {
@@ -396,33 +591,13 @@ class _CreateAlbumSheetState extends ConsumerState<_CreateAlbumSheet> {
 
     setState(() => _isSubmitting = true);
 
-    try {
-      await ref
-          .read(libraryServiceProvider)
-          .createAlbum(
-            title: title,
-            isPublic: _isPublic,
-            trackIds: _selectedTrackIds.toList(),
-          );
-
-      if (!mounted) {
-        return;
-      }
-
-      Navigator.of(context).pop(true);
-    } catch (_) {
-      if (!mounted) {
-        return;
-      }
-
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Could not create album.')));
-    } finally {
-      if (mounted) {
-        setState(() => _isSubmitting = false);
-      }
-    }
+    Navigator.of(context).pop(
+      _CreateAlbumRequest(
+        title: title,
+        isPublic: _isPublic,
+        trackIds: _selectedTrackIds.toList(),
+      ),
+    );
   }
 }
 
@@ -563,10 +738,17 @@ class _AlbumsSearchBar extends StatelessWidget {
 }
 
 class _AlbumTile extends StatelessWidget {
-  const _AlbumTile({required this.album, required this.onTap});
+  const _AlbumTile({
+    required this.album,
+    required this.onTap,
+    required this.onEdit,
+    required this.onDelete,
+  });
 
   final Playlist album;
   final VoidCallback onTap;
+  final VoidCallback onEdit;
+  final VoidCallback onDelete;
 
   @override
   Widget build(BuildContext context) {
@@ -630,7 +812,26 @@ class _AlbumTile extends StatelessWidget {
           ],
         ),
       ),
-      trailing: const Icon(Icons.chevron_right_rounded, color: Colors.white54),
+      trailing: PopupMenuButton<String>(
+        tooltip: 'More',
+        color: const Color(0xFF242424),
+        icon: const Icon(Icons.more_vert_rounded, color: Colors.white),
+        onSelected: (value) {
+          if (value == 'edit') {
+            onEdit();
+          }
+
+          if (value == 'delete') {
+            onDelete();
+          }
+        },
+        itemBuilder: (_) {
+          return const [
+            PopupMenuItem(value: 'edit', child: Text('Edit album')),
+            PopupMenuItem(value: 'delete', child: Text('Delete album')),
+          ];
+        },
+      ),
       onTap: onTap,
     );
   }

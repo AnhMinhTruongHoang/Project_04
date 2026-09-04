@@ -80,6 +80,7 @@ Future<void> _showEditProfile(
   await showModalBottomSheet<void>(
     context: context,
     isScrollControlled: true,
+    useRootNavigator: true,
     useSafeArea: true,
     backgroundColor: const Color(0xFF181818),
     shape: const RoundedRectangleBorder(

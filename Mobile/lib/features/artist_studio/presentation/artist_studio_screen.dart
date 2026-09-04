@@ -11,6 +11,7 @@ import '../../../core/config/api_config.dart';
 import '../../../core/storage/subscription_payment_storage.dart';
 import '../../../core/storage/token_storage.dart';
 import '../../../services/api/api_service.dart';
+import '../../../shared/presentation/app_toast.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../home/models/home_track.dart';
 import '../../library/providers/library_provider.dart';
@@ -287,18 +288,7 @@ class _ArtistStudioScreenState extends ConsumerState<ArtistStudioScreen> {
 
     return Scaffold(
       backgroundColor: const Color(0xFF0D0D0D),
-      appBar: AppBar(
-        title: const Text('Artist Studio'),
-        actions: [
-          IconButton(
-            tooltip: 'Upload track',
-            onPressed: () {
-              context.push('/track/upload');
-            },
-            icon: const Icon(Icons.upload_rounded),
-          ),
-        ],
-      ),
+      appBar: AppBar(title: const Text('Artist Studio')),
       body: RefreshIndicator(
         color: _studioOrange,
         backgroundColor: const Color(0xFF202020),
@@ -353,18 +343,6 @@ class _ArtistStudioScreenState extends ConsumerState<ArtistStudioScreen> {
                 _HeroPanel(
                   onUpload: () {
                     context.push('/track/upload');
-                  },
-                  onRefresh: () {
-                    ref.invalidate(myUploadsProvider);
-                    ref.invalidate(artistStudioStatsProvider);
-                    ref.invalidate(artistStudioSubscriptionProvider);
-                    ref.invalidate(artistStudioBenefitsProvider);
-                    ref.invalidate(artistWalletProvider);
-                    ref.invalidate(artistEarningHistoryProvider);
-                    ref.invalidate(artistPayoutHistoryProvider);
-                    ref
-                        .read(notificationProvider.notifier)
-                        .refresh(preview: true);
                   },
                 ),
                 const SizedBox(height: 18),

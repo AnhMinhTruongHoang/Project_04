@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import 'full_player_screen.dart';
 import '../../home/models/home_track.dart';
+import '../../../shared/presentation/app_toast.dart';
 import '../models/player_state.dart';
 import '../providers/player_provider.dart';
 import '../providers/player_social_provider.dart';
@@ -458,14 +459,23 @@ class _MiniPlayerState extends ConsumerState<MiniPlayer> {
                             ? Icons.person_rounded
                             : Icons.person_add_alt_1_rounded,
                         isActive: social.isArtistFollowed(displayTrack),
-                        onPressed: () {
+                        onPressed: () async {
                           if (_isTransitioning) {
                             return;
                           }
 
-                          ref
+                          final result = await ref
                               .read(playerSocialProvider.notifier)
                               .toggleFollow(displayTrack);
+
+                          if (!context.mounted) {
+                            return;
+                          }
+
+                          showAppToast(
+                            context,
+                            message: _followToastMessage(displayTrack, result),
+                          );
                         },
                       ),
 
@@ -480,14 +490,31 @@ class _MiniPlayerState extends ConsumerState<MiniPlayer> {
                             ? Icons.favorite_rounded
                             : Icons.favorite_border_rounded,
                         isActive: social.isTrackLiked(displayTrack),
-                        onPressed: () {
+                        onPressed: () async {
                           if (_isTransitioning) {
                             return;
                           }
 
-                          ref
+                          if (!displayTrack.canUsePublicTrackActions) {
+                            showAppToast(
+                              context,
+                              message: 'This track is still being reviewed.',
+                            );
+                            return;
+                          }
+
+                          final result = await ref
                               .read(playerSocialProvider.notifier)
                               .toggleLike(displayTrack);
+
+                          if (!context.mounted) {
+                            return;
+                          }
+
+                          showAppToast(
+                            context,
+                            message: _likeToastMessage(result),
+                          );
                         },
                       ),
 
@@ -507,21 +534,15 @@ class _MiniPlayerState extends ConsumerState<MiniPlayer> {
                               return;
                             }
 
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('Playback stopped'),
-                                backgroundColor: MiniPlayer._orange,
-                              ),
-                            );
+                            showAppToast(context, message: 'Playback stopped');
                           } catch (_) {
                             if (!context.mounted) {
                               return;
                             }
 
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('Could not stop playback.'),
-                              ),
+                            showAppToast(
+                              context,
+                              message: 'Could not stop playback.',
                             );
                           }
                         },
@@ -538,6 +559,30 @@ class _MiniPlayerState extends ConsumerState<MiniPlayer> {
         ),
       ),
     );
+  }
+
+  String _likeToastMessage(PlayerSocialActionResult result) {
+    if (!result.success) {
+      return 'Could not update like.';
+    }
+
+    return result.isActive
+        ? 'Saved to your Library'
+        : 'Removed from your Library';
+  }
+
+  String _followToastMessage(HomeTrack track, PlayerSocialActionResult result) {
+    if (result.reason == PlayerSocialActionReason.self) {
+      return 'You cannot follow yourself.';
+    }
+
+    if (!result.success) {
+      return 'Could not follow this artist.';
+    }
+
+    return result.isActive
+        ? 'Following ${track.artistName}'
+        : 'Unfollowed ${track.artistName}';
   }
 }
 

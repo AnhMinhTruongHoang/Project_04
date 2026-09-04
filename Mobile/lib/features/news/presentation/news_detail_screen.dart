@@ -2,13 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../shared/presentation/app_toast.dart';
 import '../data/news_articles.dart';
 
 class NewsDetailScreen extends StatelessWidget {
-  const NewsDetailScreen({
-    super.key,
-    required this.slug,
-  });
+  const NewsDetailScreen({super.key, required this.slug});
 
   final String slug;
 
@@ -55,10 +53,7 @@ class NewsDetailScreen extends StatelessWidget {
                       gradient: LinearGradient(
                         begin: Alignment.topCenter,
                         end: Alignment.bottomCenter,
-                        colors: [
-                          Colors.transparent,
-                          Color(0xDD0D0D0D),
-                        ],
+                        colors: [Colors.transparent, Color(0xDD0D0D0D)],
                       ),
                     ),
                   ),
@@ -152,9 +147,7 @@ class NewsDetailScreen extends StatelessWidget {
       return;
     }
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('News link copied')),
-    );
+    showAppToast(context, message: 'News link copied');
   }
 }
 
@@ -262,10 +255,7 @@ class _ActionButton extends StatelessWidget {
 }
 
 class _RelatedArticleTile extends StatelessWidget {
-  const _RelatedArticleTile({
-    required this.article,
-    required this.onTap,
-  });
+  const _RelatedArticleTile({required this.article, required this.onTap});
 
   final NewsArticle article;
   final VoidCallback onTap;
@@ -365,10 +355,7 @@ class _MissingArticleScreen extends StatelessWidget {
               const Text(
                 'This news story may have moved or been removed.',
                 textAlign: TextAlign.center,
-                style: TextStyle(
-                  color: Color(0xFF9A9A9A),
-                  fontSize: 13,
-                ),
+                style: TextStyle(color: Color(0xFF9A9A9A), fontSize: 13),
               ),
               const SizedBox(height: 18),
               FilledButton(

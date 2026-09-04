@@ -42,6 +42,21 @@ class PlayerSocialController extends Notifier<PlayerSocialState> {
         final response = await _apiService.dislikeTrackApi(track.id);
 
         if (!response.isSuccess) {
+          if (response.message.toLowerCase().contains('not liked yet')) {
+            final countLike =
+                _countLikeFromResponse(response.data) ??
+                state.likeCountFor(track);
+
+            _markTrackUnliked(track.id, countLike: countLike);
+            _invalidateTrackCollections();
+
+            return PlayerSocialActionResult(
+              success: true,
+              isActive: false,
+              likeCount: countLike,
+            );
+          }
+
           return const PlayerSocialActionResult(success: false, isActive: true);
         }
 
@@ -57,7 +72,20 @@ class PlayerSocialController extends Notifier<PlayerSocialState> {
           isActive: false,
           likeCount: countLike,
         );
-      } catch (_) {
+      } catch (error) {
+        if (error.toString().toLowerCase().contains('not liked yet')) {
+          final countLike = state.likeCountFor(track);
+
+          _markTrackUnliked(track.id, countLike: countLike);
+          _invalidateTrackCollections();
+
+          return PlayerSocialActionResult(
+            success: true,
+            isActive: false,
+            likeCount: countLike,
+          );
+        }
+
         return const PlayerSocialActionResult(success: false, isActive: true);
       }
     }
@@ -67,16 +95,17 @@ class PlayerSocialController extends Notifier<PlayerSocialState> {
 
       if (!response.isSuccess) {
         if (response.message.toLowerCase().contains('already liked')) {
-          _markTrackLiked(
-            track.id,
-            countLike: _countLikeFromResponse(response.data),
-          );
+          final countLike =
+              _countLikeFromResponse(response.data) ??
+              state.likeCountFor(track);
+
+          _markTrackLiked(track.id, countLike: countLike);
           _invalidateTrackCollections();
 
           return PlayerSocialActionResult(
             success: true,
             isActive: true,
-            likeCount: _countLikeFromResponse(response.data),
+            likeCount: countLike,
           );
         }
 
@@ -97,16 +126,15 @@ class PlayerSocialController extends Notifier<PlayerSocialState> {
       );
     } catch (error) {
       if (error.toString().toLowerCase().contains('already liked')) {
-        _markTrackLiked(
-          track.id,
-          countLike: _nextLikeCount(track, liked: true),
-        );
+        final countLike = state.likeCountFor(track);
+
+        _markTrackLiked(track.id, countLike: countLike);
         _invalidateTrackCollections();
 
         return PlayerSocialActionResult(
           success: true,
           isActive: true,
-          likeCount: state.likeCountFor(track),
+          likeCount: countLike,
         );
       }
 

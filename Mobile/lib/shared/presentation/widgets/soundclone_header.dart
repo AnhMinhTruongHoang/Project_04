@@ -74,14 +74,6 @@ class SoundCloneHeader extends ConsumerWidget implements PreferredSizeWidget {
   }
 
   // ==========================================================================
-  // ADMIN
-  // ==========================================================================
-
-  bool _isAdmin() {
-    return user.role.toString().toUpperCase() == 'ADMIN';
-  }
-
-  // ==========================================================================
   // LOGOUT
   // ==========================================================================
 
@@ -123,10 +115,6 @@ class SoundCloneHeader extends ConsumerWidget implements PreferredSizeWidget {
 
       case 'upload':
         context.push('/track/upload');
-        break;
-
-      case 'dashboard':
-        context.push('/dashboard');
         break;
 
       case 'upgrade':
@@ -177,18 +165,6 @@ class SoundCloneHeader extends ConsumerWidget implements PreferredSizeWidget {
         context.push('/track/upload');
         break;
 
-      case 'insights':
-        context.push('/dashboard');
-        break;
-
-      case 'dashboard':
-        context.push('/dashboard');
-        break;
-
-      case 'distribute':
-        context.push('/distribute');
-        break;
-
       case 'logout':
         await _logout(context, ref);
         break;
@@ -204,8 +180,6 @@ class SoundCloneHeader extends ConsumerWidget implements PreferredSizeWidget {
     final avatarUrl = user.avatarUrl?.trim();
 
     final bool hasAvatar = avatarUrl != null && avatarUrl.isNotEmpty;
-
-    final bool isAdmin = _isAdmin();
 
     return AppBar(
       automaticallyImplyLeading: false,
@@ -375,15 +349,6 @@ class SoundCloneHeader extends ConsumerWidget implements PreferredSizeWidget {
                   child: _NavigationMenuItem(text: 'Upload'),
                 ),
 
-                if (isAdmin)
-                  const PopupMenuItem<String>(
-                    value: 'dashboard',
-                    child: _NavigationMenuItem(
-                      text: 'Dashboard',
-                      selected: true,
-                    ),
-                  ),
-
                 const PopupMenuDivider(height: 16),
 
                 // -------------------------------------------------------------
@@ -539,38 +504,6 @@ class SoundCloneHeader extends ConsumerWidget implements PreferredSizeWidget {
                   ),
                 ),
 
-                // -------------------------------------------------------------
-                // ADMIN ONLY
-                // -------------------------------------------------------------
-                if (isAdmin)
-                  const PopupMenuItem<String>(
-                    value: 'insights',
-                    child: _AccountMenuItem(
-                      icon: Icons.bar_chart_rounded,
-                      text: 'Insights',
-                    ),
-                  ),
-
-                if (isAdmin)
-                  const PopupMenuItem<String>(
-                    value: 'dashboard',
-                    child: _AccountMenuItem(
-                      icon: Icons.dashboard_rounded,
-                      text: 'Dashboard',
-                    ),
-                  ),
-
-                // -------------------------------------------------------------
-                // DISTRIBUTE
-                // -------------------------------------------------------------
-                const PopupMenuItem<String>(
-                  value: 'distribute',
-                  child: _AccountMenuItem(
-                    icon: Icons.cloud_rounded,
-                    text: 'Distribute',
-                  ),
-                ),
-
                 const PopupMenuDivider(height: 1),
 
                 // -------------------------------------------------------------
@@ -652,20 +585,14 @@ class _PopupSectionTitle extends StatelessWidget {
 // ============================================================================
 
 class _NavigationMenuItem extends StatelessWidget {
-  const _NavigationMenuItem({required this.text, this.selected = false});
+  const _NavigationMenuItem({required this.text});
 
   final String text;
-  final bool selected;
 
   @override
   Widget build(BuildContext context) {
     return Container(
       height: 38,
-
-      decoration: BoxDecoration(
-        color: selected ? const Color(0xFF242424) : Colors.transparent,
-        borderRadius: BorderRadius.circular(8),
-      ),
 
       padding: const EdgeInsets.symmetric(horizontal: 8),
 
@@ -800,23 +727,17 @@ class _AccountMenuItem extends StatelessWidget {
     required this.icon,
     required this.text,
     this.iconColor,
-    this.highlighted = false,
   });
 
   final IconData icon;
   final String text;
 
   final Color? iconColor;
-  final bool highlighted;
 
   @override
   Widget build(BuildContext context) {
     return Container(
       height: 41,
-
-      decoration: BoxDecoration(
-        color: highlighted ? const Color(0xFF242424) : Colors.transparent,
-      ),
 
       padding: const EdgeInsets.symmetric(horizontal: 2),
 

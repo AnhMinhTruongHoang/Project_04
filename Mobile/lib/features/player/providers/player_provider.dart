@@ -6,6 +6,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:just_audio/just_audio.dart' as ja;
 
 import '../../../services/api/api_service.dart';
+import '../../downloads/providers/downloads_provider.dart';
+import '../../downloads/data/offline_history_store.dart';
+import '../../auth/providers/auth_provider.dart';
 import '../../home/models/home_track.dart';
 import '../../home/providers/home_provider.dart';
 import '../../library/models/listening_history_item.dart';
@@ -40,8 +43,23 @@ class PlayerController extends Notifier<PlayerState> {
   PlayerState build() {
     _audioPlayer = ja.AudioPlayer();
     _apiService = ApiService.instance;
+    // Keep the account-scoped offline outbox alive while the player exists.
+    ref.listen(offlineHistoryProvider, (_, _) {});
 
     _listenToPlayer();
+
+    ref.listen(authProvider.select((value) => value.value?.id), (
+      previous,
+      next,
+    ) {
+      if (previous != null && previous != next) {
+        ++_playRequestId;
+        _historyTimer?.cancel();
+        _wantsToPlay = false;
+        unawaited(_audioPlayer.stop());
+        state = const PlayerState();
+      }
+    });
 
     ref.onDispose(() {
       _historyTimer?.cancel();
@@ -62,17 +80,6 @@ class PlayerController extends Notifier<PlayerState> {
 
   Future<void> playTrack(HomeTrack track, {List<HomeTrack>? queue}) async {
     final audioUrl = track.resolvedTrackUrl;
-
-    if (audioUrl == null || audioUrl.isEmpty) {
-      state = state.copyWith(
-        currentTrack: track,
-        errorMessage: 'Track does not have an audio URL.',
-        isLoading: false,
-        isPlaying: false,
-      );
-
-      return;
-    }
 
     final requestId = ++_playRequestId;
 
@@ -111,8 +118,25 @@ class PlayerController extends Notifier<PlayerState> {
         return;
       }
 
-      // Load URL bài mới
-      await _audioPlayer.setUrl(audioUrl);
+      // Uu tien file da tai tren may; neu file khong con thi stream tu server.
+      final localPath = await ref
+          .read(downloadedTracksServiceProvider)
+          .localPathFor(track.id);
+      if (requestId != _playRequestId) return;
+      if (localPath != null) {
+        try {
+          await _audioPlayer.setFilePath(localPath);
+        } catch (_) {
+          if (requestId != _playRequestId) return;
+          if (audioUrl == null || audioUrl.isEmpty) rethrow;
+          await _audioPlayer.setUrl(audioUrl);
+        }
+      } else {
+        if (audioUrl == null || audioUrl.isEmpty) {
+          throw StateError('No local file or audio URL.');
+        }
+        await _audioPlayer.setUrl(audioUrl);
+      }
 
       if (requestId != _playRequestId) {
         return;
@@ -469,35 +493,43 @@ class PlayerController extends Notifier<PlayerState> {
     }
 
     try {
-      await _apiService.saveListeningProgressApi(
-        trackId: track.id,
-        position: position,
-        duration: duration,
-        completed: completed,
-        playing: playing,
-        sessionId: state.sessionId,
-      );
-      ref.invalidate(listeningHistoryProvider);
-      ref.invalidate(homeFeedProvider);
+      final sessionId = state.sessionId;
+      if (sessionId == null) return;
+      final store = ref.read(offlineHistoryProvider);
+      final event = <String, dynamic>{
+        'trackId': track.id,
+        'position': position,
+        'duration': duration,
+        'completed': completed,
+        'playing': playing,
+        'sessionId': sessionId,
+      };
+      await store.save(event);
+      unawaited(_deliverLiveHistory(store, event));
     } catch (error) {
       debugPrint('Save listening history error: $error');
     }
   }
 
-  void _pushLocalHistory(HomeTrack track) {
-    if (track.id.isEmpty) {
+  Future<void> _deliverLiveHistory(
+    OfflineHistoryStore store,
+    Map<String, dynamic> event,
+  ) async {
+    if (!ref.mounted || ref.read(authProvider).value?.id != store.accountId) {
       return;
     }
-
-    final item = ListeningHistoryItem(
-      track: track,
-      progress: 0,
-      lastPosition: 0,
-      duration: 0,
-      completed: false,
-      updatedAtMillis: DateTime.now().millisecondsSinceEpoch,
-    );
-
-    ref.read(localListeningHistoryProvider.notifier).upsert(item);
+    try {
+      final response = await _apiService.saveListeningProgressApi(
+        trackId: event['trackId'] as String,
+        position: event['position'] as double,
+        duration: event['duration'] as double,
+        completed: event['completed'] as bool,
+        playing: event['playing'] as bool,
+        sessionId: event['sessionId'] as String,
+      );
+      if (response.isSuccess) await store.acknowledge(event);
+    } catch (_) {
+      // The durable outbox retries without replaying an earnings heartbeat.
+    }
   }
 }

@@ -1,3 +1,4 @@
+import '../../downloads/presentation/track_download_button.dart';
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
@@ -15,7 +16,9 @@ import '../../auth/models/user_model.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../home/models/home_track.dart';
 import '../../home/providers/home_provider.dart';
+import '../../downloads/providers/downloads_provider.dart';
 import '../../playlists/presentation/playlist_card.dart';
+import '../../player/providers/player_provider.dart';
 import '../../../services/api/api_service.dart';
 
 part 'profile_providers.dart';
@@ -228,16 +231,7 @@ class _ProfileContent extends ConsumerWidget {
               ),
             ),
 
-            // ==================================================
-            // LOG OUT
-            // ==================================================
-            if (isOwner)
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(18, 0, 18, 115),
-                  child: _LogoutButton(),
-                ),
-              ),
+            const SliverToBoxAdapter(child: SizedBox(height: 115)),
           ],
         ),
       ),
@@ -749,6 +743,7 @@ class _ProfileTabsState extends ConsumerState<_ProfileTabs> {
     }
 
     if (widget.isOwner) {
+      tabs.add('Downloads');
       tabs.add('Tickets');
     }
 
@@ -844,6 +839,8 @@ class _ProfileTabsState extends ConsumerState<_ProfileTabs> {
         return _ProfileMembershipTab(artistId: widget.user.id);
       case 'Tickets':
         return const ProfileMobileTicketsTab();
+      case 'Downloads':
+        return const _ProfileDownloadsTab();
       default:
         return const SizedBox.shrink();
     }
@@ -891,7 +888,11 @@ class _PopularTracksTab extends ConsumerWidget {
                     index < tracks.take(10).length;
                     index++
                   ) ...[
-                    _RecentTrackTile(index: index + 1, track: tracks[index]),
+                    _RecentTrackTile(
+                      index: index + 1,
+                      track: tracks[index],
+                      queue: tracks,
+                    ),
                     if (index < tracks.take(10).length - 1)
                       const Divider(
                         height: 1,
@@ -1234,7 +1235,11 @@ class _RecentSection extends ConsumerWidget {
                 child: Column(
                   children: [
                     for (int index = 0; index < tracks.length; index++) ...[
-                      _RecentTrackTile(index: index + 1, track: tracks[index]),
+                      _RecentTrackTile(
+                        index: index + 1,
+                        track: tracks[index],
+                        queue: tracks,
+                      ),
 
                       if (index != tracks.length - 1)
                         const Divider(
@@ -1258,25 +1263,25 @@ class _RecentSection extends ConsumerWidget {
 // RECENT TRACK
 // ============================================================
 
-class _RecentTrackTile extends StatelessWidget {
-  const _RecentTrackTile({required this.index, required this.track});
+class _RecentTrackTile extends ConsumerWidget {
+  const _RecentTrackTile({
+    required this.index,
+    required this.track,
+    required this.queue,
+  });
 
   final int index;
   final HomeTrack track;
+  final List<HomeTrack> queue;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final imageUrl = _resolveMediaUrl(track.imgUrl);
 
     return InkWell(
       borderRadius: BorderRadius.circular(14),
       onTap: () {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Opening ${track.title}'),
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
+        ref.read(playerProvider.notifier).playTrack(track, queue: queue);
       },
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
@@ -1358,16 +1363,261 @@ class _RecentTrackTile extends StatelessWidget {
             IconButton(
               tooltip: 'More',
               visualDensity: VisualDensity.compact,
-              onPressed: () {},
+              onPressed: () => _showTrackActions(context, ref),
               icon: const Icon(
                 Icons.more_vert_rounded,
                 color: Color(0xFF999999),
                 size: 20,
               ),
             ),
+            TrackDownloadButton(track: track),
           ],
         ),
       ),
+    );
+  }
+
+  Future<void> _showTrackActions(BuildContext context, WidgetRef ref) async {
+    final action = await showModalBottomSheet<String>(
+      context: context,
+      backgroundColor: const Color(0xFF202020),
+      showDragHandle: true,
+      builder: (sheetContext) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.play_arrow_rounded),
+              title: const Text('Play'),
+              onTap: () => Navigator.pop(sheetContext, 'play'),
+            ),
+            ListTile(
+              leading: const Icon(Icons.download_rounded),
+              title: const Text('Download'),
+              onTap: () => Navigator.pop(sheetContext, 'download'),
+            ),
+            ListTile(
+              leading: const Icon(
+                Icons.delete_outline_rounded,
+                color: Color(0xFFFF6B6B),
+              ),
+              title: const Text(
+                'Delete history',
+                style: TextStyle(color: Color(0xFFFF6B6B)),
+              ),
+              onTap: () => Navigator.pop(sheetContext, 'delete'),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    if (action == 'play') {
+      await ref.read(playerProvider.notifier).playTrack(track, queue: queue);
+      return;
+    }
+
+    if (action == 'download') {
+      final errorMessage = await ref
+          .read(downloadsProvider.notifier)
+          .download(track);
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(errorMessage ?? 'Downloaded ${track.title}.')),
+      );
+      return;
+    }
+
+    if (action != 'delete') return;
+
+    final response = await ApiService.instance.deleteListeningHistoryApi(
+      track.id,
+    );
+
+    if (!context.mounted) return;
+
+    if (response.isSuccess || response.isNotFound) {
+      ref.invalidate(homeFeedProvider);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Deleted from listening history.')),
+      );
+    } else {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(response.message)));
+    }
+  }
+}
+
+class _ProfileDownloadsTab extends ConsumerWidget {
+  const _ProfileDownloadsTab();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final downloads = ref.watch(downloadsProvider);
+    final jobs = ref.watch(downloadJobsProvider);
+    final hasLegacy = ref.watch(legacyDownloadsProvider).value == true;
+    return Column(
+      children: [
+        if (hasLegacy)
+          ListTile(
+            title: const Text('Downloads from an earlier version'),
+            subtitle: const Text(
+              'Add this device’s older downloads to your current account. Originals are kept.',
+            ),
+            trailing: TextButton(
+              onPressed: () async {
+                try {
+                  await ref.read(downloadsProvider.notifier).importLegacy();
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Older downloads imported.'),
+                      ),
+                    );
+                  }
+                } catch (_) {
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text(
+                          'Could not import older downloads. Originals are unchanged.',
+                        ),
+                      ),
+                    );
+                  }
+                }
+              },
+              child: const Text('Import'),
+            ),
+          ),
+        for (final job in jobs.values)
+          ListTile(
+            title: Text(job.track.title),
+            subtitle: job.error != null
+                ? Text(job.error!)
+                : Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        job.progress == null
+                            ? 'Queued / downloading'
+                            : '${(job.progress! * 100).round()}%',
+                      ),
+                      LinearProgressIndicator(value: job.progress),
+                    ],
+                  ),
+            trailing: IconButton(
+              tooltip: job.error == null ? 'Cancel download' : 'Retry download',
+              icon: Icon(job.error == null ? Icons.close : Icons.refresh),
+              onPressed: () {
+                final controller = ref.read(downloadsProvider.notifier);
+                if (job.error == null) {
+                  controller.cancel(job.track.id);
+                } else {
+                  controller.download(job.track);
+                }
+              },
+            ),
+          ),
+        downloads.when(
+          loading: () => const _RecentLoading(),
+          error: (error, stackTrace) => TextButton.icon(
+            onPressed: () => ref.invalidate(downloadsProvider),
+            icon: const Icon(Icons.refresh),
+            label: const Text('Could not load downloads. Retry'),
+          ),
+          data: (items) {
+            if (items.isEmpty) {
+              return const _ProfileEmptyTab(
+                icon: Icons.download_for_offline_outlined,
+                title: 'No downloads yet',
+                description:
+                    'Use the menu on a track to save it for offline play.',
+              );
+            }
+            final queue = items.map((item) => item.track).toList();
+            return Container(
+              decoration: BoxDecoration(
+                color: const Color(0xFF141414),
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: const Color(0xFF262626)),
+              ),
+              child: Column(
+                children: [
+                  for (var index = 0; index < items.length; index++) ...[
+                    ListTile(
+                      leading: items[index].artworkPath != null
+                          ? Image.file(
+                              File(items[index].artworkPath!),
+                              width: 44,
+                              height: 44,
+                              fit: BoxFit.cover,
+                              errorBuilder: (_, _, _) =>
+                                  const Icon(Icons.music_note),
+                            )
+                          : const Icon(
+                              Icons.download_done_rounded,
+                              color: Color(0xFFFF5500),
+                            ),
+                      title: Text(
+                        items[index].track.title,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                      subtitle: Text(
+                        '${items[index].track.artistName} · ${(items[index].bytes / 1048576).toStringAsFixed(1)} MB',
+                        style: const TextStyle(color: Color(0xFF8E8E8E)),
+                      ),
+                      onTap: () => ref
+                          .read(playerProvider.notifier)
+                          .playTrack(items[index].track, queue: queue),
+                      trailing: IconButton(
+                        tooltip: 'Remove download',
+                        icon: const Icon(
+                          Icons.delete_outline_rounded,
+                          color: Color(0xFFAAAAAA),
+                        ),
+                        onPressed: () async {
+                          try {
+                            if (ref.read(playerProvider).currentTrack?.id ==
+                                items[index].track.id) {
+                              await ref.read(playerProvider.notifier).stop();
+                            }
+                            await ref
+                                .read(downloadsProvider.notifier)
+                                .remove(items[index].track.id);
+                          } catch (_) {
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text(
+                                    'Could not remove download. Please retry.',
+                                  ),
+                                ),
+                              );
+                            }
+                          }
+                        },
+                      ),
+                    ),
+                    if (index != items.length - 1)
+                      const Divider(
+                        height: 1,
+                        indent: 56,
+                        color: Color(0xFF242424),
+                      ),
+                  ],
+                ],
+              ),
+            );
+          },
+        ),
+      ],
     );
   }
 }
@@ -1601,93 +1851,6 @@ class _AboutDivider extends StatelessWidget {
   }
 }
 
-// ============================================================
-// LOG OUT
-// ============================================================
-
-class _LogoutButton extends ConsumerWidget {
-  const _LogoutButton();
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    return SizedBox(
-      width: double.infinity,
-      child: OutlinedButton.icon(
-        onPressed: () async {
-          final shouldLogout = await _confirmLogout(context);
-
-          if (!shouldLogout) {
-            return;
-          }
-
-          await ref.read(authProvider.notifier).logout();
-
-          if (context.mounted) {
-            context.go('/login');
-          }
-        },
-        icon: const Icon(Icons.logout_rounded, size: 19),
-        label: const Text('Log out'),
-        style: OutlinedButton.styleFrom(
-          foregroundColor: const Color(0xFFFF5C5C),
-          side: const BorderSide(color: Color(0xFF512828)),
-          padding: const EdgeInsets.symmetric(vertical: 14),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-          textStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800),
-        ),
-      ),
-    );
-  }
-
-  Future<bool> _confirmLogout(BuildContext context) async {
-    return await showDialog<bool>(
-          context: context,
-          builder: (context) {
-            return AlertDialog(
-              backgroundColor: const Color(0xFF1B1B1B),
-              surfaceTintColor: Colors.transparent,
-              title: const Text(
-                'Log out?',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
-              content: const Text(
-                'Are you sure you want to log out of SoundClone?',
-                style: TextStyle(color: Color(0xFFB0B0B0)),
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () {
-                    Navigator.pop(context, false);
-                  },
-                  child: const Text(
-                    'Cancel',
-                    style: TextStyle(color: Colors.white),
-                  ),
-                ),
-                TextButton(
-                  onPressed: () {
-                    Navigator.pop(context, true);
-                  },
-                  child: const Text(
-                    'Log out',
-                    style: TextStyle(
-                      color: Color(0xFFFF5C5C),
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                ),
-              ],
-            );
-          },
-        ) ??
-        false;
-  }
-}
 
 // ============================================================
 // ERROR

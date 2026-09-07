@@ -1,3 +1,4 @@
+import '../../downloads/presentation/track_download_button.dart';
 import 'dart:ui';
 
 import 'package:flutter/material.dart';
@@ -420,6 +421,11 @@ class _TrackCard extends StatelessWidget {
             Stack(
               children: [
                 _TrackCover(track: track, size: _cardWidth),
+                Positioned(
+                  right: 5,
+                  top: 5,
+                  child: TrackDownloadButton(track: track, onCover: true),
+                ),
 
                 // =================================================
                 // PLAY BUTTON

@@ -51,6 +51,31 @@ class HomeTrack {
   final bool isDeleted;
   final String? createdAt;
 
+  Map<String, dynamic> toJson() => {
+    'id': id,
+    'title': title,
+    'slug': slug,
+    'imgUrl': imgUrl,
+    'trackUrl': trackUrl,
+    'description': description,
+    'category': category,
+    'uploaderId': uploaderId,
+    'uploader': {'name': uploaderName},
+    'countPlay': countPlay,
+    'countLike': countLike,
+    'countComment': countComment,
+    'durationSeconds': durationSeconds,
+    'processingStatus': processingStatus,
+    'licenseReviewStatus': licenseReviewStatus,
+    'approvalStatus': approvalStatus,
+    'copyrightStatus': copyrightStatus,
+    'copyrightMessage': copyrightMessage,
+    'rejectionReason': rejectionReason,
+    'audioHash': audioHash,
+    'isDeleted': isDeleted,
+    'createdAt': createdAt,
+  };
+
   String? get resolvedImageUrl {
     return _resolveMediaUrl(imgUrl, fallbackPath: '/uploads/images/');
   }

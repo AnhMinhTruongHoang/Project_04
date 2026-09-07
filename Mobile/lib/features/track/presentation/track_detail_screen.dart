@@ -1,3 +1,4 @@
+import '../../downloads/presentation/track_download_button.dart';
 import 'dart:ui';
 
 import 'package:flutter/material.dart';
@@ -80,6 +81,11 @@ class _TrackDetailScreenState extends ConsumerState<TrackDetailScreen> {
         final player = ref.watch(playerProvider);
         final social = ref.watch(playerSocialProvider);
         final isCurrent = player.currentTrack?.id == track.id;
+        final downloadTrack = _downloadSource(
+          track,
+          player.currentTrack,
+          widget.initialTrack,
+        );
 
         return Scaffold(
           backgroundColor: _background,
@@ -128,6 +134,8 @@ class _TrackDetailScreenState extends ConsumerState<TrackDetailScreen> {
                       ),
                       const SizedBox(height: 24),
                       _ActionRow(
+                        track: track,
+                        downloadTrack: downloadTrack,
                         likeCount: social.likeCountFor(track),
                         playCount: track.countPlay,
                         commentFuture: _commentsFuture,
@@ -208,6 +216,21 @@ class _TrackDetailScreenState extends ConsumerState<TrackDetailScreen> {
     } catch (_) {
       return widget.initialTrack;
     }
+  }
+
+  HomeTrack _downloadSource(
+    HomeTrack detailTrack,
+    HomeTrack? playingTrack,
+    HomeTrack? initialTrack,
+  ) {
+    for (final candidate in [detailTrack, playingTrack, initialTrack]) {
+      if (candidate?.id == detailTrack.id &&
+          candidate?.resolvedTrackUrl != null) {
+        return candidate!;
+      }
+    }
+
+    return detailTrack;
   }
 
   Future<List<_TrackComment>> _loadComments() async {
@@ -434,6 +457,8 @@ class _HeroSection extends StatelessWidget {
 
 class _ActionRow extends StatelessWidget {
   const _ActionRow({
+    required this.track,
+    required this.downloadTrack,
     required this.likeCount,
     required this.playCount,
     required this.commentFuture,
@@ -443,6 +468,8 @@ class _ActionRow extends StatelessWidget {
     required this.onPlaylist,
   });
 
+  final HomeTrack track;
+  final HomeTrack downloadTrack;
   final int likeCount;
   final int playCount;
   final Future<List<_TrackComment>> commentFuture;
@@ -460,7 +487,10 @@ class _ActionRow extends StatelessWidget {
         borderRadius: BorderRadius.circular(8),
         border: Border.all(color: const Color(0xFF2A2A2A)),
       ),
-      child: Row(
+      child: Wrap(
+        alignment: WrapAlignment.spaceBetween,
+        crossAxisAlignment: WrapCrossAlignment.center,
+        runSpacing: 4,
         children: [
           _Metric(
             icon: Icons.play_arrow_rounded,
@@ -472,7 +502,7 @@ class _ActionRow extends StatelessWidget {
             text: '',
             future: commentFuture,
           ),
-          const Spacer(),
+
           IconButton(
             tooltip: isLiked ? 'Unlike' : 'Like',
             color: isLiked ? _TrackDetailScreenState._orange : Colors.white,
@@ -495,6 +525,7 @@ class _ActionRow extends StatelessWidget {
             onPressed: onPlaylist,
             icon: const Icon(Icons.playlist_add_rounded),
           ),
+          TrackDownloadButton(track: downloadTrack),
         ],
       ),
     );

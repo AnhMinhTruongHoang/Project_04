@@ -1,3 +1,4 @@
+import '../../downloads/presentation/track_download_button.dart';
 import 'dart:async';
 import 'dart:convert';
 
@@ -881,11 +882,17 @@ class _TrackResultTile extends StatelessWidget {
         overflow: TextOverflow.ellipsis,
         style: const TextStyle(color: Color(0xFFAAAAAA)),
       ),
-      trailing: IconButton(
-        tooltip: 'Play',
-        color: _SearchScreenState._orange,
-        onPressed: onPlay,
-        icon: const Icon(Icons.play_circle_fill_rounded),
+      trailing: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          TrackDownloadButton(track: track),
+          IconButton(
+            tooltip: 'Play',
+            color: _SearchScreenState._orange,
+            onPressed: onPlay,
+            icon: const Icon(Icons.play_circle_fill_rounded),
+          ),
+        ],
       ),
       onTap: onTap,
     );

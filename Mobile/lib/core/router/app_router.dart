@@ -18,11 +18,14 @@ import '../../features/news/presentation/news_detail_screen.dart';
 import '../../features/news/presentation/news_screen.dart';
 import '../../features/notifications/presentation/notifications_screen.dart';
 import '../../features/profile/presentation/people_screen.dart';
+import '../../features/people/presentation/who_to_follow_screen.dart';
 import '../../features/profile/presentation/profile_screen.dart';
 import '../../features/search/presentation/search_screen.dart';
+import '../../features/subscriptions/presentation/subscription_plans_screen.dart';
 import '../../features/home/models/home_track.dart';
 import '../../features/track/presentation/track_detail_screen.dart';
 import '../../features/track/presentation/track_upload_screen.dart';
+import '../../features/player/presentation/full_player_screen.dart';
 
 import '../../shared/presentation/app_shell.dart';
 
@@ -83,27 +86,6 @@ final GoRouter appRouter = GoRouter(
       },
     ),
 
-    GoRoute(
-      path: '/payment/result',
-      builder: (context, state) {
-        return PaymentResultScreen(queryParameters: state.uri.queryParameters);
-      },
-    ),
-
-    GoRoute(
-      path: '/plans',
-      builder: (context, state) {
-        return const PlansScreen();
-      },
-    ),
-
-    GoRoute(
-      path: '/people',
-      builder: (context, state) {
-        return const PeopleScreen();
-      },
-    ),
-
     // ============================================================
     // AUTHENTICATED MOBILE SHELL
     // ============================================================
@@ -161,6 +143,18 @@ final GoRouter appRouter = GoRouter(
               path: '/artist-studio',
               builder: (context, state) {
                 return const ArtistStudioScreen();
+              },
+            ),
+            GoRoute(
+              path: '/plans',
+              builder: (context, state) {
+                return const SubscriptionPlansScreen();
+              },
+            ),
+            GoRoute(
+              path: '/people',
+              builder: (context, state) {
+                return const WhoToFollowScreen();
               },
             ),
             GoRoute(

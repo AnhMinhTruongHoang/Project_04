@@ -46,6 +46,30 @@ class UserModel {
   final DateTime? createdAt;
   final DateTime? updatedAt;
 
+  Map<String, dynamic> toJson() => {
+    'id': id,
+    'email': email,
+    'name': name,
+    'role': role,
+    'username': username,
+    'age': age,
+    'gender': gender,
+    'isVerify': isVerify,
+    'type': type,
+    'avatarUrl': avatarUrl,
+    'followers': followers,
+    'following': following,
+    'coverUrl': coverUrl,
+    'bio': bio,
+    'website': website,
+    'city': city,
+    'country': country,
+    'verified': verified,
+    'spotlightTrackId': spotlightTrackId,
+    'createdAt': createdAt?.toIso8601String(),
+    'updatedAt': updatedAt?.toIso8601String(),
+  };
+
   factory UserModel.fromJson(Map<String, dynamic> json) {
     final email = _stringValue(json['email']);
 

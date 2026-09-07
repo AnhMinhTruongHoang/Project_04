@@ -1,3 +1,4 @@
+import '../../downloads/presentation/track_download_button.dart';
 import 'dart:ui';
 
 import 'package:flutter/material.dart';
@@ -12,6 +13,7 @@ import '../../../shared/presentation/app_toast.dart';
 import '../models/player_state.dart';
 import '../providers/player_provider.dart';
 import '../providers/player_social_provider.dart';
+import 'player_queue_sheet.dart';
 
 class FullPlayerScreen extends ConsumerStatefulWidget {
   const FullPlayerScreen({super.key});
@@ -94,6 +96,7 @@ class _FullPlayerScreenState extends ConsumerState<FullPlayerScreen> {
                     ),
                     const SizedBox(height: 26),
                     _ActionRow(
+                      track: track,
                       likeCount: social.likeCountFor(track),
                       commentCount: _commentCount,
                       isLiking: _isLiking,
@@ -101,13 +104,7 @@ class _FullPlayerScreenState extends ConsumerState<FullPlayerScreen> {
                       onLike: () => _likeTrack(track),
                       onComments: () => _showCommentsSheet(track),
                       onShare: () => _shareTrack(track),
-                      onPlaylist: () {
-                        showAddToPlaylistSheet(
-                          context: context,
-                          ref: ref,
-                          track: track,
-                        );
-                      },
+                      onQueue: () => showPlayerQueueSheet(context),
                       onMore: _showMoreSheet,
                     ),
                   ],
@@ -737,6 +734,7 @@ class _CommentBox extends StatelessWidget {
 
 class _ActionRow extends StatelessWidget {
   const _ActionRow({
+    required this.track,
     required this.likeCount,
     required this.commentCount,
     required this.isLiking,
@@ -744,10 +742,11 @@ class _ActionRow extends StatelessWidget {
     required this.onLike,
     required this.onComments,
     required this.onShare,
-    required this.onPlaylist,
+    required this.onQueue,
     required this.onMore,
   });
 
+  final HomeTrack track;
   final int likeCount;
   final int commentCount;
   final bool isLiking;
@@ -755,12 +754,15 @@ class _ActionRow extends StatelessWidget {
   final VoidCallback onLike;
   final VoidCallback onComments;
   final VoidCallback onShare;
-  final VoidCallback onPlaylist;
+  final VoidCallback onQueue;
   final VoidCallback onMore;
 
   @override
   Widget build(BuildContext context) {
-    return Row(
+    return Wrap(
+      alignment: WrapAlignment.spaceBetween,
+      crossAxisAlignment: WrapCrossAlignment.center,
+      runSpacing: 4,
       children: [
         _BottomAction(
           icon: isLiked
@@ -776,7 +778,8 @@ class _ActionRow extends StatelessWidget {
           color: Colors.white,
           onPressed: onComments,
         ),
-        const Spacer(),
+
+        TrackDownloadButton(track: track),
         _IconOnlyAction(
           icon: Icons.share_rounded,
           onPressed: onShare,
@@ -784,8 +787,8 @@ class _ActionRow extends StatelessWidget {
         ),
         _IconOnlyAction(
           icon: Icons.playlist_play_rounded,
-          onPressed: onPlaylist,
-          tooltip: 'Add to playlist',
+          onPressed: onQueue,
+          tooltip: 'Playlist queue',
         ),
         _IconOnlyAction(
           icon: Icons.more_vert_rounded,

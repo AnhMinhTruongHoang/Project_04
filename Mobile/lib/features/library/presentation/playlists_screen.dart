@@ -285,6 +285,7 @@ class _PlaylistsScreenState extends ConsumerState<PlaylistsScreen> {
     try {
       await ref.read(libraryServiceProvider).deletePlaylist(playlist.id);
       ref.invalidate(playlistsProvider);
+      await ref.read(playlistsProvider.future);
 
       if (!context.mounted) return;
 
@@ -380,8 +381,12 @@ class _PlaylistsScreenState extends ConsumerState<PlaylistsScreen> {
                                     .map((track) => track.id)
                                     .toList(),
                               );
-                          ref.invalidate(playlistsProvider);
-                          ref.invalidate(playlistDetailProvider(playlist.id));
+                          await Future.wait([
+                            ref.refresh(playlistsProvider.future),
+                            ref.refresh(
+                              playlistDetailProvider(playlist.id).future,
+                            ),
+                          ]);
 
                           if (!context.mounted) return;
 
@@ -480,6 +485,7 @@ class _PlaylistsScreenState extends ConsumerState<PlaylistsScreen> {
                               .read(libraryServiceProvider)
                               .createPlaylist(title: title, isPublic: isPublic);
                           ref.invalidate(playlistsProvider);
+                          await ref.read(playlistsProvider.future);
 
                           if (!context.mounted) return;
 

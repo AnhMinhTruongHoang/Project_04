@@ -1,3 +1,4 @@
+import '../../downloads/presentation/track_download_button.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter/services.dart';
@@ -130,30 +131,29 @@ class _HistoryTile extends StatelessWidget {
         ),
       ),
       subtitle: _HistorySubtitle(item: item),
-      trailing: PopupMenuButton<String>(
-        tooltip: 'More',
-        color: const Color(0xFF242424),
-        icon: const Icon(Icons.more_vert_rounded, color: Colors.white),
-        onSelected: (value) {
-          if (value == 'play') {
-            onTap();
-          }
-
-          if (value == 'playlist') {
-            onAddToPlaylist();
-          }
-
-          if (value == 'share') {
-            onCopyLink();
-          }
-        },
-        itemBuilder: (_) {
-          return const [
-            PopupMenuItem(value: 'play', child: Text('Play')),
-            PopupMenuItem(value: 'playlist', child: Text('Add to playlist')),
-            PopupMenuItem(value: 'share', child: Text('Copy track link')),
-          ];
-        },
+      trailing: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          TrackDownloadButton(track: track),
+          PopupMenuButton<String>(
+            tooltip: 'More',
+            color: const Color(0xFF242424),
+            icon: const Icon(Icons.more_vert_rounded, color: Colors.white),
+            onSelected: (value) {
+              if (value == 'playlist') {
+                onAddToPlaylist();
+              }
+            },
+            itemBuilder: (_) {
+              return const [
+                PopupMenuItem(
+                  value: 'playlist',
+                  child: Text('Add to playlist'),
+                ),
+              ];
+            },
+          ),
+        ],
       ),
       onTap: onTap,
     );

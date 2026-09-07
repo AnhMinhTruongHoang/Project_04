@@ -67,7 +67,8 @@ class DioClient {
            * forgot password
            * reset password
            */
-              if (!_isPublicAuthPath(options.path)) {
+              if (options.uri.origin == Uri.parse(ApiConfig.baseUrl).origin &&
+                  !_isPublicAuthPath(options.path)) {
                 final accessToken = await TokenStorage.getAccessToken();
 
                 if (accessToken != null && accessToken.trim().isNotEmpty) {
@@ -94,7 +95,9 @@ class DioClient {
               requestOptions.extra['auth_already_retried'] == true;
 
           // Chỉ xử lý refresh khi backend trả 401.
-          if (statusCode != 401) {
+          if (statusCode != 401 ||
+              requestOptions.uri.origin !=
+                  Uri.parse(ApiConfig.baseUrl).origin) {
             handler.next(error);
             return;
           }
@@ -121,7 +124,21 @@ class DioClient {
           // REFRESH TOKEN
           // ====================================================
 
-          final newAccessToken = await _refreshAccessToken();
+          String? newAccessToken;
+          try {
+            newAccessToken = await _refreshAccessToken();
+          } on DioException catch (refreshError) {
+            // Propagate transport failure rather than turning offline into logout.
+            handler.next(
+              DioException(
+                requestOptions: requestOptions,
+                type: refreshError.type,
+                error: refreshError.error,
+                message: refreshError.message,
+              ),
+            );
+            return;
+          }
 
           if (newAccessToken == null || newAccessToken.isEmpty) {
             await TokenStorage.clearTokens();
@@ -148,7 +165,6 @@ class DioClient {
         },
       ),
     );
-
   }
 
   // ============================================================
@@ -271,10 +287,14 @@ class DioClient {
       }
 
       return accessToken;
-    } on DioException {
-      await TokenStorage.clearTokens();
-
-      return null;
+    } on DioException catch (error) {
+      if (error.response?.statusCode == 400 ||
+          error.response?.statusCode == 401 ||
+          error.response?.statusCode == 403) {
+        await TokenStorage.clearTokens();
+        return null;
+      }
+      rethrow;
     } catch (_) {
       await TokenStorage.clearTokens();
 

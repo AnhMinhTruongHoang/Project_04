@@ -1,7 +1,9 @@
+import '../../downloads/presentation/track_download_button.dart';
 import 'dart:math';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../shared/presentation/app_toast.dart';
 import '../../home/models/home_track.dart';
@@ -125,19 +127,16 @@ class _PlaylistBody extends ConsumerWidget {
             onPlay: tracks.isEmpty
                 ? null
                 : () {
-                    ref
-                        .read(playerProvider.notifier)
-                        .playTrack(tracks.first, queue: tracks);
+                    _playAndOpenPlayer(context, ref, tracks.first, tracks);
                   },
             onShuffle: tracks.length < 2
                 ? null
                 : () {
                     final shuffled = [...tracks]..shuffle(Random());
-                    ref
-                        .read(playerProvider.notifier)
-                        .playTrack(shuffled.first, queue: shuffled);
+                    _playAndOpenPlayer(context, ref, shuffled.first, shuffled);
                   },
             onRename: () => _renamePlaylist(context, ref),
+            onAddMusic: () => _showAddMusicSheet(context, ref),
             onDelete: () => _deletePlaylist(context, ref),
           ),
         ),
@@ -166,9 +165,7 @@ class _PlaylistBody extends ConsumerWidget {
                 return _TrackTile(
                   track: track,
                   onTap: () {
-                    ref
-                        .read(playerProvider.notifier)
-                        .playTrack(track, queue: tracks);
+                    _playAndOpenPlayer(context, ref, track, tracks);
                   },
                   onRemove: () => _removeTrack(context, ref, track),
                 );
@@ -246,6 +243,13 @@ class _PlaylistBody extends ConsumerWidget {
   Future<void> _renamePlaylist(BuildContext context, WidgetRef ref) async {
     final controller = TextEditingController(text: playlist.title);
     var isPublic = playlist.isPublic;
+    final selectedTrackIds = playlist.tracks.map((track) => track.id).toSet();
+    final availableTracks = <String, HomeTrack>{
+      for (final track in playlist.tracks) track.id: track,
+      for (final track
+          in ref.read(suggestedTracksProvider).value ?? const <HomeTrack>[])
+        track.id: track,
+    }.values.toList();
 
     final result = await showModalBottomSheet<_PlaylistEditResult>(
       context: context,
@@ -256,12 +260,12 @@ class _PlaylistBody extends ConsumerWidget {
       builder: (context) {
         return StatefulBuilder(
           builder: (context, setState) {
-            return Padding(
+            return SingleChildScrollView(
               padding: EdgeInsets.fromLTRB(
                 18,
                 4,
                 18,
-                MediaQuery.of(context).viewInsets.bottom + 104,
+                MediaQuery.of(context).viewInsets.bottom + 32,
               ),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
@@ -292,6 +296,87 @@ class _PlaylistBody extends ConsumerWidget {
                       });
                     },
                   ),
+                  const SizedBox(height: 18),
+                  Row(
+                    children: [
+                      const Expanded(
+                        child: Text(
+                          'Tracks',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                      ),
+                      Text(
+                        '${selectedTrackIds.length} selected',
+                        style: const TextStyle(color: Color(0xFF999999)),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Container(
+                    constraints: const BoxConstraints(maxHeight: 280),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF101010),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: const Color(0xFF303030)),
+                    ),
+                    child: availableTracks.isEmpty
+                        ? const Padding(
+                            padding: EdgeInsets.all(20),
+                            child: Center(
+                              child: Text(
+                                'No tracks are available to add.',
+                                style: TextStyle(color: Color(0xFF999999)),
+                              ),
+                            ),
+                          )
+                        : ListView.builder(
+                            shrinkWrap: true,
+                            itemCount: availableTracks.length,
+                            itemBuilder: (context, index) {
+                              final track = availableTracks[index];
+                              final selected = selectedTrackIds.contains(
+                                track.id,
+                              );
+
+                              return CheckboxListTile(
+                                value: selected,
+                                activeColor: _orange,
+                                controlAffinity:
+                                    ListTileControlAffinity.trailing,
+                                title: Text(
+                                  track.title,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                                subtitle: Text(
+                                  track.artistName,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(
+                                    color: Color(0xFF999999),
+                                  ),
+                                ),
+                                onChanged: (checked) {
+                                  setState(() {
+                                    if (checked == true) {
+                                      selectedTrackIds.add(track.id);
+                                    } else {
+                                      selectedTrackIds.remove(track.id);
+                                    }
+                                  });
+                                },
+                              );
+                            },
+                          ),
+                  ),
                   const SizedBox(height: 16),
                   SizedBox(
                     width: double.infinity,
@@ -305,6 +390,7 @@ class _PlaylistBody extends ConsumerWidget {
                           _PlaylistEditResult(
                             title: controller.text.trim(),
                             isPublic: isPublic,
+                            trackIds: selectedTrackIds.toList(),
                           ),
                         );
                       },
@@ -325,8 +411,13 @@ class _PlaylistBody extends ConsumerWidget {
       return;
     }
 
+    final currentTrackIds = playlist.tracks.map((track) => track.id).toSet();
+    final nextTrackIds = result.trackIds.toSet();
+
     if (result.title == playlist.title &&
-        result.isPublic == playlist.isPublic) {
+        result.isPublic == playlist.isPublic &&
+        currentTrackIds.length == nextTrackIds.length &&
+        currentTrackIds.containsAll(nextTrackIds)) {
       return;
     }
 
@@ -337,10 +428,10 @@ class _PlaylistBody extends ConsumerWidget {
             playlistId: playlist.id,
             title: result.title,
             isPublic: result.isPublic,
-            trackIds: playlist.tracks.map((track) => track.id).toList(),
+            trackIds: result.trackIds,
           );
 
-      _refreshPlaylist(ref);
+      await _refreshPlaylist(ref);
 
       if (!context.mounted) return;
 
@@ -350,6 +441,49 @@ class _PlaylistBody extends ConsumerWidget {
 
       showAppToast(context, message: 'Could not update playlist.');
     }
+  }
+
+  Future<void> _showAddMusicSheet(BuildContext context, WidgetRef ref) async {
+    final existingIds = playlist.tracks.map((track) => track.id).toSet();
+
+    final result = await showModalBottomSheet<Set<String>>(
+      context: context,
+      backgroundColor: const Color(0xFF161616),
+      isScrollControlled: true,
+      showDragHandle: true,
+      builder: (sheetContext) => _AddMusicSheet(
+        existingIds: existingIds,
+        onSubmit: (ids) => Navigator.of(sheetContext).pop(ids),
+      ),
+    );
+
+    if (result == null || result.isEmpty) return;
+    if (!context.mounted) return;
+
+    await _saveTrackIds(
+      context: context,
+      ref: ref,
+      trackIds: [...playlist.tracks.map((track) => track.id), ...result],
+      successMessage: 'Music added to playlist',
+      errorMessage: 'Could not add music to this playlist.',
+    );
+  }
+
+  Future<void> _playAndOpenPlayer(
+    BuildContext context,
+    WidgetRef ref,
+    HomeTrack track,
+    List<HomeTrack> queue,
+  ) async {
+    await ref.read(playerProvider.notifier).playTrack(track, queue: queue);
+
+    if (!context.mounted) return;
+
+    await WidgetsBinding.instance.endOfFrame;
+
+    if (!context.mounted) return;
+
+    await context.push('/player');
   }
 
   Future<void> _deletePlaylist(BuildContext context, WidgetRef ref) async {
@@ -378,6 +512,7 @@ class _PlaylistBody extends ConsumerWidget {
     try {
       await ref.read(libraryServiceProvider).deletePlaylist(playlist.id);
       ref.invalidate(playlistsProvider);
+      await ref.read(playlistsProvider.future);
 
       if (!context.mounted) return;
 
@@ -418,6 +553,7 @@ class _PlaylistBody extends ConsumerWidget {
     if (confirmed != true) {
       return;
     }
+    if (!context.mounted) return;
 
     final trackIds = playlist.tracks
         .where((item) => item.id != track.id)
@@ -469,29 +605,259 @@ class _PlaylistBody extends ConsumerWidget {
             trackIds: trackIds,
           );
 
-      _refreshPlaylist(ref);
+      await _refreshPlaylist(ref);
 
       if (!context.mounted) return;
 
-      showAppToast(context, message: successMessage);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(successMessage), backgroundColor: _orange),
+      );
     } catch (_) {
       if (!context.mounted) return;
 
-      showAppToast(context, message: errorMessage);
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(errorMessage)));
     }
   }
 
-  void _refreshPlaylist(WidgetRef ref) {
-    ref.invalidate(playlistDetailProvider(playlist.id));
-    ref.invalidate(playlistsProvider);
+  Future<void> _refreshPlaylist(WidgetRef ref) async {
+    await Future.wait([
+      ref.refresh(playlistsProvider.future),
+      ref.refresh(playlistDetailProvider(playlist.id).future),
+    ]);
+  }
+}
+
+class _AddMusicSheet extends ConsumerStatefulWidget {
+  const _AddMusicSheet({required this.existingIds, required this.onSubmit});
+
+  final Set<String> existingIds;
+  final ValueChanged<Set<String>> onSubmit;
+
+  @override
+  ConsumerState<_AddMusicSheet> createState() => _AddMusicSheetState();
+}
+
+class _AddMusicSheetState extends ConsumerState<_AddMusicSheet> {
+  static const int _pageSize = 10;
+  static const Color _orange = Color(0xFFFF5500);
+
+  final ScrollController _scrollController = ScrollController();
+  final TextEditingController _searchController = TextEditingController();
+  final List<HomeTrack> _tracks = [];
+  final Set<String> _selectedIds = {};
+
+  int _page = 1;
+  bool _isLoading = false;
+  bool _hasMore = true;
+  String? _error;
+  String _query = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _scrollController.addListener(_handleScroll);
+    _loadMore();
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  void _handleScroll() {
+    if (_scrollController.position.extentAfter < 240) {
+      _loadMore();
+    }
+  }
+
+  Future<void> _loadMore() async {
+    if (_isLoading || !_hasMore) return;
+
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
+
+    try {
+      var foundAddableTrack = false;
+
+      while (_hasMore && !foundAddableTrack) {
+        final fetched = await ref
+            .read(libraryServiceProvider)
+            .getSuggestedTracks(limit: _pageSize, current: _page);
+        if (!mounted) return;
+
+        _page++;
+        _hasMore = fetched.length == _pageSize;
+        final knownIds = _tracks.map((track) => track.id).toSet();
+        final addable = fetched.where(
+          (track) =>
+              !widget.existingIds.contains(track.id) &&
+              !knownIds.contains(track.id),
+        );
+        foundAddableTrack = addable.isNotEmpty;
+        _tracks.addAll(addable);
+      }
+    } catch (_) {
+      if (!mounted) return;
+      _error = 'Could not load music. Tap to retry.';
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final normalizedQuery = _query.trim().toLowerCase();
+    final visibleTracks = _tracks.where((track) {
+      return normalizedQuery.isEmpty ||
+          track.title.toLowerCase().contains(normalizedQuery) ||
+          track.artistName.toLowerCase().contains(normalizedQuery);
+    }).toList();
+
+    return FractionallySizedBox(
+      heightFactor: 0.82,
+      child: SafeArea(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Padding(
+              padding: EdgeInsets.fromLTRB(18, 0, 18, 12),
+              child: Text(
+                'Add music',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 22,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 18),
+              child: TextField(
+                controller: _searchController,
+                onChanged: (value) => setState(() => _query = value),
+                decoration: const InputDecoration(
+                  hintText: 'Search loaded tracks or artists',
+                  prefixIcon: Icon(Icons.search_rounded),
+                ),
+              ),
+            ),
+            const SizedBox(height: 10),
+            Expanded(child: _buildTrackList(visibleTracks)),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(18, 10, 18, 16),
+              child: SizedBox(
+                width: double.infinity,
+                child: FilledButton.icon(
+                  style: FilledButton.styleFrom(
+                    backgroundColor: _orange,
+                    foregroundColor: Colors.white,
+                  ),
+                  onPressed: _selectedIds.isEmpty
+                      ? null
+                      : () => widget.onSubmit(Set<String>.from(_selectedIds)),
+                  icon: const Icon(Icons.add_rounded),
+                  label: Text('Add ${_selectedIds.length} tracks'),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTrackList(List<HomeTrack> visibleTracks) {
+    if (_tracks.isEmpty && _isLoading) {
+      return const Center(child: CircularProgressIndicator(color: _orange));
+    }
+
+    if (_tracks.isEmpty && _error != null) {
+      return Center(
+        child: TextButton(onPressed: _loadMore, child: Text(_error!)),
+      );
+    }
+
+    if (visibleTracks.isEmpty) {
+      return const Center(
+        child: Text(
+          'No matching tracks are available.',
+          style: TextStyle(color: Color(0xFF999999)),
+        ),
+      );
+    }
+
+    return ListView.builder(
+      controller: _scrollController,
+      itemCount: visibleTracks.length + (_hasMore || _isLoading ? 1 : 0),
+      itemBuilder: (context, index) {
+        if (index == visibleTracks.length) {
+          if (_error != null) {
+            return Center(
+              child: TextButton(onPressed: _loadMore, child: Text(_error!)),
+            );
+          }
+          return const Padding(
+            padding: EdgeInsets.all(18),
+            child: Center(
+              child: CircularProgressIndicator(color: _orange, strokeWidth: 2),
+            ),
+          );
+        }
+
+        final track = visibleTracks[index];
+        final selected = _selectedIds.contains(track.id);
+
+        return CheckboxListTile(
+          value: selected,
+          activeColor: _orange,
+          title: Text(
+            track.title,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          subtitle: Text(
+            track.artistName,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(color: Color(0xFF999999)),
+          ),
+          onChanged: (checked) {
+            setState(() {
+              if (checked == true) {
+                _selectedIds.add(track.id);
+              } else {
+                _selectedIds.remove(track.id);
+              }
+            });
+          },
+        );
+      },
+    );
   }
 }
 
 class _PlaylistEditResult {
-  const _PlaylistEditResult({required this.title, required this.isPublic});
+  const _PlaylistEditResult({
+    required this.title,
+    required this.isPublic,
+    required this.trackIds,
+  });
 
   final String title;
   final bool isPublic;
+  final List<String> trackIds;
 }
 
 class _PlaylistVisibilityTile extends StatelessWidget {
@@ -543,6 +909,7 @@ class _PlaylistHeader extends StatelessWidget {
     required this.onPlay,
     required this.onShuffle,
     required this.onRename,
+    required this.onAddMusic,
     required this.onDelete,
   });
 
@@ -553,6 +920,7 @@ class _PlaylistHeader extends StatelessWidget {
   final VoidCallback? onPlay;
   final VoidCallback? onShuffle;
   final VoidCallback onRename;
+  final VoidCallback onAddMusic;
   final VoidCallback onDelete;
 
   @override
@@ -636,6 +1004,16 @@ class _PlaylistHeader extends StatelessWidget {
                       icon: const Icon(Icons.more_vert_rounded),
                     ),
                     const Spacer(),
+                    FilledButton.icon(
+                      onPressed: onAddMusic,
+                      style: FilledButton.styleFrom(
+                        backgroundColor: const Color(0xFFFF5500),
+                        foregroundColor: Colors.white,
+                      ),
+                      icon: const Icon(Icons.add_rounded, size: 20),
+                      label: const Text('Add music'),
+                    ),
+                    const SizedBox(width: 10),
                     IconButton(
                       tooltip: 'Shuffle',
                       color: Colors.white,
@@ -736,20 +1114,29 @@ class _TrackTile extends StatelessWidget {
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
       ),
-      trailing: PopupMenuButton<String>(
-        tooltip: 'More',
-        color: const Color(0xFF242424),
-        icon: const Icon(Icons.more_vert_rounded, color: Colors.white),
-        onSelected: (value) {
-          if (value == 'remove') {
-            onRemove();
-          }
-        },
-        itemBuilder: (_) {
-          return const [
-            PopupMenuItem(value: 'remove', child: Text('Remove from playlist')),
-          ];
-        },
+      trailing: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          TrackDownloadButton(track: track),
+          PopupMenuButton<String>(
+            tooltip: 'More',
+            color: const Color(0xFF242424),
+            icon: const Icon(Icons.more_vert_rounded, color: Colors.white),
+            onSelected: (value) {
+              if (value == 'remove') {
+                onRemove();
+              }
+            },
+            itemBuilder: (_) {
+              return const [
+                PopupMenuItem(
+                  value: 'remove',
+                  child: Text('Remove from playlist'),
+                ),
+              ];
+            },
+          ),
+        ],
       ),
       onTap: onTap,
     );
@@ -782,12 +1169,18 @@ class _SuggestedTrackTile extends StatelessWidget {
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
       ),
-      trailing: IconButton(
-        tooltip: 'Add to playlist',
-        color: Colors.white,
-        iconSize: 32,
-        onPressed: onAdd,
-        icon: const Icon(Icons.add_box_outlined),
+      trailing: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          TrackDownloadButton(track: track),
+          IconButton(
+            tooltip: 'Add to playlist',
+            color: Colors.white,
+            iconSize: 32,
+            onPressed: onAdd,
+            icon: const Icon(Icons.add_box_outlined),
+          ),
+        ],
       ),
     );
   }

@@ -1,3 +1,4 @@
+import '../../downloads/presentation/track_download_button.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -149,26 +150,35 @@ class _TrackTile extends StatelessWidget {
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
       ),
-      trailing: PopupMenuButton<String>(
-        tooltip: 'More',
-        color: const Color(0xFF242424),
-        icon: const Icon(Icons.more_vert_rounded, color: Colors.white),
-        onSelected: (value) {
-          if (value == 'playlist') {
-            onAddToPlaylist();
-            return;
-          }
+      trailing: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          TrackDownloadButton(track: track),
+          PopupMenuButton<String>(
+            tooltip: 'More',
+            color: const Color(0xFF242424),
+            icon: const Icon(Icons.more_vert_rounded, color: Colors.white),
+            onSelected: (value) {
+              if (value == 'playlist') {
+                onAddToPlaylist();
+                return;
+              }
 
-          if (value == 'unlike') {
-            onUnlike();
-          }
-        },
-        itemBuilder: (_) {
-          return const [
-            PopupMenuItem(value: 'playlist', child: Text('Add to playlist')),
-            PopupMenuItem(value: 'unlike', child: Text('Remove like')),
-          ];
-        },
+              if (value == 'unlike') {
+                onUnlike();
+              }
+            },
+            itemBuilder: (_) {
+              return const [
+                PopupMenuItem(
+                  value: 'playlist',
+                  child: Text('Add to playlist'),
+                ),
+                PopupMenuItem(value: 'unlike', child: Text('Remove like')),
+              ];
+            },
+          ),
+        ],
       ),
       onTap: onTap,
     );

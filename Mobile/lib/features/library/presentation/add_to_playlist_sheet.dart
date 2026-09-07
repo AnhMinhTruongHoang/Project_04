@@ -130,8 +130,10 @@ class _AddToPlaylistSheet extends ConsumerWidget {
       await ref
           .read(libraryServiceProvider)
           .addTrackToPlaylist(playlist: playlist, track: track);
-      ref.invalidate(playlistsProvider);
-      ref.invalidate(playlistDetailProvider(playlist.id));
+      await Future.wait([
+        ref.refresh(playlistsProvider.future),
+        ref.refresh(playlistDetailProvider(playlist.id).future),
+      ]);
 
       if (!context.mounted) return;
 
@@ -140,7 +142,9 @@ class _AddToPlaylistSheet extends ConsumerWidget {
     } catch (_) {
       if (!context.mounted) return;
 
-      showAppToast(context, message: 'Could not add this track.');
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Could not add this track.')),
+      );
     }
   }
 }

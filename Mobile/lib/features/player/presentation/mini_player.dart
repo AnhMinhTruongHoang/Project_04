@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import 'full_player_screen.dart';
 import '../../home/models/home_track.dart';
 import '../../../shared/presentation/app_toast.dart';
 import '../models/player_state.dart';
@@ -381,11 +380,7 @@ class _MiniPlayerState extends ConsumerState<MiniPlayer> {
                               return;
                             }
 
-                            Navigator.of(context).push(
-                              MaterialPageRoute(
-                                builder: (_) => const FullPlayerScreen(),
-                              ),
-                            );
+                            context.push('/player');
                           },
                           child: Padding(
                             padding: const EdgeInsets.symmetric(horizontal: 8),

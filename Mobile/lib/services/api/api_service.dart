@@ -1308,6 +1308,13 @@ class ApiService {
     );
   }
 
+  Future<ApiResponse<dynamic>> deleteListeningHistoryApi(String trackId) {
+    return _request(
+      method: 'DELETE',
+      path: '/tracks/${_id(trackId)}/history',
+    );
+  }
+
   Future<ApiResponse<dynamic>> getBecauseYouListenedApi({int limit = 10}) {
     return _request(
       method: 'GET',

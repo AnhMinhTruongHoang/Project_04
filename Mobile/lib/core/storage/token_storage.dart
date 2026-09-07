@@ -8,6 +8,12 @@ class TokenStorage {
   static const String _accessTokenKey = 'access_token';
   static const String _refreshTokenKey = 'refresh_token';
 
+  static Future<void> saveOfflineAccount(String json) =>
+      _storage.write(key: 'offline_account', value: json);
+
+  static Future<String?> getOfflineAccount() =>
+      _storage.read(key: 'offline_account');
+
   static Future<void> saveAccessToken(String token) async {
     await _storage.write(key: _accessTokenKey, value: token);
   }
@@ -25,6 +31,7 @@ class TokenStorage {
   }
 
   static Future<void> clearTokens() async {
+    await _storage.delete(key: 'offline_account');
     await _storage.delete(key: _accessTokenKey);
 
     await _storage.delete(key: _refreshTokenKey);

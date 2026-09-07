@@ -318,10 +318,14 @@ class AuthService {
       final data = _asMap(root['data']);
 
       final user = _asMap(data['user']);
-
-      return UserModel.fromJson(user);
-    } on DioException catch (error) {
-      throw AuthException(_extractMessage(error));
+      final account = UserModel.fromJson(user);
+      if (account.id.isEmpty) {
+        throw const FormatException('Account is missing an ID.');
+      }
+      return account;
+    } on DioException {
+      // Preserve transport/status information for offline session recovery.
+      rethrow;
     } on FormatException catch (error) {
       throw AuthException(error.message);
     }

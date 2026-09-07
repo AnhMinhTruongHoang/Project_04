@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../downloads/presentation/track_download_button.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../services/api/api_service.dart';
@@ -95,9 +96,9 @@ class PlayerQueueSheet extends ConsumerWidget {
                                   fit: BoxFit.cover,
                                   errorBuilder: (_, __, ___) =>
                                       const ColoredBox(
-                                    color: Color(0xFF292929),
-                                    child: Icon(Icons.music_note_rounded),
-                                  ),
+                                        color: Color(0xFF292929),
+                                        child: Icon(Icons.music_note_rounded),
+                                      ),
                                 ),
                         ),
                       ),
@@ -118,20 +119,26 @@ class PlayerQueueSheet extends ConsumerWidget {
                         overflow: TextOverflow.ellipsis,
                         style: const TextStyle(color: Color(0xFF999999)),
                       ),
-                      trailing: selected
-                          ? Icon(
-                              player.isPlaying
-                                  ? Icons.equalizer_rounded
-                                  : Icons.pause_circle_outline_rounded,
-                              color: const Color(0xFFFF5500),
-                            )
-                          : Text(
-                              '${index + 1}',
-                              style: const TextStyle(
-                                color: Color(0xFF777777),
-                                fontWeight: FontWeight.w800,
-                              ),
-                            ),
+                      trailing: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          TrackDownloadButton(track: track),
+                          selected
+                              ? Icon(
+                                  player.isPlaying
+                                      ? Icons.equalizer_rounded
+                                      : Icons.pause_circle_outline_rounded,
+                                  color: const Color(0xFFFF5500),
+                                )
+                              : Text(
+                                  '${index + 1}',
+                                  style: const TextStyle(
+                                    color: Color(0xFF777777),
+                                    fontWeight: FontWeight.w800,
+                                  ),
+                                ),
+                        ],
+                      ),
                       onTap: () {
                         ref
                             .read(playerProvider.notifier)

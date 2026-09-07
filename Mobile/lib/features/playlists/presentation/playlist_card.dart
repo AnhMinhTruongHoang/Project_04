@@ -1,3 +1,4 @@
+import '../../downloads/presentation/track_download_button.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -287,6 +288,7 @@ class _PreviewTrack extends ConsumerWidget {
               '${track.countPlay}',
               style: const TextStyle(color: Color(0xFF999999), fontSize: 11),
             ),
+            TrackDownloadButton(track: track),
           ],
         ),
       ),

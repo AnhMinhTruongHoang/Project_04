@@ -1,3 +1,4 @@
+import '../../downloads/presentation/track_download_button.dart';
 import 'dart:math';
 
 import 'package:flutter/material.dart';
@@ -1125,20 +1126,29 @@ class _TrackTile extends StatelessWidget {
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
       ),
-      trailing: PopupMenuButton<String>(
-        tooltip: 'More',
-        color: const Color(0xFF242424),
-        icon: const Icon(Icons.more_vert_rounded, color: Colors.white),
-        onSelected: (value) {
-          if (value == 'remove') {
-            onRemove();
-          }
-        },
-        itemBuilder: (_) {
-          return const [
-            PopupMenuItem(value: 'remove', child: Text('Remove from playlist')),
-          ];
-        },
+      trailing: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          TrackDownloadButton(track: track),
+          PopupMenuButton<String>(
+            tooltip: 'More',
+            color: const Color(0xFF242424),
+            icon: const Icon(Icons.more_vert_rounded, color: Colors.white),
+            onSelected: (value) {
+              if (value == 'remove') {
+                onRemove();
+              }
+            },
+            itemBuilder: (_) {
+              return const [
+                PopupMenuItem(
+                  value: 'remove',
+                  child: Text('Remove from playlist'),
+                ),
+              ];
+            },
+          ),
+        ],
       ),
       onTap: onTap,
     );
@@ -1171,12 +1181,18 @@ class _SuggestedTrackTile extends StatelessWidget {
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
       ),
-      trailing: IconButton(
-        tooltip: 'Add to playlist',
-        color: Colors.white,
-        iconSize: 32,
-        onPressed: onAdd,
-        icon: const Icon(Icons.add_box_outlined),
+      trailing: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          TrackDownloadButton(track: track),
+          IconButton(
+            tooltip: 'Add to playlist',
+            color: Colors.white,
+            iconSize: 32,
+            onPressed: onAdd,
+            icon: const Icon(Icons.add_box_outlined),
+          ),
+        ],
       ),
     );
   }

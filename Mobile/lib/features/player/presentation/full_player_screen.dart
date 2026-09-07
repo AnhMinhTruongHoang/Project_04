@@ -1,3 +1,4 @@
+import '../../downloads/presentation/track_download_button.dart';
 import 'dart:ui';
 
 import 'package:flutter/material.dart';
@@ -96,6 +97,7 @@ class _FullPlayerScreenState extends ConsumerState<FullPlayerScreen> {
                     ),
                     const SizedBox(height: 26),
                     _ActionRow(
+                      track: track,
                       likeCount: social.likeCountFor(track),
                       commentCount: _commentCount,
                       isLiking: _isLiking,
@@ -814,6 +816,7 @@ class _CommentBox extends StatelessWidget {
 
 class _ActionRow extends StatelessWidget {
   const _ActionRow({
+    required this.track,
     required this.likeCount,
     required this.commentCount,
     required this.isLiking,
@@ -825,6 +828,7 @@ class _ActionRow extends StatelessWidget {
     required this.onMore,
   });
 
+  final HomeTrack track;
   final int likeCount;
   final int commentCount;
   final bool isLiking;
@@ -837,7 +841,10 @@ class _ActionRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
+    return Wrap(
+      alignment: WrapAlignment.spaceBetween,
+      crossAxisAlignment: WrapCrossAlignment.center,
+      runSpacing: 4,
       children: [
         _BottomAction(
           icon: isLiked
@@ -853,7 +860,8 @@ class _ActionRow extends StatelessWidget {
           color: Colors.white,
           onPressed: onComments,
         ),
-        const Spacer(),
+
+        TrackDownloadButton(track: track),
         _IconOnlyAction(
           icon: Icons.share_rounded,
           onPressed: onShare,

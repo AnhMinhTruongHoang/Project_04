@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../downloads/presentation/track_download_button.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -478,11 +479,7 @@ class _HistoryTile extends ConsumerWidget {
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
       ),
-      trailing: IconButton(
-        tooltip: 'More',
-        onPressed: () {},
-        icon: const Icon(Icons.more_vert_rounded),
-      ),
+      trailing: TrackDownloadButton(track: track),
       onTap: () {
         ref.read(playerProvider.notifier).playTrack(track, queue: queue);
       },

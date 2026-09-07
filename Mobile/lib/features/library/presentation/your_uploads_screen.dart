@@ -1,3 +1,4 @@
+import '../../downloads/presentation/track_download_button.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -157,15 +158,21 @@ class _UploadTrackTile extends StatelessWidget {
           ],
         ),
       ),
-      trailing: IconButton(
-        tooltip: onPlay == null ? 'Audio is processing' : 'Play',
-        color: onPlay == null ? const Color(0xFF777777) : _uploadsOrange,
-        onPressed: onPlay,
-        icon: Icon(
-          onPlay == null
-              ? Icons.hourglass_bottom_rounded
-              : Icons.play_circle_fill_rounded,
-        ),
+      trailing: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          TrackDownloadButton(track: track),
+          IconButton(
+            tooltip: onPlay == null ? 'Audio is processing' : 'Play',
+            color: onPlay == null ? const Color(0xFF777777) : _uploadsOrange,
+            onPressed: onPlay,
+            icon: Icon(
+              onPlay == null
+                  ? Icons.hourglass_bottom_rounded
+                  : Icons.play_circle_fill_rounded,
+            ),
+          ),
+        ],
       ),
       onTap: onTap,
     );

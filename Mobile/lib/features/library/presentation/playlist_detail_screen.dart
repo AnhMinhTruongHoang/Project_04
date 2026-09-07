@@ -1,4 +1,3 @@
-import '../../downloads/presentation/track_download_button.dart';
 import 'dart:math';
 
 import 'package:flutter/material.dart';
@@ -6,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../shared/presentation/app_toast.dart';
+import '../../downloads/presentation/track_download_button.dart';
 import '../../home/models/home_track.dart';
 import '../../player/providers/player_provider.dart';
 import '../models/playlist.dart';

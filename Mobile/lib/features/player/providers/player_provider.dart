@@ -6,9 +6,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:just_audio/just_audio.dart' as ja;
 
 import '../../../services/api/api_service.dart';
-import '../../downloads/providers/downloads_provider.dart';
-import '../../downloads/data/offline_history_store.dart';
 import '../../auth/providers/auth_provider.dart';
+import '../../downloads/data/offline_history_store.dart';
+import '../../downloads/providers/downloads_provider.dart';
 import '../../home/models/home_track.dart';
 import '../../home/providers/home_provider.dart';
 import '../../library/models/listening_history_item.dart';
@@ -527,9 +527,33 @@ class PlayerController extends Notifier<PlayerState> {
         playing: event['playing'] as bool,
         sessionId: event['sessionId'] as String,
       );
-      if (response.isSuccess) await store.acknowledge(event);
+      if (response.isSuccess) {
+        await store.acknowledge(event);
+
+        if (!ref.mounted) return;
+
+        ref.invalidate(listeningHistoryProvider);
+        ref.invalidate(homeFeedProvider);
+      }
     } catch (_) {
       // The durable outbox retries without replaying an earnings heartbeat.
     }
+  }
+
+  void _pushLocalHistory(HomeTrack track) {
+    if (track.id.isEmpty) {
+      return;
+    }
+
+    final item = ListeningHistoryItem(
+      track: track,
+      progress: 0,
+      lastPosition: 0,
+      duration: 0,
+      completed: false,
+      updatedAtMillis: DateTime.now().millisecondsSinceEpoch,
+    );
+
+    ref.read(localListeningHistoryProvider.notifier).upsert(item);
   }
 }

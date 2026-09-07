@@ -35,7 +35,10 @@ class LibraryService {
     return _userList(response.data);
   }
 
-  Future<List<HomeTrack>> getSuggestedTracks({int limit = 12}) async {
+  Future<List<HomeTrack>> getSuggestedTracks({
+    int limit = 12,
+    int current = 1,
+  }) async {
     final response = await _apiService.getTracksApi(
       current: current,
       pageSize: limit,

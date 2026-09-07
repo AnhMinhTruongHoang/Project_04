@@ -1,9 +1,9 @@
-import '../../downloads/presentation/track_download_button.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../services/api/api_service.dart';
 import '../../../shared/presentation/app_toast.dart';
+import '../../downloads/presentation/track_download_button.dart';
 import '../../home/models/home_track.dart';
 import '../../home/providers/home_provider.dart';
 import '../../library/providers/library_provider.dart';
@@ -230,13 +230,12 @@ class _LikedTrackCard extends StatelessWidget {
                     ),
                   ),
                 ),
-              ),
-              Positioned(
-                right: 5,
-                top: 5,
-                child: TrackDownloadButton(track: track, onCover: true),
-              ),
-            ],
+                Positioned(
+                  right: 5,
+                  top: 5,
+                  child: TrackDownloadButton(track: track, onCover: true),
+                ),
+              ],
             ),
           ),
         ),

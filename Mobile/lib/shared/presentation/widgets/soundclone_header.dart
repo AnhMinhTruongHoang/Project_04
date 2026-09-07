@@ -74,14 +74,6 @@ class SoundCloneHeader extends ConsumerWidget implements PreferredSizeWidget {
   }
 
   // ==========================================================================
-  // ADMIN
-  // ==========================================================================
-
-  bool _isAdmin() {
-    return user.role.toString().toUpperCase() == 'ADMIN';
-  }
-
-  // ==========================================================================
   // LOGOUT
   // ==========================================================================
 
@@ -205,7 +197,6 @@ class SoundCloneHeader extends ConsumerWidget implements PreferredSizeWidget {
 
     final bool hasAvatar = avatarUrl != null && avatarUrl.isNotEmpty;
 
-    final bool isAdmin = _isAdmin();
 
     return AppBar(
       automaticallyImplyLeading: false,
@@ -357,36 +348,6 @@ class SoundCloneHeader extends ConsumerWidget implements PreferredSizeWidget {
                 const PopupMenuDivider(height: 16),
 
                 // -------------------------------------------------------------
-                // CREATOR
-                // -------------------------------------------------------------
-                const PopupMenuItem<String>(
-                  enabled: false,
-                  height: 32,
-                  child: _PopupSectionTitle(text: 'CREATOR'),
-                ),
-
-                const PopupMenuItem<String>(
-                  value: 'artist-studio',
-                  child: _NavigationMenuItem(text: 'Artist Studio'),
-                ),
-
-                const PopupMenuItem<String>(
-                  value: 'upload',
-                  child: _NavigationMenuItem(text: 'Upload'),
-                ),
-
-                if (isAdmin)
-                  const PopupMenuItem<String>(
-                    value: 'dashboard',
-                    child: _NavigationMenuItem(
-                      text: 'Dashboard',
-                      selected: true,
-                    ),
-                  ),
-
-                const PopupMenuDivider(height: 16),
-
-                // -------------------------------------------------------------
                 // UPGRADE
                 // -------------------------------------------------------------
                 const PopupMenuItem<String>(
@@ -418,17 +379,6 @@ class SoundCloneHeader extends ConsumerWidget implements PreferredSizeWidget {
                 ),
               ),
             ),
-          ),
-
-          IconButton(
-            tooltip: 'Upload track',
-            visualDensity: VisualDensity.compact,
-            color: const Color(0xFFD8D8D8),
-            hoverColor: _kOrange.withValues(alpha: 0.14),
-            onPressed: () {
-              context.push('/track/upload');
-            },
-            icon: const Icon(Icons.upload_rounded, size: 22),
           ),
 
           // ===================================================================
@@ -525,49 +475,6 @@ class SoundCloneHeader extends ConsumerWidget implements PreferredSizeWidget {
                     icon: Icons.stars_rounded,
                     text: 'Try Artist Pro',
                     iconColor: _kOrange,
-                  ),
-                ),
-
-                // -------------------------------------------------------------
-                // TRACKS
-                // -------------------------------------------------------------
-                const PopupMenuItem<String>(
-                  value: 'tracks',
-                  child: _AccountMenuItem(
-                    icon: Icons.upload_rounded,
-                    text: 'Tracks',
-                  ),
-                ),
-
-                // -------------------------------------------------------------
-                // ADMIN ONLY
-                // -------------------------------------------------------------
-                if (isAdmin)
-                  const PopupMenuItem<String>(
-                    value: 'insights',
-                    child: _AccountMenuItem(
-                      icon: Icons.bar_chart_rounded,
-                      text: 'Insights',
-                    ),
-                  ),
-
-                if (isAdmin)
-                  const PopupMenuItem<String>(
-                    value: 'dashboard',
-                    child: _AccountMenuItem(
-                      icon: Icons.dashboard_rounded,
-                      text: 'Dashboard',
-                    ),
-                  ),
-
-                // -------------------------------------------------------------
-                // DISTRIBUTE
-                // -------------------------------------------------------------
-                const PopupMenuItem<String>(
-                  value: 'distribute',
-                  child: _AccountMenuItem(
-                    icon: Icons.cloud_rounded,
-                    text: 'Distribute',
                   ),
                 ),
 

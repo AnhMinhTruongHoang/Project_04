@@ -17,8 +17,10 @@ import '../../features/library/presentation/playlists_screen.dart';
 import '../../features/news/presentation/news_detail_screen.dart';
 import '../../features/news/presentation/news_screen.dart';
 import '../../features/notifications/presentation/notifications_screen.dart';
+import '../../features/people/presentation/who_to_follow_screen.dart';
 import '../../features/profile/presentation/profile_screen.dart';
 import '../../features/search/presentation/search_screen.dart';
+import '../../features/subscriptions/presentation/subscription_plans_screen.dart';
 import '../../features/home/models/home_track.dart';
 import '../../features/track/presentation/track_detail_screen.dart';
 import '../../features/track/presentation/track_upload_screen.dart';
@@ -145,6 +147,18 @@ final GoRouter appRouter = GoRouter(
               path: '/artist-studio',
               builder: (context, state) {
                 return const ArtistStudioScreen();
+              },
+            ),
+            GoRoute(
+              path: '/plans',
+              builder: (context, state) {
+                return const SubscriptionPlansScreen();
+              },
+            ),
+            GoRoute(
+              path: '/people',
+              builder: (context, state) {
+                return const WhoToFollowScreen();
               },
             ),
             GoRoute(

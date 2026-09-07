@@ -1,4 +1,3 @@
-import '../../downloads/presentation/track_download_button.dart';
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
@@ -12,14 +11,16 @@ import 'package:qr_flutter/qr_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/config/api_config.dart';
+import '../../../services/api/api_service.dart';
 import '../../auth/models/user_model.dart';
 import '../../auth/providers/auth_provider.dart';
+import '../../downloads/presentation/track_download_button.dart';
+import '../../downloads/providers/downloads_provider.dart';
 import '../../home/models/home_track.dart';
 import '../../home/providers/home_provider.dart';
-import '../../downloads/providers/downloads_provider.dart';
+import '../../library/providers/library_provider.dart';
 import '../../playlists/presentation/playlist_card.dart';
 import '../../player/providers/player_provider.dart';
-import '../../../services/api/api_service.dart';
 
 part 'profile_providers.dart';
 part 'profile_edit_sheet.dart';
@@ -136,6 +137,7 @@ class _ProfileContent extends ConsumerWidget {
 
           if (isOwner) {
             ref.invalidate(homeFeedProvider);
+            ref.invalidate(listeningHistoryProvider);
             ref.invalidate(_profileTicketsProvider);
           }
 
@@ -147,6 +149,10 @@ class _ProfileContent extends ConsumerWidget {
           } catch (_) {}
 
           if (isOwner) {
+            try {
+              await ref.read(listeningHistoryProvider.future);
+            } catch (_) {}
+
             final authNotifier = ref.read(authProvider.notifier);
 
             // Keep this last: reloadAccount can rebuild/unmount ProfileScreen.
@@ -1182,7 +1188,7 @@ class _RecentSection extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final home = ref.watch(homeFeedProvider);
+    final history = ref.watch(effectiveListeningHistoryProvider);
 
     return Padding(
       padding: embedded
@@ -1203,7 +1209,7 @@ class _RecentSection extends ConsumerWidget {
 
           const SizedBox(height: 14),
 
-          home.when(
+          history.when(
             loading: () {
               return const _RecentLoading();
             },
@@ -1214,8 +1220,11 @@ class _RecentSection extends ConsumerWidget {
                 description: 'Pull down to try again.',
               );
             },
-            data: (data) {
-              final tracks = data.historyTracks.take(5).toList();
+            data: (items) {
+              final tracks = items
+                  .map((item) => item.track)
+                  .take(5)
+                  .toList();
 
               if (tracks.isEmpty) {
                 return const _RecentEmpty(
@@ -1437,6 +1446,8 @@ class _RecentTrackTile extends ConsumerWidget {
     if (!context.mounted) return;
 
     if (response.isSuccess || response.isNotFound) {
+      ref.read(localListeningHistoryProvider.notifier).remove(track.id);
+      ref.invalidate(listeningHistoryProvider);
       ref.invalidate(homeFeedProvider);
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Deleted from listening history.')),

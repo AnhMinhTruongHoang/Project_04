@@ -87,6 +87,20 @@ final GoRouter appRouter = GoRouter(
     ),
 
     // ============================================================
+    // FULL PLAYER
+    //
+    // This route stays outside the authenticated shell so opening
+    // the mini player shows a full-screen player without rebuilding
+    // the active tab. Playback can continue from a downloaded file.
+    // ============================================================
+    GoRoute(
+      path: '/player',
+      builder: (context, state) {
+        return const FullPlayerScreen();
+      },
+    ),
+
+    // ============================================================
     // AUTHENTICATED MOBILE SHELL
     // ============================================================
     StatefulShellRoute.indexedStack(

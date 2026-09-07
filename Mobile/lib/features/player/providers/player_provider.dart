@@ -57,6 +57,7 @@ class PlayerController extends Notifier<PlayerState> {
         _historyTimer?.cancel();
         _wantsToPlay = false;
         unawaited(_audioPlayer.stop());
+        ref.read(localListeningHistoryProvider.notifier).clear();
         state = const PlayerState();
       }
     });
@@ -108,8 +109,6 @@ class PlayerController extends Notifier<PlayerState> {
       sessionId: DateTime.now().microsecondsSinceEpoch.toString(),
     );
 
-    _pushLocalHistory(track);
-
     try {
       // Dừng bài cũ
       await _audioPlayer.stop();
@@ -151,8 +150,10 @@ class PlayerController extends Notifier<PlayerState> {
        *
        * Trạng thái playing sẽ được cập nhật thông qua
        * playerStateStream trong _listenToPlayer().
-       */
+      */
       unawaited(_audioPlayer.play());
+
+      _pushLocalHistory(track);
 
       if (track.id.isNotEmpty) {
         _startHistoryTimer();

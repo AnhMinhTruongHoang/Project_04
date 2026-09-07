@@ -85,6 +85,14 @@ class LocalListeningHistoryController
       ...state.where((history) => history.track.id != trackId),
     ].take(30).toList();
   }
+
+  void remove(String trackId) {
+    state = state.where((item) => item.track.id != trackId).toList();
+  }
+
+  void clear() {
+    state = const [];
+  }
 }
 
 final effectiveListeningHistoryProvider =
@@ -92,7 +100,15 @@ final effectiveListeningHistoryProvider =
       final local = ref.watch(localListeningHistoryProvider);
       final remote = ref.watch(listeningHistoryProvider);
 
-      return remote.whenData((items) => _mergeHistory(local, items));
+      return remote.when(
+        data: (items) => AsyncData(_mergeHistory(local, items)),
+        loading: () => local.isEmpty
+            ? const AsyncLoading()
+            : AsyncData(List<ListeningHistoryItem>.from(local)),
+        error: (error, stackTrace) => local.isEmpty
+            ? AsyncError(error, stackTrace)
+            : AsyncData(List<ListeningHistoryItem>.from(local)),
+      );
     });
 
 final playlistDetailProvider = FutureProvider.family<Playlist?, String>((

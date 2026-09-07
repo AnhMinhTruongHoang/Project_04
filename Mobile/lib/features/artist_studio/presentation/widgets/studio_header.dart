@@ -1,10 +1,9 @@
 part of artist_studio_screen;
 
 class _HeroPanel extends StatelessWidget {
-  const _HeroPanel({required this.onUpload, required this.onRefresh});
+  const _HeroPanel({required this.onUpload});
 
   final VoidCallback onUpload;
-  final VoidCallback onRefresh;
 
   @override
   Widget build(BuildContext context) {
@@ -44,11 +43,6 @@ class _HeroPanel extends StatelessWidget {
                     ),
                   ],
                 ),
-              ),
-              IconButton.filledTonal(
-                tooltip: 'Refresh',
-                onPressed: onRefresh,
-                icon: const Icon(Icons.refresh_rounded),
               ),
             ],
           ),

@@ -7,6 +7,9 @@ import 'package:just_audio/just_audio.dart' as ja;
 
 import '../../../services/api/api_service.dart';
 import '../../home/models/home_track.dart';
+import '../../home/providers/home_provider.dart';
+import '../../library/models/listening_history_item.dart';
+import '../../library/providers/library_provider.dart';
 import '../models/player_state.dart';
 
 final playerProvider = NotifierProvider<PlayerController, PlayerState>(
@@ -98,6 +101,8 @@ class PlayerController extends Notifier<PlayerState> {
       sessionId: DateTime.now().microsecondsSinceEpoch.toString(),
     );
 
+    _pushLocalHistory(track);
+
     try {
       // Dừng bài cũ
       await _audioPlayer.stop();
@@ -125,9 +130,13 @@ class PlayerController extends Notifier<PlayerState> {
        */
       unawaited(_audioPlayer.play());
 
-      if (track.canUsePublicTrackActions) {
+      if (track.id.isNotEmpty) {
         _startHistoryTimer();
 
+        unawaited(_saveCurrentHistory(playing: true));
+      }
+
+      if (track.canUsePublicTrackActions) {
         unawaited(_increasePlayCount(track));
       }
     } catch (error, stackTrace) {
@@ -196,7 +205,7 @@ class PlayerController extends Notifier<PlayerState> {
        */
       unawaited(_audioPlayer.play());
 
-      if (state.currentTrack?.canUsePublicTrackActions == true) {
+      if (state.currentTrack?.id.isNotEmpty == true) {
         _startHistoryTimer();
       }
     } catch (error, stackTrace) {
@@ -439,11 +448,15 @@ class PlayerController extends Notifier<PlayerState> {
       return;
     }
 
-    if (track.id.isEmpty || !track.canUsePublicTrackActions) {
+    if (track.id.isEmpty) {
       return;
     }
 
-    final duration = state.duration.inMilliseconds / 1000;
+    final resolvedDuration = state.duration == Duration.zero
+        ? _audioPlayer.duration ?? Duration.zero
+        : state.duration;
+
+    final duration = resolvedDuration.inMilliseconds / 1000;
 
     final position = state.position.inMilliseconds / 1000;
 
@@ -464,8 +477,27 @@ class PlayerController extends Notifier<PlayerState> {
         playing: playing,
         sessionId: state.sessionId,
       );
+      ref.invalidate(listeningHistoryProvider);
+      ref.invalidate(homeFeedProvider);
     } catch (error) {
       debugPrint('Save listening history error: $error');
     }
+  }
+
+  void _pushLocalHistory(HomeTrack track) {
+    if (track.id.isEmpty) {
+      return;
+    }
+
+    final item = ListeningHistoryItem(
+      track: track,
+      progress: 0,
+      lastPosition: 0,
+      duration: 0,
+      completed: false,
+      updatedAtMillis: DateTime.now().millisecondsSinceEpoch,
+    );
+
+    ref.read(localListeningHistoryProvider.notifier).upsert(item);
   }
 }

@@ -55,7 +55,7 @@ class _EarningsSectionState extends ConsumerState<_EarningsSection> {
             currentPlan: plan.name,
             onUpgrade: subscriptionData == null
                 ? null
-                : () => _showPlans(context, subscriptionData),
+                : () => context.push('/plans'),
           );
         }
 
@@ -112,6 +112,7 @@ class _EarningsSectionState extends ConsumerState<_EarningsSection> {
     final created = await showModalBottomSheet<bool>(
       context: context,
       isScrollControlled: true,
+      useRootNavigator: true,
       backgroundColor: Colors.transparent,
       builder: (_) {
         return _PayoutRequestSheet(wallet: wallet);
@@ -121,28 +122,6 @@ class _EarningsSectionState extends ConsumerState<_EarningsSection> {
     if (created == true) {
       _refreshEarnings();
     }
-  }
-
-  Future<void> _showPlans(
-    BuildContext context,
-    _StudioSubscriptionData current,
-  ) async {
-    await showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (_) {
-        return _PlansSheet(
-          current: current,
-          onPaymentStarted: (_) {},
-          onPlanChanged: () async {
-            ref.invalidate(artistStudioSubscriptionProvider);
-            ref.invalidate(artistStudioStatsProvider);
-            await ref.read(artistStudioSubscriptionProvider.future);
-          },
-        );
-      },
-    );
   }
 
   Future<void> _confirmCancelPayout(_PayoutItem payout) async {
@@ -208,17 +187,13 @@ class _EarningsSectionState extends ConsumerState<_EarningsSection> {
         return;
       }
 
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Payout request canceled.')));
+      showAppToast(context, message: 'Payout request canceled.');
     } catch (_) {
       if (!mounted) {
         return;
       }
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Could not cancel payout request.')),
-      );
+      showAppToast(context, message: 'Could not cancel payout request.');
     } finally {
       if (mounted) {
         setState(() {
@@ -1667,9 +1642,7 @@ class _PayoutRequestSheetState extends ConsumerState<_PayoutRequestSheet> {
         return;
       }
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Payout request submitted.')),
-      );
+      showAppToast(context, message: 'Payout request submitted.');
       Navigator.of(context).pop(true);
     } catch (error) {
       if (!mounted) {

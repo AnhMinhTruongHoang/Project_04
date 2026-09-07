@@ -1626,6 +1626,17 @@ class ApiService {
     return _request(method: 'GET', path: '/payments/${_id(orderCode)}');
   }
 
+  Future<ApiResponse<dynamic>> getMyPaymentsApi({
+    int current = 1,
+    int pageSize = 5,
+  }) {
+    return _request(
+      method: 'GET',
+      path: '/payments/me',
+      queryParameters: {'current': current, 'pageSize': pageSize.clamp(1, 100)},
+    );
+  }
+
   /*
    * ============================================================
    * ADMIN EARNING RATE APIs

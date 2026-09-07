@@ -29,6 +29,12 @@ class LibraryService {
     return _userList(response.data);
   }
 
+  Future<List<UserModel>> getWhoToFollow({int limit = 24}) async {
+    final response = await _apiService.getWhoToFollowApi(limit: limit);
+
+    return _userList(response.data);
+  }
+
   Future<List<HomeTrack>> getSuggestedTracks({int limit = 12}) async {
     final response = await _apiService.getTracksApi(
       current: 1,
@@ -57,6 +63,28 @@ class LibraryService {
     }).toList();
   }
 
+  Future<Playlist?> createAlbum({
+    required String title,
+    required bool isPublic,
+    required List<String> trackIds,
+  }) async {
+    final response = await _apiService.createAlbumApi(
+      title: title,
+      isPublic: isPublic,
+      trackIds: trackIds,
+    );
+
+    _ensureSuccess(response);
+
+    final data = _unwrap(response.data);
+
+    if (data is Map) {
+      return Playlist.fromJson(data);
+    }
+
+    return null;
+  }
+
   Future<List<ListeningHistoryItem>> getListeningHistory({
     int limit = 20,
   }) async {
@@ -73,11 +101,25 @@ class LibraryService {
 
     for (final item in [...continueListening, ...recentlyPlayed]) {
       if (item.track.id.isNotEmpty) {
-        merged[item.track.id] = item;
+        final existing = merged[item.track.id];
+
+        if (existing == null ||
+            item.updatedAtMillis >= existing.updatedAtMillis) {
+          merged[item.track.id] = item;
+        }
       }
     }
 
-    return merged.values.toList();
+    final items = merged.values.toList();
+
+    if (items.any((item) => item.updatedAtMillis > 0)) {
+      items.sort(
+        (first, second) =>
+            second.updatedAtMillis.compareTo(first.updatedAtMillis),
+      );
+    }
+
+    return items;
   }
 
   Future<Playlist?> getPlaylistById(String playlistId) async {

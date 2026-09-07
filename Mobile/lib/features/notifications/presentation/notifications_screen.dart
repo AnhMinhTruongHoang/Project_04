@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../shared/presentation/app_toast.dart';
 import '../models/notification_item.dart';
 import '../providers/notification_provider.dart';
 import 'notification_ui_helpers.dart';
@@ -71,9 +72,7 @@ class NotificationsScreen extends ConsumerWidget {
                 const SliverFillRemaining(
                   hasScrollBody: false,
                   child: Center(
-                    child: CircularProgressIndicator(
-                      color: notificationOrange,
-                    ),
+                    child: CircularProgressIndicator(color: notificationOrange),
                   ),
                 )
               else if (!state.enabled)
@@ -100,37 +99,34 @@ class NotificationsScreen extends ConsumerWidget {
                 SliverPadding(
                   padding: const EdgeInsets.fromLTRB(18, 12, 18, 0),
                   sliver: SliverList(
-                    delegate: SliverChildBuilderDelegate(
-                      (context, index) {
-                        if (index.isOdd) {
-                          return const Divider(
-                            height: 1,
-                            color: Color(0xFF242424),
-                          );
-                        }
+                    delegate: SliverChildBuilderDelegate((context, index) {
+                      if (index.isOdd) {
+                        return const Divider(
+                          height: 1,
+                          color: Color(0xFF242424),
+                        );
+                      }
 
-                        final notification = state.items[index ~/ 2];
+                      final notification = state.items[index ~/ 2];
 
-                        return _NotificationTile(
-                          notification: notification,
-                          onTap: () async {
+                      return _NotificationTile(
+                        notification: notification,
+                        onTap: () async {
                           await openNotificationTarget(
                             context: context,
                             notification: notification,
                             markAsRead: controller.markAsRead,
                           );
-                          },
-                          onDelete: () async {
-                            await _deleteNotification(
-                              context: context,
-                              controller: controller,
-                              notification: notification,
-                            );
-                          },
-                        );
-                      },
-                      childCount: state.items.length * 2 - 1,
-                    ),
+                        },
+                        onDelete: () async {
+                          await _deleteNotification(
+                            context: context,
+                            controller: controller,
+                            notification: notification,
+                          );
+                        },
+                      );
+                    }, childCount: state.items.length * 2 - 1),
                   ),
                 ),
                 SliverPadding(
@@ -166,10 +162,7 @@ class NotificationsScreen extends ConsumerWidget {
           surfaceTintColor: Colors.transparent,
           title: const Text(
             'Delete notification?',
-            style: TextStyle(
-              color: Colors.white,
-              fontWeight: FontWeight.w900,
-            ),
+            style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900),
           ),
           content: Text(
             'Delete "${notification.title}" from your notifications?',
@@ -208,17 +201,13 @@ class NotificationsScreen extends ConsumerWidget {
         return;
       }
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Notification deleted')),
-      );
+      showAppToast(context, message: 'Notification deleted');
     } catch (_) {
       if (!context.mounted) {
         return;
       }
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Could not delete notification.')),
-      );
+      showAppToast(context, message: 'Could not delete notification.');
     }
   }
 }
@@ -311,11 +300,7 @@ class _NotificationsHeader extends StatelessWidget {
         if (compact) {
           return Column(
             crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              title,
-              const SizedBox(height: 14),
-              actions,
-            ],
+            children: [title, const SizedBox(height: 14), actions],
           );
         }
 
@@ -332,10 +317,7 @@ class _NotificationsHeader extends StatelessWidget {
 }
 
 class _FilterTabs extends StatelessWidget {
-  const _FilterTabs({
-    required this.filter,
-    required this.onChanged,
-  });
+  const _FilterTabs({required this.filter, required this.onChanged});
 
   final NotificationFilter filter;
   final ValueChanged<NotificationFilter> onChanged;
@@ -420,8 +402,7 @@ class _NotificationTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Material(
-      color:
-          notification.isRead ? Colors.transparent : const Color(0x14FF5500),
+      color: notification.isRead ? Colors.transparent : const Color(0x14FF5500),
       child: ListTile(
         minVerticalPadding: 14,
         contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
@@ -435,8 +416,7 @@ class _NotificationTile extends StatelessWidget {
               : notificationOrange,
           child: Icon(
             notificationIcon(notification.type),
-            color:
-                notification.isRead ? const Color(0xFF9DA5AF) : Colors.white,
+            color: notification.isRead ? const Color(0xFF9DA5AF) : Colors.white,
           ),
         ),
         title: Row(
@@ -449,8 +429,9 @@ class _NotificationTile extends StatelessWidget {
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(
                   color: Colors.white,
-                  fontWeight:
-                      notification.isRead ? FontWeight.w700 : FontWeight.w900,
+                  fontWeight: notification.isRead
+                      ? FontWeight.w700
+                      : FontWeight.w900,
                 ),
               ),
             ),
@@ -471,10 +452,7 @@ class _NotificationTile extends StatelessWidget {
             notification.message,
             maxLines: 3,
             overflow: TextOverflow.ellipsis,
-            style: const TextStyle(
-              color: Color(0xFF9DA5AF),
-              height: 1.45,
-            ),
+            style: const TextStyle(color: Color(0xFF9DA5AF), height: 1.45),
           ),
         ),
         trailing: Wrap(
@@ -615,16 +593,17 @@ class _HeaderActionButtonState extends State<_HeaderActionButton> {
           icon: Icon(widget.icon, size: 18),
           label: Text(widget.label),
           style: OutlinedButton.styleFrom(
-            backgroundColor:
-                activeHover ? const Color(0x22FF5500) : Colors.transparent,
+            backgroundColor: activeHover
+                ? const Color(0x22FF5500)
+                : Colors.transparent,
             foregroundColor: Colors.white,
             disabledForegroundColor: const Color(0xFF555555),
             side: BorderSide(
               color: activeHover
                   ? notificationOrange
                   : widget.enabled
-                      ? const Color(0xFF333333)
-                      : const Color(0xFF1D1D1D),
+                  ? const Color(0xFF333333)
+                  : const Color(0xFF1D1D1D),
             ),
             textStyle: const TextStyle(fontWeight: FontWeight.w800),
           ),
@@ -662,10 +641,7 @@ class _ErrorBanner extends StatelessWidget {
 }
 
 class _EmptyState extends StatelessWidget {
-  const _EmptyState({
-    required this.title,
-    required this.subtitle,
-  });
+  const _EmptyState({required this.title, required this.subtitle});
 
   final String title;
   final String subtitle;

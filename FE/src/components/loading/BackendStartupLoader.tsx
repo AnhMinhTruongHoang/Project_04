@@ -96,7 +96,7 @@ const formatElapsed = (milliseconds: number) => {
 
 export default function BackendStartupLoader({
   children,
-  healthPath = "/api/v1/auth/account",
+  healthPath = "/api/v1/health",
   pollIntervalMs = 1500,
   requestTimeoutMs = 4500,
   slowStartupAfterMs = 20000,
@@ -158,16 +158,9 @@ export default function BackendStartupLoader({
     try {
       setAttempt((current) => current + 1);
 
-      /*
-       * Any HTTP response means Spring Boot
-       * has accepted the connection.
-       *
-       * 401 from /auth/account is also READY.
-       */
-      await fetch(healthUrl, {
+      const response = await fetch(healthUrl, {
         method: "GET",
         cache: "no-store",
-        credentials: "include",
         signal: controller.signal,
         headers: {
           Accept: "application/json",
@@ -175,27 +168,24 @@ export default function BackendStartupLoader({
         },
       });
 
+      if (!response.ok) {
+        throw new Error(`Backend health check failed: ${response.status}`);
+      }
+
       if (!mountedRef.current) {
         return;
       }
 
       setProgress(100);
-
       setIsReady(true);
-
       setIsSlowStartup(false);
-    } catch {
-      /*
-       * Connection refused / timeout / network error.
-       * Continue polling.
-       */
+    } catch (error) {
+      console.error("[SoundClone] Backend health check failed:", error);
     } finally {
       window.clearTimeout(timeoutId);
-
       checkingRef.current = false;
     }
   }, [healthUrl, isReady, requestTimeoutMs]);
-
   /*
    * =========================================
    * BACKEND POLLING

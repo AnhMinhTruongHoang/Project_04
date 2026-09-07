@@ -313,7 +313,7 @@ public class TrackController {
 			return null;
 		}
 
-		Category category = getTrackCategory(track);
+		Category category = track.getCategoryInfo();
 
 		TrackDTO dto = new TrackDTO();
 
@@ -393,13 +393,10 @@ public class TrackController {
 		dto.setCopyrightRiskLevel(
 				track.getCopyrightRiskLevel());
 
-		User uploader = null;
+		User uploader = track.getUploader();
 
-		if (track.getUploaderId() != null) {
-			uploader = userRepository.findById(track.getUploaderId()).orElse(null);
-		}
-
-		dto.setUploader(toUserDTO(uploader));
+		dto.setUploader(
+				toUserDTO(uploader));
 
 		return dto;
 	}

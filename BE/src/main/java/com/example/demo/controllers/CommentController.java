@@ -2,9 +2,7 @@ package com.example.demo.controllers;
 
 import java.time.LocalDateTime;
 import java.util.LinkedHashMap;
-import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 
 import io.jsonwebtoken.Claims;
 import jakarta.servlet.http.HttpServletRequest;
@@ -19,6 +17,9 @@ import com.example.demo.repositories.CommentRepository;
 import com.example.demo.repositories.TrackRepository;
 import com.example.demo.repositories.UserRepository;
 import com.example.demo.responses.ApiResponse;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 
 @RestController
 @RequestMapping({ "/api/comments", "/api/v1/comments" })
@@ -103,21 +104,50 @@ public class CommentController {
         return map;
     }
 
-    private Map<String, Object> toCommentMap(Comment comment) {
-        User user = userRepository.findById(comment.getUserId()).orElse(null);
-        Track track = trackRepository.findById(comment.getTrackId()).orElse(null);
+    private Map<String, Object> toCommentMap(
+            Comment comment) {
+
+        User user = comment.getUser();
+
+        Track track = comment.getTrack();
 
         Map<String, Object> map = new LinkedHashMap<>();
 
-        map.put("id", comment.getId());
-        map.put("_id", comment.getId());
-        map.put("content", comment.getContent());
-        map.put("moment", comment.getMoment());
-        map.put("isDeleted", comment.getIsDeleted());
-        map.put("createdAt", comment.getCreatedAt());
-        map.put("updatedAt", comment.getUpdatedAt());
-        map.put("user", toUserMap(user));
-        map.put("track", toTrackMap(track));
+        map.put(
+                "id",
+                comment.getId());
+
+        map.put(
+                "_id",
+                comment.getId());
+
+        map.put(
+                "content",
+                comment.getContent());
+
+        map.put(
+                "moment",
+                comment.getMoment());
+
+        map.put(
+                "isDeleted",
+                comment.getIsDeleted());
+
+        map.put(
+                "createdAt",
+                comment.getCreatedAt());
+
+        map.put(
+                "updatedAt",
+                comment.getUpdatedAt());
+
+        map.put(
+                "user",
+                toUserMap(user));
+
+        map.put(
+                "track",
+                toTrackMap(track));
 
         return map;
     }
@@ -125,54 +155,93 @@ public class CommentController {
     @GetMapping
     public ResponseEntity<?> findAll(
             @RequestParam(defaultValue = "1") int current,
-            @RequestParam(defaultValue = "100") int pageSize,
+
+            @RequestParam(defaultValue = "20") int pageSize,
+
             HttpServletRequest request) {
+
         try {
+
             User user = getCurrentUser(request);
 
             if (user == null) {
-                return ResponseEntity.status(401).body(new ApiResponse<>(401, "Unauthorized", null));
+
+                return ResponseEntity
+                        .status(401)
+                        .body(
+                                new ApiResponse<>(
+                                        401,
+                                        "Unauthorized",
+                                        null));
             }
 
             if (!isAdmin(user)) {
-                return ResponseEntity.status(403).body(new ApiResponse<>(403, "Access denied", null));
+
+                return ResponseEntity
+                        .status(403)
+                        .body(
+                                new ApiResponse<>(
+                                        403,
+                                        "Access denied",
+                                        null));
             }
 
-            List<Map<String, Object>> comments = commentRepository.findAll()
-                    .stream()
-                    .filter(comment -> !Boolean.TRUE.equals(comment.getIsDeleted()))
-                    .sorted((a, b) -> {
-                        LocalDateTime dateA = a.getCreatedAt();
-                        LocalDateTime dateB = b.getCreatedAt();
+            int safeCurrent = Math.max(current, 1);
 
-                        if (dateA == null && dateB == null) {
-                            return 0;
-                        }
+            int safePageSize = Math.min(
+                    Math.max(pageSize, 1),
+                    100);
 
-                        if (dateA == null) {
-                            return 1;
-                        }
+            Pageable pageable = PageRequest.of(
+                    safeCurrent - 1,
+                    safePageSize);
 
-                        if (dateB == null) {
-                            return -1;
-                        }
-
-                        return dateB.compareTo(dateA);
-                    })
-                    .map(this::toCommentMap)
-                    .collect(Collectors.toList());
+            Page<Comment> page = commentRepository
+                    .findByIsDeletedFalseOrderByCreatedAtDesc(
+                            pageable);
 
             Map<String, Object> data = new LinkedHashMap<>();
-            data.put("result", comments);
-            data.put("current", current);
-            data.put("pageSize", pageSize);
-            data.put("total", comments.size());
 
-            return ResponseEntity.ok(new ApiResponse<>(200, "Fetch comments success", data));
+            data.put(
+                    "result",
+                    page.getContent()
+                            .stream()
+                            .map(this::toCommentMap)
+                            .toList());
+
+            data.put(
+                    "current",
+                    safeCurrent);
+
+            data.put(
+                    "pageSize",
+                    safePageSize);
+
+            data.put(
+                    "total",
+                    page.getTotalElements());
+
+            data.put(
+                    "pages",
+                    page.getTotalPages());
+
+            return ResponseEntity.ok(
+                    new ApiResponse<>(
+                            200,
+                            "Fetch comments success",
+                            data));
 
         } catch (Exception e) {
+
             e.printStackTrace();
-            return ResponseEntity.status(500).body(new ApiResponse<>(500, e.getMessage(), null));
+
+            return ResponseEntity
+                    .status(500)
+                    .body(
+                            new ApiResponse<>(
+                                    500,
+                                    e.getMessage(),
+                                    null));
         }
     }
 

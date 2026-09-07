@@ -8,11 +8,22 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 import com.example.demo.entities.Playlist;
 
-public interface PlaylistRepository extends JpaRepository<Playlist, String> {
+public interface PlaylistRepository
+		extends JpaRepository<Playlist, String> {
 
-	Page<Playlist> findByIsDeletedFalse(Pageable pageable);
+	Page<Playlist> findByIsDeletedFalse(
+			Pageable pageable);
 
-	Page<Playlist> findByUserIdAndIsDeletedFalse(String userId, Pageable pageable);
+	Page<Playlist> findByUserIdAndIsDeletedFalse(
+			String userId,
+			Pageable pageable);
 
-	List<Playlist> findByUserIdAndIsDeletedFalse(String userId);
+	List<Playlist> findByUserIdAndIsDeletedFalse(
+			String userId);
+
+	/*
+	 * Dashboard chỉ COUNT,
+	 * không load toàn bộ playlist.
+	 */
+	long countByIsDeletedFalse();
 }

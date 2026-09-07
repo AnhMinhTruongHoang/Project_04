@@ -2,6 +2,9 @@ package com.example.demo.repositories;
 
 import java.util.List;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -10,19 +13,39 @@ import com.example.demo.entities.Comment;
 
 public interface CommentRepository
 		extends JpaRepository<Comment, String> {
+
 	List<Comment> findByTrackIdAndIsDeletedFalse(
 			String trackId);
+
+	/*
+	 * Admin comments.
+	 *
+	 * Load sẵn:
+	 * - comment.user
+	 * - comment.track
+	 * - track.categoryInfo
+	 *
+	 * tránh mỗi comment lại query User + Track + Category.
+	 */
+	@EntityGraph(attributePaths = {
+			"user",
+			"track",
+			"track.categoryInfo"
+	})
+	Page<Comment> findByIsDeletedFalseOrderByCreatedAtDesc(
+			Pageable pageable);
+
+	/*
+	 * Dashboard count.
+	 */
+	long countByIsDeletedFalse();
 
 	/*
 	 * =========================================================
 	 * ARTIST STUDIO COMMENTS
 	 * =========================================================
-	 *
-	 * Chỉ lấy comment:
-	 * - chưa bị xóa;
-	 * - thuộc track của artist hiện tại;
-	 * - track chưa bị xóa.
 	 */
+
 	@Query("""
 			SELECT comment
 			FROM Comment comment

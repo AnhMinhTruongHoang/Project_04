@@ -433,7 +433,6 @@ Hiện có:
 
 SoundClone Tracks
 Distribution
-Vinyl Records
 Comments
 Benefits
 
@@ -1186,8 +1185,6 @@ Hiện trạng:
 - Chưa có API.
 - Chưa có trạng thái phát hành.
 
-2. Vinyl Records chưa có chức năng thật
-
 Hiện trạng:
 
 - Tab chỉ là placeholder.
@@ -1414,7 +1411,6 @@ Artist Studio hiện đã đạt mức MVP tốt cho các phần:
 Các phần chưa hoàn chỉnh:
 
 - Distribution.
-- Vinyl Records.
 - Comments workspace.
 - Reposts.
 - Downloads.

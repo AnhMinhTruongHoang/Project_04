@@ -20,6 +20,7 @@ import StudioTabs, { studioTabs } from "./studioTabs";
 import ArtistEarningsOverview from "./artistEarningsOverview";
 import ArtistSubscriptionManager from "./artistSubscriptionManager";
 import { useRouter, useSearchParams } from "next/navigation";
+import ArtistCommentsManager from "./artistCommentsManager";
 
 const ArtistStudioView = () => {
   const router = useRouter();
@@ -336,6 +337,17 @@ const ArtistStudioView = () => {
           />
         ) : activeTab === "earnings" ? (
           <ArtistEarningsOverview />
+        ) : activeTab === "comments" ? (
+          <ArtistCommentsManager
+            accessToken={accessToken}
+            onDeleted={() => {
+              setStudioStats((current) => ({
+                ...current,
+
+                comments: Math.max(Number(current.comments || 0) - 1, 0),
+              }));
+            }}
+          />
         ) : activeTab === "tracks" ? (
           <>
             <StudioActions

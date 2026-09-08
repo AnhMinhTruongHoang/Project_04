@@ -60,11 +60,6 @@ const menuItems = [
     icon: <PeopleAltRoundedIcon />,
   },
   {
-    label: "Playlists",
-    href: "/dashboard/playlists",
-    icon: <QueueMusicRoundedIcon />,
-  },
-  {
     label: "Comments",
     href: "/dashboard/comments",
     icon: <CommentRoundedIcon />,

@@ -10,7 +10,7 @@ import { TrackContextProvider } from "@/lib/track.wrapper";
 
 import { ToastProvider } from "@/utils/toast";
 
-import "../app/globals.css";
+import "./globals.css";
 
 export const metadata: Metadata = {
   metadataBase: new URL(
@@ -43,22 +43,14 @@ export default function RootLayout({
           color: "#FFFFFF",
         }}
       >
-        {/* BACKEND STARTUP LOADER */}
         <BackendStartupLoader>
-          {/* APP THEME */}
           <ThemeRegistry>
-            {/* PAGE NAVIGATION PROGRESS */}
             <NProgressWrapper>
-              {/* AUTH SESSION */}
               <NextAuthWrapper>
-                {/* GLOBAL TOAST */}
                 <ToastProvider>
-                  {/* GLOBAL AUDIO / TRACK STATE */}
                   <TrackContextProvider>
-                    {/* PAGE CONTENT */}
                     {children}
 
-                    {/* GLOBAL AUDIO PLAYER */}
                     <AppFooter />
                   </TrackContextProvider>
                 </ToastProvider>

@@ -67,7 +67,9 @@ class DownloadedTracksService {
     return _databaseFuture ??= _openDatabase();
   }
 
-  Future<web.IDBDatabase> _openDatabase() {
+  Future<web.IDBDatabase> _openDatabase() async {
+    await _requestPersistentStorage();
+
     final completer = Completer<web.IDBDatabase>();
     final request = web.window.indexedDB.open(_databaseName, 1);
     request.onupgradeneeded = ((web.Event _) {
@@ -98,6 +100,14 @@ class DownloadedTracksService {
       }
     }).toJS;
     return completer.future;
+  }
+
+  Future<void> _requestPersistentStorage() async {
+    try {
+      await web.window.navigator.storage.persist().toDart;
+    } catch (_) {
+      // IndexedDB still works when the browser does not grant persistence.
+    }
   }
 
   Future<JSAny?> _get(String key) async {

@@ -105,7 +105,6 @@ const AppHeader = () => {
   };
 
   ///
-
   return (
     <>
       <AppBar
@@ -258,10 +257,9 @@ const AppHeader = () => {
               </Box>
               {isAdmin && (
                 <MenuItem
-                  onClick={() => {
-                    setAnchorEl(null);
-                    router.push("/dashboard");
-                  }}
+                  component={Link}
+                  href="/dashboard"
+                  onClick={() => setAnchorEl(null)}
                 >
                   <BarChartRoundedIcon fontSize="small" />
                   Insights
@@ -713,28 +711,25 @@ const AppHeader = () => {
           </Typography>
 
           <MenuItem
-            onClick={() => {
-              setMobileNavAnchorEl(null);
-              router.push("/");
-            }}
+            component={Link}
+            href="/"
+            onClick={() => setMobileNavAnchorEl(null)}
           >
             Home
           </MenuItem>
 
           <MenuItem
-            onClick={() => {
-              setMobileNavAnchorEl(null);
-              router.push("/blog");
-            }}
+            component={Link}
+            href="/blog"
+            onClick={() => setMobileNavAnchorEl(null)}
           >
             News
           </MenuItem>
 
           <MenuItem
-            onClick={() => {
-              setMobileNavAnchorEl(null);
-              router.push("/library");
-            }}
+            component={Link}
+            href="/library"
+            onClick={() => setMobileNavAnchorEl(null)}
           >
             Library
           </MenuItem>
@@ -773,29 +768,26 @@ const AppHeader = () => {
           </Typography>
 
           <MenuItem
-            onClick={() => {
-              setMobileNavAnchorEl(null);
-              router.push("/artist-studio");
-            }}
+            component={Link}
+            href="/artist-studio"
+            onClick={() => setMobileNavAnchorEl(null)}
           >
             Artist Studio
           </MenuItem>
 
           <MenuItem
-            onClick={() => {
-              setMobileNavAnchorEl(null);
-              router.push("/track/upload");
-            }}
+            component={Link}
+            href="/track/upload"
+            onClick={() => setMobileNavAnchorEl(null)}
           >
             Upload
           </MenuItem>
 
           {isAdmin && (
             <MenuItem
-              onClick={() => {
-                setMobileNavAnchorEl(null);
-                router.push("/dashboard");
-              }}
+              component={Link}
+              href="/dashboard"
+              onClick={() => setMobileNavAnchorEl(null)}
             >
               Dashboard
             </MenuItem>
@@ -818,10 +810,9 @@ const AppHeader = () => {
           }}
         >
           <MenuItem
-            onClick={() => {
-              setMobileNavAnchorEl(null);
-              router.push("/plans");
-            }}
+            component={Link}
+            href="/plans"
+            onClick={() => setMobileNavAnchorEl(null)}
             sx={{
               minHeight: "48px !important",
 
@@ -939,10 +930,9 @@ const AppHeader = () => {
             </MenuItem>
           ) : (
             <MenuItem
-              onClick={() => {
-                setMobileNavAnchorEl(null);
-                router.push("/auth/signin");
-              }}
+              component={Link}
+              href="/auth/signin"
+              onClick={() => setMobileNavAnchorEl(null)}
               sx={{
                 color: "#FF6A1A !important",
 
@@ -973,6 +963,7 @@ const AppHeader = () => {
           )}
         </Box>
       </Menu>
+
       <Menu
         anchorEl={anchorEl}
         open={open}
@@ -1042,44 +1033,38 @@ const AppHeader = () => {
         }}
       >
         <MenuItem
-          onClick={() => {
-            setAnchorEl(null);
-            const userId = user?._id || user?.id;
-
-            if (userId) {
-              router.push(`/profile/${userId}`);
-            }
-          }}
+          component={Link}
+          href={
+            user?._id || user?.id ? `/profile/${user?._id || user?.id}` : "#"
+          }
+          onClick={() => setAnchorEl(null)}
         >
           <PersonRoundedIcon fontSize="small" />
           Profile
         </MenuItem>
 
         <MenuItem
-          onClick={() => {
-            setAnchorEl(null);
-            router.push("/like");
-          }}
+          component={Link}
+          href="/like"
+          onClick={() => setAnchorEl(null)}
         >
           <FavoriteRoundedIcon fontSize="small" />
           Likes
         </MenuItem>
 
         <MenuItem
-          onClick={() => {
-            setAnchorEl(null);
-            router.push("/playlist");
-          }}
+          component={Link}
+          href="/playlist"
+          onClick={() => setAnchorEl(null)}
         >
           <PlaylistPlaySharp fontSize="small" />
           Playlists
         </MenuItem>
 
         <MenuItem
-          onClick={() => {
-            setAnchorEl(null);
-            router.push("/people");
-          }}
+          component={Link}
+          href="/people"
+          onClick={() => setAnchorEl(null)}
         >
           <GroupsRoundedIcon fontSize="small" />
           Who to follow
@@ -1088,10 +1073,9 @@ const AppHeader = () => {
         <Divider sx={{ borderColor: "rgba(255,255,255,0.08)", my: 0.5 }} />
 
         <MenuItem
-          onClick={() => {
-            setAnchorEl(null);
-            router.push("/plans");
-          }}
+          component={Link}
+          href="/plans"
+          onClick={() => setAnchorEl(null)}
         >
           <StarsRoundedIcon
             fontSize="small"
@@ -1101,10 +1085,9 @@ const AppHeader = () => {
         </MenuItem>
 
         <MenuItem
-          onClick={() => {
-            setAnchorEl(null);
-            router.push("/track/upload");
-          }}
+          component={Link}
+          href="/track/upload"
+          onClick={() => setAnchorEl(null)}
         >
           <UploadRoundedIcon fontSize="small" />
           Tracks
@@ -1112,10 +1095,9 @@ const AppHeader = () => {
 
         {isAdmin && (
           <MenuItem
-            onClick={() => {
-              setAnchorEl(null);
-              router.push("/dashboard");
-            }}
+            component={Link}
+            href="/dashboard"
+            onClick={() => setAnchorEl(null)}
           >
             <BarChartRoundedIcon fontSize="small" />
             Insights
@@ -1124,10 +1106,9 @@ const AppHeader = () => {
 
         {isAdmin && (
           <MenuItem
-            onClick={() => {
-              setAnchorEl(null);
-              router.push("/dashboard");
-            }}
+            component={Link}
+            href="/dashboard"
+            onClick={() => setAnchorEl(null)}
           >
             <DashboardRoundedIcon fontSize="small" />
             Dashboard
@@ -1135,10 +1116,9 @@ const AppHeader = () => {
         )}
 
         <MenuItem
-          onClick={() => {
-            setAnchorEl(null);
-            router.push("/distribute");
-          }}
+          component={Link}
+          href="/distribute"
+          onClick={() => setAnchorEl(null)}
         >
           <CloudRoundedIcon fontSize="small" />
           Distribute

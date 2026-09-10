@@ -246,12 +246,8 @@ class PlayerSocialController extends Notifier<PlayerSocialState> {
         .where((id) => id.isNotEmpty)
         .toSet();
 
-    if (ids.isEmpty) {
-      return;
-    }
-
     state = state.copyWith(
-      likedTrackIds: {...state.likedTrackIds, ...ids},
+      likedTrackIds: ids,
       trackLikeCounts: {
         ...state.trackLikeCounts,
         for (final track in tracks)

@@ -21,14 +21,6 @@ export const studioTabs: {
     value: "tracks",
   },
   {
-    label: "Distribution",
-    value: "distribution",
-  },
-  {
-    label: "Vinyl Records",
-    value: "vinyl",
-  },
-  {
     label: "Comments",
     value: "comments",
   },
@@ -39,10 +31,6 @@ export const studioTabs: {
   {
     value: "subscription",
     label: "Subscription",
-  },
-  {
-    label: "Benefits",
-    value: "benefits",
   },
 ];
 

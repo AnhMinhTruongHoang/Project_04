@@ -1,0 +1,347 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+
+import '../../features/auth/presentation/auth_gate.dart';
+import '../../features/auth/presentation/forgot_password_screen.dart';
+import '../../features/auth/presentation/login_screen.dart';
+import '../../features/auth/presentation/reset_password_screen.dart';
+import '../../features/auth/presentation/signup_screen.dart';
+import '../../features/auth/presentation/splash_screen.dart';
+import '../../features/auth/providers/auth_provider.dart';
+import '../../features/artist_studio/presentation/artist_studio_screen.dart';
+import '../../features/likes/presentation/like_screen.dart';
+import '../../features/library/presentation/library_screen.dart';
+import '../../features/library/presentation/playlists_screen.dart';
+
+import '../../features/news/presentation/news_detail_screen.dart';
+import '../../features/news/presentation/news_screen.dart';
+import '../../features/notifications/presentation/notifications_screen.dart';
+import '../../features/profile/presentation/people_screen.dart';
+import '../../features/people/presentation/who_to_follow_screen.dart';
+import '../../features/profile/presentation/profile_screen.dart';
+import '../../features/search/presentation/search_screen.dart';
+import '../../features/subscriptions/presentation/subscription_plans_screen.dart';
+import '../../features/home/models/home_track.dart';
+import '../../features/track/presentation/track_detail_screen.dart';
+import '../../features/track/presentation/track_upload_screen.dart';
+import '../../features/player/presentation/full_player_screen.dart';
+
+import '../../shared/presentation/app_shell.dart';
+
+// ================================================================
+// APP ROUTER
+// ================================================================
+
+final GoRouter appRouter = GoRouter(
+  initialLocation: '/home',
+
+  routes: [
+    // ============================================================
+    // GUEST AUTH ROUTES
+    // ============================================================
+
+    // ------------------------------------------------------------
+    // LOGIN
+    // ------------------------------------------------------------
+    GoRoute(
+      path: '/login',
+      builder: (context, state) {
+        return const LoginScreen();
+      },
+    ),
+
+    // ------------------------------------------------------------
+    // SIGN UP
+    // ------------------------------------------------------------
+    GoRoute(
+      path: '/auth/signup',
+      builder: (context, state) {
+        return const SignupScreen();
+      },
+    ),
+
+    // ------------------------------------------------------------
+    // FORGOT PASSWORD
+    // ------------------------------------------------------------
+    GoRoute(
+      path: '/auth/forgot-password',
+      builder: (context, state) {
+        return const ForgotPasswordScreen();
+      },
+    ),
+
+    // ------------------------------------------------------------
+    // RESET PASSWORD
+    //
+    // Example:
+    // /auth/reset-password?email=user@gmail.com
+    // ------------------------------------------------------------
+    GoRoute(
+      path: '/auth/reset-password',
+      builder: (context, state) {
+        final email = state.uri.queryParameters['email'] ?? '';
+
+        return ResetPasswordScreen(initialEmail: email);
+      },
+    ),
+
+    // ============================================================
+    // FULL PLAYER
+    //
+    // This route stays outside the authenticated shell so opening
+    // the mini player shows a full-screen player without rebuilding
+    // the active tab. Playback can continue from a downloaded file.
+    // ============================================================
+    GoRoute(
+      path: '/player',
+      builder: (context, state) {
+        return const FullPlayerScreen();
+      },
+    ),
+
+    // ============================================================
+    // AUTHENTICATED MOBILE SHELL
+    // ============================================================
+    StatefulShellRoute.indexedStack(
+      builder: (context, state, navigationShell) {
+        return _AuthenticatedShell(
+          navigationShell: navigationShell,
+          currentLocation: state.uri.path,
+        );
+      },
+
+      branches: [
+        // ========================================================
+        // HOME
+        // ========================================================
+        StatefulShellBranch(
+          routes: [
+            GoRoute(
+              path: '/home',
+              builder: (context, state) {
+                return const AuthGate();
+              },
+            ),
+            GoRoute(
+              path: '/search',
+              builder: (context, state) {
+                return const SearchScreen();
+              },
+            ),
+            GoRoute(
+              path: '/like',
+              builder: (context, state) {
+                return const LikeScreen();
+              },
+            ),
+            GoRoute(
+              path: '/playlist',
+              builder: (context, state) {
+                return const PlaylistsScreen();
+              },
+            ),
+            GoRoute(
+              path: '/notifications',
+              builder: (context, state) {
+                return const NotificationsScreen();
+              },
+            ),
+            GoRoute(
+              path: '/track/upload',
+              builder: (context, state) {
+                return const TrackUploadScreen();
+              },
+            ),
+            GoRoute(
+              path: '/artist-studio',
+              builder: (context, state) {
+                return const ArtistStudioScreen();
+              },
+            ),
+            GoRoute(
+              path: '/plans',
+              builder: (context, state) {
+                return const SubscriptionPlansScreen();
+              },
+            ),
+            GoRoute(
+              path: '/people',
+              builder: (context, state) {
+                return const WhoToFollowScreen();
+              },
+            ),
+            GoRoute(
+              path: '/track/:trackId',
+              builder: (context, state) {
+                final trackId = state.pathParameters['trackId'] ?? '';
+                final initialTrack = state.extra is HomeTrack
+                    ? state.extra! as HomeTrack
+                    : null;
+
+                return TrackDetailScreen(
+                  trackId: trackId,
+                  initialTrack: initialTrack,
+                );
+              },
+            ),
+          ],
+        ),
+
+        // ========================================================
+        // NEWS
+        // ========================================================
+        StatefulShellBranch(
+          routes: [
+            GoRoute(
+              path: '/news',
+              builder: (context, state) {
+                return const NewsScreen();
+              },
+              routes: [
+                GoRoute(
+                  path: ':slug',
+                  builder: (context, state) {
+                    final slug = state.pathParameters['slug'] ?? '';
+
+                    return NewsDetailScreen(slug: slug);
+                  },
+                ),
+              ],
+            ),
+          ],
+        ),
+
+        // ========================================================
+        // LIBRARY
+        // ========================================================
+        StatefulShellBranch(
+          routes: [
+            GoRoute(
+              path: '/library',
+              builder: (context, state) {
+                return const LibraryScreen();
+              },
+            ),
+          ],
+        ),
+
+        // ========================================================
+        // PROFILE
+        // ========================================================
+        StatefulShellBranch(
+          routes: [
+            GoRoute(
+              path: '/profile',
+              builder: (context, state) {
+                return const ProfileScreen();
+              },
+              routes: [
+                GoRoute(
+                  path: ':userId',
+                  builder: (context, state) {
+                    final userId = state.pathParameters['userId'] ?? '';
+
+                    return PublicProfileScreen(userId: userId);
+                  },
+                ),
+              ],
+            ),
+          ],
+        ),
+      ],
+    ),
+  ],
+);
+
+// ================================================================
+// AUTHENTICATED SHELL
+// ================================================================
+
+class _AuthenticatedShell extends ConsumerWidget {
+  const _AuthenticatedShell({
+    required this.navigationShell,
+    required this.currentLocation,
+  });
+
+  final StatefulNavigationShell navigationShell;
+  final String currentLocation;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final authState = ref.watch(authProvider);
+
+    return authState.when(
+      // ----------------------------------------------------------
+      // LOADING
+      // ----------------------------------------------------------
+      loading: () {
+        return const SplashScreen();
+      },
+
+      // ----------------------------------------------------------
+      // ERROR
+      // ----------------------------------------------------------
+      error: (error, stackTrace) {
+        return const LoginScreen();
+      },
+
+      // ----------------------------------------------------------
+      // AUTH STATE
+      // ----------------------------------------------------------
+      data: (user) {
+        if (user == null) {
+          return const LoginScreen();
+        }
+
+        return AppShell(
+          navigationShell: navigationShell,
+          currentLocation: currentLocation,
+          user: user,
+        );
+      },
+    );
+  }
+}
+
+// ================================================================
+// TEMPORARY PLACEHOLDER
+//
+// Chỉ còn sử dụng cho:
+// - News
+//
+// Profile đã có ProfileScreen riêng.
+// ================================================================
+
+class _PlaceholderScreen extends StatelessWidget {
+  const _PlaceholderScreen({required this.title, required this.icon});
+
+  final String title;
+  final IconData icon;
+
+  @override
+  Widget build(BuildContext context) {
+    return ColoredBox(
+      color: const Color(0xFF0D0D0D),
+      child: Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 42, color: const Color(0xFFFF5500)),
+
+            const SizedBox(height: 12),
+
+            Text(
+              title,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 24,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}

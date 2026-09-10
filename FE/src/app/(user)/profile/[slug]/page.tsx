@@ -17,7 +17,6 @@ const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "";
 const getItemId = (item?: any) => {
   return item?._id || item?.id || "";
 };
-
 const getUserIdFromSlug = (slug: string) => {
   if (!slug) return "";
 
